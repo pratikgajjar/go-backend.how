@@ -1,4 +1,4 @@
-baseURL = 'https://example.org/'
+baseURL = 'https://backend.how/'
 languageCode = 'en-us'
-title = 'My New Hugo Site'
+title = 'Everything Engineering'
 theme = 'coloroid'
