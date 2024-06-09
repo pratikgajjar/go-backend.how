@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Keeping it 100(x) with real-time data at scale on My New Hugo Site</title>
+    <title>Backend Bros Bloggin on My New Hugo Site</title>
     <link>http://localhost:1313/</link>
-    <description>Recent content in Keeping it 100(x) with real-time data at scale on My New Hugo Site</description>
+    <description>Recent content in Backend Bros Bloggin on My New Hugo Site</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Mon, 10 Jun 2024 01:10:42 +0530</lastBuildDate>
