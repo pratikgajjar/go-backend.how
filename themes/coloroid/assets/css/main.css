@@ -14,7 +14,7 @@
 
 
 body {
-  background-color: #000000; /* Pitch black background */
+  background-color: #100f0f; /* Pitch black background */
   color: #ffffff;           /* White text color */
   display: flex;
   justify-content: center;
@@ -26,7 +26,6 @@ body {
 }
 
 .container {
-    text-align: center; /* Center align text */
     max-width: 800px;
     width: 100%;
     padding: 20px;
@@ -57,3 +56,35 @@ a {
 a:hover {
     color: #ff804f; /* Lighter shade on hover */
 }
+
+ul {
+    list-style: none; /* Remove default list styles */
+    padding: 0;
+}
+
+li {
+    position: relative; /* Ensure relative positioning for the ::before pseudo-element */
+    padding: 10px; /* Add padding for the white rectangle outline */
+    margin-bottom: 5px; /* Add margin between list items */
+    border: 0.5px solid #5B5B66; /* White border for the outline */
+}
+
+li:hover::before {
+    content: ''; /* Add content for pseudo-element */
+    position: absolute; /* Position the outline absolutely */
+    top: 0; /* Align the top of the outline with the top of the li */
+    left: 0; /* Align the left of the outline with the left of the li */
+    width: 100%; /* Set width of the outline to match the li */
+    height: 100%; /* Set height of the outline to match the li */
+    border: 1px solid #ffffff; /* White border for the outline */
+    box-sizing: border-box; /* Ensure the border width is included in the element's dimensions */
+    z-index: -1;
+}
+
+.bar {
+    max-width: 800px;
+    width: 100%;
+    justify-content: center;
+    margin: 0 auto; /* Center the div horizontally */
+}
+
