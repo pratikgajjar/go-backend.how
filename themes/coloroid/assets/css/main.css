@@ -11,7 +11,7 @@ body {
 
 .container {
     text-align: center; /* Center align text */
-    max-width: 800px;   /* You can adjust the max width as needed */
+    max-width: 768px;
     width: 100%;
     padding: 20px;
 }
