@@ -7,26 +7,34 @@ body {
   min-height: 100vh;
   margin: 0;
   font-family: Arial, sans-serif;
+  flex-direction: column;   /* Align items vertically */
 }
 
 .container {
     text-align: center; /* Center align text */
-    max-width: 768px;
+    max-width: 800px;
     width: 100%;
     padding: 20px;
+    flex-grow: 1;
 }
 
 header {
-  border-bottom: 1px solid #222;
-  margin-bottom: 1rem;
+    width: 100%;
+    text-align: center;
+    padding: 20px 0;
 }
 
 footer {
-  border-top: 1px solid #222;
-  margin-top: 1rem;
+    width: 100%;
+    text-align: center;
+    padding: 20px 0;
 }
 
 a {
-  color: #00e;
-  text-decoration: none;
+    color: #ffbb7a; /* Pastel orange hyperlink color */
+    text-decoration: none; /* Remove underline */
+}
+
+a:hover {
+    color: #ff804f; /* Lighter shade on hover */
 }
