@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Backend Bros Bloggin on Everything Engineering</title>
+    <title>Home on Everything Engineering</title>
     <link>http://localhost:1313/</link>
-    <description>Recent content in Backend Bros Bloggin on Everything Engineering</description>
+    <description>Recent content in Home on Everything Engineering</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Mon, 10 Jun 2024 01:10:42 +0530</lastBuildDate>
     <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>🧙 About Me</title>
+      <link>http://localhost:1313/about/</link>
+      <pubDate>Wed, 04 Nov 2020 09:19:42 +0100</pubDate>
+      <guid>http://localhost:1313/about/</guid>
+      <description>As of Apr 2021 As a backend engineer at FamPay, he finds joy in tackling various engineering challenges and even some non-engineering problems. His passion lies in problem-solving, regardless of the nature of the task at hand.&#xA;A Typical Day In My Work Life My workday usually starts by going through emails and checking Slack messages where I&amp;rsquo;ve been tagged. I make sure to stay up-to-date with any important communications and address engineering-related issues in public threads, offering my assistance whenever possible.</description>
+    </item>
     <item>
       <title>Keeping it 100(x) with real-time data at scale</title>
       <link>http://localhost:1313/main/test/</link>
