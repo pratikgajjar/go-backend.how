@@ -12,7 +12,7 @@ At end of reading this, you'll understand the importance of creating content, wh
 
 ## When ? 
 
-When one should start creating content and sharing with the world. There is no ideal time, as soon as possible. Start NOW !
+There is no ideal time, as soon as possible. Start NOW !
 
 ## What ?
 
@@ -30,17 +30,20 @@ How do you figure out quality of content that one would be creating ?
 That depends on 3 things
 
 ## Knowledge
-With right amount of knowledge one can get lotter better than people with talent. Curiosity drives the knowledge, so ask questions. 
+With right amount of knowledge one can get lot better than people with talent. Curiosity drives the knowledge, so ask questions. 
+
 Note; Having knowledge and when it becomes useful to you is non-linear process, you never know :)
+
 ### Practice
 Bridge between talent and knowledge, given your talent → pracice → growth. 
+
 #### Talent
 I am not talented like others so I will put lot more efforts and learn. - At university my project partner, on why he is working too hard. He was right, he is doing very well.
 
 
 ## Why ?
 
-There are several benifits of writing down. Lets go one by one.
+There are several benefits of writing down. Lets go one by one.
 1. Brings clarity to thoughts. 
 2. Deeper understanding on the subject. 
 3. Personal brand
@@ -66,7 +69,7 @@ I have come across many talented folks and wonder, why they are not sharing with
 #### Audio 
 1. Audio podcasts - spotify, youtube
 2. Twitter - Audio group call
-3. WhatsApp comminity
+3. WhatsApp community
 
 #### Video 
 1. Short form - reels, ticktok
@@ -84,7 +87,7 @@ May the force be with you 🧙
 # FAQ
 
 {{< details "Making it perfect ?" >}}
-  No, you can always improve upon. It takes time. Dont wait for it to be perfect, publish and work on feedback. Iterate, Iterate, Iterate
+  No, you can always improve upon. It takes time. Don't wait for it to be perfect, publish and work on feedback. Iterate, Iterate, Iterate
 {{</details>}}
 
 {{< details "How long should it be ?" >}}
