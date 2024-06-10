@@ -10,6 +10,12 @@
   font-style: normal;
 }
 
+.nanum-gothic-extra-bold {
+  font-family: "Nanum Gothic", sans-serif;
+  font-weight: 800;
+  font-style: normal;
+}
+
 
 body {
   background-color: #100f0f; /* Pitch black background */
