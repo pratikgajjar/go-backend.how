@@ -89,12 +89,6 @@ header li:hover::before {
     margin: 0 auto; /* Center the div horizontally */
 }
 
-/* Hide scrollbars for all elements */
-*::-webkit-scrollbar {
-    width: 0px; /* For vertical scrollbars */
-    height: 0px; /* For horizontal scrollbars */
-}
-
 * {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
