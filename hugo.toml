@@ -1,7 +1,10 @@
-baseURL = 'https://backend.how/'
-languageCode = 'en-us'
-title = 'Everything Engineering'
-theme = 'coloroid'
+baseURL = "https://backend.how/"
+languageCode = "en-us"
+title = "Everything Engineering"
+theme = "coloroid"
+
+[params]
+Description = "Pratik's blog for thoughtful articles on engineering, tech trends, and other insightful topics."
 
 [deployment]
 
