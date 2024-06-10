@@ -57,19 +57,19 @@ a:hover {
     color: #ff804f; /* Lighter shade on hover */
 }
 
-ul {
+header ul {
     list-style: none; /* Remove default list styles */
     padding: 0;
 }
 
-li {
+header li {
     position: relative; /* Ensure relative positioning for the ::before pseudo-element */
     padding: 10px; /* Add padding for the white rectangle outline */
     margin-bottom: 5px; /* Add margin between list items */
     border: 0.5px solid #5B5B66; /* White border for the outline */
 }
 
-li:hover::before {
+header li:hover::before {
     content: ''; /* Add content for pseudo-element */
     position: absolute; /* Position the outline absolutely */
     top: 0; /* Align the top of the outline with the top of the li */
