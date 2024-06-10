@@ -1,7 +1,3 @@
 User-agent: *
-{{ if eq (hugo.Environment) "production" -}}
 Allow: /
-{{ else -}}
-Disallow: /
-{{ end }}
-Sitemap: {{ "sitemap.xml" | absURL -}}
+Sitemap: https://backend.how/sitemap.xml
