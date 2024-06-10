@@ -55,7 +55,6 @@ h1, h2, h3, h4, h5, h6 {
 .container {
     max-width: 800px;
     width: 100%;
-    padding: 20px;
     flex-grow: 1;
 }
 
@@ -113,6 +112,12 @@ header li:hover::before {
     width: 100%;
     justify-content: center;
     margin: 0 auto; /* Center the div horizontally */
+}
+
+/* Hide scrollbars for all elements */
+*::-webkit-scrollbar {
+    width: 0px; /* For vertical scrollbars */
+    height: 0px; /* For horizontal scrollbars */
 }
 
 * {
