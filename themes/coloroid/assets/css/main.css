@@ -23,6 +23,7 @@ body {
   margin: 0;
   font-family: "Nanum Gothic", sans-serif;
   flex-direction: column;   /* Align items vertically */
+  padding: 20px;
 }
 
 .container {
