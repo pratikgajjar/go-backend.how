@@ -1,3 +1,18 @@
+@font-face {
+  font-family: 'Nanum Gothic';
+  src: url('/fonts/nanumgothic-regular-webfont.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Gothic Bold';
+  src: url('/fonts/nanumgothic-bold-webfont.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Gothic Bold';
+  src: url('/fonts/nanumgothic-extrabold-webfont.woff2') format('woff2');
+}
+
 .nanum-gothic-regular {
   font-family: "Nanum Gothic", sans-serif;
   font-weight: 400;
