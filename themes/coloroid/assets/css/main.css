@@ -45,10 +45,11 @@ body {
   padding: 20px;
 }
 
-h1, h2 {
-    font-family: "Nanum Gothic", sans-serif;
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Nanum Gothic Bold", sans-serif;
     font-weight: 800;
     font-style: normal;
+    letter-spacing: 0.005em;
 }
 
 .container {
@@ -119,3 +120,10 @@ header li:hover::before {
     scrollbar-width: none;  /* Firefox */
 }
 
+summary {
+  padding: 5px;
+}
+
+li {
+  padding: 1px;
+}
