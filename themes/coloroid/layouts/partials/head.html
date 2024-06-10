@@ -5,5 +5,11 @@
 <link rel="preload" href="/fonts/nanumgothic-regular-webfont.woff2" as="font" type="font/woff2"/>
 <link rel="preload" href="/fonts/nanumgothic-bold-webfont.woff2" as="font" type="font/woff2"/>
 <link rel="preload" href="/fonts/nanumgothic-extrabold-webfont.woff2" as="font" type="font/woff2"/>
+{{ with .Description -}}
+  <meta name="description" content="{{ . }}">
+{{ else -}}
+  <meta name="description" content="{{ .Site.Params.description }}">
+{{ end -}}
+
 {{ partialCached "head/css.html" . }}
 {{ partialCached "head/js.html" . }}
