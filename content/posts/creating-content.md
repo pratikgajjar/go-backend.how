@@ -1,11 +1,12 @@
----
-title: "Creating Content"
-description: "At end of reading this, you'll understand the importance of creating content, when, how you can start."
-date: 2024-06-11T00:01:52+05:30
-lastmod: 2024-06-11T00:01:52+05:30
-draft: true
-images: []
----
++++
+title = "Creating Content"
+description = "At end of reading this, you'll understand the importance of creating content, when, how you can start."
+date = 2024-06-11T00:01:52+05:30
+lastmod = 2024-06-11T00:01:52+05:30
+tags = ['gyan']
+draft = false
+images = []
++++
 
 At end of reading this, you'll understand the importance of creating content, when, how you can start.
 
