@@ -1,6 +1,6 @@
 +++
 title = "Achieve 60ms Response Time Using ValKey: Part 1"
-description = ""
+description = "You will be able to use valkey like swiss-knife it is to serve web pages at blazingly fast speed."
 date = 2024-06-16T23:27:27+05:30
 lastmod = 2024-06-16T23:27:27+05:30
 draft = false
