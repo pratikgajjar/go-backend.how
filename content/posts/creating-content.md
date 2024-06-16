@@ -1,6 +1,6 @@
 +++
 title = "Creating Content"
-description = "At end of reading this, you'll understand the importance of creating content, when, how you can start."
+description = "At the end of this, you'll understand the importance of creating content, when to start, and how to begin."
 date = 2024-06-11T00:01:52+05:30
 lastmod = 2024-06-11T00:01:52+05:30
 tags = ['gyan']
@@ -8,91 +8,108 @@ draft = false
 images = []
 +++
 
-At end of reading this, you'll understand the importance of creating content, when, how you can start.
+At the end of this, you'll understand the importance of creating content, when to start, and how to begin.
 
-## When ? 
+## When?
 
-There is no ideal time, as soon as possible. Start NOW !
+There's no ideal time; start as soon as possible. Start NOW!
 
-## What ?
+## What?
 
-to write ? serveral options.
+What should you write about? Here are several options:
 
-1. Pick anything that interest you 
-2. One find it easy for you but challenging for others
-3. One has put lot of efforts and hard work in learning skill, teach. 
-4. Anything out of ordinary, or just simple topic like.
+1. Pick a topic that interests you.
+2. Choose something you find easy but that others might find challenging.
+3. Teach a skill you've put a lot of effort into learning.
+4. Write about anything out of the ordinary or even simple topics.[1]
 
 ### Quality
 
-How do you figure out quality of content that one would be creating ? 
-
-That depends on 3 things
+How do you determine the quality of the content you're creating? It depends on three things:
 
 ## Knowledge
-With right amount of knowledge one can get lot better than people with talent. Curiosity drives the knowledge, so ask questions. 
 
-Note; Having knowledge and when it becomes useful to you is non-linear process, you never know :)
+With the right amount of knowledge, you can surpass those with natural talent. Curiosity drives knowledge, so always ask questions.
+
+*Note:* Having knowledge and knowing when it becomes useful is a non-linear process—you never know when it might come in handy.
 
 ### Practice
-Bridge between talent and knowledge, given your talent → pracice → growth. 
+
+Practice is the bridge between talent and knowledge. Given your talent, practice leads to growth.
 
 #### Talent
-I am not talented like others so I will put lot more efforts and learn. - At university my project partner, on why he is working too hard. He was right, he is doing very well.
 
+"I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right; he's doing very well now.
 
-## Why ?
+## Why?
 
-There are several benefits of writing down. Lets go one by one.
-1. Brings clarity to thoughts. 
-2. Deeper understanding on the subject. 
-3. Personal brand
-4. Contributing back to the society, Q: how many blogs, videos and other content have you consumed ?
-5. Is your writing and thinking are concise and coherent ?
+There are several benefits to writing down your thoughts. Let's go through them one by one:
 
-### Not to do.
-1. One not comfortable with feedback.
-2. Competitive advantage by not sharing. Keeping oneself relevant. 
-3. Afraid of trolls.
+1. Brings clarity to your thoughts.
+2. Provides a deeper understanding of the subject.
+3. Builds your personal brand.
+4. Contributes back to society. (Think about how many blogs, videos, and other content you have consumed.)
+5. Helps you develop concise and coherent writing and thinking skills.
 
-I have come across many talented folks and wonder, why they are not sharing with the world. One common reason I see "Don't have enough time", something that you can always solve for.
+### Not to Do
 
-## Where ?
- 
-### Pick format 
+1. Avoid writing if you're not comfortable with feedback.
+2. Don’t withhold sharing to keep a competitive advantage.
+3. Don’t let fear of trolls stop you.
+
+I've encountered many talented people who don't share their knowledge. A common reason is, "I don't have enough time," which is something you can always make time for.
+
+## Where?
+
+### Pick a Format
 
 #### Text
-1. Website - like this :)
-2. Newsletter 
+
+1. Website - like this one :)
+2. Newsletter
 3. Book
 
-#### Audio 
-1. Audio podcasts - spotify, youtube
-2. Twitter - Audio group call
+#### Audio
+
+1. Podcasts - Spotify, YouTube
+2. Twitter - Audio group calls
 3. WhatsApp community
 
-#### Video 
-1. Short form - reels, ticktok
-2. Long form - Youtube, coursera, eduction sites.
+#### Video
+
+1. Short form - Reels, TikTok
+2. Long form - YouTube, Coursera, educational sites
 3. Live - Twitch, YouTube
 
 #### AR/VR
-1. Game 
-2. Comment on post with ideas.
 
-Your success in life will be determined largely by your ability to speak, your ability to write, and the quality of your ideas. In that order. - Professor Patrick H. Winston
+1. Games
+2. Commenting on posts with ideas
+
+Your success in life will be largely determined by your ability to speak, your ability to write, and the quality of your ideas—in that order. - Professor Patrick H. Winston
 
 May the force be with you 🧙
 
 # FAQ
 
-{{< details "Making it perfect ?" >}}
-  No, you can always improve upon. It takes time. Don't wait for it to be perfect, publish and work on feedback. Iterate, Iterate, Iterate
+{{< details "Making it perfect?" >}}
+No, you can always improve upon it. It takes time. Don't wait for it to be perfect—publish and work on feedback. Iterate, iterate, iterate.
 {{</details>}}
 
-{{< details "How long should it be ?" >}}
-  As per your content, have someone to pre-read / consume before publishing.
+{{< details "How long should it be?" >}}
+As long as necessary to cover your content. Have someone pre-read or consume it before publishing.
 {{</details>}}
 
 _References_
-- [How to speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/)
+- [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/)
+
+---
+
+Writing is about more than just putting words on paper—it's about capturing ideas, sharing knowledge, and making connections. But one of the most compelling reasons to write is to observe and reflect on the world around you.
+
+Consider this: you chat with an Uber driver who owns an iPhone 13. At first, it seems like a normal interaction. But then you realize there's a story there, one that touches on financial literacy. Why would someone in a gig economy job have such an expensive phone? Perhaps they got it through a financing scheme without understanding the high-interest rates. Now, they're paying double the phone's price, which forces them to work 10-hour shifts just to keep up.
+
+These everyday encounters hold stories that can educate and resonate with others. Writing about them can highlight important issues like financial literacy and the impact of debt, making your content not just interesting, but also valuable.
+
+The world is full of oddities and nuances. By writing about them, you can turn everyday moments into powerful narratives. So don't wait for the perfect topic or the perfect time. Start now, observe the world, and write about what you find.
+
