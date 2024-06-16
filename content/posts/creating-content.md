@@ -10,20 +10,20 @@ images = []
 
 At the end of this, you'll understand the importance of creating content, when to start, and how to begin.
 
-## When?
+## When? {#when}
 
 There's no ideal time; start as soon as possible. Start NOW!
 
-## What?
+## What? {#what}
 
 What should you write about? Here are several options:
 
 1. Pick a topic that interests you.
 2. Choose something you find easy but that others might find challenging.
 3. Teach a skill you've put a lot of effort into learning.
-4. Write about anything out of the ordinary or even simple topics.[1]
+4. Write about anything out of the ordinary or even simple topics. [A](#ref_a)
 
-### Quality
+### Quality {#quality}
 
 How do you determine the quality of the content you're creating? It depends on three things:
 
@@ -41,7 +41,7 @@ Practice is the bridge between talent and knowledge. Given your talent, practice
 
 "I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right; he's doing very well now.
 
-## Why?
+## Why? {#why}
 
 There are several benefits to writing down your thoughts. Let's go through them one by one:
 
@@ -59,7 +59,7 @@ There are several benefits to writing down your thoughts. Let's go through them 
 
 I've encountered many talented people who don't share their knowledge. A common reason is, "I don't have enough time," which is something you can always make time for.
 
-## Where?
+## Where? {#where}
 
 ### Pick a Format
 
@@ -90,7 +90,7 @@ Your success in life will be largely determined by your ability to speak, your a
 
 May the force be with you 🧙
 
-# FAQ
+# FAQ {#faq}
 
 {{< details "Making it perfect?" >}}
 No, you can always improve upon it. It takes time. Don't wait for it to be perfect—publish and work on feedback. Iterate, iterate, iterate.
@@ -104,6 +104,8 @@ _References_
 - [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/)
 
 ---
+
+#### What do you mean by out of the ordinary ? {#ref_a}
 
 Writing is about more than just putting words on paper—it's about capturing ideas, sharing knowledge, and making connections. But one of the most compelling reasons to write is to observe and reflect on the world around you.
 
