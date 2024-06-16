@@ -1,0 +1,309 @@
+/* Base theme colors */
+:root {
+  --mocha-rosewater: #ea6962;
+  --mocha-flamingo: #ea6962;
+  --mocha-red: #ea6962;
+  --mocha-maroon: #ea6962;
+  --mocha-pink: #d3869b;
+  --mocha-mauve: #d3869b;
+  --mocha-peach: #e78a4e;
+  --mocha-yellow: #d8a657;
+  --mocha-green: #a9b665;
+  --mocha-teal: #89b482;
+  --mocha-sky: #89b482;
+  --mocha-sapphire: #89b482;
+  --mocha-blue: #7daea3;
+  --mocha-lavender: #7daea3;
+  --mocha-text: #ebdbb2;
+  --mocha-subtext1: #d5c4a1;
+  --mocha-subtext0: #bdae93;
+  --mocha-overlay2: #a89984;
+  --mocha-overlay1: #928374;
+  --mocha-overlay0: #595959;
+  --mocha-surface2: #4d4d4d;
+  --mocha-surface1: #404040;
+  --mocha-surface0: #292929;
+  --mocha-base: #1d2021;
+  --mocha-mantle: #191b1c;
+  --mocha-crust: #141617;
+}
+
+/* Chroma theme for Hugo */
+.chroma {
+  color: var(--mocha-text);
+  background-color: var(--mocha-base);
+}
+.chroma .cl {
+  color: var(--mocha-text);
+}
+.chroma .err {
+  color: var(--mocha-red);
+}
+.chroma .x {
+  color: var(--mocha-text);
+}
+.chroma .lntd {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  vertical-align: top;
+}
+.chroma .lntable {
+  width: auto;
+  border: 0;
+  margin: 0;
+  display: block;
+  padding: 0;
+  overflow: auto;
+  border-spacing: 0;
+}
+.chroma .hl {
+  width: 100%;
+  display: block;
+  background-color: var(--mocha-overlay1);
+}
+.chroma .lnt {
+  color: var(--mocha-overlay0);
+  padding: 0 0.4em 0 0.4em;
+  font-size: 0.875rem;
+  margin-right: 0.4em;
+}
+.chroma .ln {
+  color: var(--mocha-overlay0);
+  padding: 0 0.4em 0 0.4em;
+  margin-right: 0.4em;
+}
+.chroma .k {
+  color: var(--mocha-mauve);
+}
+.chroma .kr {
+  color: var(--mocha-mauve);
+}
+.chroma .kp {
+  color: var(--mocha-mauve);
+}
+.chroma .kc {
+  color: var(--mocha-peach);
+}
+.chroma .kd {
+  color: var(--mocha-red);
+}
+.chroma .kn {
+  color: var(--mocha-teal);
+}
+.chroma .kt {
+  color: var(--mocha-red);
+}
+.chroma .n {
+  color: var(--mocha-text);
+}
+.chroma .nc {
+  color: var(--mocha-yellow);
+}
+.chroma .no {
+  color: var(--mocha-yellow);
+}
+.chroma .nd {
+  color: var(--mocha-blue);
+  font-weight: bold;
+}
+.chroma .ni {
+  color: var(--mocha-teal);
+}
+.chroma .ne {
+  color: var(--mocha-peach);
+}
+.chroma .nf {
+  color: var(--mocha-blue);
+}
+.chroma .fm {
+  color: var(--mocha-blue);
+}
+.chroma .nl {
+  color: var(--mocha-teal);
+}
+.chroma .nn {
+  color: var(--mocha-peach);
+}
+.chroma .py {
+  color: var(--mocha-peach);
+}
+.chroma .nt {
+  color: var(--mocha-mauve);
+}
+.chroma .nv {
+  color: var(--mocha-subtext1);
+}
+.chroma .vc {
+  color: var(--mocha-subtext1);
+}
+.chroma .vg {
+  color: var(--mocha-subtext1);
+}
+.chroma .vi {
+  color: var(--mocha-subtext1);
+}
+.chroma .vm {
+  color: var(--mocha-subtext1);
+}
+.chroma .na {
+  color: var(--mocha-blue);
+}
+.chroma .nb {
+  color: var(--mocha-teal);
+}
+.chroma .bp {
+  color: var(--mocha-teal);
+}
+.chroma .nx {
+  color: var(--mocha-text);
+}
+.chroma .l {
+  color: var(--mocha-text);
+}
+.chroma .ld {
+  color: var(--mocha-text);
+}
+.chroma .s {
+  color: var(--mocha-green);
+}
+.chroma .sc {
+  color: var(--mocha-green);
+}
+.chroma .s1 {
+  color: var(--mocha-green);
+}
+.chroma .s2 {
+  color: var(--mocha-green);
+}
+.chroma .sb {
+  color: var(--mocha-green);
+}
+.chroma .sx {
+  color: var(--mocha-green);
+}
+.chroma .ss {
+  color: var(--mocha-green);
+}
+.chroma .si {
+  color: var(--mocha-green);
+}
+.chroma .sa {
+  color: var(--mocha-red);
+}
+.chroma .dl {
+  color: var(--mocha-blue);
+}
+.chroma .se {
+  color: var(--mocha-blue);
+}
+.chroma .sr {
+  color: var(--mocha-teal);
+}
+.chroma .sd {
+  color: var(--mocha-overlay1);
+}
+.chroma .sh {
+  color: var(--mocha-overlay1);
+}
+.chroma .m {
+  color: var(--mocha-peach);
+}
+.chroma .mb {
+  color: var(--mocha-peach);
+}
+.chroma .mh {
+  color: var(--mocha-peach);
+}
+.chroma .mi {
+  color: var(--mocha-peach);
+}
+.chroma .mf {
+  color: var(--mocha-peach);
+}
+.chroma .il {
+  color: var(--mocha-peach);
+}
+.chroma .mo {
+  color: var(--mocha-peach);
+}
+.chroma .o {
+  color: var(--mocha-teal);
+  font-weight: bold;
+}
+.chroma .ow {
+  color: var(--mocha-teal);
+  font-weight: bold;
+}
+.chroma .c {
+  color: var(--mocha-overlay1);
+  font-style: italic;
+}
+.chroma .c1 {
+  color: var(--mocha-overlay1);
+  font-style: italic;
+}
+.chroma .cm {
+  color: var(--mocha-overlay1);
+  font-style: italic;
+}
+.chroma .cs {
+  color: var(--mocha-overlay1);
+  font-style: italic;
+}
+.chroma .ch {
+  color: var(--mocha-overlay0);
+  font-style: italic;
+}
+.chroma .cp {
+  color: var(--mocha-overlay1);
+  font-style: italic;
+}
+.chroma .cpf {
+  color: var(--mocha-overlay1);
+  font-weight: bold;
+}
+.chroma .g {
+  color: var(--mocha-text);
+}
+.chroma .gi {
+  color: var(--mocha-green);
+  background-color: var(--mocha-surface0);
+}
+.chroma .gd {
+  color: var(--mocha-red);
+  background-color: var(--mocha-surface0);
+}
+.chroma .ge {
+  color: var(--mocha-text);
+  font-style: italic;
+}
+.chroma .gs {
+  color: var(--mocha-text);
+  font-weight: bold;
+}
+.chroma .gl {
+  color: var(--mocha-text);
+  text-decoration: underline;
+}
+.chroma .gh {
+  color: var(--mocha-peach);
+  font-weight: bold;
+}
+.chroma .gu {
+  color: var(--mocha-peach);
+  font-weight: bold;
+}
+.chroma .go {
+  color: var(--mocha-text);
+}
+.chroma .gp {
+  color: var(--mocha-text);
+}
+.chroma .gr {
+  color: var(--mocha-red);
+}
+.chroma .gt {
+  color: var(--mocha-red);
+}
+
