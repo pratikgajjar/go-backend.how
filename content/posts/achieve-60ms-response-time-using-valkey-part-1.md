@@ -7,7 +7,7 @@ draft = false
 images = []
 +++
 
-[WIP](https://backend.how)
+[WIP](https://backend.how) Hey! This is work in progress, if you want to still go ahead feel free. Didn't want to keep draft with me. TY
 
 You will be able to use valkey like swiss-knife it is to serve web pages at blazingly fast speed. 
 
