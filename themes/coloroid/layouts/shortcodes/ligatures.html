@@ -1,7 +1,0 @@
-{{ $content := .Inner }}
-{{ $content = $content | replaceRE "->" "→" }}
-{{ $content = $content | replaceRE "<-" "←" }}
-{{ $content = $content | replaceRE "-->" "⟶" }}
-{{ $content = $content | replaceRE "<--" "⟵" }}
-{{ $content | safeHTML }}
-
