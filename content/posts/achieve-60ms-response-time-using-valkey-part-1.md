@@ -160,6 +160,8 @@ Let's say dedicated page payload size was 20KB - for 10_000 cars, we would use o
 
 How would you implement filter in redis ? What about pagination ? Stay tuned for part 2
 
+DDL also means Dilwale Dulhaniya Le jaenge, IYKYK
+
 ---
 
 #### [1] What is [the binary log](https://dev.mysql.com/doc/refman/8.0/en/binary-log.html) ? {#WAL}
