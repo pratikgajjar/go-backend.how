@@ -43,7 +43,7 @@ body {
   font-family: "Nanum Gothic", sans-serif;
   flex-direction: column;   /* Align items vertically */
   padding: 20px;
-  line-height: 1.2em;
+  line-height: 1.5em;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -51,6 +51,7 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 800;
     font-style: normal;
     letter-spacing: 0.005em;
+    line-height: 1.5em;
 }
 
 blockquote {
@@ -162,3 +163,20 @@ li li {
 ul ul {
     margin: 5px; /* Adjust the value as needed */
 }
+
+.highlight {
+    max-width: 800px;
+    overflow-x: auto; /* Enable horizontal scrolling if needed */
+}
+
+.highlight pre {
+    margin: 0;
+    padding: 1em;
+    overflow-x: auto; /* Enable horizontal scrolling if needed */
+}
+
+.highlight pre code {
+    display: block;
+    white-space: pre-wrap; /* Preserve line breaks */
+}
+

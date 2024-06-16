@@ -110,7 +110,7 @@ class DedicatedPageView(generic.ListRetrieveView):
         con.set(key, data, ttl=one_day_in_seconds)
         return data
      return value 
-# Find the thundering herd aka cache stampede here, comment with your solution!
+# Find the thundering herd aka cache stampede here, # comment with your solution!
 ```
 Are we done ? No
 
@@ -140,7 +140,10 @@ Messages:
 
    op: insert | delete | update
 
-   before: json payload with key = column name, value = column value
+   before: json payload 
+      with
+        key = column name
+        value = column value
 
    after: json payload
 ```
