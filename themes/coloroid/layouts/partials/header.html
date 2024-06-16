@@ -1,4 +1,7 @@
-<h1>{{ site.Title }}</h1>
+<h1>
+  <img src="/favicon.ico" alt="site-logo" class="inline-image">
+  {{ site.Title }}
+</h1>
 <div class="bar"> 
   {{ partial "menu.html" (dict "menuID" "main" "page" .) }}
 </div>
