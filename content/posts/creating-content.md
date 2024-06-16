@@ -115,3 +115,6 @@ These everyday encounters hold stories that can educate and resonate with others
 
 The world is full of oddities and nuances. By writing about them, you can turn everyday moments into powerful narratives. So don't wait for the perfect topic or the perfect time. Start now, observe the world, and write about what you find.
 
+---
+
+**Thanks** to Vaibhav suggestions and for reading drafts.
