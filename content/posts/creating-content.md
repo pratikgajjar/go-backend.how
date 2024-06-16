@@ -21,7 +21,7 @@ What should you write about? Here are several options:
 1. Pick a topic that interests you.
 2. Choose something you find easy but that others might find challenging.
 3. Teach a skill you've put a lot of effort into learning.
-4. Write about anything out of the ordinary or even simple topics. [A](#ref_a)
+4. Write about anything out of the ordinary or even simple topics. [[1]](#ref_a)
 
 ### Quality {#quality}
 
@@ -105,7 +105,7 @@ _References_
 
 ---
 
-#### What do you mean by out of the ordinary ? {#ref_a}
+#### [1] What do you mean by out of the ordinary ? {#ref_a}
 
 Writing is about more than just putting words on paper—it's about capturing ideas, sharing knowledge, and making connections. But one of the most compelling reasons to write is to observe and reflect on the world around you.
 
