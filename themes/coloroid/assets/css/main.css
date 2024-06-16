@@ -43,6 +43,7 @@ body {
   font-family: "Nanum Gothic", sans-serif;
   flex-direction: column;   /* Align items vertically */
   padding: 20px;
+  line-height: 1.2em;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -50,6 +51,16 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 800;
     font-style: normal;
     letter-spacing: 0.005em;
+}
+
+blockquote {
+  background: #212121;
+  border-left: 3px solid #ff804f;
+  margin: 1.5em 10px;
+  padding: 0.5em 10px;
+}
+blockquote p {
+  display: inline-block;
 }
 
 .inline-image {
@@ -141,5 +152,13 @@ summary {
 }
 
 li {
-  padding: 1px;
+  margin: 5px;
+}
+
+li li {
+  margin: 5px;
+}
+
+ul ul {
+    margin: 5px; /* Adjust the value as needed */
 }
