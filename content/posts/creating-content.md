@@ -117,4 +117,4 @@ The world is full of oddities and nuances. By writing about them, you can turn e
 
 ---
 
-**Thanks** to Vaibhav suggestions and for reading drafts.
+**Thank you** Vaibhav for reading drafts and suggesions.
