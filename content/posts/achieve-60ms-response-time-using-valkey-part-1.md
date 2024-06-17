@@ -7,40 +7,49 @@ draft = false
 images = []
 +++
 
-[WIP](https://backend.how) Hey! This is work in progress, if you want to still go ahead feel free. Didn't want to keep draft with me. TY
+[Latest published blog](/posts/creating-content/) 
 
-You will be able to use valkey like swiss-knife it is to serve web pages at blazingly fast speed. 
+Hey! This is work in progress, if you want to still go ahead feel free. Didn't want to keep draft with me. TY
+
+You'll be able to use [Valkey](https://valkey.io/) as a versatile tool to serve web pages at blazingly fast speeds.
+
+Before diving in, this blog assumes you're familiar with backend technology.
+
+What is Valkey?
+
+Valkey is an open-source (BSD) high-performance key/value datastore. It supports various workloads such as caching, message queues, and can function as a primary database. Valkey can operate as a standalone daemon or in a cluster, with options for replication and high availability.
+
+Does this sound familiar? The folks at Redis changed their license terms, leading to the creation of this fork (link). All Redis clients will work seamlessly with Valkey.
+
 
 # Why ? 
-- Co-founder set the 60ms benchmark value that engineering team needs solve for.
-- 95%+ traffic comes from Google, Facebook, Instagram Ads. On click - 2 methods car can be displayed to the user
-  1. Dedicated Page - full details of 1 car, with 10+ photos and other information 
-  2. Listing Page - List of cars - basic details and ~4 photos horizontally scrollable
+- The co-founder set a target of 60ms for most impactful entrypoints.
+- 95%+ traffic comes from Google, Facebook, Instagram Ads. The Ads would lead to two entrypoints of the app.
+  1. Dedicated Page - Full details of one car, including 10+ photos and other information.
+  2. Listing Page - A list of cars with basic details and approximately four horizontally scrollable photos.
 
 > Amazon found that every 100ms of latency cost them 1% in sales. In 2006, Google found an extra .5 seconds in search page generation time dropped traffic by 20%. - [Marissa Mayer](http://glinden.blogspot.com/2006/11/marissa-mayer-at-web-20.html)
 
-# Spec
+# Specifications
 
-- Maximum 10,000 cars can be active available for users to view
+- Up to 10,000 cars can be active and available for users to view.
 - Listing Page 
-  - Shows list of cars based on order returned by [LightFM](https://github.com/lyst/lightfm) model
+  - Displays cars based on the order returned by the [LightFM](https://github.com/lyst/lightfm) model
   - User can filter based on car attributes 
-- User can be anonymous user or returning user who has filled the lead earlier.
-  - For anonymous user use current_car or last_visited car stored in local storage.
-  - Logged In user will get recommendation based on all the interaction they have done on platform.
+- Users can be anonymous or returning users who have filled out a lead earlier.
+  - For anonymous users, use the current car or last-visited car stored in local storage.
+  - Logged-in users will receive recommendations based on their interactions on the platform.
 
 # Exisitng design
 
-- React PWA (Progressive Web App) App built using create-react-app as frontend.
-- REST API implemented via Django with Django-Rest-Framework.
+- React Progressive Web App (PWA) built using [create-react-app](https://create-react-app.dev/) as the frontend.
+- REST API implemented via [Django](https://www.djangoproject.com/) with Django-Rest-Framework.
 
 # Bottlenecks
 
 ## Frontend
-PWA - Fastest way to render the page is to send rendered HTML and PWA doesn't do that, it works well after first page load, navigation and offline experiance but not for the first render.
 
-Why have PWA? 
-- In lifecycle of user once they decided to buy the car or bought the car, they would not need the platform so encourging someone to install the app felt extra step that user can skip.
+PWAs render pages quickly after the first load but struggle with the initial render. Despite this, they provide a smooth experience after the first load, navigation, and offline access.
 
 ## Backend
 
@@ -55,25 +64,82 @@ Request - Response lifecycle
 7. Middleware → Create DB connection (1 for each request)
 8. Django-Rest-Framework View
 9. Model Serializers (n + 1 DB call) ~200 | **90% time spent here onwards** |
-10. Automatic Caching via CacheALot 
+10. Automatic Caching via ORM hooks by Cache-A-Lot library
+  - Creates hash of query and stores db response in pickle format
+  - Handles invalidation using django model signals
 11. DB Response
 12. Convert JSON → Return to Apache2 → Load Balancer → User 
 
 
-Didn't make sense what just happened ? it's okay. Not important to understand rest of the story. (Google unfamiliar terms or comment !)
+Didn't understand? That's okay. It's not crucial for the rest of the story. You can Google unfamiliar terms or ask for clarification!
 
-Here for Listing API - we need to calculate order of cars from model response and based on that paginate. Paginate - Backend returns 10 cars max in each response, for more in subsquent API request marker is sent to backend to skip to seen results. 
+#### Dedicated Page
+Backend receives an `id`, fetch the data and return json
 
-# Solution 
+#### Listing Page
+Accept - `buyer_id`, `seen_car_ids`
+
+Data Science model can use either of above parameters and create recommendation for the user. 
+```python
+def personal_reco(buyer_id, active_car_id_list):
+    ordered_car_list = model.get_order(buyer_id, active_car_id_list)
+    return ordered_car_list
+
+def anon_reco(seen_car_ids, active_car_id_list):
+    ordered_car_list = model.get_order(seen_car_ids, active_car_id_list)
+    return ordered_car_list
+```
+Should we return data of all active cars in the first request?
+
+No, that would cause unnecessary computation on the backend since it is unlikely that the user would scroll through all the cars.
+
+Instead, we return the first 10 results and a marker for the next page to the frontend. In subsequent requests, the frontend sends the marker to the backend, which then returns the next set of results, skipping the already seen cars.
+
+Here at run time we compute order of car on each request.
+
+#### Filters
+
+What are we filtering exactly ? - Car colour, Make, Model, Accessory, Rating, Ownership etc.
+
+In normalised database there are several kind of data relations a car can have with other tables
+
+1. One to One
+  - Car has blue color => `car.color_id - color.id`
+  - Car variant is e-tron => `car.variant_id - variant.id`
+  - Car model is Q7 => `variant.model_id - model.id`
+  - Car manufactured by Audi => `make.model_id = model.id`
+2. One to Many
+  - One Car has Many acessories.
+   [TODO]
+3. Many to Many
+   [TODO]
+
+Here we used django-filter to traverse the relations and perform `in` , `not in` queries.
+
+Since we were making complex queries during filter with 5+ joins, these queries cause high load on the database.
+
+
+# Approach 
 
 ## Frontend
 
-We decided to opt for Next.js and send rendered html for the first page open. Once user is on either dedicated or listing page and interacts with site to go back or visit other cars it would fallback to rendering everything on client side, this allows smooth experiance like native apps.
+How does client side rendering works ? 
+
+Once frontend receives the json payload, it creates using javascript it creates an HTML that can be used to display the data, here behind the scene react checks does it really needs to update the DOM Tree ? What part changed and it updates only changed part.
+
+Since react here is creating html, on low end device it could be slow and once HTML generated it will perform diff then start painting the canvas. 
+
+So why not, send HTML directly which browsers are familiar with ?
+
+That's where Next.js (2019) comes into picture. We can run node server in backend and for the first page load always send HTML. Once the user is on either the dedicated or listing page and interacts with the site to go back or visit other cars, it will fall back to rendering everything on the client side. This approach provides a smooth experience similar to native apps.
+
 
 ## Backend
 
-1. Make minimum amount of network calls.
-2. Serve page via only valkey (cache), 100% hit ratio.
+
+1. Do we need to re-create json for each car ?
+2. How can we do minimum amount of work to return the response ?
+
 
 To keep in mind; 
 - Every day car prices changes automatically.
@@ -161,7 +227,7 @@ Let's say dedicated page payload size was 20KB - for 10_000 cars, we would use o
 
 #### Listing Page
 
-How would you implement filter in redis ? What about pagination ? Stay tuned for part 2
+How would you implement filter in redis ? What about pagination, can we do that with filter without making DB call ? Stay tuned for part 2
 
 DDL also means Dilwale Dulhaniya Le jaenge, IYKYK
 
