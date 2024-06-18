@@ -14,9 +14,9 @@ images:
 contributors: ["Pratik Gajjar"]
 ---
 
-## As of Apr 2021
+## As of April 2021
 
-As a backend engineer at FamPay, he finds joy in tackling various engineering challenges and even some non-engineering problems. His passion lies in problem-solving, regardless of the nature of the task at hand.
+As a backend engineer at FamPay, I find joy in tackling various engineering challenges and even some non-engineering problems. My passion lies in problem-solving, regardless of the nature of the task at hand.
 
 ## A Typical Day In My Work Life
 
@@ -24,19 +24,18 @@ My workday usually starts by going through emails and checking Slack messages wh
 
 After that, I focus on the assigned tasks and work on solving the problems at hand. I believe in continuous learning, so I make it a point to discover something new each day. If there are any useful links or resources, I take the time to explore them further and expand my knowledge. Overall, my day is filled with collaborating, problem-solving, and personal growth through [learning](https://www.notion.so/b5b4b75a130f4e9db5fcabed50f7750f?v=40bbd11a1be244549563924afd17634e).
 
-PS: We have a very cool slack bot which sends thank you message to a public channel when you do @username ++, Reflect once a week and give ++ (thank you).
+PS: We have a very cool Slack bot that sends thank-you messages to a public channel when you do @username ++. I reflect once a week and give ++ (thank you).
 
 ## Leisure Day
 
 On my non-work day, I like to indulge in various activities:
 
-1. [Reading Blogs](url_to_blog_category): I mostly focus on technology-related blogs to stay updated with the latest trends and developments.
+1. [Learning](https://l.prga.in/reading): I mostly focus on technology-related blogs to stay updated with the latest trends and developments.
 
-2. [Financial Interests](url_to_financial_website): I spend time investing in and tracking stocks and mutual funds portfolios to ensure my financial well-being.
+2. [Financial]: I spend time investing in and tracking stocks and mutual funds portfolios to ensure my financial well-being.
 
-3. [Sports Enthusiast](url_to_sports_videos): I enjoy both watching and playing football, table tennis, and badminton, which keeps me active and entertained.
+3. [Sports]: I enjoy both watching and playing football, table tennis, and badminton, which keeps me active and entertained.
 
-4. [Entertainment Galore](url_to_netflix_anime): I love binge-watching shows on Netflix and exploring different anime series to unwind and relax.
+4. [Entertainment]: I love binge-watching shows on Netflix and exploring different anime series to unwind and relax.
 
 Overall, my leisure day is a perfect blend of staying informed, being financially savvy, staying active through sports, and enjoying quality entertainment.
-
