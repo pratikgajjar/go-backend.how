@@ -133,7 +133,7 @@ Here we used django-filter to traverse the relations and perform `in` , `not in`
 Since we were making complex queries during filter with 5+ joins, these queries cause high load on the database.
 
 
-# Approach 
+# How ? 
 
 ## Frontend
 
