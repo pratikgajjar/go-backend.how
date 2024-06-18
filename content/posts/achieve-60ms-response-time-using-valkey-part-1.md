@@ -15,13 +15,26 @@ You'll be able to use [Valkey](https://valkey.io/) as a versatile tool to serve 
 
 Before diving in, this blog assumes you're familiar with backend technology.
 
-What is Valkey?
-
+{{< details "What is Valkey?" >}}
 Valkey is an open-source (BSD) high-performance key/value datastore. It supports various workloads such as caching, message queues, and can function as a primary database. Valkey can operate as a standalone daemon or in a cluster, with options for replication and high availability.
 
 Does this sound familiar? The folks at Redis changed their license terms, leading to the creation of this fork, more at [link](https://arstechnica.com/information-technology/2024/04/redis-license-change-and-forking-are-a-mess-that-everybody-can-feel-bad-about/). 
+{{</details>}}
+It's fork of redis open-source, as they changed license terms.
 
-All Redis clients will work seamlessly with Valkey server.
+# What ?
+Here we have pre owned car platform where buyers can find detailed report of car, schedule a test drive and purchase.
+The platform has hybrid business model - marketplace & inventory. 
+
+Marketplace - We are providing platform for buyers and sellers to communicate. When you purchase something which is directly sold by seller. Earn money from both ends, buyer => seller contact details, seller => Who has shown interest.
+
+Inventory - Platform owns the car, buyer can book test drive online and each location has ~100+ cars, buyer can go there and test drive. Earn money from higher margin on car. Pro-tip - before selling house -> repaint, car -> refurbish.
+
+Flow of user
+
+Ads => Lead generation (Entered mobile no) => Platform (Book visit) => Test Drive (At store) => Make purchase decision.
+
+Our goal is to maximise Lead generation via providing blazingly fast experience.
 
 # Why ? 
 - The co-founder set a target of 60ms for most impactful entrypoints.
