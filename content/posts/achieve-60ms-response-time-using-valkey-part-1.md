@@ -24,17 +24,19 @@ It's fork of redis open-source, as they changed license terms.
 
 # What ?
 Here we have pre owned car platform where buyers can find detailed report of car, schedule a test drive and purchase.
-The platform has hybrid business model - marketplace & inventory. 
+The platform has hybrid business model - marketplace & inventory.
 
-Marketplace - We are providing platform for buyers and sellers to communicate. When you purchase something which is directly sold by seller. Earn money from both ends, buyer => seller contact details, seller => Who has shown interest.
+### Marketplace
+We are providing platform for buyers and sellers to communicate. When you purchase something which is directly sold by seller. Earn money from both ends, buyer wants seller contact details, seller wanna know buyers.
 
-Inventory - Platform owns the car, buyer can book test drive online and each location has ~100+ cars, buyer can go there and test drive. Earn money from higher margin on car. Pro-tip - before selling house -> repaint, car -> refurbish.
+### Inventory
+Platform owns the car, buyer can book test drive online and each location has ~100+ cars, buyer can go there and test drive. Earn money from higher margin on car. Pro-tip - before selling house -> repaint, car -> refurbish.
 
-Flow of user
+### User flow
 
-Ads => Lead generation (Entered mobile no) => Platform (Book visit) => Test Drive (At store) => Make purchase decision.
+Ads => **Lead generation** (Entered mobile no) => Platform (Book visit) => Test Drive (At store) => Make purchase decision.
 
-Our goal is to maximise Lead generation via providing blazingly fast experience.
+Our goal is to maximise lead generation via providing blazingly fast experience.
 
 # Why ? 
 - The co-founder set a target of 60ms for most impactful entrypoints.
