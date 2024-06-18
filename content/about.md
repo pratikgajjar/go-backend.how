@@ -32,10 +32,10 @@ On my non-work day, I like to indulge in various activities:
 
 1. [Learning](https://l.prga.in/reading): I mostly focus on technology-related blogs to stay updated with the latest trends and developments.
 
-2. [Financial]: I spend time investing in and tracking stocks and mutual funds portfolios to ensure my financial well-being.
+2. [Financial](/): I spend time investing in and tracking stocks and mutual funds portfolios to ensure my financial well-being.
 
-3. [Sports]: I enjoy both watching and playing football, table tennis, and badminton, which keeps me active and entertained.
+3. [Sports](/): I enjoy both watching and playing football, table tennis, and badminton, which keeps me active and entertained.
 
-4. [Entertainment]: I love binge-watching shows on Netflix and exploring different anime series to unwind and relax.
+4. [Entertainment](/): I love binge-watching shows on Netflix and exploring different anime series to unwind and relax.
 
 Overall, my leisure day is a perfect blend of staying informed, being financially savvy, staying active through sports, and enjoying quality entertainment.
