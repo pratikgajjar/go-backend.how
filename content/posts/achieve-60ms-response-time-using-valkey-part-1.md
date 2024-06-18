@@ -19,8 +19,9 @@ What is Valkey?
 
 Valkey is an open-source (BSD) high-performance key/value datastore. It supports various workloads such as caching, message queues, and can function as a primary database. Valkey can operate as a standalone daemon or in a cluster, with options for replication and high availability.
 
-Does this sound familiar? The folks at Redis changed their license terms, leading to the creation of this fork (link). All Redis clients will work seamlessly with Valkey.
+Does this sound familiar? The folks at Redis changed their license terms, leading to the creation of this fork, more at [link](https://arstechnica.com/information-technology/2024/04/redis-license-change-and-forking-are-a-mess-that-everybody-can-feel-bad-about/). 
 
+All Redis clients will work seamlessly with Valkey server.
 
 # Why ? 
 - The co-founder set a target of 60ms for most impactful entrypoints.
