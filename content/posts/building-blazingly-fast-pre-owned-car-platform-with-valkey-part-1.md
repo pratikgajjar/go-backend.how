@@ -1,6 +1,6 @@
 +++
 title = "Building blazingly fast pre-owned car platform with Valkey - Part 1"
-description = "The content will cover how to leverage [Valkey](https://valkey.io/) for serving web pages at blazingly fast speeds."
+description = "The content will cover how to leverage ValKey (https://valkey.io/) for serving web pages at blazingly fast speeds."
 date = 2024-06-16T23:27:27+05:30
 lastmod = 2024-06-16T23:27:27+05:30
 tags = ['Django', 'Redis', 'DRF', 'CDC']
