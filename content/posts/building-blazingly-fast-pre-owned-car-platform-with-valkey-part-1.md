@@ -1,6 +1,6 @@
 +++
 title = "Building blazingly fast pre-owned car platform with Valkey - Part 1"
-description = "You will be able to use valkey like swiss-knife it is to serve web pages at blazingly fast speed."
+description = "The content will cover how to leverage [Valkey](https://valkey.io/) for serving web pages at blazingly fast speeds."
 date = 2024-06-16T23:27:27+05:30
 lastmod = 2024-06-16T23:27:27+05:30
 tags = ['Django', 'Redis', 'DRF', 'CDC']
@@ -10,7 +10,7 @@ images = []
 
 **Introduction**
 
-Welcome! This blog post is a work in progress, but feel free to dive in. The content will cover how to leverage [Valkey](https://valkey.io/) for serving web pages at blazingly fast speeds. This guide assumes you have some familiarity with backend technology.
+The content will cover how to leverage [Valkey](https://valkey.io/) for serving web pages at blazingly fast speeds. This guide assumes you have some familiarity with backend technology.
 
 {{< details "What is Valkey?" >}}
 Valkey is an open-source, high-performance key/value datastore licensed under BSD. It supports a variety of workloads such as caching, message queues, and can function as a primary database. Valkey can operate as a standalone daemon or in a cluster with options for replication and high availability.
