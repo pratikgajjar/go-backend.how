@@ -71,7 +71,7 @@ PWAs load quickly after the first visit, but the initial load can be slow, espec
 
 ## Backend
 
-The request-response lifecycle involves multiple steps, with significant time spent on model serialization, database (MySQL) calls and caching.
+The request-response lifecycle involves multiple steps, with significant time spent on model serialization and database (MySQL) calls.
 
 ### Dedicated Page
 
@@ -117,19 +117,29 @@ Implemented with [Django-filter](https://django-filter.readthedocs.io/en/stable/
 
 #### Pagination
 
-We can return list of all cars in mumbai in one request, but that would put strain on all components involved. Let's say in mumbai we have 1000 cars.
+We can return list of all cars in mumbai city in one request, but that would put strain on all components involved.
 
-1. Database - Need to fetch details of thousand cars
+For example for 1000 cars in a city
+
+1. Database - Needs to fetch details of thousand cars
 2. Backend server - Convert database response into `JSON`, this would cause high CPU usage
-3. Client - Needs to generate HTML for thousand cars, browser need to paint the screen.
+3. Client - Needs to generate `HTML` for thousand cars, browser need to paint the screen.
 
-This would case issues at each stage, to avoid this we return only few set of cars in one request.
+This would case issues at each stage, to avoid this we return only few set of cars in one request. Among cursor, limit-offset and page-no pagination options we used page-no pagination.
 
-In page no pagination we have 3 params
+**Page No pagination**
+
+Request
 
 1. `page_size` - client decides how many cars to show, desktop users have more real estate allows to show more cars.
 2. `page_no` - based on user's position, client sends page no.
-3. `page_count` - Maximum no of pages client can ask for, after this number client shows `No more results`
+
+Response
+
+1. `count` - Maximum no of pages client can ask for, after this number client shows `No more results`
+2. `next_page` - URL to fetch next page
+3. `prev_page` - URL to fetch previous page
+2. `results` - List of `JSON` containing basic car information
 
 How do we decide among 2 cars, which one should come before which one ?
 
@@ -142,21 +152,25 @@ Order options
 3. price_asc - Ascending order of price
 4. price_desc - Descending order of price
 
+```
+GET https://api.car.com/listing/?city_id=1&order_by=reco&page_no=2&page_size=10
+```
+
 Here for recommendation we would be generating order of car in each request.
 
-# 60ms ?
+# Achieving a 60ms response time
 
 ## Frontend
 
-How does client side rendering works ?
+## Frontend
 
-Once frontend receives the json payload, it creates using javascript it creates an HTML that can be used to display the data, here behind the scene react checks does it really needs to update the DOM Tree ? What part changed and it updates only changed part.
+### How Does Client-Side Rendering Work?
 
-Since react here is creating html, on low end device it could be slow and once HTML generated it will perform diff then start painting the canvas.
+Client-side rendering (CSR) involves the frontend receiving a JSON payload and using JavaScript to create HTML for displaying data. Libraries like React handle this efficiently by checking if the DOM tree needs updating and only modifying the parts that have changed. However, this process can be slow on low-end devices because React has to generate the HTML, perform a diff, and then update DOM.
 
-So why not, send HTML directly which browsers are familiar with ?
+### Why Not Send HTML Directly?
 
-That's where Next.js (2019) comes into picture. We can run node server in backend and for the first page load always send HTML. Once the user is on either the dedicated or listing page and interacts with the site to go back or visit other cars, it will fall back to rendering everything on the client side. This approach provides a smooth experience similar to native apps.
+Sending pre-rendered HTML, which browsers are optimized to handle, can be more efficient. This is where Next.js (year 2019), becomes valuable. By running a Node server on the backend, Next.js can send HTML for the initial page load. After this, user interactions such as navigating between pages or viewing details fall back to client-side rendering. This hybrid approach offers a smooth, app-like experience.
 
 ## Backend
 
