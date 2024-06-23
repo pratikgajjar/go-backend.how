@@ -128,36 +128,36 @@ For example for 1000 cars in a city
 
 This would case issues at each stage, to avoid this we return only few set of cars in one request. Among cursor, limit-offset and page-no pagination options we used page-no pagination.
 
-**Page No pagination**
+#### Page No Pagination
 
-Request
+Request Parameters
 
-1. `page_size` - client decides how many cars to show, desktop users have more real estate allows to show more cars.
-2. `page_no` - based on user's position, client sends page no.
+1. `page_size` - The number of cars to display, adjustable based on the client (e.g., more cars for desktop users).
+2. `page_no` - The current page number, indicating the user's position.
 
-Response
+Response Parameters
 
-1. `count` - Maximum no of pages client can ask for, after this number client shows `No more results`
-2. `next_page` - URL to fetch next page
-3. `prev_page` - URL to fetch previous page
-2. `results` - List of `JSON` containing basic car information
+1. `count` - The total number of pages available. If the requested page exceeds this count, the client shows "No more results."
+2. `next_page` - URL to fetch the next page.
+3. `prev_page` - URL to fetch the previous page.
+4. `results` - A list of `JSON` objects containing basic car information.
 
-How do we decide among 2 cars, which one should come before which one ?
+Car Ordering
 
-To decide that, client can send query param - `order_by` - in backend based on this we order the pages.
+Clients can specify the order of cars using the `order_by` query parameter. The backend uses this to sort the results.
 
-Order options
+Order Options
 
-1. reco - Most relevant to least - default order - based on data science model
-2. newest - Last added car comes first
-3. price_asc - Ascending order of price
-4. price_desc - Descending order of price
+1. `reco` - Most relevant to least (default order, based on a data science model).
+2. `newest` - Recently added cars first.
+3. `price_asc` - Cars sorted by ascending price.
+4. `price_desc` - Cars sorted by descending price.
 
 ```md
 GET https://api.car.com/listing/?city_id=1&order_by=reco&page_no=2&page_size=10
 ```
 
-Here for recommendation we would be generating order of cars during runtime with each request.
+For recommendations, the order of cars is generated with each request.
 
 # Achieving the 60ms response time
 
