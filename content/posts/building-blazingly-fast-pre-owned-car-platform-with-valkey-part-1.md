@@ -265,26 +265,25 @@ cache invalidation logic would become error prone and pollute other business log
 
 We can listen to database changes on these 3 tables to invalidate the result stored in cache against given `card_id`.
 
-In MySQL, via listening to binlog [[1]](#WAL) and we can get notified about all changes to the database - DDL & DML
+In MySQL, we can listen to the [binlog](#binlog) to get notifications about all changes to the database,
+including both DDL (Data Definition Language) and DML (Data Modification Language) operations.
 
 ```md
-- Data defiantion language
+# Data Definition Language
   - CREATE | ALTER | DROP TABLE
-- Data modification language
+# Data Modification Language
   - INSERT | UPDATE | DELETE | REPLACE FROM TABLE
 ```
 
-Using [python library](https://github.com/pratikgajjar/mysql-data-stream-kafka) we attached program to listen mysql change log, and emitted changes to kafka topics.
-
-A kafka topic is similar to log.
+Using the [mysql-data-stream-kafka](https://github.com/pratikgajjar/mysql-data-stream-kafka) Python library, we attach a program to listen to the MySQL change log and emit changes to Kafka topics. A Kafka topic functions similarly to a log.
 
 > What Is a Log?
 > A log is perhaps the simplest possible storage abstraction. It is an append-only, totally-ordered sequence of records ordered by time. - [Jay Kreps, Linkedin](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)
 
 ```md
-# Topic Name:
+# Topic Name
   {database_name}.{table_name}
-# Messages:
+# Messages
    op: insert | delete | update
    before: json payload - column values before update
       with
@@ -348,7 +347,7 @@ Stay tuned for part 2.
 
 ---
 
-#### [1] What is [the binary log](https://dev.mysql.com/doc/refman/8.0/en/binary-log.html) ? {#WAL}
+#### [1] What is [the binlog](https://dev.mysql.com/doc/refman/8.0/en/binary-log.html) ? {#binlog}
 
 The binary log contains “events” that describe database changes such as table creation operations or changes to table data. It also contains events for statements that potentially could have made changes (for example, a DELETE which matched no rows), unless row-based logging is used. The binary log also contains information about how long each statement took that updated data.
 
