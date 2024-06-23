@@ -213,14 +213,17 @@ expiry = 12 hours
 "dp:2323" : '{"id":2323, "images": ["url1", "url2", "url3"], "owner": "2nd", "inspection_report": ...}'
 ```
 
-Compress `JSON` payload using GZip before storing the requests [django-redis](https://github.com/jazzband/django-redis).
+Compress `JSON` payload using GZip before storing the requests using [django-redis](https://github.com/jazzband/django-redis) config.
 
 ```py
 import gzip
 CACHES = {
     "default": {
-        # ...
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("CACHE_LOCATION"),
         "OPTIONS": {
+            "PARSER_CLASS": "redis.connection.HiredisParser",
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "COMPRESSOR": "django_redis.compressors.gzip.GzipCompressor",
         }
     }
