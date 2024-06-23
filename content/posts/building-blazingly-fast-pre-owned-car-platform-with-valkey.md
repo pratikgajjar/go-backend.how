@@ -76,7 +76,7 @@ The request-response lifecycle involves multiple steps, with significant time sp
 
 ### Dedicated Page
 
-```curl
+```md
 GET https://api.car.com/listing/14006824/
 ```
 
@@ -96,7 +96,7 @@ Dynamic Entities
 
 ### Listing Page
 
-```curl
+```md
 1. GET https://api.car.com/listing/?city_id=1&model_id=123&owner=1
 2. GET https://api.car.com/listing/?slug=used-tata-nexon-cars-in-mumbai
 3. GET https://api.car.com/listing/?slug=used-tata-nexon-cars-in-mumbai&buyer_id=123
@@ -153,7 +153,7 @@ Order options
 3. price_asc - Ascending order of price
 4. price_desc - Descending order of price
 
-```
+```md
 GET https://api.car.com/listing/?city_id=1&order_by=reco&page_no=2&page_size=10
 ```
 
