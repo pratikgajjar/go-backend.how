@@ -1,8 +1,9 @@
 +++
-title = "Building blazingly fast pre-owned car platform with Valkey"
+title = "Building blazingly fast pre-owned car platform with Valkey - Part 1"
 description = "You will be able to use valkey like swiss-knife it is to serve web pages at blazingly fast speed."
 date = 2024-06-16T23:27:27+05:30
 lastmod = 2024-06-16T23:27:27+05:30
+tags = ['Django', 'Redis', 'DRF', 'CDC']
 draft = false
 images = []
 +++
@@ -83,10 +84,10 @@ Fetches car data based on an ID in URI and returns JSON.
 
 Dynamic Entities
 
-- seller_mobile_no - paid customers
-- is_seen - car seen earlier
+- seller_mobile_no - User got the seller no, paid feature.
+- is_seen - User has seen the
 - test_drive_booked - have booked test drive for the given car
-- inspection_report - paid customers
+- inspection_report - User can access full report, paid feature.
 - offer_amount - buyer can choose to offer lower amount than listed amount
 - interested_people - How many users made bid, or scheduled test drive
 - images - List of image URLs, can change after car made live.
@@ -156,13 +157,11 @@ Order options
 GET https://api.car.com/listing/?city_id=1&order_by=reco&page_no=2&page_size=10
 ```
 
-Here for recommendation we would be generating order of car in each request.
+Here for recommendation we would be generating order of cars during runtime with each request.
 
-# Achieving a 60ms response time
+# Achieving the 60ms response time
 
-## Frontend
-
-## Frontend
+## Optimize Frontend
 
 ### How Does Client-Side Rendering Work?
 
@@ -172,103 +171,194 @@ Client-side rendering (CSR) involves the frontend receiving a JSON payload and u
 
 Sending pre-rendered HTML, which browsers are optimized to handle, can be more efficient. This is where Next.js (year 2019), becomes valuable. By running a Node server on the backend, Next.js can send HTML for the initial page load. After this, user interactions such as navigating between pages or viewing details fall back to client-side rendering. This hybrid approach offers a smooth, app-like experience.
 
-## Backend
+## Optimize Backend
 
-1. Do we need to re-create json for each car ?
-2. How can we do minimum amount of work to return the response ?
+North star for us would be avoiding duplicate work and reducing runtime computation via storing pre-computed results.
 
-To keep in mind;
+### Duplicate work
 
-- Every day car prices changes automatically.
-- Operation team can make new car live anytime
-- To render full car data - it uses ~10 tables from normalised schema
-- All changes to db can be done through different portals.
-  - Operation portal built using cakephp app - perform operations
-  - Inventory App - that talks to different django application
-  - Data Science python scripts to update prices in bulk.
+1. Creating `JSON` for same car with each request
+2. Computing order for recommendations for anon users
+3. Computing order of cars for each page for given user or set of seen cars
 
-### Building Cache Layer
+### Pre-compute
 
-Use case
+1. Dynamic part of `JSON` that only depends on car.
+2. Store `Counters` and `Boolean` to avoid DB calls.
 
-1. Filter car based on attributes
-2. Cache car information
+- no_of_buyers_shown_interest
+- is_seen
+- is_car_visit_scheduled
 
-#### Dedicated Page
+Consider these points:
 
-- Fetch from redis and return
-- Cache Miss, fill cache and return
+- Daily automatic price changes for cars.
+- Operations team can add new cars at any time.
+- Rendering full car data involves around 10 tables in a normalized schema.
+- Database changes are done through various portals directly.
+  - Operations portal (CakePHP app) for general operations.
+  - Inventory App communicating with a Django application.
+  - Data Science Python scripts handle bulk price updates.
 
-```python
-import redis
-dedicated_key = "dp:{car_id}"
+### Cache Layer
 
-class DedicatedPageView(generic.ListRetrieveView):
-    def get(request: Request, id: int, **kwargs):
-      con = redis.get_connection()
-      key = dedicated_key.format(car_id=id)
-      value = con.get(rkey)
-      if not value:
-        # cache miss
-        car_obj = Car.objects.get(id=id)
-        data = DedicatedSerialiser(obj=car_obj).data
-        con.set(key, data, ttl=one_day_in_seconds)
-        return data
-     return value 
-# Find the thundering herd aka cache stampede here, # comment with your solution!
+#### Optimize Dedicated Page
+
+Anonymous users
+
+1. Store pre-computed `JSON` response of car
+2. Fetch `JSON` by `key` and return response
+
+```JavaScript
+// ValKey (Redis) Data model 
+key_pattern = "dp:{card_id}"
+expiry = 12 hours
+// value = gziped json payload
+"dp:2323" : '{"id":2323, "images": ["url1", "url2", "url3"], "owner": "2nd", "inspection_report": ...}'
 ```
 
-Are we done ? No
+Compress `JSON` payload using GZip before storing the requests [django-redis](https://github.com/jazzband/django-redis).
+
+```py
+import gzip
+CACHES = {
+    "default": {
+        # ...
+        "OPTIONS": {
+            "COMPRESSOR": "django_redis.compressors.gzip.GzipCompressor",
+        }
+    }
+}
+```
+
+Logged in users
+
+Computing results at runtime as response had many dynamic entities. Since most users would come from marketing campaigns, we wanted to optimize their experience first.
+
+Are we done ?
 
 > There are only two hard things in Computer Science: cache invalidation and naming things.
 -- [Phil Karlton](https://martinfowler.com/bliki/TwoHardThings.html)
 
+Not yet.
+
 #### Cache Invalidation
 
-In MySQL, you can listen to binlog [[1]](#WAL) and get notified about all changes to the table - DDL & DML
+We must invalidate the cache whenever changes occur in database that impacts the JSON response.
+Otherwise, users may encounter stale results, leading to undefined behavior and customer dissatisfaction.
 
+Let's say to compute `JSON` response for given car we use information from below tables
+
+1. cars (`id`, `varient_id`, `color_id`, `owner`, `status`) - main car model
+2. car_images (`car_id`, `image_url`)
+3. car_features (`card_id`, `feature_id`)
+
+How do we get notified each time a change occurs in above tables ?
+
+Utilise
+
+1. Db model abstraction provided in MVC frameworks. Here we can add logic in `save` method of model or use [signals](https://docs.djangoproject.com/en/5.0/topics/signals/)
+2. Architectural pattern like Domain-Driven-Design to add logic that invalidates cache
+3. How database replica functions, we can attach program that acts like replica and get changes.
+
+We went with 3rd approach as there were many sources which could update the database, and adding
+cache invalidation logic would become error prone and pollute other business logic.
+
+We can listen to database changes on these 3 tables to invalidate the result stored in cache against given `card_id`.
+
+In MySQL, via listening to binlog [[1]](#WAL) and we can get notified about all changes to the database - DDL & DML
+
+```md
 - Data defiantion language
   - CREATE | ALTER | DROP TABLE
 - Data modification language
   - INSERT | UPDATE | DELETE | REPLACE FROM TABLE
-
-Using [python library](https://github.com/pratikgajjar/mysql-data-stream-kafka) to hook into mysql change log, we emitted changes to kafka topic.
-
-Topic - Log file where you can only append.
-
 ```
-Topic Name:
 
+Using [python library](https://github.com/pratikgajjar/mysql-data-stream-kafka) we attached program to listen mysql change log, and emitted changes to kafka topics.
+
+A kafka topic is similar to log.
+
+> What Is a Log?
+> A log is perhaps the simplest possible storage abstraction. It is an append-only, totally-ordered sequence of records ordered by time. - [Jay Kreps, Linkedin](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)
+
+```md
+# Topic Name:
   {database_name}.{table_name}
-
-Messages:
-
+# Messages:
    op: insert | delete | update
-
-   before: json payload 
+   before: json payload - column values before update
       with
         key = column name
         value = column value
-
-   after: json payload
+   after: json payload - column values after update
 ```
 
-Using above logic we listen to all topics which would affect final payload generated for dedicated page.
+Program would listen to kafka topics that can affect the response of dedicated page and rebuilds or invalidates the cache.
 
-Now here we have 2 choices:
+### Infrastructure
 
-1. Let user fill the cache.
-2. Build the page data, fill the cache.
+We introduced below components.
 
-Since we know there could be only 10_000 active cars, we can go ahead with 2nd option as memory usage won't be very high.
+1. Consumer node - to listen changes and update cache
+2. Producer node - to listen mysql bin log and push changes to kafka
+3. ValKey server - to store cache data in-memory
+4. Kafka-cluster - to store database change log
+5. MySQL database - existing component
 
-Let's say dedicated page payload size was 20KB - for 10_000 cars, we would use only 2 000 000 KB, 2GB memory.
+Now we have distributed systems, there comes fallacies.
 
-#### Listing Page
+> 1. The network is reliable; - [Wiki](https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing)
 
-How would you implement filter in redis ? What about pagination, can we do that with filter without making DB call ? Stay tuned for part 2
+#### Failure of consumer node
 
-DDL also means Dilwale Dulhaniya Le jaenge, IYKYK
+Here we are listening to kafka topic, we will only commit when we have processed the change to build / invalidate the cache.
+This allows us to do at-least once processing.
+
+#### Failure of producer node
+
+Here we have network partition, MySQL Server X Kafka X Producer Node. Worker reads from MySQL change log and pushes changes into kafka.
+It reads one change from MySQL but was not able to push into Kafka due to failure of worker node or kafka. Would we lose the change forever ?
+
+Nope, MySQL provides bin-log position with each change, so when along with row change we will commit bin-log position into kafka topic with the message.
+
+Now, in case of failure of kafka or producer node, when we start reading bin-log next time, check the latest committed bin-log position from kafka topic
+and use that to resume bin-log reading.
+
+#### Failure of val-key server
+
+We used managed elastic-cache in AWS, but for self-hosted approach need to ensure we are running valkey in cluster mode and have auto-failover setup in place.
+Here consumer node will be unable to invalidate the payload causing consumer lag for the given topic, as soon as server becomes available consumer will start
+clearing the backlog.
+
+Exceeding the memory ?
+
+For 10_000 active cars, with payload size of 20K for a dedicated page response we would consume only 2GB Memory.
+Use volatile-lru policy for key eviction in case of max-memory, since we have TTL set on the key server will keep responding.
+
+#### Failure of Kafka-cluster
+
+Kafka provides multiple ways to handle the failure, start with no of brokers >= 3 and topic has replication factor of >=2 or how resilient system you want have.
+Higher replication factor would cause higher disk space and network bandwidth.
+
+#### Failure of MySQL
+
+MySQL stores bin-log in disk so restart or fail to connect to server would not cause as long as it bin-log is not being cleared. Here producer will resume
+from where it left reading the bin-log.
+
+Note: Add alarm to watch bin-log size, as in event of prolonged producer failure bin-log could occupy full disk space causing failure device storage full errors.
+
+Lost bin-log ?
+We have added management command in django to rebuild the cache for all active cars.
+
+### Optimize Listing Page ?
+
+How do we implement complex filters in redis ?
+How to implement pagination on redis data structures ?
+
+Stay tuned for part 2.
+
+*Just like a good joke, a cache should never be stale. Keep it fresh, keep it fun. Happy coding!* 😄
 
 ---
 
