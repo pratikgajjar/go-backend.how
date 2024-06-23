@@ -110,39 +110,37 @@ def get_recommendation(active_car_ids: [int], buyer_id: int, seen_card_ids: Opti
     return model.get_order(active_car_ids, buyer_id=buyer_id, seen_card_ids=seen_card_ids)
 ```
 
-#### Filters
+### Filters
 
 Filter By - Car colour, Make, Model, Accessory, Rating, Ownership etc.
 
 Implemented with [Django-filter](https://django-filter.readthedocs.io/en/stable/guide/usage.html), complex queries with multiple joins can strain the database.
 
-#### Pagination
+### Pagination
 
-We can return list of all cars in mumbai city in one request, but that would put strain on all components involved.
+Returning all cars in Mumbai city in a single request would strain all components involved. For instance, if there are 1,000 cars:
 
-For example for 1000 cars in a city
+1. **Database** - Must fetch details for 1,000 cars.
+2. **Backend Server** - Converts the database response into JSON, causing high CPU and memory usage.
+3. **Client** - Generates HTML for 1,000 cars, and the browser must paint the screen.
 
-1. Database - Needs to fetch details of thousand cars
-2. Backend server - Convert database response into `JSON`, this would cause high CPU usage
-3. Client - Needs to generate `HTML` for thousand cars, browser need to paint the screen.
-
-This would case issues at each stage, to avoid this we return only few set of cars in one request. Among cursor, limit-offset and page-no pagination options we used page-no pagination.
+To avoid these issues, we return only a subset of cars per request. Among cursor, limit-offset, and page-no pagination options, we use page-no pagination.
 
 #### Page No Pagination
 
-Request Parameters
+Request Query Parameters
 
 1. `page_size` - The number of cars to display, adjustable based on the client (e.g., more cars for desktop users).
 2. `page_no` - The current page number, indicating the user's position.
 
-Response Parameters
+Response JSON Object
 
 1. `count` - The total number of pages available. If the requested page exceeds this count, the client shows "No more results."
 2. `next_page` - URL to fetch the next page.
 3. `prev_page` - URL to fetch the previous page.
 4. `results` - A list of `JSON` objects containing basic car information.
 
-Car Ordering
+#### Car Ordering
 
 Clients can specify the order of cars using the `order_by` query parameter. The backend uses this to sort the results.
 
@@ -200,9 +198,7 @@ Consider these points:
   - Inventory App communicating with a Django application.
   - Data Science Python scripts handle bulk price updates.
 
-### Cache Layer
-
-#### Optimize Dedicated Page
+### Optimize Dedicated Page
 
 Anonymous users
 
@@ -310,46 +306,33 @@ Now we have distributed systems, there comes fallacies.
 
 > 1. The network is reliable; - [Wiki](https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing)
 
-#### Failure of consumer node
+#### Failure of Consumer Node
 
-Here we are listening to kafka topic, we will only commit when we have processed the change to build / invalidate the cache.
-This allows us to do at-least once processing.
+We listen to a Kafka topic and commit only after processing changes to build or invalidate the cache, ensuring at-least-once processing.
 
-#### Failure of producer node
+#### Failure of Producer Node
 
-Here we have network partition, MySQL Server X Kafka X Producer Node. Worker reads from MySQL change log and pushes changes into kafka.
-It reads one change from MySQL but was not able to push into Kafka due to failure of worker node or kafka. Would we lose the change forever ?
+In a network partition involving MySQL, Kafka, and the producer node, a worker reads from the MySQL change log and pushes changes into Kafka. If it fails to push changes to Kafka, we avoid data loss by committing the bin-log position with each message to the Kafka topic. Upon failure, we resume reading the bin-log from the last committed position.
 
-Nope, MySQL provides bin-log position with each change, so when along with row change we will commit bin-log position into kafka topic with the message.
+#### Failure of Val-key Server
 
-Now, in case of failure of kafka or producer node, when we start reading bin-log next time, check the latest committed bin-log position from kafka topic
-and use that to resume bin-log reading.
+Using AWS managed ElasticCache, or for a self-hosted approach, running Valkey in cluster mode with auto-failover ensures resilience.
+If the consumer node cannot invalidate the payload due to server failure, it will clear the backlog once the server is available.
 
-#### Failure of val-key server
-
-We used managed elastic-cache in AWS, but for self-hosted approach need to ensure we are running valkey in cluster mode and have auto-failover setup in place.
-Here consumer node will be unable to invalidate the payload causing consumer lag for the given topic, as soon as server becomes available consumer will start
-clearing the backlog.
-
-Exceeding the memory ?
-
-For 10_000 active cars, with payload size of 20K for a dedicated page response we would consume only 2GB Memory.
-Use volatile-lru policy for key eviction in case of max-memory, since we have TTL set on the key server will keep responding.
+For 10,000 active cars, each with a 20K payload, only 2GB of memory is needed.
+Using the volatile-lru policy for key eviction and setting TTL on the keys ensures optimal memory use.
 
 #### Failure of Kafka-cluster
 
-Kafka provides multiple ways to handle the failure, start with no of brokers >= 3 and topic has replication factor of >=2 or how resilient system you want have.
-Higher replication factor would cause higher disk space and network bandwidth.
+Kafka's resilience comes from having at least 3 brokers and a topic replication factor of at least 2. Higher replication factors increase disk space and network bandwidth usage.
 
 #### Failure of MySQL
 
-MySQL stores bin-log in disk so restart or fail to connect to server would not cause as long as it bin-log is not being cleared. Here producer will resume
-from where it left reading the bin-log.
+MySQL's bin-log is disk-stored, so a server restart or connection failure won't cause data loss if the bin-log isn't cleared. The producer will resume from the last bin-log position.
 
-Note: Add alarm to watch bin-log size, as in event of prolonged producer failure bin-log could occupy full disk space causing failure device storage full errors.
+To avoid disk space issues during a prolonged producer failure, set up alarms and ensure enough disk space to handle a few hours of bin-log growth.
 
-Lost bin-log ?
-We have added management command in django to rebuild the cache for all active cars.
+In case of bin-log loss, a Django management command can rebuild the cache for all active cars.
 
 ### Optimize Listing Page ?
 
