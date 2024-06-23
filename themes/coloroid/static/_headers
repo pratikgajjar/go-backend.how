@@ -1,0 +1,6 @@
+/*
+  Cache-Control: public, s-maxage=2592000, stale-while-revalidate
+  Content-Security-Policy: script-src 'self'; frame-ancestors 'none';
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Content-Security-Policy: frame-ancestors 'self'
+  X-Frame-Options: SAMEORIGIN
