@@ -20,6 +20,10 @@ h1, h2, h3, h4, h5, h6 {
     line-height: 1.5em;
 }
 
+code {
+  font-family: "Nanum Gothic Coding", monospace;
+}
+
 strong {
   font-family: "Nanum Gothic Bold", Helvetica, sans-serif;
   font-weight: 700;
@@ -44,6 +48,22 @@ strong {
   font-weight: 800;
   font-display: swap;
   src: url('/fonts/nanumgothic-extrabold-webfont.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Gothic Coding';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/nanumgothiccoding-regular-webfont.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Gothic Coding';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/nanumgothiccoding-bold-webfont.woff2') format('woff2');
 }
 
 
@@ -169,7 +189,7 @@ ul ul {
 }
 
 
-/* Base theme colors */
+/* Syntax highlight base theme colors */
 :root {
   --mocha-rosewater: #ea6962;
   --mocha-flamingo: #ea6962;

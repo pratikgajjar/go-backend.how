@@ -39,7 +39,11 @@ Practice is the bridge between talent and knowledge. Given your talent, practice
 
 #### Talent
 
+Consider this as gift. No?
+
 "I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right; he's doing very well now.
+
+> Nothing in this world can take the place of persistence. Talent will not; nothing is more common than unsuccessful men with talent. Genius will not; unrewarded genius is almost a proverb. Education will not; the world is full of educated derelicts. Persistence and determination alone are omnipotent. The slogan 'Press On!' has solved and always will solve the problems of the human race. ― Calvin Coolidge
 
 ## Why? {#why}
 
@@ -86,7 +90,7 @@ I've encountered many talented people who don't share their knowledge. A common 
 1. Games
 2. Commenting on posts with ideas
 
-Your success in life will be largely determined by your ability to speak, your ability to write, and the quality of your ideas—in that order. - Professor Patrick H. Winston
+> Your success in life will be largely determined by your ability to speak, your ability to write, and the quality of your ideas—in that order. - Professor Patrick H. Winston
 
 May the force be with you 🧙
 
@@ -100,7 +104,8 @@ No, you can always improve upon it. It takes time. Don't wait for it to be perfe
 As long as necessary to cover your content. Have someone pre-read or consume it before publishing.
 {{</details>}}
 
-_References_
+*References*
+
 - [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/)
 
 ---
