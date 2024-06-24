@@ -321,7 +321,7 @@ Using AWS managed ElasticCache, or for a self-hosted approach, running Valkey in
 If the consumer node cannot invalidate the payload due to server failure, it will clear the backlog once the server is available.
 
 For 10,000 active cars, each with a 20K payload, only 2GB of memory is needed.
-Using the volatile-lru policy for key eviction and setting TTL on the keys ensures optimal memory use.
+To prevent failures from excessive memory use, set the max-memory policy to volatile-lru and with TTL on keys. This helps manage memory by evicting the least recently used keys with a TTL.
 
 #### Failure of Kafka-cluster
 
