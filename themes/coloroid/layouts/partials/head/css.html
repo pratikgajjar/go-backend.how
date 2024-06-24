@@ -11,10 +11,10 @@
 
 {{- with resources.Get "css/syntax.css" }}
   {{- if eq hugo.Environment "development" }}
-    <link rel="stylesheet" href="{{ .RelPermalink }}" async>
+    <link rel="stylesheet" href="{{ .RelPermalink }}" media="print" onload="this.onload=null;this.removeAttribute('media');">
   {{- else }}
     {{- with . | minify | fingerprint }}
-      <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="" async>
+      <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="" media="print" onload="this.onload=null;this.removeAttribute('media');">
     {{- end }}
   {{- end }}
 {{- end }}
