@@ -12,7 +12,7 @@ images = []
 
 Backend web development is the powerhouse of any web application, responsible for managing databases, server logic, authentication, and overall application performance. Learning backend development can seem daunting due to the array of technologies and concepts involved. However, with a structured approach, you can master the skills needed to build robust and scalable backend systems.
 
-## 1. Understand the Basics of Web Development
+## Understand the Basics of Web Development
 
 Before diving into backend development, it's essential to understand the basics of web development:
 
@@ -26,7 +26,7 @@ Before diving into backend development, it's essential to understand the basics 
 
 Understand how the client (frontend) and server (backend) interact through HTTP requests and responses. The client requests data, and the server processes these requests, retrieves the necessary information, and sends it back to the client.
 
-## 2. Choose a Programming Language
+## Choose a Programming Language
 
 Backend development can be done using various programming languages. Some popular ones include:
 
@@ -37,14 +37,14 @@ Backend development can be done using various programming languages. Some popula
 - **PHP (Laravel)**: Widely used for web development with a gentle learning curve.
 - **Go**: Offers performance and simplicity, making it ideal for concurrent applications.
 
-## 3. Learn About Databases
+## Learn About Databases
 
 Databases are crucial for storing and retrieving data in web applications. There are two main types:
 
 ### SQL Databases
 
-- **MySQL**
 - **PostgreSQL**
+- **MySQL**
 - **SQLite**
 - **Microsoft SQL Server**
 
@@ -57,18 +57,19 @@ Databases are crucial for storing and retrieving data in web applications. There
 
 Understanding how to design and query databases is fundamental. Learn SQL for relational databases and become familiar with the querying mechanisms of NoSQL databases.
 
-## 4. Understand Server-Side Frameworks
+## Understand Server-Side Frameworks
 
 Frameworks simplify backend development by providing tools and libraries to build web applications efficiently. Some popular frameworks include:
 
-- **Express.js** (Node.js)
 - **Django** (Python)
 - **Flask** (Python)
+- Fasthttp (GoLang)
+- **Laravel** (PHP)
+- **Express.js** (Node.js)
 - **Ruby on Rails** (Ruby)
 - **Spring Boot** (Java)
-- **Laravel** (PHP)
 
-## 5. Learn About APIs
+## Learn About APIs
 
 APIs (Application Programming Interfaces) allow different software systems to communicate. Learn how to create RESTful APIs and understand the principles behind REST:
 
@@ -79,7 +80,7 @@ APIs (Application Programming Interfaces) allow different software systems to co
 
 Also, explore GraphQL as an alternative to REST, offering more flexibility in querying data.
 
-## 6. Dive Into Authentication and Authorization
+## Dive Into Authentication and Authorization
 
 Security is critical in web development. Learn about:
 
@@ -88,7 +89,7 @@ Security is critical in web development. Learn about:
 
 Understand how to implement secure login mechanisms, handle user sessions, and manage permissions.
 
-## 7. Explore DevOps and Deployment
+## Explore DevOps and Deployment
 
 Deploying your application and managing infrastructure is a vital part of backend development. Familiarize yourself with:
 
@@ -97,7 +98,7 @@ Deploying your application and managing infrastructure is a vital part of backen
 - **Containerization**: Using Docker to create consistent environments.
 - **Cloud Services**: Deploying applications on platforms like AWS, Google Cloud, or Azure.
 
-## 8. Understand Scalability and Performance
+## Understand Scalability and Performance
 
 Building scalable and high-performance applications involves:
 
@@ -106,7 +107,7 @@ Building scalable and high-performance applications involves:
 - **Database Optimization**: Indexing, query optimization, and using database replication.
 - **Asynchronous Processing**: Handling tasks in the background using queues (e.g., Celery, RabbitMQ).
 
-## 9. Practice by Building Projects
+## Practice by Building Projects
 
 The best way to learn is by doing. Build projects that challenge you to apply what you've learned. Here are some ideas:
 
@@ -115,7 +116,7 @@ The best way to learn is by doing. Build projects that challenge you to apply wh
 - **E-commerce Website**: Managing products, users, orders, and payments.
 - **Social Media Platform**: Handling user profiles, posts, and real-time notifications.
 
-## 10. Stay Updated and Keep Learning
+## Stay Updated and Keep Learning
 
 The field of web development is constantly evolving. Stay updated by:
 
