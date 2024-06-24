@@ -3,9 +3,6 @@
 <meta name="theme-color" content="#100f0f"/>
 <link rel="icon" type="image/png" href="favicon-32x32.png" sizes="32x32"/>
 <title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ printf "%s | %s" .Title site.Title }}{{ end }}</title>
-<link rel="preload" href="/fonts/nanumgothic-regular-webfont.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
-<link href="/fonts/nanumgothic-bold-webfont.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
-<link href="/fonts/nanumgothic-extrabold-webfont.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
 {{ with .Description -}}
   <meta name="description" content="{{ . }}">
 {{ else -}}
@@ -14,3 +11,7 @@
 
 {{ partialCached "head/css.html" . }}
 {{ partialCached "head/js.html" . }}
+
+<link rel="preload" href="/fonts/nanumgothic-regular-webfont.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
+<link href="/fonts/nanumgothic-bold-webfont.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
+<link href="/fonts/nanumgothic-extrabold-webfont.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
