@@ -4,5 +4,6 @@ description = ""
 date = {{ .Date }}
 lastmod = {{ .Date }}
 draft = true
+tags = []
 images = []
 +++
