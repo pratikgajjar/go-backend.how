@@ -206,10 +206,9 @@ Anonymous users
 2. Fetch `JSON` by `key` and return response
 
 ```JavaScript
-// ValKey (Redis) Data model 
 key_pattern = "dp:{card_id}"
 expiry = 12 hours
-// value = gziped json payload
+value = gziped json payload
 "dp:2323" : '{"id":2323, "images": ["url1", "url2", "url3"], "owner": "2nd", "inspection_report": ...}'
 ```
 

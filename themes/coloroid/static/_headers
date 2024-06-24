@@ -4,3 +4,19 @@
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Content-Security-Policy: frame-ancestors 'self'
   X-Frame-Options: SAMEORIGIN
+
+/fonts/*
+  ! Cache-Control
+  Cache-Control: public, max-age=604800, immutable
+
+/css/*
+  ! Cache-Control
+  Cache-Control: public, max-age=604800, immutable
+
+/js/*
+  ! Cache-Control
+  Cache-Control: public, max-age=604800, immutable
+
+/favicon.ico
+  ! Cache-Control
+  Cache-Control: public, max-age=604800, stale-while-revalidate
