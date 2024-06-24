@@ -6,14 +6,14 @@ body {
   align-items: center;
   min-height: 100vh;
   margin: 0;
-  font-family: "Nanum Gothic", sans-serif;
+  font-family: "Nanum Gothic", Helvetica, sans-serif;
   flex-direction: column;   /* Align items vertically */
   padding: 20px;
   line-height: 1.5em;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: "Nanum Gothic Bold", sans-serif;
+    font-family: "Nanum Gothic Bold", Helvetica, sans-serif;
     font-weight: 800;
     font-style: normal;
     letter-spacing: 0.005em;
@@ -21,7 +21,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 strong {
-  font-family: "Nanum Gothic Bold", sans-serif;
+  font-family: "Nanum Gothic Bold", Helvetica, sans-serif;
   font-weight: 700;
 }
 
