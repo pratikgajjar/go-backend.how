@@ -5,7 +5,11 @@
   {{ $dateHuman := .Date | time.Format ":date_long" }}
   <time datetime="{{ $dateMachine }}">{{ $dateHuman }}</time>
 
-  <div class="container">
+  <div>
+    <div class="table-of-content">
+      <h4> Contents </h4>
+      {{ .TableOfContents }}
+    </div>
     {{ .Content }}
   </div>
   {{ partial "terms.html" (dict "taxonomy" "tags" "page" .) }}
