@@ -4,19 +4,24 @@ title = "Everything Engineering"
 theme = "coloroid"
 
 [markup]
-  [markup.highlight]
-    anchorLineNos = false
-    codeFences = true
-    guessSyntax = false
-    hl_inline = false
-    lineAnchors = ''
-    lineNoStart = 1
-    lineNos = false
-    lineNumbersInTable = true
-    noClasses = false
-    noHl = false
-    style = "syntax"
-    tabWidth = 4
+[markup.highlight]
+anchorLineNos = false
+codeFences = true
+guessSyntax = false
+hl_inline = false
+lineAnchors = ''
+lineNoStart = 1
+lineNos = false
+lineNumbersInTable = true
+noClasses = false
+noHl = false
+style = "syntax"
+tabWidth = 4
+
+[markup.tableOfContents]
+endLevel = 1
+ordered = true
+startLevel = 0
 
 
 [params]
@@ -50,4 +55,3 @@ gzip = true
 [[deployment.matchers]]
 pattern = "^.+\\.(html|xml|json)$"
 gzip = true
-

@@ -10,11 +10,11 @@ images = []
 
 At the end of this, you'll understand the importance of creating content, when to start, and how to begin.
 
-## When? {#when}
+# When? {#when}
 
 There's no ideal time; start as soon as possible. Start NOW!
 
-## What? {#what}
+# What? {#what}
 
 What should you write about? Here are several options:
 
@@ -23,7 +23,7 @@ What should you write about? Here are several options:
 3. Teach a skill you've put a lot of effort into learning.
 4. Write about anything out of the ordinary or even simple topics. [[1]](#ref_a)
 
-### Quality {#quality}
+# Quality {#quality}
 
 How do you determine the quality of the content you're creating? It depends on three things:
 
@@ -31,7 +31,7 @@ How do you determine the quality of the content you're creating? It depends on t
 
 With the right amount of knowledge, you can surpass those with natural talent. Curiosity drives knowledge, so always ask questions.
 
-*Note:* Having knowledge and knowing when it becomes useful is a non-linear process—you never know when it might come in handy.
+_Note:_ Having knowledge and knowing when it becomes useful is a non-linear process—you never know when it might come in handy.
 
 ### Practice
 
@@ -45,7 +45,7 @@ Consider this as gift. No?
 
 > Nothing in this world can take the place of persistence. Talent will not; nothing is more common than unsuccessful men with talent. Genius will not; unrewarded genius is almost a proverb. Education will not; the world is full of educated derelicts. Persistence and determination alone are omnipotent. The slogan 'Press On!' has solved and always will solve the problems of the human race. ― Calvin Coolidge
 
-## Why? {#why}
+# Why? {#why}
 
 There are several benefits to writing down your thoughts. Let's go through them one by one:
 
@@ -55,7 +55,7 @@ There are several benefits to writing down your thoughts. Let's go through them 
 4. Contributes back to society. (Think about how many blogs, videos, and other content you have consumed.)
 5. Helps you develop concise and coherent writing and thinking skills.
 
-### Not to Do
+## Not to Do
 
 1. Avoid writing if you're not comfortable with feedback.
 2. Don’t withhold sharing to keep a competitive advantage.
@@ -63,29 +63,29 @@ There are several benefits to writing down your thoughts. Let's go through them 
 
 I've encountered many talented people who don't share their knowledge. A common reason is, "I don't have enough time," which is something you can always make time for.
 
-## Where? {#where}
+# Where? {#where}
 
-### Pick a Format
+## Pick a Format
 
-#### Text
+### Text
 
 1. Website - like this one :)
 2. Newsletter
 3. Book
 
-#### Audio
+### Audio
 
 1. Podcasts - Spotify, YouTube
 2. Twitter - Audio group calls
 3. WhatsApp community
 
-#### Video
+### Video
 
 1. Short form - Reels, TikTok
 2. Long form - YouTube, Coursera, educational sites
 3. Live - Twitch, YouTube
 
-#### AR/VR
+### AR/VR
 
 1. Games
 2. Commenting on posts with ideas
@@ -104,7 +104,7 @@ No, you can always improve upon it. It takes time. Don't wait for it to be perfe
 As long as necessary to cover your content. Have someone pre-read or consume it before publishing.
 {{</details>}}
 
-*References*
+_References_
 
 - [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/)
 
