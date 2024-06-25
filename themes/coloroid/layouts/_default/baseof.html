@@ -6,13 +6,14 @@
     {{ partial "head.html" . }}
 </head>
 <body>
-  <header>
+  <header class="container">
     {{ partial "header.html" . }}
   </header>
+  <div class="container"><hr class="header-divider"></div>
   <main class="container">
     {{ block "main" . }}{{ end }}
   </main>
-  <footer>
+  <footer class="container">
     {{ partial "footer.html" . }}
   </footer>
 </body>

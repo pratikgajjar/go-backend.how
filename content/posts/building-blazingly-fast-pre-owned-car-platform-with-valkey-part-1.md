@@ -16,7 +16,7 @@ The content will cover how to leverage [Valkey](https://valkey.io/) for serving 
 Valkey is an open-source, high-performance key/value datastore licensed under BSD. It supports a variety of workloads such as caching, message queues, and can function as a primary database. Valkey can operate as a standalone daemon or in a cluster with options for replication and high availability.
 
 {{</details>}}
-It originated as a fork of Redis after Redis changed its license terms. More details on the forking issue can be found [here](https://arstechnica.com/information-technology/2024/04/redis-license-change-and-forking-are-a-mess-that-everybody-can-feel-bad-about/).
+It originated as a fork of Redis after Redis changed its license terms. More details on the forking issue can be found at [arstechnica.com](https://arstechnica.com/information-technology/2024/04/redis-license-change-and-forking-are-a-mess-that-everybody-can-feel-bad-about/).
 
 # What ?
 
@@ -51,8 +51,8 @@ Our goal is to maximize lead generation by providing a fast and seamless user ex
 2. Listing Page - A catalog of cars with basic information and about four photos that can be scrolled horizontally.
 
 > Amazon found that every 100ms of latency cost them 1% in sales.
-In 2006, Google found an extra .5 seconds in search page generation
-time dropped traffic by 20%. - [Marissa Mayer](http://glinden.blogspot.com/2006/11/marissa-mayer-at-web-20.html)
+> In 2006, Google found an extra .5 seconds in search page generation
+> time dropped traffic by 20%. - [Marissa Mayer](http://glinden.blogspot.com/2006/11/marissa-mayer-at-web-20.html)
 
 # Specifications
 
@@ -236,7 +236,7 @@ Computing results at runtime as response had many dynamic entities. Since most u
 Are we done ?
 
 > There are only two hard things in Computer Science: cache invalidation and naming things.
--- [Phil Karlton](https://martinfowler.com/bliki/TwoHardThings.html)
+> -- [Phil Karlton](https://martinfowler.com/bliki/TwoHardThings.html)
 
 Not yet.
 
@@ -269,9 +269,12 @@ including both DDL (Data Definition Language) and DML (Data Modification Languag
 
 ```md
 # Data Definition Language
-  - CREATE | ALTER | DROP TABLE
+
+- CREATE | ALTER | DROP TABLE
+
 # Data Modification Language
-  - INSERT | UPDATE | DELETE | REPLACE FROM TABLE
+
+- INSERT | UPDATE | DELETE | REPLACE FROM TABLE
 ```
 
 Using the [mysql-data-stream-kafka](https://github.com/pratikgajjar/mysql-data-stream-kafka) Python library, we attach a program to listen to the MySQL change log and emit changes to Kafka topics. A Kafka topic functions similarly to a log.
@@ -281,14 +284,17 @@ Using the [mysql-data-stream-kafka](https://github.com/pratikgajjar/mysql-data-s
 
 ```md
 # Topic Name
-  {database_name}.{table_name}
+
+{database_name}.{table_name}
+
 # Messages
-   op: insert | delete | update
-   before: json payload - column values before update
-      with
-        key = column name
-        value = column value
-   after: json payload - column values after update
+
+op: insert | delete | update
+before: json payload - column values before update
+with
+key = column name
+value = column value
+after: json payload - column values after update
 ```
 
 Program would listen to kafka topics that can affect the response of dedicated page and rebuilds or invalidates the cache.
@@ -342,13 +348,13 @@ How to implement pagination on redis data structures ?
 
 Stay tuned for part 2.
 
-*Just like a good joke, a cache should never be stale. Keep it fresh, keep it fun. Happy coding!* 😄
+_Just like a good joke, a cache should never be stale. Keep it fresh, keep it fun. Happy coding!_ 😄
 
 ---
 
-#### [1] What is [the binlog](https://dev.mysql.com/doc/refman/8.0/en/binary-log.html) ? {#binlog}
+#### [1] What is the binlog ? {#binlog}
 
-The binary log contains “events” that describe database changes such as table creation operations or changes to table data. It also contains events for statements that potentially could have made changes (for example, a DELETE which matched no rows), unless row-based logging is used. The binary log also contains information about how long each statement took that updated data.
+The [binary log](https://dev.mysql.com/doc/refman/8.0/en/binary-log.html) contains “events” that describe database changes such as table creation operations or changes to table data. It also contains events for statements that potentially could have made changes (for example, a DELETE which matched no rows), unless row-based logging is used. The binary log also contains information about how long each statement took that updated data.
 
 In PostgresSQL [WAL](https://www.postgresql.org/docs/current/wal-intro.html)
 

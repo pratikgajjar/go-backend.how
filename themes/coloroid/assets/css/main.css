@@ -20,6 +20,39 @@ h1, h2, h3, h4, h5, h6 {
     line-height: 1.5em;
 }
 
+h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
+    text-decoration: none;
+}
+
+.nav-menu {
+  list-style-type: none; /* Remove bullets */
+  padding: 0;            /* Remove padding */
+  margin: 0;             /* Remove margin */
+  display: flex;         /* Use flexbox to arrange items horizontally */
+  justify-content: center; /* Center the items horizontally */
+}
+
+.nav-menu li {
+  margin-right: 20px;    /* Add some space between items */
+  position: relative; /* Ensure relative positioning for the ::before pseudo-element */
+}
+
+.nav-menu li:last-child {
+  margin-right: 0;       /* Remove margin from the last item */
+}
+
+.nav-menu li a {
+  text-decoration: none; /* Remove underline from links */
+  padding: 10px;         /* Add some padding */
+}
+
+.header-divider {
+  background-color: #ffbb7a;
+  height: .2rem;
+  border: none;
+  border-radius: .15rem;
+}
+
 code {
   font-family: "Nanum Gothic Coding", monospace;
 }
@@ -29,50 +62,14 @@ strong {
   font-weight: 700;
 }
 
-@font-face {
-  font-family: 'Nanum Gothic';
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/nanumgothic-regular-webfont.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Nanum Gothic Bold';
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/nanumgothic-bold-webfont.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Nanum Gothic Bold';
-  font-weight: 800;
-  font-display: swap;
-  src: url('/fonts/nanumgothic-extrabold-webfont.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Nanum Gothic Coding';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/nanumgothiccoding-regular-webfont.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Nanum Gothic Coding';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/nanumgothiccoding-bold-webfont.woff2') format('woff2');
-}
-
-
 blockquote {
   background: #212121;
   border-left: 3px solid #ff804f;
   margin: 1.5em 10px;
   padding: 0.5em 10px;
+  border-radius: 8px;
 }
+
 blockquote p {
   display: inline-block;
 }
@@ -92,7 +89,6 @@ blockquote p {
 header {
     width: 100%;
     text-align: center;
-    padding: 20px 0;
 }
 
 header h1 {
@@ -100,49 +96,42 @@ header h1 {
 }
 
 footer {
-    width: 100%;
     text-align: center;
     padding: 20px 0;
 }
 
 a {
-    color: #ffbb7a; /* Pastel orange hyperlink color */
-    text-decoration: none; /* Remove underline */
+    color: #ffbb7a;
+    text-underline-offset: 0.25em;
 }
 
 a:hover {
-    color: #ff804f; /* Lighter shade on hover */
+    color: #fc7b00; /* Lighter shade on hover */
 }
 
-header ul {
-    list-style: none; /* Remove default list styles */
+
+.table-of-content {
+    background-color: #212121;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.table-of-content h4 {
+    margin: 0;
+}
+
+.table-of-content ol {
+    list-style-type: none;
     padding: 0;
+    margin: 0;
 }
 
-header li {
-    position: relative; /* Ensure relative positioning for the ::before pseudo-element */
-    padding: 10px; /* Add padding for the white rectangle outline */
-    margin-bottom: 5px; /* Add margin between list items */
-    border: 0.5px solid #5B5B66; /* White border for the outline */
+.table-of-content ol li {
+    margin-bottom: 6px;
 }
 
-header li:hover::before {
-    content: ''; /* Add content for pseudo-element */
-    position: absolute; /* Position the outline absolutely */
-    top: 0; /* Align the top of the outline with the top of the li */
-    left: 0; /* Align the left of the outline with the left of the li */
-    width: 100%; /* Set width of the outline to match the li */
-    height: 100%; /* Set height of the outline to match the li */
-    border: 1px solid #ffffff; /* White border for the outline */
-    box-sizing: border-box; /* Ensure the border width is included in the element's dimensions */
-    z-index: -1;
-}
-
-.bar {
-    max-width: 800px;
-    width: 100%;
-    justify-content: center;
-    margin: 0 auto; /* Center the div horizontally */
+.table-of-content ol li a {
+    transition: color 0.3s ease;
 }
 
 /* Hide scrollbars for all elements */
@@ -175,6 +164,7 @@ ul ul {
 .highlight {
     max-width: 800px;
     overflow-x: auto; /* Enable horizontal scrolling if needed */
+    border-radius: 8px;
 }
 
 .highlight pre {
@@ -498,3 +488,39 @@ ul ul {
   color: var(--mocha-red);
 }
 
+@font-face {
+  font-family: 'Nanum Gothic';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/nanumgothic-regular-webfont.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Gothic Bold';
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/nanumgothic-bold-webfont.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Gothic Bold';
+  font-weight: 800;
+  font-display: swap;
+  src: url('/fonts/nanumgothic-extrabold-webfont.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Gothic Coding';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/nanumgothiccoding-regular-webfont.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Gothic Coding';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/nanumgothiccoding-bold-webfont.woff2') format('woff2');
+}

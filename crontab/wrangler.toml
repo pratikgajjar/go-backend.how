@@ -2,6 +2,7 @@
 name = "crontab"
 main = "src/index.js"
 compatibility_date = "2024-06-20"
+workers_dev = false
 
 # Cron Triggers
 # Docs: https://developers.cloudflare.com/workers/platform/triggers/cron-triggers/
