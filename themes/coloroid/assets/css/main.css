@@ -106,9 +106,12 @@ a {
 }
 
 a:hover {
-    color: #fc7b00; /* Lighter shade on hover */
+    color: #fc7b00;
 }
 
+.anchor {
+    color: #ffffff;
+}
 
 .table-of-content {
     background-color: #212121;
