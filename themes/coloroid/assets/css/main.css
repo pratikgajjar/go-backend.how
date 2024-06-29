@@ -119,6 +119,7 @@ a:hover {
     display: flex;
     align-items: center;
     position: relative;
+    padding-top: 2rem;
 }
 
 .anchor:hover {
