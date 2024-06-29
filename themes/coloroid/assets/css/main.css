@@ -1,3 +1,7 @@
+html {
+    scroll-behavior: smooth;
+}
+
 body {
   background-color: #100f0f; /* Pitch black background */
   color: #ffffff;           /* White text color */
