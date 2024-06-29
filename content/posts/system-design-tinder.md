@@ -1,5 +1,5 @@
 +++
-title = 'System Design : Tinder ❤️'
+title = '♥️ System Design : Tinder'
 description = "Explore the high and low-level design of a Tinder-like application, covering features such as sign-up, profile setup, recommendations, chat, notifications, and user interactions. Learn about system requirements, architecture components, and scalability considerations for handling millions of users and high traffic volumes."
 date = 2023-02-15T10:00:00-07:00
 draft = false
@@ -15,7 +15,7 @@ High + Low level design of Tinder
 3. Profile metadata: This feature allows users to link their Spotify account and display their top choices on their profile. This can help users find matches with similar music tastes.
 4. Chat: This feature enables users to communicate with their matches through a messaging interface.
 5. Notifications: This feature sends users notifications when they receive a new match, message, or other updates.
-Boost, Like, and Super Like: These features allow users to express interest in other profiles and increase their visibility to potential matches. A boost makes a user's profile more visible to other users for a short period of time, a like indicates that a user is interested in another user, and a super like indicates that a user is particularly interested in another user.
+   Boost, Like, and Super Like: These features allow users to express interest in other profiles and increase their visibility to potential matches. A boost makes a user's profile more visible to other users for a short period of time, a like indicates that a user is interested in another user, and a super like indicates that a user is particularly interested in another user.
 6. Top Picks: This feature shows users a curated list of highly-matched profiles that are deemed to be particularly compatible with them.
 
 At a low level, the system could be implemented using a client-server architecture, with the client being a mobile app or web application and the server being a set of backend servers that handle tasks such as recommendation, chat, and notification management. The backend could use a database to store user information and preferences, and could use machine learning algorithms to improve the recommendation and matching processes over time.

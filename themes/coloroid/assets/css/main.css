@@ -33,6 +33,7 @@ h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
   padding: 0;            /* Remove padding */
   margin: 0;             /* Remove margin */
   display: flex;         /* Use flexbox to arrange items horizontally */
+  flex-wrap: wrap;
   justify-content: center; /* Center the items horizontally */
 }
 
@@ -221,6 +222,20 @@ ul ul {
     white-space: pre-wrap; /* Preserve line breaks */
 }
 
+.rss-feed {
+  display: flex;
+  align-items: center;
+}
+
+.rss-feed span {
+  margin-right: 8px; /* Adjust the spacing as needed */
+}
+
+.rss-feed img {
+  width: 1rem; /* Adjust the size as needed */
+  height: 1rem; /* Adjust the size as needed */
+  border-radius: 4px;
+}
 
 /* Syntax highlight base theme colors */
 :root {
