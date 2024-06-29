@@ -1,17 +1,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width">
 <meta name="theme-color" content="#100f0f"/>
-<link rel="icon" type="image/png" href="favicon-32x32.png" sizes="32x32"/>
+<link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32"/>
 <title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ printf "%s | %s" .Title site.Title }}{{ end }}</title>
 {{ with .Description -}}
   <meta name="description" content="{{ . }}">
 {{ else -}}
   <meta name="description" content="{{ .Site.Params.description }}">
 {{ end -}}
-
 {{ partialCached "head/css.html" . }}
 {{ partialCached "head/js.html" . }}
-
+{{ with .OutputFormats.Get "rss" -}}
+  {{ printf `<link rel=%q type=%q href=%q title=%q>` .Rel .MediaType.Type .Permalink site.Title | safeHTML }}
+{{ end }}
 <link rel="preload" href="/fonts/nanumgothic-regular-webfont.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preload" href="/fonts/nanumgothic-bold-webfont.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preload" href="/fonts/nanumgothic-extrabold-webfont.woff2" as="font" type="font/woff2" crossorigin/>
