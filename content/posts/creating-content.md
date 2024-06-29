@@ -1,5 +1,5 @@
 +++
-title = "Creating Content"
+title = "🧿 Creating Content"
 description = "At the end of this, you'll understand the importance of creating content, when to start, and how to begin."
 date = 2024-06-11T00:01:52+05:30
 lastmod = 2024-06-11T00:01:52+05:30

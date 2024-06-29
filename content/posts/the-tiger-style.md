@@ -1,10 +1,10 @@
 +++
-title = "The Tiger Style"
-description = ""
+title = "🪲 The Tiger Style"
+description = "A collective give-and-take at the intersection of engineering and art"
 date = 2024-06-29T18:34:30+05:30
 lastmod = 2024-06-29T18:34:30+05:30
 publishDate = 2024-06-29T18:34:30+05:30
-draft = true
+draft = false
 tags = ['TigerBeetle', 'System Design', 'Repost']
 images = []
 +++
@@ -421,11 +421,11 @@ only because it's fast, but because it's small!
 
 All credit goes to authors of [tiger beetle](https://github.com/tigerbeetle/tigerbeetle/blame/main/docs/TIGER_STYLE.md)
 
-Authors\*:
+Authors:
 
 - [Evan Schwartz](https://github.com/emschwartz)
 - [Alex Kladov](https://github.com/matklad)
 
 Reason to post same content here is, I couldn't finder rendered version of markdown doc from github.
 
-- List of authors taken from git blame.
+List of authors taken from git blame.

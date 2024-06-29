@@ -1,5 +1,5 @@
 +++
-title = 'Postgres : Optimising query'
+title = '🐘 Postgres : Optimising query'
 description = "Optimize your PostgreSQL queries with these techniques to improve performance: using indexes, analyzing data, utilizing EXPLAIN, avoiding SELECT *, implementing LIMIT, optimizing JOINs, and considering caching."
 date = 2023-02-15T10:00:00-07:00
 draft = false
@@ -20,9 +20,9 @@ Before you can optimize your queries, it is important to understand the structur
 
 The EXPLAIN command in PostgreSQL allows you to see the execution plan for a query, including the specific steps that the database will take to retrieve the data. By analyzing the output of EXPLAIN, you can identify potential bottlenecks in your queries and make adjustments to improve performance.
 
-# Avoid using SELECT *
+# Avoid using SELECT \*
 
-When writing a query, it is generally best practice to specify the exact columns that you need, rather than using SELECT *to retrieve all columns. This is because when you use SELECT*, the database will retrieve all columns from the table, even if you only need a subset of the data. This can lead to unnecessary data being retrieved, which can slow down your queries.
+When writing a query, it is generally best practice to specify the exact columns that you need, rather than using SELECT _to retrieve all columns. This is because when you use SELECT_, the database will retrieve all columns from the table, even if you only need a subset of the data. This can lead to unnecessary data being retrieved, which can slow down your queries.
 
 # Use LIMIT
 
@@ -35,4 +35,4 @@ JOINs are a powerful feature of SQL that allow you to combine data from multiple
 # Consider caching
 
 Caching is a technique that involves storing frequently accessed data in memory, so that it can be quickly retrieved without having to go back to the database. There are several caching options available for PostgreSQL, including caching query results and caching frequently used data.
-In conclusion, by using indexes, analyzing your data, using EXPLAIN, avoiding SELECT *, using LIMIT, using JOINs wisely, and considering caching, you can significantly improve the performance of your PostgreSQL queries. However, it is important to note that these techniques can sometimes have trade-offs, so it is important to test and evaluate the results of any changes you make to your queries.
+In conclusion, by using indexes, analyzing your data, using EXPLAIN, avoiding SELECT \*, using LIMIT, using JOINs wisely, and considering caching, you can significantly improve the performance of your PostgreSQL queries. However, it is important to note that these techniques can sometimes have trade-offs, so it is important to test and evaluate the results of any changes you make to your queries.
