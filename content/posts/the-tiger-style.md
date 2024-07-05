@@ -9,6 +9,11 @@ tags = ['TigerBeetle', 'System Design', 'Repost']
 images = []
 +++
 
+Authors¹
+
+- [Evan Schwartz](https://github.com/emschwartz)
+- [Alex Kladov](https://github.com/matklad)
+
 # The Essence Of Style
 
 > “There are three things extremely hard: steel, a diamond, and to know one's self.” — Benjamin
@@ -419,13 +424,6 @@ only because it's fast, but because it's small!
 >
 > “Thank goodness!” said Bilbo laughing, and handed him the tobacco-jar.
 
-All credit goes to authors of [tiger beetle](https://github.com/tigerbeetle/tigerbeetle/blame/main/docs/TIGER_STYLE.md)
+Credits to authors of [tiger beetle](https://github.com/tigerbeetle/tigerbeetle/blame/main/docs/TIGER_STYLE.md)
 
-Authors:
-
-- [Evan Schwartz](https://github.com/emschwartz)
-- [Alex Kladov](https://github.com/matklad)
-
-Reason to post same content here is, I couldn't finder rendered version of markdown doc from github.
-
-List of authors taken from git blame.
+¹List of authors taken from git blame.
