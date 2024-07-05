@@ -1,5 +1,5 @@
 +++
-title = '♥️ System Design : Tinder'
+title = '♥️ System Design : Tinder ✧'
 description = "Explore the high and low-level design of a Tinder-like application, covering features such as sign-up, profile setup, recommendations, chat, notifications, and user interactions. Learn about system requirements, architecture components, and scalability considerations for handling millions of users and high traffic volumes."
 date = 2023-02-15T10:00:00-07:00
 draft = false

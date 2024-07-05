@@ -20,10 +20,11 @@ In my experience as a backend engineer, I've observed various patterns in how pe
 
 These individuals come to you after trying multiple approaches to solve the problem on their own. They have already narrowed down the issue to a certain extent and are often seeking confirmation or a new perspective.
 
-- **Characteristics:**
-  - Detailed explanation of what they've tried
-  - Specific questions
-  - High level of engagement
+### Characteristics
+
+- Detailed explanation of what they've tried
+- Specific questions
+- High level of engagement
 
 ## The Exhausted Effort
 
@@ -32,10 +33,11 @@ These individuals come to you after trying multiple approaches to solve the prob
 
 These people have exerted all their effort to solve the issue but haven't succeeded. They turn to others as a last resort, hoping for that one piece of advice that will resolve their problem.
 
-- **Characteristics:**
-  - Exhaustive list of attempted solutions
-  - High frustration level
-  - Eager for guidance
+### Characteristics
+
+- Exhaustive list of attempted solutions
+- High frustration level
+- Eager for guidance
 
 ## The Unrelated Connector
 
@@ -44,10 +46,11 @@ These people have exerted all their effort to solve the issue but haven't succee
 
 This group has faced similar problems in the past but struggles to connect the dots between seemingly unrelated issues. They need help to bridge the gap in their understanding.
 
-- **Characteristics:**
-  - Previous experience with related problems
-  - Inconsistent ability to draw parallels
-  - Requires help with context
+### Characteristics
+
+- Previous experience with related problems
+- Inconsistent ability to draw parallels
+- Requires help with context
 
 ## The Direct Seeker
 
@@ -56,10 +59,11 @@ This group has faced similar problems in the past but struggles to connect the d
 
 These individuals face a problem and immediately seek help without attempting to solve it themselves. They assume someone else can resolve it more efficiently.
 
-- **Characteristics:**
-  - Minimal initial effort
-  - Assumes others have ready solutions
-  - Potentially unaware of problem complexity
+### Characteristics
+
+- Minimal initial effort
+- Assumes others have ready solutions
+- Potentially unaware of problem complexity
 
 ## The Delegator
 
@@ -68,10 +72,11 @@ These individuals face a problem and immediately seek help without attempting to
 
 This group is familiar with the problem but prefers not to solve it themselves. They seek help because someone else can do it faster or it's outside their perceived job scope.
 
-- **Characteristics:**
-  - Recognizes the problem
-  - Prefers delegation
-  - Low engagement in the resolution process
+### Characteristics
+
+- Recognizes the problem
+- Prefers delegation
+- Low engagement in the resolution process
 
 # Reactions to Solutions
 
@@ -79,32 +84,35 @@ This group is familiar with the problem but prefers not to solve it themselves. 
 
 These individuals are deeply interested in the solution and aim to prevent similar issues in the future.
 
-- **Characteristics:**
-  - Inquires about the solution details
-  - Proactively seeks to prevent recurrence
-  - Asks clarifying questions
+### Characteristics
+
+- Inquires about the solution details
+- Proactively seeks to prevent recurrence
+- Asks clarifying questions
 
 ## The Solution Seeker
 
 These people are focused solely on resolving the immediate issue.
 
-- **Characteristics:**
-  - Interested in the solution, not the process
-  - Struggles to answer detailed questions
-  - Limited engagement beyond immediate needs
+### Characteristics
+
+- Interested in the solution, not the process
+- Struggles to answer detailed questions
+- Limited engagement beyond immediate needs
 
 ## The Disinterested
 
 This group has no interest in the problem or solution; they just want it resolved.
 
-- **Characteristics:**
-  - Indifferent to problem details
-  - Minimal engagement
-  - Focused on quick resolution
+### Characteristics
 
-# Smart Communication
+- Indifferent to problem details
+- Minimal engagement
+- Focused on quick resolution
 
-Help seekers often choose non-blocking communication methods such as Slack messages and make their issues known in public channels. This not only allows them to receive help but also keeps others informed, fostering a collaborative environment.
+# Communication
+
+Smart help seekers often choose non-blocking communication methods such as Slack messages and make their issues known in public channels. This not only allows them to receive help but also keeps others informed, fostering a collaborative environment.
 
 ## Not recommended
 

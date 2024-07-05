@@ -3,7 +3,11 @@
 
   {{ $dateMachine := .Date | time.Format "2006-01-02T15:04:05-07:00" }}
   {{ $dateHuman := .Date | time.Format ":date_long" }}
-  <time datetime="{{ $dateMachine }}">{{ $dateHuman }}</time>
+  
+  <div class="meta-info">
+    <time datetime="{{ $dateMachine }}">{{ $dateHuman }}</time>
+    <span class="read-time">~ {{ .ReadingTime }} min</span>
+  </div>
 
   <div>
     <div class="table-of-content">

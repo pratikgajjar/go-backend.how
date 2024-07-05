@@ -1,4 +1,14 @@
 {{ if and (.IsPage) (eq .Section "posts") }}
+
+<div class="post-navigation">
+  {{ with .PrevInSection }}
+    <a class="prev-post" href="{{ .RelPermalink }}">Prev: {{ .Title }}</a>
+  {{ end }}
+  {{ with .NextInSection }}
+    <a class="next-post" href="{{ .RelPermalink }}">Next: {{ .Title }}</a>
+  {{ end }}
+</div>
+
 <hr>
 Liked this article? Have any questions or comments? Please don't hesitate to reach out to me at <code>pg [at] backend.how </code> ! I love receiving emails from readers, and I'm always happy to provide any additional clarification or assistance.
 

@@ -51,6 +51,48 @@ h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
   padding: 10px;         /* Add some padding */
 }
 
+.meta-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px; /* Adjust as needed */
+}
+
+.read-time {
+  margin-left: auto; /* Pushes the read time to the right */
+  font-style: italic; /* Optional: Italicize the read time */
+}
+
+
+.post-navigation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.prev-post, .next-post {
+  padding: 10px 20px;
+  text-decoration: none;
+  color: white;
+  transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+  border-radius: 2px;
+}
+
+.prev-post {
+  border-right: 1px solid white;
+}
+
+.next-post {
+  border-left: 1px solid white;
+}
+
+.post-navigation a:hover {
+  background-color: #ffffff; /* Optional: Add hover effect */
+  color: #000;
+}
+
+
 .header-divider {
   background-color: #ffbb7a;
   height: .2rem;
