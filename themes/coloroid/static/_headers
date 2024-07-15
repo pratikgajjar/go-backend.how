@@ -1,6 +1,6 @@
 /*
   Cache-Control: public, s-maxage=2592000, stale-while-revalidate
-  Content-Security-Policy: default-src 'self'; script-src 'self' static.cloudflareinsights.com; connect-src cloudflareinsights.com; frame-ancestors 'none'; object-src 'none';
+  Content-Security-Policy: default-src 'self'; script-src 'self' static.cloudflareinsights.com *.backend.how; connect-src cloudflareinsights.com *.backend.how; frame-ancestors 'none'; object-src 'none';
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Content-Security-Policy: frame-ancestors 'self'
   X-Frame-Options: SAMEORIGIN
