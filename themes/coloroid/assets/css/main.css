@@ -28,6 +28,13 @@ h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
     text-decoration: none;
 }
 
+img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 10px auto;
+}
+
 .nav-menu {
   list-style-type: none; /* Remove bullets */
   padding: 0;            /* Remove padding */
