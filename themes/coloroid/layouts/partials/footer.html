@@ -2,10 +2,10 @@
 
 <div class="post-navigation">
   {{ with .PrevInSection }}
-    <a class="prev-post" href="{{ .RelPermalink }}">Prev: {{ .Title }}</a>
+    <a class="prev-post" href="{{ .RelPermalink }}">&lt;PREV {{ .Title }}</a>
   {{ end }}
   {{ with .NextInSection }}
-    <a class="next-post" href="{{ .RelPermalink }}">Next: {{ .Title }}</a>
+    <a class="next-post" href="{{ .RelPermalink }}">{{ .Title }} NEXT&gt; </a>
   {{ end }}
 </div>
 
