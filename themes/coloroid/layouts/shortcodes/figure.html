@@ -1,0 +1,15 @@
+{{- $img := .Get "src" -}}
+{{- $alt := .Get "alt" -}}
+{{- $caption := .Get "caption" -}}
+{{- $downloadURL := .Get "download" -}}
+
+<figure>
+    <img src="{{ $img | safeURL }}" alt="{{ $alt }}">
+    {{ with $caption }}
+        <figcaption>{{ . }}</figcaption>
+    {{ end }}
+    {{ with $downloadURL }}
+        <div><a href="{{ . }}" download>Download Image</a></div>
+    {{ end }}
+</figure>
+
