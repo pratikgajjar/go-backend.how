@@ -1,5 +1,5 @@
 +++
-title = "A Cat Stereogram Dark Mode"
+title = "🐈 A Cat Stereogram : Dark Mode"
 description = ""
 date = 2024-07-16T23:10:26+05:30
 lastmod = 2024-07-16T23:10:26+05:30
