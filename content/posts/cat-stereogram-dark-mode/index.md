@@ -56,3 +56,7 @@ Incorporating stereogram viewing into your routine can potentially enhance focus
 For more detailed insights on eye exercises and stereograms, reputable sources like the [American Optometric Association](https://www.aoa.org) provide valuable information.
 
 Explore creating your own stereogram images and discover their visual and health-enhancing advantages.
+
+## Disclaimer
+
+The information provided in this article is for educational purposes only and is not intended as medical advice or a substitute for professional medical care. Always seek the advice of your eye care professional or physician with any questions you may have regarding a medical condition or treatment. The techniques described for viewing stereograms should be approached cautiously and may not be suitable for everyone. Discontinue viewing if you experience discomfort or vision problems. The author and publisher do not assume any liability for direct or indirect damages caused by the use of the information contained herein.
