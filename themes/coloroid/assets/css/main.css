@@ -90,6 +90,7 @@ img {
   text-decoration: none;
   color: #ffbb7a;
   transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+  padding: 5px;
 }
 
 .prev-post {
