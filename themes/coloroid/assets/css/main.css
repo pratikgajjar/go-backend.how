@@ -10,17 +10,20 @@ body {
   align-items: center;
   min-height: 100vh;
   margin: 0;
-  font-family: "Nanum Gothic", Helvetica, sans-serif;
+  font-family: "Inconsolata", monospace;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
   flex-direction: column;   /* Align items vertically */
   padding: 20px;
   line-height: 1.5em;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: "Nanum Gothic Bold", Helvetica, sans-serif;
-    font-weight: 800;
+    font-family: "Inter Tight", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 300;
     font-style: normal;
-    letter-spacing: 0.005em;
     line-height: 1.5em;
 }
 
@@ -83,7 +86,6 @@ img {
   text-decoration: none;
   color: white;
   transition: background-color 0.3s, color 0.3s; /* Smooth transition */
-  border-radius: 2px;
 }
 
 .prev-post {
@@ -104,24 +106,19 @@ img {
   background-color: #ffbb7a;
   height: .2rem;
   border: none;
-  border-radius: .15rem;
 }
 
 code {
-  font-family: "Nanum Gothic Coding", monospace;
+  font-family: "Inconsolata", monospace;
 }
 
-strong {
-  font-family: "Nanum Gothic Bold", Helvetica, sans-serif;
-  font-weight: 700;
-}
 
 blockquote {
   background: #212121;
   border-left: 3px solid #ff804f;
   margin: 1.5em 10px;
   padding: 0.5em 10px;
-  border-radius: 8px;
+  /*border-radius: 8px;*/
 }
 
 blockquote p {
@@ -206,7 +203,6 @@ a:hover {
 .table-of-content {
     background-color: #212121;
     padding: 10px;
-    border-radius: 8px;
 }
 
 .table-of-content h4 {
@@ -595,39 +591,3 @@ ul ul {
   color: var(--mocha-red);
 }
 
-@font-face {
-  font-family: 'Nanum Gothic';
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/nanumgothic-regular-webfont.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Nanum Gothic Bold';
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/nanumgothic-bold-webfont.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Nanum Gothic Bold';
-  font-weight: 800;
-  font-display: swap;
-  src: url('/fonts/nanumgothic-extrabold-webfont.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Nanum Gothic Coding';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/nanumgothiccoding-regular-webfont.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Nanum Gothic Coding';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/nanumgothiccoding-bold-webfont.woff2') format('woff2');
-}
