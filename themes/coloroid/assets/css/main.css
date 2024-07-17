@@ -9,14 +9,19 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  margin: 0;
+  margin: 20px;
   font-family: "Inconsolata", monospace;
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
   flex-direction: column;   /* Align items vertically */
-  padding: 20px;
   line-height: 1.5em;
+}
+
+@media (pointer: fine) {
+    body {
+        padding: 20px;
+    }
 }
 
 h1, h2, h3, h4, h5, h6 {
