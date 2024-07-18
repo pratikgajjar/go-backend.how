@@ -49,6 +49,8 @@ Visualize focusing on a point behind the stereogram. This technique helps align 
 
 Gradually bring the stereogram closer to your eyes until the 3D image becomes visible. Once perceived, adjust the distance for comfortable viewing.
 
+{{< figure download="/posts/cat-stereogram-dark-mode/cat-vision.png" src="/posts/cat-stereogram-dark-mode/cat-vision.png" title="cat-stereogram" alt="cat stereogram" width="auto" >}}
+
 ## Conclusion
 
 Incorporating stereogram viewing into your routine can potentially enhance focus, convergence, and overall visual acuity. It's a fascinating way to engage your eyes and reap both visual and potential health benefits.
