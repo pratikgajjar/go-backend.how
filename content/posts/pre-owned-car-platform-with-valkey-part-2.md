@@ -253,7 +253,6 @@ user-nexon-cars-in-mumbai => model=121&city=1
 Let's go through some of the in-built data structures. ValKey
 
 ```mermaid
-
 graph TD
     A[Key-Value]
     A -->|key| B(value)
@@ -277,12 +276,7 @@ graph TD
     M -->|member1| N(value1)
     M -->|member2| O(value2)
     M -->|member3| P(value3)
-
-
-
 ```
-
-````
 
 {{< details "[Valkey](https://valkey.io/commands/) COMMAND Ref" >}}
 
@@ -317,6 +311,6 @@ ZSCAN Iterates over members and scores of a sorted set.
 ZSCORE Returns the score of a member in a sorted set.
 ZUNION Returns the union of multiple sorted sets.
 ZUNIONSTORE Stores the union of multiple sorted sets in a key.
-````
+```
 
 {{</details>}}
