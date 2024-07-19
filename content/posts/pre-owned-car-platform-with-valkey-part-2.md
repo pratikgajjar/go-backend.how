@@ -35,6 +35,97 @@ In any ecommerece site, you have ability to filter the listing to narrow down wh
 
 ## Database
 
+### Schema
+
+{{< details "Schema with sample data" >}}
+
+Car
+
+| id  | price  | varient_id | color_id | date_created     |
+| --- | ------ | ---------- | -------- | ---------------- |
+| 1   | 775000 | 123        | 1        | 2020-07-20 02:17 |
+
+Varient
+
+| id  | model_id | name | date_created     |
+| --- | -------- | ---- | ---------------- |
+| 123 | 100      | XM   | 2020-07-20 02:17 |
+
+Model
+
+| id  | make_id | name  | date_created     |
+| --- | ------- | ----- | ---------------- |
+| 100 | 10      | Nexon | 2020-07-20 02:17 |
+
+Make
+
+| id  | name | date_created     |
+| --- | ---- | ---------------- |
+| 10  | Tata | 2020-07-20 02:17 |
+
+Features
+
+| id  | name | date_created     |
+| --- | ---- | ---------------- |
+| 20  | AMT  | 2020-07-20 02:17 |
+
+CarFeatures
+
+| id  | car_id | feature_id |
+| --- | ------ | ---------- |
+| 1   | 1      | 20         |
+
+{{</details>}}
+
+```mermaid
+erDiagram
+    Car {
+        int Id PK
+        int Price
+        int VarientId FK
+        int ColorId
+        datetime DateCreated
+    }
+    Varient {
+        int Id PK
+        int ModelId FK
+        string Name
+        datetime DateCreated
+    }
+    Model {
+        int Id PK
+        int MakeId FK
+        string Name
+        datetime DateCreated
+    }
+    Make {
+        int Id PK
+        string Name
+        datetime DateCreated
+    }
+    Features {
+        int Id PK
+        string Name
+        datetime DateCreated
+    }
+    CarFeatures {
+        int Id PK
+        int CarId FK
+        int FeatureId FK
+    }
+
+    Car ||--o| Varient : has
+    Varient ||--o| Model : belongs_to
+    Model ||--o| Make : made_by
+    Car ||--o| CarFeatures : has
+    CarFeatures ||--o| Features : includes
+
+```
+
+Note, this isn't a complete schema. Here, we need to show one example of a 1xN and an NxM data relation involving the Car table.
+
+### Backend
+
 In the backend, we are using [Django](https://www.djangoproject.com/) and [Django REST Framework](https://www.django-rest-framework.org/) to create REST APIs, alongside the [django-filter](https://django-filter.readthedocs.io/en/stable/guide/usage.html) library to easily add complex filters.
 
 ```py
@@ -42,12 +133,13 @@ from django_filters import rest_framework as filters
 
 class CarFilterSet(filters.FilterSet):
     """Custom filter class for filtering user, you can add different filter attributes later"""
-    city_id = filter.TraversalFilter(name="locality__city__id", field_name="city_id", lookup_expr="in")
+    city_id = filter.NumberFilter(name="locality__city__id", field_name="city_id", lookup_expr="in")
     price_min = django_filters.NumberFilter(name='price', lookup_expr='gte')
     price_max = django_filters.NumberFilter(name='price', lookup_expr='lte')
     make = django_filters.NumberFilter(name="varient__model__make__id", lookup_expr="in")
     model = django_filters.NumberFilter(name="varient__model__id", lookup_expr="in")
     color = django_filter.NumberFilter(name="color__id", lookup_expr="in")
+    features = filter.NumberFilter(name='features__id', lookup_expr='in')
     slug = filter.SlugFilter()
 
     class Meta:
@@ -87,7 +179,7 @@ class CarViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
 ### Request
 
 ```sql
-GET https://api.car.com/listing/?city_id=1&price_min=200000&price_max=400000&make_id=121
+GET https://api.car.com/listing/?city_id=1&price_min=200000&price_max=400000&make_id=121,120&
 
 SELECT ... FROM car
     LEFT JOIN locality on car.locality_id = locality.id
@@ -96,10 +188,10 @@ SELECT ... FROM car
     LEFT JOIN model on varient.model_id = model.id
     LEFT JOIN make on model.make_id = make.id
   WHERE
-    city.id = 1
+    city.id in (1,)
     AND car.price > 200000
     AND car.price < 400000
-    AND make.id = 121
+    AND make.id in (121, 120)
 LIMIT 10 -- = page_size
 OFFSET 0 -- = page_no * (page_size - 1) ; 1 <= page_no <= max_page
 -- max_page = Math.ceil(count / page_size)
@@ -148,11 +240,13 @@ In this case, the `SlugFilter` will parse the tokens from the URL and use a data
 user-nexon-cars-in-mumbai => model=121&city=1
 ```
 
-| id  | value  | table_name | filter_id |
-| --- | ------ | ---------- | --------- |
-| 1   | nexon  | model      | 121       |
-| 2   | mumbai | city       | 1         |
-| 3   | audi   | model      | 100       |
+| id  | value  | type      | filter |
+| --- | ------ | --------- | ------ |
+| 1   | nexon  | model     | 121    |
+| 2   | mumbai | city      | 1      |
+| 3   | 4-lakh | price     | 400000 |
+| 4   | tata   | make      | 2      |
+| 5   | petrol | fuel_type | 1      |
 
 ## ValKey
 

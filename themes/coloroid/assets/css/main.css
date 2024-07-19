@@ -231,16 +231,24 @@ a:hover {
     transition: color 0.3s ease;
 }
 
-/* Hide scrollbars for all elements */
-*::-webkit-scrollbar {
-    width: 0px; /* For vertical scrollbars */
-    height: 0px; /* For horizontal scrollbars */
+/* For Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    width: 5px; /* Adjust width as needed */
+    height: 5px;
 }
 
-* {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+::-webkit-scrollbar-thumb {
+    background: var(--mocha-overlay0); /* Grey background color */
 }
+
+::-webkit-scrollbar-track {
+    background: #100f0f; /* Light grey background for the track */
+}
+
+/* For Firefox */
+scrollbar-width: thin; /* Make the scrollbar thin */
+scrollbar-color: #888 #f1f1f1; /* Thumb color and track color */
+
 
 summary {
   padding: 5px;
