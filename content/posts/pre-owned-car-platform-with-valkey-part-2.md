@@ -1,5 +1,5 @@
 +++
-title = "🏎️ Pre Owned Car Platform With Valkey Part 2"
+title = "🏎️ Building pre-owned Car Platform With Valkey Part 2"
 description = ""
 date = 2024-07-17T19:54:52+05:30
 lastmod = 2024-07-17T19:54:52+05:30
@@ -9,7 +9,7 @@ tags = []
 images = []
 +++
 
-This post is 2nd part of serries building blazing fast pre owned car platform using Valkey. Checkout the [part-1](/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1) if haven't already.
+This post is 2nd part of series building blazing fast pre owned car platform using Valkey. Checkout the [part-1](/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1) if haven't already.
 
 # What ?
 
@@ -86,7 +86,7 @@ GET https://api.car.com/listing/?city_id=1&price_min=200000&price_max=400000&mak
 SELECT ... FROM car
     LEFT JOIN locality on car.locality_id = locality.id
     LEFT JOIN city on locality.city_id = city.id
-    LEFT JOIN varient on car.varient_id = varient.id
+    LEFT JOIN varient on car.varient_id = varien t.id
     LEFT JOIN model on varient.model_id = model.id
     LEFT JOIN make on model.make_id = make.id
   WHERE
@@ -105,3 +105,9 @@ GET https://api.car.com/listing/?slug=used-nexon-cars-in-mumbai
 ```
 
 In this case `SlugFilter` will parse the text and creates `id` filters, due to dynamic nature of data this is stored in the database
+
+| id  | value  | table_name | table_id |
+| --- | ------ | ---------- | -------- |
+| 1   | nexon  | model      | 121      |
+| 2   | mumbai | city       | 1        |
+| 3   | audi   | model      | 100      |

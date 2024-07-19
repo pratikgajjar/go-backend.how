@@ -1,0 +1,2 @@
+{{ . | replaceRE "<a href=\"(http[s]?://[^\"]+)\">" "<a href=\"$1\" target=\"_blank\" rel=\"noopener noreferrer\">" | safeHTML }}
+

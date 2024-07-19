@@ -14,7 +14,7 @@
       <h4> Contents </h4>
       {{ .TableOfContents }}
     </div>
-    {{ .Content }}
+    {{ partial "ext_link.html" .Content }}
   </div>
   {{ partial "terms.html" (dict "taxonomy" "tags" "page" .) }}
 {{ end }}
