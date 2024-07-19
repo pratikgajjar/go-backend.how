@@ -292,6 +292,25 @@ ul ul {
   border-radius: 4px;
 }
 
+table {
+    border-collapse: collapse; /* Ensures that borders are not doubled */
+    width: 100%; /* Ensures the table takes full width */
+}
+
+table, th, td {
+    border: 1px solid white; /* Adds a white border to the table, headers, and cells */
+}
+
+th, td {
+    padding: 8px; /* Adds padding to table cells */
+    text-align: left; /* Aligns text to the left in table cells */
+}
+
+table thead tr {
+    background-color: var(--mocha-lavender); /* White background for the first row */
+    color: black; /* Black text for the first row */
+}
+
 /* Syntax highlight base theme colors */
 :root {
   --mocha-rosewater: #ea6962;
