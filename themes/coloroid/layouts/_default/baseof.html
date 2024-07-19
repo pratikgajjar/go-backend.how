@@ -1,26 +1,33 @@
 <!DOCTYPE html>
 <html lang="{{ or site.Language.LanguageCode }}" dir="{{ or site.Language.LanguageDirection `ltr` }}">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {{ partial "head.html" . }}
-</head>
-<body>
-  <header class="container">
-    {{ partial "header.html" . }}
-  </header>
-  <div class="container"><hr class="header-divider"></div>
-  <main class="container">
-    {{ block "main" . }}{{ end }}
-  </main>
-  <footer class="container">
-    {{ partial "footer.html" . }}
-  </footer>
-</body>
-{{ if .Store.Get "hasMermaid" }}
-  <script type="module">
+  </head>
+  <body>
+    <header class="container">
+      {{ partial "header.html" . }}
+    </header>
+    <div class="container"><hr class="header-divider"></div>
+    <main class="container">
+      {{ block "main" . }}{{ end }}
+    </main>
+    {{ if .Store.Get "hasMermaid" }}
+    <script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs';
-    mermaid.initialize({ startOnLoad: true });
-  </script>
-{{ end }}
+    mermaid.initialize({ 
+      startOnLoad: true, 
+      theme: 'dark',
+      themeVariables: {
+        fontFamily: "Inconsolata",
+        fontSize: "16px",
+      }
+    });
+    </script>
+    {{ end }}
+    <footer class="container">
+      {{ partial "footer.html" . }}
+    </footer>
+  </body>
 </html>
