@@ -9,28 +9,33 @@ tags = []
 images = []
 +++
 
-This post is 2nd part of series building blazing fast pre owned car platform using Valkey. Checkout the [part-1](/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1) if haven't already.
+In [Part 1](/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1) of our series, we explored the foundational aspects of our platform's performance optimization. We began by defining our business model, which combines a marketplace and inventory system to facilitate car sales. We detailed the user flow, including how users view ads, generate leads, and book test drives. Our primary focus was on enhancing the performance of _individual car pages_, where we discussed various strategies to reduce latency and improve load times. We examined the impact of client-side versus server-side rendering and outlined initial approaches to optimizing both frontend and backend components.
+
+In Part 2, we will focus on building and optimizing the listing page using Valkey. We will explore how to handle complex filters, manage pagination efficiently, and ensure the listing page loads quickly to provide an excellent user experience.
+
+We will review the existing design and discuss how we mapped our business use cases to Valkey to significantly reduce response times. This will include an exploration of how to handle complex filters, manage pagination effectively, and leverage Valkey's capabilities to ensure that the listing page delivers a fast and seamless user experience.
 
 # What ?
 
-We have list of cars that needs to be shown, it may include filters.
+Listing Page - A catalog of cars with basic information and filter or order list of cars.
 
 # Why ?
 
-In performance marketing, we have ad link will lead to list of cars. To maximise leads, we need to reduce bounce rate
-that correlated with page loading time.
+As we discussed in part-1, ~40-60% ads leads to listing page which shows list of cars. So we want to reduce page load time to reduce bounce rate.
 
 # Specification
 
 - Filters
 - Pagination
-- Recommendation order
+- Recommendation Model
 
 # Filters
 
+In any ecommerece site, you have ability to filter the listing to narrow down what you are looking for. Here lets review how this works behind the scene using database.
+
 ## Database
 
-First, lets go through how it works with db, using django-filter with django-rest-framework we have defined filterclass that handles query parsing and database filters.
+In the backend, we are using [Django](https://www.djangoproject.com/) and [Django REST Framework](https://www.django-rest-framework.org/) to create REST APIs, alongside the [django-filter](https://django-filter.readthedocs.io/en/stable/guide/usage.html) library to easily add complex filters.
 
 ```py
 from django_filters import rest_framework as filters
@@ -55,10 +60,9 @@ class CarFilterSet(filters.FilterSet):
             "price",
             "slug"
         ]
-# NOTE: Not exact syntax
 ```
 
-In django-rest-framework
+In views.py, this gets executed with each request where internally django will apply the filters to the queryset, paginate and serialize the objects into JSON response.
 
 ```py
 from rest_framework import viewsets, mixins
@@ -76,9 +80,11 @@ class CarViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
     filter_backends = (DjangoFilterBackend, OrderingFilter) # django filters
     filterset_class = CarFilterSet # custom filterset
     ordering_fields = ["price", "year"]
+    pagination_class = CarPagination
+
 ```
 
-Example request
+### Request
 
 ```sql
 GET https://api.car.com/listing/?city_id=1&price_min=200000&price_max=400000&make_id=121
@@ -94,20 +100,97 @@ SELECT ... FROM car
     AND car.price > 200000
     AND car.price < 400000
     AND make.id = 121
+LIMIT 10 -- = page_size
+OFFSET 0 -- = page_no * (page_size - 1) ; 1 <= page_no <= max_page
+-- max_page = Math.ceil(count / page_size)
 ```
 
-To improve SEO, we supported multiple types of slug varient that are more human friendly.
-So when someone searches on google used nexon car, we would already have indexed page which includes `used-nexon-cars-in-mumbai` path
-that improves the ranking
+### Response
+
+```json
+HTTP 200 OK
+{
+  "count": 1023,
+  "next": "https://api.car.com/listing/?page=3",
+  "previous": "https://api.car.com/listing/?page=1",
+  "results": [
+    {
+      "id": 1,
+      "images": [
+        "https://cdn.car.com/1/front.webp",
+        "https://cdn.car.com/1/left.webp",
+        "https://cdn.car.com/1/right.webp",
+        "https://cdn.car.com/1/back.webp"
+      ],
+      "price": 721000,
+      "model_name": "Nexon",
+      "varient_name": "XM",
+      "link": "/user-cars/1",
+      "city_name": "Mumbai",
+      "owner": "1st"
+    }
+    . . . = page_size cars
+  ]
+}
+```
+
+To improve SEO, we implemented dynamic slugs in our URLs, making them more human-friendly. For example, when someone searches for "Used Nexon car" on Google, our indexed page will already have a URL that reflects this search term. This approach enhances our search visibility and aligns our URLs with user queries, increasing the likelihood of attracting relevant traffic.
 
 ```sql
+🌐 https://car.com/used-nexon-cars-in-mumbai
+-- client takes path and sends as slug query param to the backend
 GET https://api.car.com/listing/?slug=used-nexon-cars-in-mumbai
 ```
 
-In this case `SlugFilter` will parse the text and creates `id` filters, due to dynamic nature of data this is stored in the database
+In this case, the `SlugFilter` will parse the tokens from the URL and use a database table to return the appropriate query string. For any given `SlugFilter`, a valid query string combination will always exist as it is a subset of the overall filters.
 
-| id  | value  | table_name | table_id |
-| --- | ------ | ---------- | -------- |
-| 1   | nexon  | model      | 121      |
-| 2   | mumbai | city       | 1        |
-| 3   | audi   | model      | 100      |
+```md
+user-nexon-cars-in-mumbai => model=121&city=1
+```
+
+| id  | value  | table_name | filter_id |
+| --- | ------ | ---------- | --------- |
+| 1   | nexon  | model      | 121       |
+| 2   | mumbai | city       | 1         |
+| 3   | audi   | model      | 100       |
+
+## ValKey
+
+Let's go through some of the in-built data structures. We will
+
+{{< details "[Valkey](https://valkey.io/commands/) COMMAND Ref" >}}
+
+```markdown
+SET Sets the string value of a key, ignoring its type. The key is created if it doesn't exist.
+TTL Returns the expiration time in seconds of a key.
+
+HMSET Sets the values of multiple fields.
+HMGET Returns the values of all fields in a hash.
+HGETALL Returns all fields and values in a hash.
+
+SADD Adds one or more members to a set. Creates the key if it doesn't exist.
+SCARD Returns the number of members in a set.
+SINTER Returns the intersect of multiple sets.
+SINTERSTORE Stores the intersect of multiple sets in a key.
+SISMEMBER Determines whether a member belongs to a set.
+SUNION Returns the union of multiple sets.
+SUNIONSTORE Stores the union of multiple sets in a key.
+
+ZADD Adds one or more members to a sorted set, or updates their scores. Creates the key if it doesn't exist.
+ZCARD Returns the number of members in a sorted set.
+ZCOUNT Returns the count of members in a sorted set that have scores within a range.
+ZDIFFSTORE Stores the difference of multiple sorted sets in a key.
+ZINTERSTORE Stores the intersect of multiple sorted sets in a key.
+ZMSCORE Returns the score of one or more members in a sorted set.
+ZRANGE Returns members in a sorted set within a range of indexes.
+ZRANGEBYSCORE Returns members in a sorted set within a range of scores.
+ZRANGESTORE Stores a range of members from sorted set in a key.
+ZRANK Returns the index of a member in a sorted set ordered by ascending scores.
+ZREM Removes one or more members from a sorted set. Deletes the sorted set if all members were removed.
+ZSCAN Iterates over members and scores of a sorted set.
+ZSCORE Returns the score of a member in a sorted set.
+ZUNION Returns the union of multiple sorted sets.
+ZUNIONSTORE Stores the union of multiple sorted sets in a key.
+```
+
+{{</details>}}
