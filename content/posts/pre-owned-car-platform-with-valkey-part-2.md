@@ -122,7 +122,7 @@ erDiagram
 
 ```
 
-Note, this isn't a complete schema. Here, we need to show one example of a 1xN and an NxM data relation involving the Car table.
+Note, this isn't a complete schema.
 
 ### Backend
 
@@ -250,7 +250,39 @@ user-nexon-cars-in-mumbai => model=121&city=1
 
 ## ValKey
 
-Let's go through some of the in-built data structures. We will
+Let's go through some of the in-built data structures. ValKey
+
+```mermaid
+
+graph TD
+    A[Key-Value]
+    A -->|key| B(value)
+
+    C[Hash Set]
+    C -->|key| D[Hash Map]
+    D -->|field1| E(value1)
+    D -->|field2| F(value2)
+```
+
+```mermaid
+graph TD
+    G[Set]
+    G -->|key| H[Set of Values]
+    H --> I(value1)
+    H --> J(value2)
+    H --> K(value3)
+
+    L[Sorted Set - ZSet]
+    L -->|key| M[Sorted Set]
+    M -->|member1| N(value1)
+    M -->|member2| O(value2)
+    M -->|member3| P(value3)
+
+
+
+```
+
+````
 
 {{< details "[Valkey](https://valkey.io/commands/) COMMAND Ref" >}}
 
@@ -285,6 +317,6 @@ ZSCAN Iterates over members and scores of a sorted set.
 ZSCORE Returns the score of a member in a sorted set.
 ZUNION Returns the union of multiple sorted sets.
 ZUNIONSTORE Stores the union of multiple sorted sets in a key.
-```
+````
 
 {{</details>}}
