@@ -2,6 +2,11 @@ html {
     scroll-behavior: smooth;
 }
 
+:root {
+  --color-yellow: #ffff99;
+  --color-link: #ffbb7a;
+}
+
 body {
   background-color: #100f0f; /* Pitch black background */
   color: #ffffff;           /* White text color */
@@ -79,39 +84,33 @@ img {
 }
 
 .post-navigation {
-  display: flex;
-  flex-wrap: wrap;
   height: 100%; /* Full height of the container */
 }
 
 .prev-post, .next-post {
-  flex: 1 1 50%; /* Each takes up 50% of width and height */
   display: flex;
   justify-content: center;
   align-items: center;
   text-decoration: none;
-  color: #ffbb7a;
+  color: var(--color-link);
   transition: background-color 0.3s, color 0.3s; /* Smooth transition */
   padding: 5px;
   box-sizing: border-box; /* Include padding and border in total width and height */
+  border: 2px dotted var(--color-link);
 }
 
 .prev-post {
-  border-right: 1px solid white;
-}
-
-.next-post {
-  border-left: 1px solid white;
+    margin-bottom: 1rem; /* Add 1rem space to the right */
 }
 
 .post-navigation a:hover {
-  background-color: #ffffff; /* Optional: Add hover effect */
-  color: #000;
+  background-color: var(--color-link); /* Optional: Add hover effect */
+  color: black;
 }
 
 
 .header-divider {
-  background-color: #ffbb7a;
+  background-color: var(--color-link);
   height: .2rem;
   border: none;
 }
@@ -160,12 +159,13 @@ footer {
 }
 
 a {
-    color: #ffbb7a;
+    color: var(--color-link);
     text-underline-offset: 0.25em;
+    text-decoration: underline dotted;
 }
 
 a:hover {
-    color: #fc7b00;
+    color: var(--mocha-red);
 }
 
 .anchor {
@@ -315,6 +315,24 @@ th, td {
 table thead tr {
     background-color: var(--mocha-lavender); /* White background for the first row */
     color: black; /* Black text for the first row */
+}
+
+::selection {
+    background: var(--mocha-yellow);
+    color: black;
+}
+
+/* For webkit browsers (e.g., Chrome, Safari) */
+::-webkit-selection {
+    background: var(--color-yellow);
+    background: var(--mocha-yellow);
+    color: black;
+}
+
+/* For Firefox */
+::-moz-selection {
+    background: var(--mocha-yellow);
+    color: black;
 }
 
 /* Syntax highlight base theme colors */
