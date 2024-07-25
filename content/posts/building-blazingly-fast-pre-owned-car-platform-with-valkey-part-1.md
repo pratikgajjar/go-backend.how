@@ -85,7 +85,7 @@ Fetches car data based on an ID in URI and returns JSON.
 Dynamic Entities
 
 - seller_mobile_no - User got the seller no, paid feature.
-- is_seen - User has seen the
+- is_seen - User has seen the car.
 - test_drive_booked - have booked test drive for the given car
 - inspection_report - User can access full report, paid feature.
 - offer_amount - buyer can choose to offer lower amount than listed amount
