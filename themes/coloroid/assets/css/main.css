@@ -322,6 +322,21 @@ table thead tr {
     color: black;
 }
 
+figure {
+    margin: 1em 0;
+}
+
+figcaption {
+    font-style: italic;
+    color: var(--mocha-pink);
+    text-align: left;
+}
+
+figure div a {
+    display: block;
+    text-align: left;
+}
+
 /* For webkit browsers (e.g., Chrome, Safari) */
 ::-webkit-selection {
     background: var(--color-yellow);
