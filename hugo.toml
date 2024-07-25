@@ -29,6 +29,9 @@ endLevel = 1
 ordered = true
 startLevel = 0
 
+[languages]
+[languages.en.params]
+reading_speed = 180
 
 [params]
 Description = "Pratik's blog for thoughtful articles on engineering, tech trends, and other insightful topics."
