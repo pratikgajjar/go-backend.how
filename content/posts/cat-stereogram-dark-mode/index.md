@@ -49,7 +49,7 @@ Visualize focusing on a point behind the stereogram. This technique helps align 
 
 Gradually bring the stereogram closer to your eyes until the 3D image becomes visible. Once perceived, adjust the distance for comfortable viewing.
 
-{{< figure download="/posts/cat-stereogram-dark-mode/cat-vision.png" src="/posts/cat-stereogram-dark-mode/cat-vision.png" title="cat-stereogram" alt="cat stereogram" width="auto" >}}
+{{< figure src="/posts/cat-stereogram-dark-mode/cat-vision.png" title="Visual of cat stereogram" alt="cat stereogram visualized" caption="When vision merges both cats" width="auto" >}}
 
 ## Conclusion
 
