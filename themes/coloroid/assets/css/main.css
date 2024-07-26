@@ -169,42 +169,25 @@ a:hover {
 }
 
 .anchor {
-    color: #ffffff;
+    color: white;
+    display: inline;
     text-decoration: none;
-    display: flex;
-    align-items: center;
-    position: relative;
-    padding-top: 2rem;
 }
 
 .anchor:hover {
-    color: #ffffff;
+    color: white;
+    display: inline;
 }
 
-.a-link {
-  position: absolute;
-  left: -1.8rem; /* Align to the start of the container */
-  width: 1.2rem;
-  height: 1.2rem;
-  background-image: url('/anchor.svg'); /* Update the path accordingly */
-  background-size: contain;
-  background-repeat: no-repeat;
-  vertical-align: middle;
-  opacity: 0; /* Initially hidden */
-  transition: opacity 0.3s ease; /* Smooth transition */
+.anchor .pound {
+  display: none;
+  user-select: none;
 }
-
 
 @media (hover: hover) and (pointer: fine) {
-    .anchor:hover .a-link {
-        opacity: 1;
-    }
-
-}
-
-@media (hover: none) and (pointer: coarse) {
-    .a-link {
-        display: none;
+    .anchor:hover .pound {
+        display: inline;
+        color: var(--mocha-red);
     }
 }
 
