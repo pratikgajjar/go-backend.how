@@ -333,6 +333,14 @@ figure div a {
     color: black;
 }
 
+sup a[href^="#fn"]::before {
+  content: "[";
+}
+
+sup a[href^="#fn"]::after {
+  content: "]";
+}
+
 /* Syntax highlight base theme colors */
 :root {
   --mocha-rosewater: #ea6962;
