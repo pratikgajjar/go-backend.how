@@ -21,7 +21,7 @@ What should you write about? Here are several options:
 1. Pick a topic that interests you.
 2. Choose something you find easy but that others might find challenging.
 3. Teach a skill you've put a lot of effort into learning.
-4. Write about anything out of the ordinary or even simple topics. [[1]](#ref_a)
+4. Write about anything out of the ordinary[^1] or even simple topics.
 
 # Quality {#quality}
 
@@ -90,7 +90,7 @@ I've encountered many talented people who don't share their knowledge. A common 
 1. Games
 2. Commenting on posts with ideas
 
-> Your success in life will be largely determined by your ability to speak, your ability to write, and the quality of your ideas—in that order. - Professor Patrick H. Winston
+> Your success in life will be largely determined by your ability to speak, your ability to write, and the quality of your ideas—in that order. - Professor Patrick H. Winston[^2]
 
 May the force be with you 🧙
 
@@ -104,22 +104,15 @@ No, you can always improve upon it. It takes time. Don't wait for it to be perfe
 As long as necessary to cover your content. Have someone pre-read or consume it before publishing.
 {{</details>}}
 
-_References_
-
-- [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/)
-
----
-
-#### [1] What do you mean by out of the ordinary ? {#ref_a}
-
-Writing is about more than just putting words on paper—it's about capturing ideas, sharing knowledge, and making connections. But one of the most compelling reasons to write is to observe and reflect on the world around you.
-
-Consider this: you chat with an Uber driver who owns an iPhone 13. At first, it seems like a normal interaction. But then you realize there's a story there, one that touches on financial literacy. Why would someone in a gig economy job have such an expensive phone? Perhaps they got it through a financing scheme without understanding the high-interest rates. Now, they're paying double the phone's price, which forces them to work 10-hour shifts just to keep up.
-
-These everyday encounters hold stories that can educate and resonate with others. Writing about them can highlight important issues like financial literacy and the impact of debt, making your content not just interesting, but also valuable.
-
-The world is full of oddities and nuances. By writing about them, you can turn everyday moments into powerful narratives. So don't wait for the perfect topic or the perfect time. Start now, observe the world, and write about what you find.
-
----
-
 **Thank you** Vaibhav for reading drafts and suggesions.
+
+[^1]:
+    Writing is about more than just putting words on paper—it's about capturing ideas, sharing knowledge, and making connections. But one of the most compelling reasons to write is to observe and reflect on the world around you.
+
+    Consider this: you chat with an Uber driver who owns an iPhone 13. At first, it seems like a normal interaction. But then you realize there's a story there, one that touches on financial literacy. Why would someone in a gig economy job have such an expensive phone? Perhaps they got it through a financing scheme without understanding the high-interest rates. Now, they're paying double the phone's price, which forces them to work 10-hour shifts just to keep up.
+
+    These everyday encounters hold stories that can educate and resonate with others. Writing about them can highlight important issues like financial literacy and the impact of debt, making your content not just interesting, but also valuable.
+
+    The world is full of oddities and nuances. By writing about them, you can turn everyday moments into powerful narratives. So don't wait for the perfect topic or the perfect time. Start now, observe the world, and write about what you find.
+
+[^2]: [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/)

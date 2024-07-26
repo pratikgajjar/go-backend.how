@@ -264,7 +264,7 @@ cache invalidation logic would become error prone and pollute other business log
 
 We can listen to database changes on these 3 tables to invalidate the result stored in cache against given `card_id`.
 
-In MySQL, we can listen to the [binlog](#binlog) to get notifications about all changes to the database,
+In MySQL, we can listen to the binlog[^1] to get notifications about all changes to the database,
 including both DDL (Data Definition Language) and DML (Data Modification Language) operations.
 
 ```md
@@ -343,27 +343,17 @@ In case of bin-log loss, a Django management command can rebuild the cache for a
 
 ## Optimize Listing Page ?
 
-How do we implement complex filters in redis ?
-How to implement pagination on redis data structures ?
-
-Stay tuned for part 2.
+Stay tuned for Part 2, where we will explore practical techniques for achieving pagination with Redis, including strategies for using sorted sets, lists, and other data structures.
 
 _Just like a good joke, a cache should never be stale. Keep it fresh, keep it fun. Happy coding!_ 😄
 
----
-
-#### [1] What is the binlog ? {#binlog}
-
-The [binary log](https://dev.mysql.com/doc/refman/8.0/en/binary-log.html) contains “events” that describe database changes such as table creation operations or changes to table data. It also contains events for statements that potentially could have made changes (for example, a DELETE which matched no rows), unless row-based logging is used. The binary log also contains information about how long each statement took that updated data.
-
-In PostgresSQL [WAL](https://www.postgresql.org/docs/current/wal-intro.html)
-
-Write-Ahead Logging (WAL) is a standard method for ensuring data integrity. A detailed description can be found in most (if not all) books about transaction processing. Briefly, WAL's central concept is that changes to data files (where tables and indexes reside) must be written only after those changes have been logged, that is, after WAL records describing the changes have been flushed to permanent storage. If we follow this procedure, we do not need to flush data pages to disk on every transaction commit, because we know that in the event of a crash we will be able to recover the database using the log: any changes that have not been applied to the data pages can be redone from the WAL records. (This is roll-forward recovery, also known as REDO.)
-
-Similarly most database platforms provide a way to read database changes.
-
-Data Engineers would be familiar with term - CDC - [Change data capture](https://www.confluent.io/learn/change-data-capture/)
-
-Change data capture (CDC) refers to the tracking of all changes in a data source (databases, data warehouses, etc.) so they can be captured in destination systems. In short, CDC allows organizations to achieve data integrity and consistency across all systems and deployment environments.
-
 **Thank you** Vaibhav for reading drafts and suggesions.
+
+[^1]:
+    Database systems utilize various methods to track and manage changes to data. Two common approaches are the [binary log](https://dev.mysql.com/doc/refman/8.0/en/binary-log.html) in MySQL and Write-Ahead Logging [WAL](https://www.postgresql.org/docs/current/wal-intro.html) in PostgreSQL.
+
+    In MySQL, the binary log records a series of “events” that describe database changes, such as table creation or modifications to table data. It also logs statements that could potentially alter data, even if no actual changes occurred (for example, a DELETE statement that matched no rows). Additionally, the binary log includes information about how long each statement took that updated data.
+
+    PostgreSQL employs Write-Ahead Logging (WAL) to ensure data integrity. The central concept of WAL is to log changes to data files (where tables and indexes reside) before applying those changes to the actual data files. This means that data pages do not need to be flushed to disk on every transaction commit. In the event of a crash, the database can be recovered using the WAL records, which allows for roll-forward recovery, also known as REDO.
+
+    Both MySQL and PostgreSQL, along with other database platforms, offer mechanisms to read and capture changes. One such mechanism is Change Data Capture (CDC). CDC refers to the tracking of all changes in a data source—whether it’s a database, data warehouse, or other system—so that these changes can be captured and propagated to destination systems. This enables organizations to maintain data integrity and consistency across various systems and environments.
