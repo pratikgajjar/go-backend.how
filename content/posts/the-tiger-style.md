@@ -9,7 +9,7 @@ tags = ['TigerBeetle', 'System Design', 'Repost']
 images = []
 +++
 
-Authors¹
+Authors[^1]
 
 - [Evan Schwartz](https://github.com/emschwartz)
 - [Alex Kladov](https://github.com/matklad)
@@ -424,6 +424,4 @@ only because it's fast, but because it's small!
 >
 > “Thank goodness!” said Bilbo laughing, and handed him the tobacco-jar.
 
-Credits to authors of [tiger beetle](https://github.com/tigerbeetle/tigerbeetle/blame/main/docs/TIGER_STYLE.md)
-
-¹List of authors taken from git blame.
+[^1]: List of authors taken from git blame. Credits to authors of [tiger beetle](https://github.com/tigerbeetle/tigerbeetle/blame/main/docs/TIGER_STYLE.md)
