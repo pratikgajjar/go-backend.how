@@ -299,7 +299,7 @@ after: json payload - column values after update
 
 Program would listen to kafka topics that can affect the response of dedicated page and rebuilds or invalidates the cache.
 
-### Infrastructure
+## Infrastructure
 
 We introduced below components.
 
@@ -313,15 +313,15 @@ Now we have distributed systems, there comes fallacies.
 
 > 1. The network is reliable; - [Wiki](https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing)
 
-#### Failure of Consumer Node
+### Failure of Consumer Node
 
 We listen to a Kafka topic and commit only after processing changes to build or invalidate the cache, ensuring at-least-once processing.
 
-#### Failure of Producer Node
+### Failure of Producer Node
 
 In a network partition involving MySQL, Kafka, and the producer node, a worker reads from the MySQL change log and pushes changes into Kafka. If it fails to push changes to Kafka, we avoid data loss by committing the bin-log position with each message to the Kafka topic. Upon failure, we resume reading the bin-log from the last committed position.
 
-#### Failure of Val-key Server
+### Failure of Val-key Server
 
 Using AWS managed ElasticCache, or for a self-hosted approach, running Valkey in cluster mode with auto-failover ensures resilience.
 If the consumer node cannot invalidate the payload due to server failure, it will clear the backlog once the server is available.
@@ -329,11 +329,11 @@ If the consumer node cannot invalidate the payload due to server failure, it wil
 For 10,000 active cars, each with a 20K payload, only 2GB of memory is needed.
 To prevent failures from excessive memory use, set the max-memory policy to volatile-lru and with TTL on keys. This helps manage memory by evicting the least recently used keys with a TTL.
 
-#### Failure of Kafka-cluster
+### Failure of Kafka-cluster
 
 Kafka's resilience comes from having at least 3 brokers and a topic replication factor of at least 2. Higher replication factors increase disk space and network bandwidth usage.
 
-#### Failure of MySQL
+### Failure of MySQL
 
 MySQL's bin-log is disk-stored, so a server restart or connection failure won't cause data loss if the bin-log isn't cleared. The producer will resume from the last bin-log position.
 
@@ -341,7 +341,7 @@ To avoid disk space issues during a prolonged producer failure, set up alarms an
 
 In case of bin-log loss, a Django management command can rebuild the cache for all active cars.
 
-### Optimize Listing Page ?
+## Optimize Listing Page ?
 
 How do we implement complex filters in redis ?
 How to implement pagination on redis data structures ?
