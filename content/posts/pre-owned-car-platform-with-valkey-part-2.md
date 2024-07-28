@@ -154,7 +154,7 @@ class CarFilterSet(filters.FilterSet):
         ]
 ```
 
-In views.py, this gets executed with each request where internally django will apply the filters to the queryset, paginate and serialize the objects into JSON response.
+In views.py, we define how to process the request. Here below viewset gets executed with each request where internally django will apply the filters to the queryset, paginate and serialize the objects into JSON response.
 
 ```py
 from rest_framework import viewsets, mixins
@@ -250,7 +250,7 @@ user-nexon-cars-in-mumbai => model=121&city=1
 
 ## ValKey
 
-Let's go through some of the in-built data structures. ValKey
+Let's go through in-built data structures of ValKey.
 
 ```mermaid
 graph TD
@@ -280,37 +280,34 @@ graph TD
 
 {{< details "[Valkey](https://valkey.io/commands/) COMMAND Ref" >}}
 
-```markdown
-SET Sets the string value of a key, ignoring its type. The key is created if it doesn't exist.
-TTL Returns the expiration time in seconds of a key.
-
-HMSET Sets the values of multiple fields.
-HMGET Returns the values of all fields in a hash.
-HGETALL Returns all fields and values in a hash.
-
-SADD Adds one or more members to a set. Creates the key if it doesn't exist.
-SCARD Returns the number of members in a set.
-SINTER Returns the intersect of multiple sets.
-SINTERSTORE Stores the intersect of multiple sets in a key.
-SISMEMBER Determines whether a member belongs to a set.
-SUNION Returns the union of multiple sets.
-SUNIONSTORE Stores the union of multiple sets in a key.
-
-ZADD Adds one or more members to a sorted set, or updates their scores. Creates the key if it doesn't exist.
-ZCARD Returns the number of members in a sorted set.
-ZCOUNT Returns the count of members in a sorted set that have scores within a range.
-ZDIFFSTORE Stores the difference of multiple sorted sets in a key.
-ZINTERSTORE Stores the intersect of multiple sorted sets in a key.
-ZMSCORE Returns the score of one or more members in a sorted set.
-ZRANGE Returns members in a sorted set within a range of indexes.
-ZRANGEBYSCORE Returns members in a sorted set within a range of scores.
-ZRANGESTORE Stores a range of members from sorted set in a key.
-ZRANK Returns the index of a member in a sorted set ordered by ascending scores.
-ZREM Removes one or more members from a sorted set. Deletes the sorted set if all members were removed.
-ZSCAN Iterates over members and scores of a sorted set.
-ZSCORE Returns the score of a member in a sorted set.
-ZUNION Returns the union of multiple sorted sets.
-ZUNIONSTORE Stores the union of multiple sorted sets in a key.
-```
+| Command         | Description                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| `SET`           | Sets the string value of a key, ignoring its type. The key is created if it doesn't exist.              |
+| `TTL`           | Returns the expiration time in seconds of a key.                                                        |
+| `HMSET`         | Sets the values of multiple fields.                                                                     |
+| `HMGET`         | Returns the values of all fields in a hash.                                                             |
+| `HGETALL`       | Returns all fields and values in a hash.                                                                |
+| `SADD`          | Adds one or more members to a set. Creates the key if it doesn't exist.                                 |
+| `SCARD`         | Returns the number of members in a set.                                                                 |
+| `SINTER`        | Returns the intersection of multiple sets.                                                              |
+| `SINTERSTORE`   | Stores the intersection of multiple sets in a key.                                                      |
+| `SISMEMBER`     | Determines whether a member belongs to a set.                                                           |
+| `SUNION`        | Returns the union of multiple sets.                                                                     |
+| `SUNIONSTORE`   | Stores the union of multiple sets in a key.                                                             |
+| `ZADD`          | Adds one or more members to a sorted set, or updates their scores. Creates the key if it doesn't exist. |
+| `ZCARD`         | Returns the number of members in a sorted set.                                                          |
+| `ZCOUNT`        | Returns the count of members in a sorted set that have scores within a range.                           |
+| `ZDIFFSTORE`    | Stores the difference of multiple sorted sets in a key.                                                 |
+| `ZINTERSTORE`   | Stores the intersection of multiple sorted sets in a key.                                               |
+| `ZMSCORE`       | Returns the score of one or more members in a sorted set.                                               |
+| `ZRANGE`        | Returns members in a sorted set within a range of indexes.                                              |
+| `ZRANGEBYSCORE` | Returns members in a sorted set within a range of scores.                                               |
+| `ZRANGESTORE`   | Stores a range of members from a sorted set in a key.                                                   |
+| `ZRANK`         | Returns the index of a member in a sorted set ordered by ascending scores.                              |
+| `ZREM`          | Removes one or more members from a sorted set. Deletes the sorted set if all members were removed.      |
+| `ZSCAN`         | Iterates over members and scores of a sorted set.                                                       |
+| `ZSCORE`        | Returns the score of a member in a sorted set.                                                          |
+| `ZUNION`        | Returns the union of multiple sorted sets.                                                              |
+| `ZUNIONSTORE`   | Stores the union of multiple sorted sets in a key.                                                      |
 
 {{</details>}}
