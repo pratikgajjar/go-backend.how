@@ -38,7 +38,7 @@ The code for this site is licensed under the GNU General Public License v3.0. Se
 
 All content of this site (blog posts, images, etc.), including previously committed content, is licensed under the Creative Commons Attribution 4.0 International License. See the [LICENSE-CONTENT](LICENSE-CONTENT) file for details.
 
-In case of exceptions specific license is added along side the post content.
+In case of exceptions specific license is added alongside the post content.
 
 ### Exceptions
 
