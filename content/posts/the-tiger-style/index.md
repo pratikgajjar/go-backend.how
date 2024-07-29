@@ -424,4 +424,6 @@ only because it's fast, but because it's small!
 >
 > “Thank goodness!” said Bilbo laughing, and handed him the tobacco-jar.
 
+This document is licensed under the Apache License 2.0. See the [LICENSE-APACHE](./LICENSE) file for details.
+
 [^1]: List of authors taken from git blame. Credits to authors of [tiger beetle](https://github.com/tigerbeetle/tigerbeetle/blame/main/docs/TIGER_STYLE.md)

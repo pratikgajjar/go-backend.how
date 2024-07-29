@@ -2,7 +2,7 @@ baseURL = "https://backend.how/"
 languageCode = "en-us"
 title = "Everything Engineering"
 theme = "coloroid"
-copyright = 'backend.how © 2024 - All rights reserved - pratik'
+copyright = 'backend.how © 2024 by Pratik is licensed under CC BY-SA 4.0'
 enableRobotsTXT = true
 enableEmoji = true
 
