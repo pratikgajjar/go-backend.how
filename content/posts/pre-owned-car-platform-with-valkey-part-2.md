@@ -122,7 +122,7 @@ erDiagram
 
 ```
 
-Note, this isn't a complete schema.
+To simplify and address sufficient edge cases, we've explored a partial schema.
 
 ### Backend
 
@@ -250,35 +250,125 @@ user-nexon-cars-in-mumbai => model=121&city=1
 
 ## ValKey
 
-Let's go through in-built data structures of ValKey.
+We will go through how to model the data in-memory. Let's go core data structures of ValKey for our usecase. We want ability to filter results and fetch details in minimum amount of round trip to ValKey[^1] with optimal space usage.
+
+- Platform will have ~1000-5000 active cars that we need to cache.
+
+### Why Hash Set ?
+
+- To store car detail shown in list response
+- Using `HMGET car: 101 102 103`, we can fetch the data of 3 cars, based on page size we can supply list of IDs to fetch JSON
+- We could store data in key-value format, `car:101 -> JSON`, here `car:` prefix with each key would also use memory. HSET also by default does the compression up to certain size.
+- Maximum page_size is 35, so at max we would fetch 35 car JSON via `HMGET`
+
+#### Invalidation
+
+- As covered in part-1 we are listening to database change log so whenever any details of car that affects response payload we will update the Hash set.
+- When car status changes to terminal state, we would remove the key from Hash set
 
 ```mermaid
 graph TD
-    A[Key-Value]
-    A -->|key| B(value)
-
     C[Hash Set]
-    C -->|key| D[Hash Map]
-    D -->|field1| E(value1)
-    D -->|field2| F(value2)
+    C -->|car:| D[Hash Map]
+    D -->|101| E(String)
+    D -->|102| G(String)
+    D -->|103| H(String)
 ```
+
+### Why Sorted Set ?
+
+- We could use `SORT list BY order` [^2] but it is expensive op. With complexity of O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements.
+- Using sorted set we can filter car list by attributes using set theory[^4].
+  - `ZRANGEBYSCORE car:price 100000 500000` - Cars with price between 100K INR to 500K INR
+  - `ZRANGEBYSCORE car:color 5 5` - Cars with color_id = 5
+  - With complexity O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements returned.
+- When sort order is price, date_added or any other car attributes we will store this filtered sorted list in sorted set and use it for pagination in subsequent requests. Example, key = `page:price:{queryhash}`, ttl = `10 min`
+  - Best case scenario, using combination of cached sorted set and hash set. We can build result page.
+  - `ZRANGE | ZREVRANGE page:price:hash 11 20`, ZRANGE for ascending order and ZREVRANGE for descending.
+  - `HMGET car: 101 108 110 150 123 120 121 156 158 160`
+
+```mermaid
+
+graph TD
+    L[Sorted Set - ZSet]
+    L -->|car:color| M[Sorted Set]
+    M -->|101| N(1)
+    M -->|102| O(4)
+    M -->|103| P(6)
+
+    K[Sorted Set - ZSet]
+    K -->|page:price:2834c5ac15373be27f| X[Sorted Set]
+    X -->|101| U(100000)
+    X -->|102| I(400000)
+    X -->|103| G(600000)
+```
+
+### Why Set ?
+
+When sort order is recommendation, order of cars changes based on buyer persona. We used to train model every 45 min, thus order also can change every 45 min and we would. While calculating queryhash we consider only car related filters as function input. This helps when most buyers are looking at the base page like cars in mumbai city.
+
+#### Cache-Hit
+
+1. Fetch filtered car list
+2. Supply it to recommendation engine
+3. Paginate
+4. Fetch car details via `HMGET`
 
 ```mermaid
 graph TD
     G[Set]
-    G -->|key| H[Set of Values]
-    H --> I(value1)
-    H --> J(value2)
-    H --> K(value3)
+    G -->|page:reco:2834c5ac15373be27f| H[Set of Values]
+    H --> I(1)
+    H --> J(5)
+    H --> K(11)
 
-    L[Sorted Set - ZSet]
-    L -->|key| M[Sorted Set]
-    M -->|member1| N(value1)
-    M -->|member2| O(value2)
-    M -->|member3| P(value3)
 ```
 
-{{< details "[Valkey](https://valkey.io/commands/) COMMAND Ref" >}}
+### Cache-Miss
+
+In case we don't have list of cars cached in sorted set or set post query hash calculation, we need to build those set in this case.
+
+1. Calculate query string hash, with property of `F('city_id=1&color=3') eq F('color=3&city_id=1')`
+2. Cache-Miss - Need to build
+3. Using combination of set operations build target set with filters
+
+- `ZINTERSTORE` - set intersection
+- `ZUNIONSTORE` - set union
+
+4. `ZRANGEBYSCORE` - fetch car ids based on required order.
+
+In certain cases at application (web server) we did the set operations to compute the final set.
+
+```py
+def filter_by_price(redis_con, price_min=None, price_max=None):
+    min_value = price_min if price_min else '-inf'
+    max_value = price_max if price_max else '+inf'
+    return redis_con.zrangebyscore(
+        name="car:price",
+        min=min_value,
+        max=max_value
+    )
+```
+
+#### Dealing with many-to-many relationship
+
+In case you have noticed we have Features table with MxN relationship with Cars table via CarFeatures. As one car can have many features and one feature could be there with multiple cars. How are we filtering here ?
+
+In such cases, instead of going with `car:color` sorted set, we keep sorted set of each feature, `car:feature:{id} -> {car_id} -> 1`
+
+Now we can use intersection and union on these sets to compute the filter.
+
+#### Reducing network round trips
+
+Valkey pipelining[^3] is a technique for improving performance by issuing multiple commands at once without waiting for the response to each individual command.
+
+Pipelining is not just a way to reduce the latency cost associated with the round trip time, it actually greatly improves the number of operations you can perform per second in a given Valkey server. This is because without using pipelining, serving each command is very cheap from the point of view of accessing the data structures and producing the reply, but it is very costly from the point of view of doing the socket I/O. This involves calling the read() and write() syscall, that means going from user land to kernel land. The context switch is a huge speed penalty.
+
+When pipelining is used, many commands are usually read with a single read() system call, and multiple replies are delivered with a single write() system call. Consequently, the number of total queries performed per second initially increases almost linearly with longer pipelines, and eventually reaches 10 times the baseline obtained without pipelining.
+
+We utilised the pipelining method to reduce round trips on Cache-Miss.
+
+[^1]: {{< details "[Valkey](https://valkey.io/commands/) COMMAND Ref" >}}
 
 | Command         | Description                                                                                             |
 | --------------- | ------------------------------------------------------------------------------------------------------- |
@@ -309,5 +399,8 @@ graph TD
 | `ZSCORE`        | Returns the score of a member in a sorted set.                                                          |
 | `ZUNION`        | Returns the union of multiple sorted sets.                                                              |
 | `ZUNIONSTORE`   | Stores the union of multiple sorted sets in a key.                                                      |
-
 {{</details>}}
+
+[^2]: <https://valkey.io/commands/sort/>
+[^3]: <https://valkey.io/topics/pipelining/>
+[^4]: <https://en.wikipedia.org/wiki/Set_theory>
