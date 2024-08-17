@@ -282,6 +282,7 @@ graph TD
   - Best case scenario, using combination of cached sorted set and hash set. We can build result page.
   - `ZRANGE | ZREVRANGE page:price:hash 11 20`, ZRANGE for ascending order and ZREVRANGE for descending.
   - `HMGET car: 101 108 110 150 123 120 121 156 158 160`
+  - `ZCARD page:price:hash` - Count of cars
 
 ```mermaid
 
