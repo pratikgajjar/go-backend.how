@@ -1,6 +1,6 @@
 +++
-title = "🏎️ Building pre-owned Car Platform With Valkey Part 2"
-description = ""
+title = "🏎️ Building pre-owned Car Platform With Valkey - Part 2"
+description = "In Part 2, we will focus on building and optimizing the listing page using Valkey. We will explore how to handle complex filters, manage pagination efficiently, and ensure the listing page loads quickly to provide an excellent user experience."
 date = 2024-07-17T19:54:52+05:30
 lastmod = 2024-07-17T19:54:52+05:30
 publishDate = "2024-07-17T19:54:52+05:30"
