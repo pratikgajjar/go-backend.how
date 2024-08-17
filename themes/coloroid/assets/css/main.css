@@ -259,6 +259,7 @@ ul ul {
     margin: 0;
     padding: 1em;
     overflow-x: auto; /* Enable horizontal scrolling if needed */
+    min-width: 88ch;
 }
 
 .highlight pre code {
