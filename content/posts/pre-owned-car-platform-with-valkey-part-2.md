@@ -132,7 +132,7 @@ In the backend, we are using [Django](https://www.djangoproject.com/) and [Djang
 from django_filters import rest_framework as filters
 
 class CarFilterSet(filters.FilterSet):
-    """Custom filter class for filtering user, you can add different filter attributes later"""
+    """Custom filter class for filtering cars"""
     city_id = filter.NumberFilter(name="locality__city__id", field_name="city_id", lookup_expr="in")
     price_min = django_filters.NumberFilter(name='price', lookup_expr='gte')
     price_max = django_filters.NumberFilter(name='price', lookup_expr='lte')
