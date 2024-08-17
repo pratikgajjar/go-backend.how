@@ -37,8 +37,6 @@ In any ecommerece site, you have ability to filter the listing to narrow down wh
 
 ### Schema
 
-{{< details "Schema with sample data" >}}
-
 Car
 
 | id  | price  | varient_id | color_id | date_created     |
@@ -74,8 +72,6 @@ CarFeatures
 | id  | car_id | feature_id |
 | --- | ------ | ---------- |
 | 1   | 1      | 20         |
-
-{{</details>}}
 
 ```mermaid
 erDiagram
