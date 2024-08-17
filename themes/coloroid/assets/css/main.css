@@ -372,6 +372,11 @@ sup a[href^="#fn"]::after {
   --mocha-crust: #141617;
 }
 
+code {
+  color: var(--mocha-text);
+  background-color: var(--mocha-base);
+}
+
 /* Chroma theme for Hugo */
 .chroma {
   color: var(--mocha-text);
