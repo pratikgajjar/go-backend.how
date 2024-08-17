@@ -4,8 +4,8 @@ description = ""
 date = 2024-07-17T19:54:52+05:30
 lastmod = 2024-07-17T19:54:52+05:30
 publishDate = "2024-07-17T19:54:52+05:30"
-draft = true
-tags = []
+draft = false
+tags = ['Django', 'Redis', 'DRF', 'CDC']
 images = []
 +++
 
