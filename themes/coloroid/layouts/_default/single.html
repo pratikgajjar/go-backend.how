@@ -19,4 +19,5 @@
     {{ partial "ext_link.html" .Content }}
   </div>
   {{ partial "terms.html" (dict "taxonomy" "tags" "page" .) }}
+  {{ partial "hacker-news-comments.html" . }}
 {{ end }}

@@ -1,0 +1,61 @@
+{{ if .Params.hnItemId }}
+<div id="hn-comments">
+  <h3>Hacker News Comments</h2>
+  <div id="hn-comments-list">Loading comments...</div>
+  <a href="https://news.ycombinator.com/item?id={{ .Params.hnItemId }}" target="_blank">Add comment / Upvote on Hacker News</a>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const commentsList = document.getElementById('hn-comments-list');
+  const hnItemId = {{ .Params.hnItemId }};
+  const commentsMap = {};
+
+  fetch(`https://hn.algolia.com/api/v1/search?tags=comment,story_${hnItemId}`)
+    .then(response => response.json())
+    .then(data => {
+      commentsList.innerHTML = ''; // Clear loading message
+      
+      // First pass: Create a map of comments by ID
+      data.hits.forEach(comment => {
+        comment.children = [];
+        commentsMap[comment.objectID] = comment;
+      });
+
+      // Second pass: Organize comments into a tree structure
+      data.hits.forEach(comment => {
+        if (comment.parent_id !== comment.story_id && commentsMap[comment.parent_id]) {
+          commentsMap[comment.parent_id].children.push(comment);
+        } else {
+          commentsList.appendChild(createCommentElement(comment));
+        }
+      });
+    })
+    .catch(error => {
+      commentsList.innerHTML = 'Error loading comments. Please try again later.';
+      console.error('Error fetching comments:', error);
+    });
+
+  function createCommentElement(comment) {
+    const commentDiv = document.createElement('div');
+    commentDiv.className = 'hn-comment';
+    commentDiv.innerHTML = `
+      <p><strong>${comment.author}</strong> | ${new Date(comment.created_at).toLocaleString()}</p>
+      <p>${comment.comment_text}</p>
+    `;
+
+    if (comment.children.length > 0) {
+      const childrenDiv = document.createElement('div');
+      childrenDiv.className = 'hn-comment-children';
+      comment.children.forEach(child => {
+        childrenDiv.appendChild(createCommentElement(child));
+      });
+      commentDiv.appendChild(childrenDiv);
+    }
+
+    return commentDiv;
+  }
+});
+</script>
+{{ end }}
+
