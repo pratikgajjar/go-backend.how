@@ -285,6 +285,14 @@ ul ul {
 table {
     border-collapse: collapse; /* Ensures that borders are not doubled */
     width: 100%; /* Ensures the table takes full width */
+    word-wrap: break-word;
+    table-layout: fixed;
+}
+
+@media screen and (max-width: 600px) {
+  table {
+    font-size: 0.7rem;
+  }
 }
 
 table, th, td {
