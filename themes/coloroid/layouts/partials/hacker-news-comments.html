@@ -5,7 +5,8 @@
   <a href="https://news.ycombinator.com/item?id={{ .Params.hnItemId }}" target="_blank">Add comment / Upvote on Hacker News</a>
 </div>
 
-<script src="/js/hn-comments.js"></script>
+{{ $hnCommentsJS := resources.Get "js/hn-comments.js" | minify | fingerprint }}
+<script src="{{ $hnCommentsJS.Permalink }}"></script>
 
 {{ end }}
 
