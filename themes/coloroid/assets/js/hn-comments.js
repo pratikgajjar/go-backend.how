@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Clear the "Loading comments..." text
     commentsList.innerHTML = '';
 
+    if (data.hits.length === 0) {
+      document.getElementById('no-comments-message').style.display = 'block';
+      return;
+    }
     // First pass: Create a map of comments by ID
     data.hits.forEach(comment => {
       comment.children = [];
