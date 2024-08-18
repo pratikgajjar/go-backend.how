@@ -381,7 +381,18 @@ We utilised the pipelining method to reduce round trips on Cache-Miss.
 
 # Result
 
+Proof or it didn't happen
+
+Note:
+
 - We can horizontally scale valkey read-replicas to serve the read traffic.
+
+{{< figure src="/posts/pre-owned-car-platform-with-valkey-part-2/listing-viewset-list.png" title="List API" alt="NewRelic stats" width="auto" caption="Listing page 4x faster" >}}
+{{< figure src="/posts/pre-owned-car-platform-with-valkey-part-2/listing-viewset-retrieve.png" title="Retrieve API" alt="NewRelic stats" width="auto" caption="Dedicated page 4.7x faster" >}}
+{{< figure src="/posts/pre-owned-car-platform-with-valkey-part-2/overall-stats.png" title="Retrieve API" alt="NewRelic stats" width="auto" caption="Bottleneck moved from database to python" >}}
+{{< figure src="/posts/pre-owned-car-platform-with-valkey-part-2/wrk-bench-diff.png" title="List API" alt="Wrk benchmark" width="auto" caption="We can serve 6x more requests" >}}
+
+Working on performance optimization often requires a deep dive into the execution of programs, leading to a more profound understanding of their inner workings. This was a key focus in a project we undertook in 2021.
 
 [^1]: {{< details "[Valkey](https://valkey.io/commands/) COMMAND Ref" >}}
 

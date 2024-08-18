@@ -7,6 +7,7 @@ publishDate = "2024-08-09T16:42:51+05:30"
 draft = false
 tags = []
 images = []
+hnItemId = 41270300
 +++
 
 Losing SSH access to an Amazon EC2 instance can be a frustrating experience, especially when common solutions like EC2 Instance Connect or Session Manager are unavailable. In this blog post, we'll explore a lesser-known but effective method to regain access by leveraging EC2 user data.
