@@ -353,9 +353,8 @@ sup a[href^="#fn"]::after {
 
 
 #hn-comments {
-  padding: 20px;
-  border-radius: 10px;
-  margin-top: 20px;
+  padding: 5px;
+  margin-top: 10px;
 }
 
 #hn-comments h2 {
@@ -363,8 +362,8 @@ sup a[href^="#fn"]::after {
 }
 
 .hn-comment {
-  margin-bottom: 20px;
-  padding: 15px;
+  margin-bottom: 10px;
+  padding: 5px;
   background-color: #212121;
   border-radius: 5px;
   color: #e0e0e0;
@@ -374,7 +373,7 @@ sup a[href^="#fn"]::after {
   margin: 0;
 }
 
-.hn-comment strong {
+.hn-comment strong a {
   color: #bb86fc;
 }
 
