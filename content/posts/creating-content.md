@@ -6,6 +6,7 @@ lastmod = 2024-06-11T00:01:52+05:30
 tags = ['gyan']
 draft = false
 images = []
+hnItemId = 40781712
 +++
 
 At the end of this, you'll understand the importance of creating content, when to start, and how to begin.
