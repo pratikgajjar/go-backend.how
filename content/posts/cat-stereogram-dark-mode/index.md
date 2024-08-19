@@ -13,7 +13,7 @@ A stereogram is a unique type of image that creates the illusion of a three-dime
 
 # The Cat Stereogram
 
-{{< figure download="/posts/cat-stereogram-dark-mode/cat-stereogram.png" src="/posts/cat-stereogram-dark-mode/cat-stereogram.png" title="cat-stereogram" alt="cat stereogram" width="auto" >}}
+{{< figure download="y" src="cat-stereogram.png" title="cat-stereogram" alt="cat stereogram" width="auto" >}}
 
 ## Benefits of Stereograms for Eye Health
 
@@ -49,7 +49,7 @@ Visualize focusing on a point behind the stereogram. This technique helps align 
 
 Gradually bring the stereogram closer to your eyes until the 3D image becomes visible. Once perceived, adjust the distance for comfortable viewing.
 
-{{< figure src="/posts/cat-stereogram-dark-mode/cat-vision.png" title="Visual of cat stereogram" alt="cat stereogram visualized" caption="When vision merges both cats" width="auto" >}}
+{{< figure src="cat-vision.png" title="Visual of cat stereogram" alt="cat stereogram visualized" caption="When vision merges both cats" width="auto" >}}
 
 ## Conclusion
 
