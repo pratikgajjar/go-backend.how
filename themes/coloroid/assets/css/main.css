@@ -263,6 +263,12 @@ ul ul {
     min-width: 88ch;
 }
 
+.mermaid {
+  max-width: 100%;
+  overflow-x: auto; 
+  box-sizing: border-box;
+}
+
 .highlight pre code {
     display: block;
     white-space: pre-wrap; /* Preserve line breaks */
