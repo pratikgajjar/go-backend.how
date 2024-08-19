@@ -269,18 +269,14 @@ ul ul {
 }
 
 .rss-feed {
-  display: flex;
-  align-items: center;
-}
-
-.rss-feed span {
-  margin-right: 8px; /* Adjust the spacing as needed */
+  display: inline-block;
 }
 
 .rss-feed img {
-  width: 1rem; /* Adjust the size as needed */
-  height: 1rem; /* Adjust the size as needed */
+  width: 2rem; /* Adjust the size as needed */
+  height: 2rem; /* Adjust the size as needed */
   border-radius: 2px;
+  margin: 0;
 }
 
 table {
