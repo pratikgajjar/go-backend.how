@@ -377,6 +377,12 @@ sup a[href^="#fn"]::after {
   color: #bb86fc;
 }
 
+.blur-image {
+  position: absolute; 
+  top: 0px; 
+  left: 0px;
+}
+
 /* Syntax highlight base theme colors */
 :root {
   --mocha-rosewater: #ea6962;
