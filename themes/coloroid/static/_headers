@@ -20,3 +20,9 @@
 /favicon.ico
   ! Cache-Control
   Cache-Control: public, max-age=2592000, stale-while-revalidate
+
+/*.svg
+  Cache-Control: public, max-age=2592000, stale-while-revalidate
+
+/*.png
+  Cache-Control: public, max-age=2592000, stale-while-revalidate
