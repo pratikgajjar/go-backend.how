@@ -1,15 +1,21 @@
-{{- $img := .Get "src" -}}
+{{- $src := .Get "src" -}}
 {{- $alt := .Get "alt" -}}
 {{- $caption := .Get "caption" -}}
 {{- $downloadURL := .Get "download" -}}
 
+{{ with .Page.Resources.GetMatch $src }}
+  {{ $image := . }}
 <figure>
-    <img src="{{ $img | safeURL }}" alt="{{ $alt }}">
+    <img src="{{ $image.RelPermalink }}" 
+         alt="{{ $alt }}"
+         width="{{ $image.Width }}" 
+         height="{{ $image.Height }}"
+         loading="lazy">
     {{ with $caption }}
         <figcaption>{{ . }}</figcaption>
     {{ end }}
     {{ with $downloadURL }}
-        <div><a href="{{ . }}" download>Download</a></div>
+        <div><a href="{{ $image.RelPermalink }}" download>Download</a></div>
     {{ end }}
 </figure>
-
+{{ end }}
