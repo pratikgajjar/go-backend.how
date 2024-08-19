@@ -7,7 +7,7 @@
 </div>
 
 {{ $hnCommentsJS := resources.Get "js/hn-comments.js" | minify | fingerprint }}
-<script src="{{ $hnCommentsJS.Permalink }}"></script>
+<script src="{{ $hnCommentsJS.Permalink }}" defer></script>
 
 {{ end }}
 
