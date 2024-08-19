@@ -383,6 +383,12 @@ sup a[href^="#fn"]::after {
   left: 0px;
 }
 
+.footnotes {
+    max-width: 100%;
+    margin: 0 auto;
+    word-wrap: break-word;
+}
+
 /* Syntax highlight base theme colors */
 :root {
   --mocha-rosewater: #ea6962;
