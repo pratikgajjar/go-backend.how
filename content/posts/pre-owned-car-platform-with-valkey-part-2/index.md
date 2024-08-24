@@ -18,21 +18,25 @@ We will review the existing design and discuss how we mapped our business use ca
 
 # What ?
 
-Listing Page - A catalog of cars with basic information and filter or order list of cars.
+The listing page is where users first interact with our inventory. It displays a comprehensive list of cars with basic information and provides filters and ordering options to help users refine their search effectively. Our goal is to ensure this page loads quickly and efficiently, as it plays a crucial role in reducing bounce rates.
 
 # Why ?
 
-As we discussed in part-1, ~40-60% ads leads to listing page which shows list of cars. So we want to reduce page load time to reduce bounce rate.
+As we discovered in Part 1, approximately 40-60% of user interactions begin with the listing page. Therefore, optimizing its performance can significantly improve the overall user experience, increase engagement, and ultimately drive more sales.
 
 # Specification
 
-- Filters
-- Pagination
-- Recommendation Model
+To meet our users' needs, we've identified three key features for the listing page:
+
+**Filters**: Allow users to narrow down their search by applying various filters such as make, model, year, price range, mileage, etc.
+
+**Pagination**: Divide the extensive list of cars into manageable pages to improve load times and user experience.
+
+**Recommendation Model**: Use a recommendation engine to order the cars based on user's browsing history or preferences.
 
 # Filters
 
-In any ecommerece site, you have ability to filter the listing to narrow down what you are looking for. Here lets review how this works behind the scene using database.
+In a typical e-commerce site, filters help narrow down the vast inventory by applying complex queries behind the scene. Let's see how we can handle this using SQL Database.
 
 ## Database
 
@@ -151,7 +155,15 @@ class CarFilterSet(filters.FilterSet):
         ]
 ```
 
-In views.py, we define how to process the request. Here below viewset gets executed with each request where internally django will apply the filters to the queryset, paginate and serialize the objects into JSON response.
+When we're handling requests in Django using ViewSets (as part of Django Rest Framework), each incoming request triggers the execution of that specific ViewSet. Here's what happens under the hood with each request:
+
+1. **Filtering**: We define filters in our serializers or viewsets, which Django Rest Framework applies to our queryset. This means only the relevant objects that match the filtering criteria are considered for further processing.
+
+2. **Pagination**: If pagination is enabled (which it usually is), Django Rest Framework splits up the filtered queryset into smaller, paginated chunks. This helps manage large datasets and improves performance by reducing the amount of data processed at once.
+
+3. **Serialization**: Once we have our paginated queryset, Django Rest Framework serializes these objects into JSON format. In other words, it converts our Django models or querysets into a JSON response that can be easily sent back to the client (your frontend or API consumer).
+
+So, each time you send a request to one of your API endpoints using ViewSets, this series of operations happens behind the scenes: filtering based on defined criteria, paginating the results for efficiency, and then converting those results into JSON format for transmission.
 
 ```py
 from rest_framework import viewsets, mixins
@@ -247,21 +259,23 @@ user-nexon-cars-in-mumbai => model=121&city=1
 
 ## ValKey
 
-We will go through how to model the data in-memory. Let's go core data structures of ValKey for our usecase. We want ability to filter results and fetch details in minimum amount of round trip to ValKey[^1] with optimal space usage.
-
-- Platform will have ~1000-5000 active cars.
+We'll discuss how to efficiently store and retrieve car data in-memory, aiming to minimize round trips to ValKey while optimizing space usage.
 
 ### Why Use a Hash Set?
 
-- To efficiently store car details that are shown in list responses.
-- We can fetch data for multiple cars using `HMGET car: 101 102 103`. Based on the page size, we can supply a list of IDs to retrieve the JSON data.
-- While we could store data in a key-value format like `car:101 -> JSON`, this approach would use additional memory for the `car:` prefix with each key. In contrast, HSET provides automatic compression for data up to a certain size.
-- With a maximum page size of 35, we would fetch at most 35 car JSON objects via a single `HMGET` operation, optimizing data retrieval.
+To swiftly serve car details displayed in list responses, we'll use a hash set. This approach offers several benefits.
 
-#### Invalidation
+**Efficient retrieval:** We can fetch data for multiple cars using `HMGET car: 101 102 103`, reducing the number of requests needed to retrieve JSON data based on page size.
 
-- As covered in part 1, we are listening to the database change log. Whenever any details of a car that affect the response payload change, we will update the Hash set.
-- When a car's status changes to a terminal state, we will remove its key from the Hash set.
+**Automatic compression:** hash set provides automatic compression for data up to `hash-zipmap-max-entries`, saving memory compared to storing data in individual keys with prefixes.
+
+**Ideal for paginated responses:** With a maximum page size of 35, we can fetch up to 35 car JSON objects via a single `HMGET` operation, optimizing data retrieval for our use case.
+
+> the Redis setting ‘hash-zipmap-max-entries’ configures the maximum number of entries a hash can have while still being encoded efficiently. - [Instagram Blog](https://instagram-engineering.com/storing-hundreds-of-millions-of-simple-key-value-pairs-in-redis-1091ae80f74c)
+
+#### Data Consistency and Invalidation
+
+To maintain data consistency, we're listening to the database change log. Whenever any details affecting the response payload change, we update the relevant keys in the hash set accordingly. Additionally, when a car's status changes to a terminal state (e.g., sold or removed), we remove its key from the hash set.
 
 ```mermaid
 graph TD
@@ -274,19 +288,39 @@ graph TD
 
 ### Why Use a Sorted Set?
 
-- While we could use `SORT list BY order`[^2], it is an expensive operation with a complexity of O(N+M*log(M)), where N is the number of elements in the list or set to sort, and M is the number of returned elements.
-- Sorted sets allow us to efficiently filter car lists by attributes using set theory[^4]:
-  - `ZRANGEBYSCORE car:price 100000 500000` retrieves cars with prices between 100K INR and 500K INR.
-  - `ZRANGEBYSCORE car:color 5 5` fetches cars with color_id = 5.
-  - These operations have a complexity of O(log(N)+M), where N is the number of elements in the sorted set and M is the number of elements returned.
-- When the sort order is based on car attributes like price or date_added, we store the filtered sorted list in a sorted set and use it for pagination in subsequent requests. For example:
-  - Key: `page:price:{queryhash}`, TTL: 10 minutes
-  - In the best-case scenario, we can build the result page using a combination of the cached sorted set and hash set:
-    1. `ZRANGE page:price:hash 11 20` (or `ZREVRANGE` for descending order)
-    2. `HMGET car: 101 108 110 150 123 120 121 156 158 160`
-    3. `ZCARD page:price:hash` to get the count of cars
+Sorted sets offer efficient data retrieval and filtering in ValKey, making them particularly useful for tasks like pagination and attribute-based searches. Here's why:
 
-This approach optimizes data retrieval and filtering operations, improving overall performance. Here note that for any buyer sort order for given query will always stay the same as it depends only on car information.
+#### Efficient Filtering with Set Theory
+
+While we could use sorting (`SORT` command) on lists or sets to retrieve elements, it's an expensive operation with a time complexity of O(N+M\*log(M)), where:
+
+- N is the number of elements in the list/set to sort
+- M is the number of returned elements
+
+Sorted sets allow us to efficiently filter and retrieve data based on attributes using set theory operations:
+
+- Retrieve cars with prices between 100K INR and 500K INR:
+  ```
+  ZRANGEBYSCORE car:price 100000 500000
+  ```
+- Fetch cars with color_id = 5:
+  ```
+  ZRANGEBYSCORE car:color 5 5
+  ```
+
+These operations have a time complexity of O(log(N)+M), making them more efficient than sorting lists/sets. Here, N is the number of elements in the sorted set, and M is the number of returned elements.
+
+#### Optimized Pagination with Caching
+
+When sorting order depends on attributes like price or date_added, we can optimize subsequent requests by storing the filtered sorted list in a sorted set and using it for pagination. Here's how:
+
+1. Store the result page in a sorted set with a key like `page:price:{queryhash}` (where `{queryhash}` is a unique identifier for the query) and an appropriate Time-To-Live (TTL).
+2. Retrieve cars for the requested page using:
+   - `ZRANGE` or `ZREVRANGE` to fetch elements based on their score and rank
+   - `HMGET` to retrieve specific car details from a hash set like `car:`
+3. Use `ZCARD` to determine the total count of cars in the result page.
+
+This approach reduces redundant data retrieval operations, improving overall performance. Since sort order depends solely on car information, it remains consistent for any given query.
 
 ```mermaid
 
@@ -304,22 +338,21 @@ graph TD
     X -->|103| G(600000)
 ```
 
-### Why Set ?
+### Why Use Unordered Sets ?
 
-When the sort order is based on recommendations, the order of cars changes according to the buyer's persona. We used to train our recommendation model every 45 minutes, which means the order of cars can also change at this interval.
+When the sort order of cars depends on personalized recommendations, the order changes according to the buyer's persona every 45 minutes when we retrain our recommendation model. To optimize this dynamic ordering process:
 
-To optimize this process
+**Calculate query hash**: We compute a unique query hash using only car-related filters as function inputs. This approach is particularly useful for popular base pages, such as cars available in Mumbai city.
 
-- We calculate the query hash using only car-related filters as function inputs.
-- This approach is particularly beneficial when most buyers are viewing base pages, such as cars available in Mumbai city.
+**Store car IDs in an unordered set**: By using an unordered set, we disregard the order of cars at storage time. Instead, we rely on our LightFM model to calculate and apply personalized ordering in real-time from the pre-loaded model residing in the web server's memory.
 
-By using a Set, we ignore the order of cars, as it is calculated at runtime by the LightFM model pre-loaded in the web server's memory. This approach offers several advantages:
+This method offers several advantages:
 
-- It avoids storing N (where N is the size of the user base) possible combinations of car orders for broad queries, such as "cars available in Mumbai city."
-- It reduces storage requirements and simplifies data management in Valkey.
-- It allows for real-time personalization without the need to pre-compute and store multiple versions of ordered lists.
+- It **avoids storing** N possible combinations of car orders for broad queries by **merely storing** relevant car IDs.
+- It **reduces storage requirements** and simplifies data management in our internal system, Valkey.
+- It **enables real-time personalization** without the need to pre-compute and store multiple ordered lists, allowing for scalable and responsive serving of car listings.
 
-This method efficiently handles personalized recommendations while minimizing storage overhead, especially for popular, broad queries that many users might access simultaneously. The Set stores only the relevant car IDs, while the web server handles the personalized ordering, creating a scalable and responsive system for serving car listings.
+This approach efficiently handles personalized recommendations while minimizing storage overhead, especially for popular, broad queries that many users might access simultaneously. By storing only the relevant car IDs in an unordered set, we rely on the web server to handle personalized ordering dynamically, creating a scalable and responsive system.
 
 ```mermaid
 graph TD
@@ -331,27 +364,32 @@ graph TD
 
 ```
 
-#### Cache-Hit
+### Cache-Hit
 
-1. Fetch filtered car set
-2. Supply it to recommendation engine
-3. Paginate (at application via list comprehension)
-4. Fetch car details via `HMGET`
+1. Retrieve precomputed filtered car IDs from ValKey using the query string hash as the key.
+2. Provide the fetched car IDs to our recommendation engine for further processing.
+3. Paginate results at the application level using list comprehension to reduce data transfer and improve performance.
+4. Fetch additional car details using `HMGET`, retrieving multiple hash fields efficiently.
 
 ### Cache-Miss
 
-In case we don't have list of cars cached in sorted set or set post query hash calculation, we need to build those set in this case.
+If the filtered car set is not cached in ValKey following query string hash calculation, perform the following steps:
 
-1. Calculate query string hash, with property of `F('city_id=1&color=3,4') eq F('color=4,3&city_id=1')`
-2. Cache-Miss
-3. Using combination of set operations build target set with filters
+1. Calculate query string hash
+   - Ensure hashes are consistent regardless of filter order (e.g., `F('city_id=1&color=3,4') eq F('color=4,3&city_id=1')`).
+2. Cache-Miss: Proceed to build the target car set with filters.
+3. Build target car IDs using set operations:
+   - Intersect existing sets using `ZINTERSTORE` to efficiently create new sets based on given filter combinations:
+     ```
+     ZINTERSTORE filtered_cars 2 cars_set_1 cars_set_2
+     ```
+   - Alternatively, combine existing sets using `ZUNIONSTORE`:
+     ```
+     ZUNIONSTORE all_cars 3 cars_set_1 cars_set_2 cars_set_3 AGGREGATE MAX
+     ```
+4. Fetch car IDs based on required order using `ZRANGEBYSCORE`.
 
-- `ZINTERSTORE` - Stores the intersection of multiple sorted sets in a key.
-- `ZUNIONSTORE` - Stores the union of multiple sorted sets in a key.
-
-4. `ZRANGEBYSCORE` - fetch car ids based on required order.
-
-In certain cases at application (web server) we did the set operations to compute the resulting list of cars.
+In some cases, perform set operations at the application (web server) level to compute the resulting list of cars before fetching details with `HMGET`.
 
 ```py
 def filter_by_price(redis_pipe, price_min='-inf', price_max='+inf'):
@@ -384,13 +422,14 @@ We utilised the pipelining method to reduce round trips on Cache-Miss.
 
 Proof or it didn't happen
 
-Note:
+## Before and after Optimization
 
-- We can horizontally scale valkey read-replicas to serve the read traffic.
+{{< figure src="listing-viewset-list.png" title="List API: 4x faster" alt="NewRelic stats" width="auto" caption="Listing page 4x faster" >}}
+{{< figure src="listing-viewset-retrieve.png" title="Retrieve API: 4.7x faster" alt="NewRelic stats" width="auto" caption="Dedicated page 4.7x faster" >}}
+{{< figure src="overall-stats.png" title="Bottlenect moved from database to Python" alt="NewRelic stats" width="auto" caption="Bottleneck moved from database to python" >}}
 
-{{< figure src="listing-viewset-list.png" title="List API" alt="NewRelic stats" width="auto" caption="Listing page 4x faster" >}}
-{{< figure src="listing-viewset-retrieve.png" title="Retrieve API" alt="NewRelic stats" width="auto" caption="Dedicated page 4.7x faster" >}}
-{{< figure src="overall-stats.png" title="Retrieve API" alt="NewRelic stats" width="auto" caption="Bottleneck moved from database to python" >}}
+## Wrk Benchmark
+
 {{< figure src="wrk-bench-diff.png" title="List API" alt="Wrk benchmark" width="auto" caption="We can serve 6x more requests" >}}
 
 Working on performance optimization often requires a deep dive into the execution of programs, leading to a more profound understanding of their inner workings. This was a key focus in a project we undertook in 2021.
@@ -426,8 +465,11 @@ Working on performance optimization often requires a deep dive into the executio
 | `ZSCORE`        | Returns the score of a member in a sorted set.                                                          |
 | `ZUNION`        | Returns the union of multiple sorted sets.                                                              |
 | `ZUNIONSTORE`   | Stores the union of multiple sorted sets in a key.                                                      |
+
 {{</details>}}
 
 [^2]: <https://valkey.io/commands/sort/>
+
 [^3]: <https://valkey.io/topics/pipelining/>
+
 [^4]: <https://en.wikipedia.org/wiki/Set_theory>
