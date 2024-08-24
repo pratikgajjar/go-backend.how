@@ -259,7 +259,7 @@ user-nexon-cars-in-mumbai => model=121&city=1
 
 ## ValKey
 
-We'll discuss how to efficiently store and retrieve car data in-memory, aiming to minimize round trips to ValKey while optimizing space usage.
+We'll discuss how to efficiently store and retrieve car data in-memory, aiming to minimize round trips to ValKey[^1] while optimizing space usage.
 
 ### Why Use a Hash Set?
 
@@ -292,12 +292,12 @@ Sorted sets offer efficient data retrieval and filtering in ValKey, making them 
 
 #### Efficient Filtering with Set Theory
 
-While we could use sorting (`SORT` command) on lists or sets to retrieve elements, it's an expensive operation with a time complexity of O(N+M\*log(M)), where:
+While we could use sorting (`SORT` command)[^2] on lists or sets to retrieve elements, it's an expensive operation with a time complexity of O(N+M\*log(M)), where:
 
 - N is the number of elements in the list/set to sort
 - M is the number of returned elements
 
-Sorted sets allow us to efficiently filter and retrieve data based on attributes using set theory operations:
+Sorted sets allow us to efficiently filter and retrieve data based on attributes using set theory[^4] operations:
 
 - Retrieve cars with prices between 100K INR and 500K INR:
   ```
