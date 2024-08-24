@@ -420,7 +420,7 @@ We utilised the pipelining method to reduce round trips on Cache-Miss.
 
 # Result
 
-Proof or it didn't happen
+🔍 Proof or it didn't happen!
 
 ## Before and after Optimization
 
