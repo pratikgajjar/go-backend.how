@@ -235,7 +235,7 @@ HTTP 200 OK
 }
 ```
 
-To improve SEO, we implemented dynamic slugs in our URLs, making them more human-friendly. For example, when someone searches for "Used Nexon car" on Google, our indexed page will already have a URL that reflects this search term. This approach enhances our search visibility and aligns our URLs with user queries, increasing the likelihood of attracting relevant traffic.
+To improve SEO performance, we've incorporated dynamic slugs into our URLs, rendering them more intuitive and user-friendly. When a user searches Google for "Used Nexon car," our indexed page's URL now mirrors this exact search query, boosting our visibility in those specific results and aligning our content with the user's intent – ultimately drawing in more relevant traffic.
 
 ```sql
 🌐 https://car.com/used-nexon-cars-in-mumbai
