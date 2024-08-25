@@ -1,27 +1,66 @@
 {{ if and (.IsPage) (eq .Section "posts") }}
 
 <div class="post-navigation">
-  {{ with .PrevInSection }}
+    {{ with .PrevInSection }}
     <a class="prev-post" href="{{ .RelPermalink }}">&lt;PREV {{ .Title }}</a>
-  {{ end }}
-  {{ with .NextInSection }}
+    {{ end }} {{ with .NextInSection }}
     <a class="next-post" href="{{ .RelPermalink }}">{{ .Title }} NEXT&gt; </a>
-  {{ end }}
+    {{ end }}
 </div>
 
-<hr>
-Enjoyed this article? Got questions or comments? Reach out to me at pg [at] backend.how! I love hearing from readers. For corrections, feel free to create a <a href="https://github.com/pratikgajjar/go-backend.how/">PR</a>.
-{{ end }}
+<hr />
+Enjoyed this article? Got questions or comments? Reach out to me at pg [at]
+backend.how! I love hearing from readers. For corrections, feel free to create a
+<a href="https://github.com/pratikgajjar/go-backend.how/">PR</a>. {{ end }}
 
-<p xmlns:cc="http://creativecommons.org/ns#" xmlns:dct="http://purl.org/dc/terms/">
-  <a href="https://github.com/pratikgajjar/go-backend.how">GitHub</a> |
-  <a property="dct:title" rel="cc:attributionURL" href="https://backend.how">backend.how</a> © {{ now.Year }} by <a rel="cc:attributionURL dct:creator" property="cc:attributionName" href="https://github.com/pratikgajjar/">Pratik</a> is licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/?ref=chooser-v1" target="_blank" rel="license noopener noreferrer" style="display: inline-flex;align-items: center;">CC BY-SA 4.0
-    <img loading="lazy" style="height:1em!important;margin-left:3px;" nonce="cc" src="/cc.svg" alt="">
-    <img loading="lazy" style="height:1em!important;margin-left:3px;" nonce="cc" src="/by.svg" alt="">
-    <img loading="lazy" style="height:1em!important;margin-left:3px;" nonce="cc" src="/sa.svg" alt="">
-</a>
+<p
+    xmlns:cc="http://creativecommons.org/ns#"
+    xmlns:dct="http://purl.org/dc/terms/"
+>
+    <a href="https://github.com/pratikgajjar/go-backend.how"
+        >{{ getenv "CF_PAGES_COMMIT_SHA" }}</a
+    >
+    |
+    <a property="dct:title" rel="cc:attributionURL" href="https://backend.how"
+        >backend.how</a
+    >
+    © {{ now.Year }} by
+    <a
+        rel="cc:attributionURL dct:creator"
+        property="cc:attributionName"
+        href="https://github.com/pratikgajjar/"
+        >Pratik</a
+    >
+    is licensed under
+    <a
+        href="https://creativecommons.org/licenses/by-sa/4.0/?ref=chooser-v1"
+        target="_blank"
+        rel="license noopener noreferrer"
+        style="display: inline-flex; align-items: center"
+        >CC BY-SA 4.0
+        <img
+            loading="lazy"
+            style="height: 1em !important; margin-left: 3px"
+            nonce="cc"
+            src="/cc.svg"
+            alt=""
+        />
+        <img
+            loading="lazy"
+            style="height: 1em !important; margin-left: 3px"
+            nonce="cc"
+            src="/by.svg"
+            alt=""
+        />
+        <img
+            loading="lazy"
+            style="height: 1em !important; margin-left: 3px"
+            nonce="cc"
+            src="/sa.svg"
+            alt=""
+        />
+    </a>
 </p>
 <a class="rss-feed" href="/posts/index.xml" target="_blank">
-  <img loading="lazy" src="/rss.svg" alt="RSS feed icon"/>
+    <img loading="lazy" src="/rss.svg" alt="RSS feed icon" />
 </a>
-
