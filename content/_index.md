@@ -23,3 +23,7 @@ Hi, I'm Pratik. As a software engineer, I enjoy tackling both technical challeng
 - [Let me know!](https://github.com/pratikgajjar/go-backend.how)
 
 More at [about me!](/about/)
+
+---
+
+# Posts
