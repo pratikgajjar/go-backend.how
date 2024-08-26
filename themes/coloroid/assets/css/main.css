@@ -116,7 +116,11 @@ img {
 }
 
 code {
+  color: var(--mocha-text);
+  background-color: var(--mocha-base);
   font-family: "Inconsolata", monospace;
+  border-radius: 2px;
+  white-space: pre-wrap;
 }
 
 
@@ -422,8 +426,6 @@ sup a[href^="#fn"]::after {
 }
 
 code {
-  color: var(--mocha-text);
-  background-color: var(--mocha-base);
 }
 
 /* Chroma theme for Hugo */
