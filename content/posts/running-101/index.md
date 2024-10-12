@@ -127,6 +127,8 @@ GCT is the time your foot spends in contact with the ground during each stride, 
 
 Shorter ground contact times often indicate a more efficient, quicker stride. Elite runners tend to have shorter GCT, which can help reduce impact and improve speed.
 
+{{< youtube id=Jj9ZgQgQvBk start=207 loading=lazy >}}
+
 ### Heart Rate Zones
 
 Heart rate zones are ranges of heart rates that correspond to different levels of effort, usually divided into 5 zones, from easy (zone 1) to maximum effort (zone 5).
@@ -162,6 +164,8 @@ spotify users checkout - <https://open.spotify.com/artist/2pvCOW7OAq8uJSnQlL8Yhq
 youtube - <https://music.youtube.com/channel/UCM2RlbR4aNXSKVZfVajvCGQ>
 
 They have beats running at 140, 150, 160, 170, 180 cadence which gives constant feedback to ensure you are running at target rate.
+
+{{< youtube id=Jj9ZgQgQvBk start= loading=lazy >}}
 
 # Result
 
