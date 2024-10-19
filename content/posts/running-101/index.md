@@ -9,6 +9,14 @@ tags = [ "gyan", "health" ]
 images = []
 +++
 
+tldr;
+
+- Set a clear goal.
+- Track your performance, focus on one metric at a time.
+- Vary your runs, but maintain consistency.
+- Maintain a consistent pace throughout your target run(s).
+- Focus on nutritions and strength training.
+
 # Setting Goals
 
 I am a 27-year-old software engineer writing in the year 2024. I spend most of my time sitting for work, and since grade 12, I've been aspiring to have a six-pack as it's often seen as 'cool.' As a football fan, I'm aware that players typically peak between their late twenties and early thirties, with an analysis by The Athletic[^1] suggesting that the optimal age for different positions ranges from 27 to 31 years old. Thus, I set myself the goal of reaching peak physical fitness by my late twenties.
