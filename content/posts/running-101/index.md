@@ -15,7 +15,7 @@ I am a 27-year-old software engineer writing in the year 2024. I spend most of m
 
 However, I am more inclined towards outdoor activities than hitting the gym. I would much prefer playing sports outdoors for hours rather than working out indoors. Therefore, I've set a new goal: reducing my body fat percentage to around 8%. This is because everyone has abdominal muscles; they're just hidden beneath layers of fat.
 
-> "No man has the right to be an amateur in the matter of physical training. It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable." -- Socrates
+> "The most successful people I know believe in themselves almost to the point of delusion." -- Sam Altman ([@sama](https://x.com/sama))
 
 # Plan
 
@@ -40,7 +40,7 @@ I utilized Garmin's AI coach feature to create a personalized running schedule a
 
 Now, with my customized plan in hand, I have clear guidance on when and how much to run each day, based on the initial data gathered from my first few sessions. This structured approach has helped me maintain consistency while minimizing the risk of injury.
 
-> "The most successful people I know believe in themselves almost to the point of delusion." -- Sam Altman ([@sama](https://x.com/sama))
+> "No man has the right to be an amateur in the matter of physical training. It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable." -- Socrates
 
 ## How to breath ?
 
