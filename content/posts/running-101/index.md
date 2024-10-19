@@ -1,6 +1,6 @@
 +++
-title = "Running 101"
-description = ""
+title = "🏃 Running 101"
+description = "Discover the journey and achievements of an avid runner who completed a 100km challenge in 30 days, reduced BMI from 24.1 to 22.3, and improved their running pace and resting heart rate. Learn about their strategies for music, nutrition, hydration, and more to enhance your own running performance."
 date = 2024-10-12T23:45:31+05:30
 lastmod = 2024-10-12T23:45:31+05:30
 publishDate = "2024-10-12T23:45:31+05:30"
