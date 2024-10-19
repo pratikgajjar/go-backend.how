@@ -65,7 +65,9 @@ Output metrics are the effect.
 ### Cadence
 
 Cadence is the number of times each foot touches the ground in a minute during a running activity. It's measured in steps per minute (spm). Garmin has researched many runners of all different levels. In general, more experienced runners tend to have a higher cadence.
+
 An often-cited target for running cadence is 180 spm. Higher cadences are associated with lower vertical oscillation and shorter ground contact time Taller runners tend to have somewhat lower cadence.
+
 The zones in the table below show the percentile of runners that occupy each zone, as well as the cadence ranges for each zone.
 
 | Percentile in Zone | Cadence Range |
