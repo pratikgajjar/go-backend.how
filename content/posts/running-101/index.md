@@ -42,67 +42,31 @@ Now, with my customized plan in hand, I have clear guidance on when and how much
 
 > "No man has the right to be an amateur in the matter of physical training. It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable." -- Socrates
 
-## How to breath ?
+Let's look at top line metrics that we should chase to become efficient runner.
 
-Why ? our body needs oxygen to pump those muscles and lungs provides oxygen that goes into bloodstream. Here higher the VO2 Max, easier it becomes to run easily. To increase VO2 Max, one needs to run.
+{{< figure src="running-metric.svg" title="Metrics" alt="Running metrics" width="auto" >}}
 
-In general, body figures out what to do when in rhythm of running. I generally try to breath in and out from nose as much as i can, again not applying force if needs to exhale or inhale via mouth it's okay. When you watch Olympic runners running you'll notice they run with pretty relaxed posture and breathing. Taking full breath is important. Thus, I try to inhale for 2-3 steps then exhale in 2 steps, in case out of breath inhale from nose in 2-3 steps and exhale via mouth.
+## Metrics
 
-## Foot strike ?
+Input metrics are those we should improve upon through continous training.
 
-Defined based on strike of the foot.
+- Cadence
+- Vertical Ratio
+- Vertical Oscillation
+- Ground Contact Time
 
-It comes naturally, whatever it is it's okay although heel strike in less recommended.
+Output metrics are the effect.
 
-When I started for first 2-3 runs I was heel striker, next 2-3 runs I went with front foot and oh at start muscles were not strong so felt slight pain, later on doing this regular basis not more pain in backfoot.
-
-### Forefoot strike
-
-Forefoot runners land on the ball of their foot or on their toes. As they stride, their heel may not hit the ground at all. This stride can cause your body to lean forward. It may put additional strain on your toes and calf muscles.
-
-Landing on the balls of the feet is considered effective. But landing on the toes may cause injury if you’re a distance runner. Although it’s effective for sprinting and short bursts of speed, landing too far forward on your toes isn’t recommended for longer distances. It could lead to shin splints or other injuries.
-
-Common injuries: You may be more prone to injure your ankle, Achilles tendon, or shins.
-
-### Midfoot strike
-
-Considered the most “neutral” strike, midfoot strikers land in the center of their foot, with their body weight evenly distributed to the ankles, hips, back, and knees. Midfoot runners may be able to run efficiently and with speed.
-
-Common injuries: You may experience foot, ankle, or Achilles pain at some point.
-
-### Heel strike
-
-As mentioned, heel strikers hit the ground with their heels first before the rest of their foot hits the ground. This can put additional strain on the knees. [^2]
-
-Common injuries: You may be more prone to knee and hip pain.
-
-## Running efficiently ?
-
-{{< youtube id=_kGESn8ArrU start=155 loading=lazy >}}
-
-### Pace (min/km)
-
-This metric represents the time it takes to run one kilometer (min/km). It gives you a clear understanding of how fast you're running.
-
-Monitoring your pace helps in maintaining a steady and consistent speed throughout a run. It’s essential for improving race times or reaching specific goals, as you can adjust your speed based on your target pace.
-
-### Heart Rate (HR)
-
-Your heart rate measures how many times your heart beats per minute (bpm) during a run.
-
-Tracking your heart rate is crucial for understanding effort levels. It helps you ensure you’re training in the correct intensity zone to avoid overexertion or undertraining. It’s especially helpful for endurance training, where maintaining a lower heart rate can allow for longer durations of running.
-
-### Power
-
-Power (measured in watts) reflects the amount of effort or energy output during running.
-
-It allows you to gauge the actual energy you're using to run, independent of pace and terrain. Power-based training can help you improve efficiency, as it enables you to maintain a constant energy output, even if terrain or conditions change.
+- Pace
+- HR Zones (Heart Rate)
+- Power Zones
+- Stride Length
 
 ### Cadence
 
-Cadence is the number of steps you take per minute (spm).
-
-A higher cadence (typically between 170–190 spm) is generally associated with more efficient running and less risk of injury. Focusing on cadence can help you refine your running form and reduce unnecessary impact forces.
+Cadence is the number of times each foot touches the ground in a minute during a running activity. It's measured in steps per minute (spm). Garmin has researched many runners of all different levels. In general, more experienced runners tend to have a higher cadence.
+An often-cited target for running cadence is 180 spm. Higher cadences are associated with lower vertical oscillation and shorter ground contact time Taller runners tend to have somewhat lower cadence.
+The zones in the table below show the percentile of runners that occupy each zone, as well as the cadence ranges for each zone.
 
 | Percentile in Zone | Cadence Range |
 | ------------------ | ------------- |
@@ -112,31 +76,61 @@ A higher cadence (typically between 170–190 spm) is generally associated with 
 | 5-29%              | 151-162 spm   |
 | < 5%               | < 151 spm     |
 
-### Stride Length
-
-This is the distance covered between each step while running, typically measured in meters.
-
-Improving your stride length can increase your speed without significantly increasing effort. However, it needs to be balanced with cadence to maintain efficiency and avoid overstriding, which can lead to injury.
-
 ### Vertical Ratio
 
-Vertical ratio measures the amount of vertical movement (bounce) in relation to stride length, expressed as a percentage.
+Vertical ratio is a way to measure running efficiency.
+It divides vertical oscillation by stride length and then shows your ratio as a percentage. Since stride length provides the benefit of running (horizontal movement) and vertical oscillation is an energy cost (vertical movement), a lower vertical ratio indicates a small cost for a large benefit.
 
-A lower vertical ratio indicates more efficient forward movement rather than bouncing up and down. Reducing this "bounce" can help conserve energy and make your running motion smoother.
+The zones in the table below show the percentile of runners that occupy each zone, as well as the vertical ratio ranges for each zone.
+
+| Percentile in Zone | VR Range     |
+| ------------------ | ------------ |
+| > 95%              | < 6.1%       |
+| 70 - 95%           | 6.1% - 7.4%  |
+| 30 - 69%           | 7.4% - 8.6%  |
+| 5 - 29%            | 8.6% - 10.1% |
+| < 5%               | > 10.1%      |
 
 ### Vertical Oscillation
 
-Vertical oscillation is the amount of upward movement (in centimeters) during running.
+Vertical oscillation is the amount that the torso moves vertically with each step while running. It's measured in centimeters (cm).
 
-Lower vertical oscillation means less wasted energy in moving up and down. By minimizing vertical movement, you can focus more energy on forward motion, improving your running economy.
+Many running coaches believe that lower vertical oscillation is more economical, because less energy is wasted going up and down. In general, more experienced runners tend to have lower vertical oscillation. However, faster paces often come at a cost of somewhat higher vertical oscillation. Vertical ratio takes this into account. Another advantage of lower vertical oscillation is that it typically means less stress on the lower body at impact.
+
+The zones in the table below show the percentile of runners that occupy each zone, as well as the vertical oscillation ranges for each zone.
+
+| Percentile in Zone | VO Range      |
+| ------------------ | ------------- |
+| > 95%              | < 6.4 cm      |
+| > 70 - 95%         | 6.4 - 8.1 cm  |
+| > 30 - 69%         | 8.1 - 9.7 cm  |
+| > 5 - 29%          | 9.7 - 11.5 cm |
+| > < 5%             | 11.5 cm       |
 
 ### Ground Contact Time (GCT)
 
-GCT is the time your foot spends in contact with the ground during each stride, measured in milliseconds.
+Ground contact time indicates the amount of time that your foot is in contact with the ground on each step, measured in milliseconds (ms). Ground contact time tends to be especially short for elite runners.
+Virtually all experienced runners have ground contact times under 300 ms, likely because they have learned to pick up their feet quickly and not to over-stride as they are landing.
 
-Shorter ground contact times often indicate a more efficient, quicker stride. Elite runners tend to have shorter GCT, which can help reduce impact and improve speed.
+The zones in the table below show the percentile of runners that occupy each zone, as well as the ground contact time ranges for each zone.
 
-{{< youtube id=Jj9ZgQgQvBk start=207 loading=lazy >}}
+| Percentile in Zone | GCT Range    |
+| ------------------ | ------------ |
+| > 95%              | < 208 ms     |
+| 70 - 95%           | 208 - 240 ms |
+| 30 - 69%           | 241 - 272 ms |
+| 5 - 29%            | 273 - 305 ms |
+| < 5%               | > 305 ms     |
+
+### Pace (min/km or mile)
+
+This metric represents the time it takes to run one kilometer or mile (min/km). It gives you a clear understanding of how fast you're running.
+
+```latex
+Pace ∝ Cadence / (GCT * Vertical Ratio)
+```
+
+Focus one metric at a time during training, target higher cadence or lower ground contact time / vertical ratio. Calisthenics exercises helps build strength to reduce the GCT.
 
 ### Heart Rate Zones
 
@@ -144,17 +138,63 @@ Heart rate zones are ranges of heart rates that correspond to different levels o
 
 Training in the appropriate heart rate zones can optimize your workout for different goals, such as fat burning, endurance, or speed. It helps prevent overtraining and ensures you're getting the right intensity in your runs.
 
+Zone 1
+
+- Heart rate: 50-65% of max. (90-117 bpm for a max of 180)
+- Effort: 2-3 out of 10. Breathing easily. Speaking full sentences. Feels like you could go all day!
+
+Zone 2
+
+- Heart rate: 65-80% of max. (90-144 bpm for a max of 180)
+
+- Effort: 3-4 out of 10. Easy to steady endurance. Can still speak in complete sentences.
+
+Zone 3
+
+- Heart rate: 80-85% of max. (145-153 bpm for a max of 180)
+- Effort: 4-6 out of 10. Moderate but moving. At the upper end, you get winded quickly if you try to talk and might taste metal.
+
+Zone 4
+
+- Heart rate: 85-92% of max. (154-165 bpm for a max of 180)
+- Effort: 6-7 out of 10. Lactate threshold. This is a workout - sentences are clipped. But it's still mostly aerobic. You can hold it for about one hour.
+
+Zone 5
+
+- Heart rate: 92-100% of max. (166-180 bpm for a max of 180)
+- Effort: 8-10 out of 10. High-intensity. Everything from very hard VO2 intervals to all-out sprints.
+
+For more checkout - <https://stories.strava.com/articles/understanding-heart-rate-zones-and-how-they-impact-your-training>
+
+### Power
+
+Power (measured in watts) reflects the amount of effort or energy output during running.
+
+It allows you to gauge the actual energy you're using to run, independent of pace and terrain. Power-based training can help you improve efficiency, as it enables you to maintain a constant energy output, even if terrain or conditions change.
+
+### Stride Length
+
+This is the distance covered between each step while running, typically measured in meters.
+
+Improving your stride length can increase your speed without significantly increasing effort. However, it needs to be balanced with cadence to maintain efficiency and avoid overstriding, which can lead to injury.
+
+{{< youtube id=Jj9ZgQgQvBk start=207 loading=lazy title="Lift costs less energy">}}
+
 ### Time in Power Zone
 
 Power zones are similar to heart rate zones, but based on your power output in watts. Time in power zone refers to how long you spend in each zone.
 
 This metric helps balance your power output during different phases of a run. Spending the right amount of time in different power zones can help with endurance, speed training, and efficient energy use.
 
-{{< youtube id=CCxi9gmuyGQ loading=lazy >}}
+{{< youtube id=_kGESn8ArrU start=155 loading=lazy title="Foot placement for running">}}
+
+Above video explains foot placement training for more efficient running.
+
+{{< youtube id=CCxi9gmuyGQ loading=lazy title="Running is vertical jump" >}}
 
 ## Streching
 
-Before each run I do 5 min warm up and post run 5/10 min cooldown.
+Proper stretching before and after runs plays a vital role in maintaining flexibility, preventing injuries, and enhancing recovery. Here's my approach to stretching before and after my runs.
 
 ### Pre-run
 
@@ -166,30 +206,71 @@ Before each run I do 5 min warm up and post run 5/10 min cooldown.
 
 ## Music
 
-When I started my avg cadence was ~120 spm, being more efficient was necessary. I was in <5% runner range who ran at below 151 spm. Music helped me tune as per my target cadence rhythm.
+Music plays a crucial role in enhancing my running experience by helping me maintain a consistent pace and cadence. When I began, my average cadence was around 120 steps per minute (spm), placing me in the bottom 5% of runners who maintained cadences below 151 spm. To improve efficiency, focusing on increasing my cadence was essential.
 
-For
-spotify users checkout - <https://open.spotify.com/artist/2pvCOW7OAq8uJSnQlL8Yhq>
-youtube - <https://music.youtube.com/channel/UCM2RlbR4aNXSKVZfVajvCGQ>
+For Spotify users:
 
-They have beats running at 140, 150, 160, 170, 180 cadence which gives constant feedback to ensure you are running at target rate.
+- Check out <https://open.spotify.com/artist/2pvCOW7OAq8uJSnQlL8Yhq> for curated playlists featuring tracks with beats running at 140, 150, 160, 170, and 180 spm. These playlists provide constant auditory feedback to help maintain your target cadence during runs.
 
-{{< youtube id=Jj9ZgQgQvBk start= loading=lazy >}}
+For YouTube users:
+
+- Visit <https://music.youtube.com/channel/UCM2RlbR4aNXSKVZfVajvCGQ> to explore similar playlists with varying beats per minute, designed to help you focus on and achieve your desired running cadence.
+
+By incorporating these music playlists into my runs, I've found that:
+
+- Time passes more quickly when engaged with captivating tracks that sync with my target cadence.
+- Maintaining a consistent pace and cadence is easier with rhythm-driven songs tailored to specific spm ranges.
+- Staying motivated and enjoying workouts becomes simpler as music helps create a steady internal metronome for efficient running.
+
+## Nutrition
+
+### Carbohydrates
+
+Carbs are your body's primary source of energy during intense exercise like running. They're stored in your muscles as glycogen. To maintain optimal glycogen levels:
+
+**Time your carbs**: Consume a carbohydrate-rich meal 3-4 hours before your run to ensure proper digestion and energy availability.
+
+**Top up during runs**: For long runs or races, consider consuming easily digestible carbs (like gels or chews) every 45 minutes to maintain blood sugar levels.
+
+### Protein
+
+Protein is essential for muscle recovery and growth. After a run, your muscles need protein to repair micro-tears and build new tissues. Aim for:
+
+**20-30g of protein**: within the first hour after your run.
+
+**Complete proteins**: Opt for sources such as beans, lentils, almonds, tofu, or paneer.
+
+### Healthy Fats
+
+Fats are another essential energy source and play a crucial role in absorbing fat-soluble vitamins. Incorporate healthy fats like:
+
+### Hydration
+
+Water makes up about 60% of our body weight and plays a vital role in every bodily function, including running performance. Here's how to stay hydrated:
+
+**Before, during, and after**: Drink water consistently throughout the day, not just during or after your runs.
+
+**Hydration plan**: Establish a hydration strategy based on your sweat rate (weigh yourself before and after runs to estimate).
+
+### Micronutrients
+
+Vitamins and minerals are crucial for overall health. Focus on eating a variety of colorful fruits and vegetables to ensure you're getting adequate micronutrients.
 
 # Result
 
-I ran 100KM in 30 days (Oct 14 2024). Reduced BMI from 24.1 to 22.4. With medium effort I can run 5K in ~35 min, 7.30 min / km pace.
+- Completed a **100km challenge** in 30 days (Oct 14, 2024).
+- Reduced BMI from **24.1 to 22.3**.
+- Current medium effort pace: **5K in approximately 35 minutes (7:30 min/km)**.
+- Resting heart rate (**RHR**) improved to less than **50 beats per minute**.
 
-Next steps:
+## Next Steps
 
-1. 5K - 35 min - DONE
-2. 5K - 30 min
-3. 10K - 60 min
+1. **Achieved:** 5K in 35 minutes
+2. **Upcoming goal:** 5K in under 30 minutes (~6:00 min/km pace)
+3. **Future challenge:** Complete a 10K run within 60 minutes (~6:00 min/km pace)
 
 > "Delulu is the solulu" - Gen Z
 >
 > It’s not a coincidence that most successful people, when looking back at their younger selves, cite the delusional hope they had back then as the fuel that propelled them through the toughest parts of their lives and careers. -- Mark Travers, [Forbs](https://www.forbes.com/sites/traversmark/2023/09/21/is-delulu-really-the-solulu-a-psychologist-explores-the-new-tiktok-trend/)
 
-[^1]: https://www.nytimes.com/athletic/2935360/2021/11/15/what-age-do-players-in-different-positions-peak/
-
-[^2]: <https://www.healthline.com/health/heel-strikes-and-your-run>
+[^1]: <https://www.nytimes.com/athletic/2935360/2021/11/15/what-age-do-players-in-different-positions-peak/>
