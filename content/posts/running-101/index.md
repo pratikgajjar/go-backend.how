@@ -124,6 +124,8 @@ Virtually all experienced runners have ground contact times under 300 ms, likely
 
 The zones in the table below show the percentile of runners that occupy each zone, as well as the ground contact time ranges for each zone.
 
+Adopting a forefoot strike can help to reduce Ground Contact Time (GCT).
+
 | Percentile in Zone | GCT Range    |
 | ------------------ | ------------ |
 | > 95%              | < 208 ms     |
