@@ -5,31 +5,40 @@ date = 2024-10-12T23:45:31+05:30
 lastmod = 2024-10-12T23:45:31+05:30
 publishDate = "2024-10-12T23:45:31+05:30"
 draft = false
-tags = [ "draft" ]
+tags = [ "gyan", "health" ]
 images = []
 +++
 
-# Hi
+# Setting Goals
 
-I am 27 year old software engineer (year 2024) who spends most of the time sitting for work. Since 12th grade I have been thinking about getting 6 packs because it's cool. Being football fan, I was aware that 22-29 are peak years for footballers and even analysis done by [The Athletic](https://www.nytimes.com/athletic/2935360/2021/11/15/what-age-do-players-in-different-positions-peak/) suggests that peak age is around 27. Thus, I set myself on goal to reach peak physical fitness. Now, I'm more of outdoor person so hitting gym isn't something comes from within. I would rather play sports for hours, or be outdoor. So this time I set different goal, reducing body fat percentage to about 8% because everyone is born with 6 packs it's just hidden.
+I am a 27-year-old software engineer writing in the year 2024. I spend most of my time sitting for work, and since grade 12, I've been aspiring to have a six-pack as it's often seen as 'cool.' As a football fan, I'm aware that players typically peak between their late twenties and early thirties, with an analysis by The Athletic[^1] suggesting that the optimal age for different positions ranges from 27 to 31 years old. Thus, I set myself the goal of reaching peak physical fitness by my late twenties.
+
+However, I am more inclined towards outdoor activities than hitting the gym. I would much prefer playing sports outdoors for hours rather than working out indoors. Therefore, I've set a new goal: reducing my body fat percentage to around 8%. This is because everyone has abdominal muscles; they're just hidden beneath layers of fat.
 
 > "No man has the right to be an amateur in the matter of physical training. It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable." -- Socrates
 
 # Plan
 
-Among many options, I figured that running is something that requires very low effort to execute.
+Among the various options available for outdoor physical activity, I chose running due to its minimal effort requirement and ease of execution. To facilitate this plan:
 
-Shoes - I wear sketchers running shoes everywhere.
+_Footwear:_ I wear Skechers running shoes for all my runs.
 
-Clothes - Always have decent pair comfortable for running.
+_Attire:_ I ensure I have comfortable, well-fitting clothing suitable for running.
 
-Track - In town, peaceful road and public parks in metro cities.
+_Running Routes:_ In urban areas, I prefer peaceful roads and public parks in metropolitan cities.
 
-Being in tech, we continuously measure many kinds of metric to ensure system is working as expected and if there is anomaly we can pinpoint what caused problem. I wanted to do same, number one rule when it comes to data is Garbage in, Garbage out. I wanted system which can measure many metrics with very high accuracy. So, I got myself Garmin watch. To attain growth, what can be measured can be improved.
+Given my background in tech, where continuous measurement of metrics helps maintain system efficiency and detect anomalies, I wanted to apply the same principle to my fitness journey. To accurately track progress, I invested in a Garmin watch that records multiple metrics with high precision. The saying "If you can measure it, you can improve it" applies here; tracking quantifiable data enables better understanding of my performance and facilitates continuous growth.
 
 # Execution
 
-Taking things slow, when people are new more often mistakes are made. I can't afford injury and running blinding could cause injury. Earlier I had participated in 5K running challenge organised by our company, I did 4K in around 38min without any preparation. So I created plan with Garmin AI coach that run 5K in 35 min, which felt not too difficult and not too easy. Thankfully, It did pretty good job in creating running schedule with various type of running and including rest periods. Now I have plan exactly when to run and how much based on my first data.
+To begin my running journey safely, I took things slow initially to minimize the risk of injuries. As a newcomer, it is common to make mistakes, and rushing into intense workouts could lead to strains or other issues. Having previously completed a 4K run in around 38 minutes with no prior preparation, I decided to set a more achievable goal for my initial plan.
+
+I utilized Garmin's AI coach feature to create a personalized running schedule aimed at completing a 5K in approximately 35 minutes – a challenging but manageable target. Fortunately, the AI coach did an excellent job generating a varied training program that included:
+
+- Different types of runs (e.g., steady-paced, interval, and hill training)
+- Strategic rest periods to allow for recovery
+
+Now, with my customized plan in hand, I have clear guidance on when and how much to run each day, based on the initial data gathered from my first few sessions. This structured approach has helped me maintain consistency while minimizing the risk of injury.
 
 > "The most successful people I know believe in themselves almost to the point of delusion." -- Sam Altman ([@sama](https://x.com/sama))
 
@@ -63,7 +72,7 @@ Common injuries: You may experience foot, ankle, or Achilles pain at some point.
 
 ### Heel strike
 
-As mentioned, heel strikers hit the ground with their heels first before the rest of their foot hits the ground. This can put additional strain on the knees. [^1]
+As mentioned, heel strikers hit the ground with their heels first before the rest of their foot hits the ground. This can put additional strain on the knees. [^2]
 
 Common injuries: You may be more prone to knee and hip pain.
 
@@ -96,12 +105,12 @@ Cadence is the number of steps you take per minute (spm).
 A higher cadence (typically between 170–190 spm) is generally associated with more efficient running and less risk of injury. Focusing on cadence can help you refine your running form and reduce unnecessary impact forces.
 
 | Percentile in Zone | Cadence Range |
-| -------------- | --------------- |
-| > 95% | >185 spm |
-| 70-95% | 174-185 spm |
-| 30-69% | 163-173 spm |
-| 5-29% | 151-162 spm |
-| < 5% | < 151 spm |
+| ------------------ | ------------- |
+| > 95%              | >185 spm      |
+| 70-95%             | 174-185 spm   |
+| 30-69%             | 163-173 spm   |
+| 5-29%              | 151-162 spm   |
+| < 5%               | < 151 spm     |
 
 ### Stride Length
 
@@ -181,4 +190,6 @@ Next steps:
 >
 > It’s not a coincidence that most successful people, when looking back at their younger selves, cite the delusional hope they had back then as the fuel that propelled them through the toughest parts of their lives and careers. -- Mark Travers, [Forbs](https://www.forbes.com/sites/traversmark/2023/09/21/is-delulu-really-the-solulu-a-psychologist-explores-the-new-tiktok-trend/)
 
-[^1]: <https://www.healthline.com/health/heel-strikes-and-your-run>
+[^1]: https://www.nytimes.com/athletic/2935360/2021/11/15/what-age-do-players-in-different-positions-peak/
+
+[^2]: <https://www.healthline.com/health/heel-strikes-and-your-run>
