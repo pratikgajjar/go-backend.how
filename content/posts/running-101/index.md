@@ -281,6 +281,8 @@ Vitamins and minerals are crucial for overall health. Focus on eating a variety 
 2. **Upcoming goal:** 5K in under 30 minutes (~6:00 min/km pace)
 3. **Future challenge:** Complete a 10K run within 60 minutes (~6:00 min/km pace)
 
+Thank you, Kush, Dhruv, and Sandeep, for your direct and indirect support throughout this journey.
+
 > "Delulu is the solulu" - Gen Z
 >
 > It’s not a coincidence that most successful people, when looking back at their younger selves, cite the delusional hope they had back then as the fuel that propelled them through the toughest parts of their lives and careers. -- Mark Travers, [Forbs](https://www.forbes.com/sites/traversmark/2023/09/21/is-delulu-really-the-solulu-a-psychologist-explores-the-new-tiktok-trend/)
