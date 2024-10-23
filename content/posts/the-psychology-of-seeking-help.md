@@ -1,6 +1,6 @@
 +++
 title = "🧩 The Psychology of Seeking Help"
-description = ""
+description = "Explore the various types of help seekers in the engineering field, from persistent problem solvers to direct seekers. Learn how recognizing these patterns can enhance collaboration and improve problem-solving efficiency."
 date = 2024-07-05T22:21:15+05:30
 lastmod = 2024-07-05T22:21:15+05:30
 publishDate = "2024-07-05T22:21:15+05:30"
