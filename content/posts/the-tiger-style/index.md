@@ -1,6 +1,6 @@
 +++
 title = "🪲 The Tiger Style"
-description = "A collective give-and-take at the intersection of engineering and art"
+description = " Tiger Style is a coding philosophy focused on safety, performance, and developer experience. Inspired by the practices of TigerBeetle, it focuses on building robust, efficient, and maintainable software through disciplined engineering."
 date = 2024-06-29T18:34:30+05:30
 lastmod = 2024-06-29T18:34:30+05:30
 publishDate = 2024-06-29T18:34:30+05:30
@@ -8,11 +8,6 @@ draft = false
 tags = ['TigerBeetle', 'System Design', 'Repost']
 images = []
 +++
-
-Authors[^1]
-
-- [Evan Schwartz](https://github.com/emschwartz)
-- [Alex Kladov](https://github.com/matklad)
 
 # The Essence Of Style
 
@@ -423,6 +418,11 @@ only because it's fast, but because it's small!
 > but you are only quite a little fellow in a wide world after all!”
 >
 > “Thank goodness!” said Bilbo laughing, and handed him the tobacco-jar.
+
+Authors[^1]
+
+- [Evan Schwartz](https://github.com/emschwartz)
+- [Alex Kladov](https://github.com/matklad)
 
 This document is licensed under the Apache License 2.0. See the [LICENSE-APACHE](./LICENSE) file for details.
 
