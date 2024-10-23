@@ -1,6 +1,6 @@
 +++
 title = "🚗 Building blazingly fast pre-owned car platform with Valkey - Part 1"
-description = "The content will cover how to leverage ValKey (https://valkey.io/) for serving web pages at blazingly fast speeds."
+description = "Learn how to use Valkey, a high-performance key/value datastore, to serve web pages quickly and efficiently. This guide covers optimizing both frontend and backend processes to achieve response times as low as 60ms. Explore user flows, marketplace features, and techniques for caching, pagination, and cache invalidation to enhance the user experience in your web application."
 date = 2024-06-16T23:27:27+05:30
 lastmod = 2024-06-16T23:27:27+05:30
 tags = ['Django', 'Redis', 'DRF', 'CDC']
