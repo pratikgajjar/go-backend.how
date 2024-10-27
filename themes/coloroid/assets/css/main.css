@@ -146,6 +146,13 @@ blockquote p {
     max-width: 800px;
     width: 100%;
     flex-grow: 1;
+    box-sizing: border-box;
+}
+
+.container * {
+    overflow-wrap: break-word; /* Breaks words to fit within container */
+    word-wrap: break-word; /* For cross-browser compatibility */
+    box-sizing: inherit; /* Ensures box-sizing rules are applied to all child elements */
 }
 
 header {
