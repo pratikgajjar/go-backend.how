@@ -1,5 +1,6 @@
 {{- $src := .Get "src" -}}
 {{- $alt := .Get "alt" -}}
+{{- $width := .Get "width" -}}
 {{- $caption := .Get "caption" -}}
 {{- $downloadURL := .Get "download" -}}
 
@@ -16,7 +17,7 @@
     {{ $blurImg := $image.Resize "800x q50" }}
     {{ $blurImg := $blurImg | images.Filter (images.GaussianBlur 6) }}
     <img src="{{ $blurImg.RelPermalink }}"
-         width="{{ $blurImg.Width }}"
+         width="{{ or ($width) $blurImg.Width }}"
          height="{{ $blurImg.Height }}"
          loading="lazy"
          class="blur-image"
@@ -24,11 +25,11 @@
     </img>
     <img src="{{ $image.RelPermalink }}"
          alt="{{ $alt }}"
-         width="{{ $image.Width }}"
+         width="{{ or ($width) $image.Width }}"
          height="{{ $image.Height }}"
          loading="lazy"
          class="lazyload-image"
-         style="display: block; width: 100%; height: auto; opacity: 0; transition: opacity 0.6s ease-out;">
+         style="opacity: 0; transition: opacity 0.6s ease-out;">
   {{ end }}
   {{ with $caption }}
       <figcaption>{{ . }}</figcaption>

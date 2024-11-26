@@ -1,25 +1,25 @@
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", () => {
     const images = document.querySelectorAll('.lazyload-image');
 
-    images.forEach(function(img) {
-        // Check if the image has already loaded
-        if (img.complete) {
+    images.forEach(img => {
+        const placeholder = img.previousElementSibling;
+
+        const handleImageLoaded = () => {
             img.style.opacity = '1';
-            const placeholder = img.previousElementSibling;
             if (placeholder) {
-                placeholder.style.opacity = '0';
-                placeholder.style.transform = 'scale(1.1)';
+                Object.assign(placeholder.style, {
+                    opacity: '0',
+                    height: '0',
+                    width: '0',
+                    transform: 'scale(1.1)'
+                });
             }
+        };
+
+        if (img.complete && img.naturalWidth !== 0) {
+            handleImageLoaded();
         } else {
-            // Add an event listener to handle the load event
-            img.addEventListener('load', function() {
-                img.style.opacity = '1';
-                const placeholder = img.previousElementSibling;
-                if (placeholder) {
-                    placeholder.style.opacity = '0';
-                    placeholder.style.transform = 'scale(1.1)';
-                }
-            });
+            img.addEventListener('load', handleImageLoaded, { once: true });
         }
     });
 });
