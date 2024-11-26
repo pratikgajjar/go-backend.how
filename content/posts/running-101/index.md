@@ -56,7 +56,7 @@ Let's look at top line metrics that we should chase to become efficient runner.
 
 ## Metrics
 
-Input metrics are those we should improve upon through continous training.
+Input metrics[^2] are those we should improve upon through continous training.
 
 - Cadence
 - Vertical Ratio
@@ -290,3 +290,5 @@ Thank you, Kush, Dhruv, and Sandeep, for your direct and indirect support throug
 > It’s not a coincidence that most successful people, when looking back at their younger selves, cite the delusional hope they had back then as the fuel that propelled them through the toughest parts of their lives and careers. -- Mark Travers, [Forbs](https://www.forbes.com/sites/traversmark/2023/09/21/is-delulu-really-the-solulu-a-psychologist-explores-the-new-tiktok-trend/)
 
 [^1]: <https://www.nytimes.com/athletic/2935360/2021/11/15/what-age-do-players-in-different-positions-peak/>
+
+[^2]: The Garmin Connect app was used for definitions and estimated metrics about runners.
