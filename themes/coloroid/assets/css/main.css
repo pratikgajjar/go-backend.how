@@ -390,11 +390,6 @@ sup a[href^="#fn"]::after {
   color: #bb86fc;
 }
 
-.blur-image {
-  position: absolute; 
-  top: 0px; 
-  left: 0px;
-}
 
 .footnotes {
     max-width: 100%;
