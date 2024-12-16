@@ -278,8 +278,8 @@ Vitamins and minerals are crucial for overall health. Focus on eating a variety 
 ## Next Steps
 
 1. **Achieved:** 5K in 35 minutes ✅
-2. **Upcoming goal:** 5K under 30 minutes (~6:00 min/km pace) ✅
-3. **Future challenge:** Complete a 5K sub 25 min (<=5:00 min/km pace) ✅
+2. **Upcoming goal:** 5K under 30 minutes (~6:00 min/km pace) ✅ - Nov 15, 2024
+3. **Future challenge:** Complete a 5K sub 25 min (<=5:00 min/km pace) ✅ - Dec 4, 2024
 
 {{< figure src="aws-reinvent-2024-5k.jpg" title="Results" alt="AWS badge showing the 5K run achived in 24 min 45 seconds" >}}
 
