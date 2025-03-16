@@ -29,7 +29,7 @@ Source: [NPCI product-statistics](https://web.archive.org/https://www.npci.org.i
   - **1 Billion Transactions/Day:** Based on observed trends and projections in digital adoption.  
   - **2.5x Multiplier:** To ensure resiliency during traffic surges, it’s standard to design for twice the expected load.
 
-## Defining the Data Model
+# Defining the Data Model
 
 1. **Account**: Stores the cumulative effect of committed transfers.
 2. **Transfer**: An immutable record of a financial transaction between two accounts.
@@ -118,7 +118,7 @@ With **20TB SSDs**, vertical scaling remains feasible.
 
 # TigerBeetle vs PostgreSQL Performance
 
-## TigerBeetle
+# TigerBeetle
 
 [TigerBeetle](https://tigerbeetle.com/) is a high-performance, distributed financial database designed for mission-critical payments and ledger applications. Engineered for speed, resilience, and correctness, it handles millions of transactions per second with strict consistency. Built in Zig, it prioritizes safety and efficiency while ensuring minimal operational complexity.
 
@@ -154,11 +154,11 @@ Here concurrent requests got slow down by factor of concurrently, in this case 2
 
 Storage calculations must account for indexing and journaling overhead, not just raw data size; single-core architectures prioritize reliability over parallelism, necessitating workflow designs that align with this constraint.
 
-## PostgreSQL
+# PostgreSQL
 
 [PostgreSQL 17](https://www.postgresql.org/about/news/postgresql-174-168-1512-1417-and-1320-released-3018/) is the latest release of the powerful open-source relational database, offering enhanced performance, security, and developer features. It introduces improvements in query execution, logical replication, and JSON processing, making it even more efficient for modern applications. With a strong focus on scalability and reliability, it remains a top choice for enterprise databases.
 
-### Schema
+## Schema
 
 We have design the schema in PostgreSQL to match the same account and transaction model in TigerBeetle
 
@@ -193,14 +193,204 @@ CREATE TABLE transfers (
 
 ```
 
-### Benchmark
+## Benchmark
 
 Accounts - [Git](https://github.com/pratikgajjar/1b-payments/blob/main/cmd/pg/accounts/main.go)
+
+### COPY FROM
 
 - Latency[^2] = we were able to create 10M accounts in 14s
   - As accounts creation can happen in bulk, postgres doesn't need to perform complex logic here.
 - Expected: `10M × 128B = 1.28GB`, actual = `1256MB` table storage is around the same.
   - PK Index used `453MB`, thus here also we should consider index storage usage in our napkin math.
+
+Writes correlates to fsync(1), We are observing the latency and frequency of system calls.
+
+```d
+fsync_count.d
+
+tracepoint:syscalls:sys_enter_fsync,tracepoint:syscalls:sys_enter_fdatasync
+/comm == str($1)/
+{
+  @fsyncs[args->fd] = count();
+  if (@fd_to_filename[args->fd]) {
+  } else {
+    @fd_to_filename[args->fd] = 1;
+    system("echo -n 'fd %d -> ' &1>&2 | readlink /proc/%d/fd/%d",
+           args->fd, pid, args->fd);
+  }
+}
+
+END {
+  clear(@fd_to_filename);
+}
+
+root@localhost:~# sudo bpftrace --unsafe fsync_count.d  postgres
+Attaching 3 probes...
+fd 26 -> /var/lib/postgresql/data/pg_wal/000000010000003D0000008D
+fd 22 -> /var/lib/postgresql/data/pg_wal/000000010000003D0000008D
+fd 25 -> /var/lib/postgresql/data/pg_wal/000000010000003D0000008D
+fd 24 -> /var/lib/postgresql/data/pg_wal/000000010000003D0000008D
+fd 6 -> /var/lib/postgresql/data/pg_wal/000000010000003D0000009E
+fd 7 -> /var/lib/postgresql/data/base/16384/16492_fsm
+fd 9 -> fd 8 -> /var/lib/postgresql/data/base/16384/16493
+fd 10 -> /var/lib/postgresql/data/pg_wal
+fd 11 -> /var/lib/postgresql/data/pg_wal/000000010000003D000000CF
+fd 45 -> /var/lib/postgresql/data/pg_wal/000000010000003E00000001
+^C
+
+
+@fsyncs[45]: 1
+@fsyncs[7]: 2
+@fsyncs[8]: 3
+@fsyncs[10]: 3
+@fsyncs[9]: 7
+@fsyncs[11]: 198
+@fsyncs[24]: 299
+@fsyncs[25]: 303
+@fsyncs[6]: 317
+@fsyncs[22]: 357
+@fsyncs[26]: 367
+
+Total fsync count = 1857
+
+```
+
+Latency Histogram of fsync(1) during 10M accounts insertions
+
+```d
+fsync_lat.d
+
+tracepoint:syscalls:sys_enter_fsync,tracepoint:syscalls:sys_enter_fdatasync
+/comm == str($1)/
+{
+        @start[tid] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_fsync,tracepoint:syscalls:sys_exit_fdatasync
+/comm == str($1)/
+{
+        @bytes = lhist((nsecs - @start[tid]) / 1000, 0, 2000, 100);
+        delete(@start[tid]);
+}
+
+
+root@localhost:~# sudo bpftrace fsync_lat.d postgres
+Attaching 4 probes...
+^C
+
+@bytes:
+[0, 100)             139 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                     |
+[100, 200)            85 |@@@@@@@@@@@@@@@@@@@                                 |
+[200, 300)           209 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     |
+[300, 400)           228 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+[400, 500)           208 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     |
+[500, 600)           145 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                   |
+[600, 700)           126 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@                        |
+[700, 800)           106 |@@@@@@@@@@@@@@@@@@@@@@@@                            |
+[800, 900)            87 |@@@@@@@@@@@@@@@@@@@                                 |
+[900, 1000)           69 |@@@@@@@@@@@@@@@                                     |
+[1000, 1100)          65 |@@@@@@@@@@@@@@                                      |
+[1100, 1200)          32 |@@@@@@@                                             |
+[1200, 1300)          31 |@@@@@@@                                             |
+[1300, 1400)          25 |@@@@@                                               |
+[1400, 1500)          40 |@@@@@@@@@                                           |
+[1500, 1600)          46 |@@@@@@@@@@                                          |
+[1600, 1700)          60 |@@@@@@@@@@@@@                                       |
+[1700, 1800)          37 |@@@@@@@@                                            |
+[1800, 1900)          13 |@@                                                  |
+[1900, 2000)          10 |@@                                                  |
+[2000, ...)           96 |@@@@@@@@@@@@@@@@@@@@@                               |
+
+```
+
+```sql
+                             ^
+mydatabase=# SELECT
+  pg_size_pretty(pg_relation_size('accounts')) AS table_size,
+  pg_size_pretty(pg_indexes_size('accounts')) AS index_size,
+  pg_size_pretty(pg_total_relation_size('accounts')) AS total_size,
+  AVG(pg_column_size(a)) as avg_row_exl_index,
+  pg_total_relation_size('accounts') / COUNT(*) AS avg_row_size_bytes FROM accounts a;
+ table_size | index_size | total_size |  avg_row_exl_index   | avg_row_size_bytes
+------------+------------+------------+----------------------+--------------------
+ 1202 MB    | 447 MB     | 1650 MB    | 119.9999991000000000 |                173
+(1 row)
+
+```
+
+### INSERT INTO
+
+Since accounts would get created in single entity, Here we are running 8 go-routines to insert data concurrently with each account creation as separate query. Now we are in same order of magnitude as TigerBeetle.
+
+```md
+2025/03/16 21:16:14 Progress: 10000000 accounts inserted (10443.37 inserts/sec)
+2025/03/16 21:16:14 Completed: Inserted 10000000 accounts in 15m57.545568625s (10443.37 inserts/sec)
+2025/03/16 21:16:14 Average time per insert: 0.095755 ms
+```
+
+No of `fsync(1)` required by 10M writes 6053719 ~6M vs 1857 via COPY. This explains why copy took 14s vs ~16 minutes required by insert.
+
+```d
+root@localhost:~# sudo bpftrace --unsafe fsync_count.d  postgres
+Attaching 3 probes...
+fd 13 -> /var/lib/postgresql/data/pg_wal/000000010000003E00000001
+fd 9 -> /var/lib/postgresql/data/pg_wal/000000010000003E00000001
+fd 11 -> /var/lib/postgresql/data/pg_wal/000000010000003E00000001
+fd 6 -> /var/lib/postgresql/data/pg_wal/000000010000003E00000001
+fd 43 -> /var/lib/postgresql/data/pg_wal/000000010000003E00000018
+fd 39 -> /var/lib/postgresql/data/pg_wal/000000010000003E00000023
+fd 42 -> /var/lib/postgresql/data/pg_wal/000000010000003E0000002E
+fd 12 -> fd 7 -> /var/lib/postgresql/data/base/16384/2619
+fd 10 -> /var/lib/postgresql/data/base/16384/16494_fsm
+fd 8 -> /var/lib/postgresql/data/base/16384/2696
+fd 14 -> /var/lib/postgresql/data/pg_wal/000000010000003E0000001A
+^Cfd 40 ->
+
+
+@fsyncs[43]: 1
+@fsyncs[40]: 1
+@fsyncs[42]: 1
+@fsyncs[39]: 2
+@fsyncs[10]: 4
+@fsyncs[8]: 4
+@fsyncs[7]: 4
+@fsyncs[6]: 65
+@fsyncs[14]: 99
+@fsyncs[12]: 208
+@fsyncs[13]: 1605121
+@fsyncs[11]: 1605842
+@fsyncs[9]: 2842367
+
+root@localhost:~# sudo bpftrace fsync_lat.d postgres
+Attaching 4 probes...
+^C
+
+@bytes:
+[0, 100)          552273 |@@@@@                                               |
+[100, 200)       5287626 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+[200, 300)        208510 |@@                                                  |
+[300, 400)          3569 |                                                    |
+[400, 500)           707 |                                                    |
+[500, 600)           293 |                                                    |
+[600, 700)           158 |                                                    |
+[700, 800)           111 |                                                    |
+[800, 900)            73 |                                                    |
+[900, 1000)           60 |                                                    |
+[1000, 1100)          35 |                                                    |
+[1100, 1200)          23 |                                                    |
+[1200, 1300)          26 |                                                    |
+[1300, 1400)          18 |                                                    |
+[1400, 1500)          18 |                                                    |
+[1500, 1600)          12 |                                                    |
+[1600, 1700)          22 |                                                    |
+[1700, 1800)          17 |                                                    |
+[1800, 1900)          13 |                                                    |
+[1900, 2000)          14 |                                                    |
+[2000, ...)          141 |                                                    |
+```
+
+Here we can clearly see write latency were ~200ns for all 6M writes and it didn't create load on SSD unlike latency distributed of COPY from where we find significant amount of fsync call taking >400ns.
 
 Transfers - [Git](https://github.com/pratikgajjar/1b-payments/blob/main/cmd/pg/transfer/main.go)
 
@@ -230,7 +420,14 @@ with 10 go-routines and 10 db connection
 
 -- #TODO Add horizontal scaling, archival, conclude on 1B requirement, include screenshots
 
+---
+Reference
+
 GitHub Source code used for benchmarking - [Git](https://github.com/pratikgajjar/1b-payments/)
+
+YT [Advanced Napkin Math: Estimating System Performance from First Principles](https://www.youtube.com/watch?v=IxkSlnrRFqc)
+
+Sirupsen - GitHub [napkin-math](https://github.com/sirupsen/napkin-math)
 
 [^2]: [1B Payments Benchmark Repository](https://github.com/pratikgajjar/1b-payments/tree/main?tab=readme-ov-file)
 
