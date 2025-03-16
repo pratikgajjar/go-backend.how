@@ -202,7 +202,9 @@ Accounts - [Git](https://github.com/pratikgajjar/1b-payments/blob/main/cmd/pg/ac
 - Expected: `10M × 128B = 1.28GB`, actual = `1256MB` table storage is around the same.
   - PK Index used `453MB`, thus here also we should consider index storage usage in our napkin math.
 
-Writes correlates to fsync(1), We are observing the latency and frequency of system calls.
+`fsync(1)` is a Linux command that forces all buffered changes to disk, ensuring data integrity by synchronizing files and metadata. It is mainly used to minimize data loss in case of a crash.
+
+Writes correlate with `fsync(1)`, and we monitor system call latency and frequency using [bpftrace](https://github.com/bpftrace/bpftrace).
 
 ```d
 fsync_count.d
