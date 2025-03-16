@@ -1,7 +1,7 @@
 ---
-title: "💸 1 Billion Payments with TigerBeetle/PostgreSQL: A First-Principles Approach"
+title: "💸 BAD: Billion Payments a day with TigerBeetle/PostgreSQL: A First-Principles Approach"
 date: 2025-03-01
-description: "A deep dive into handling the 1B payments challenge using first-principles system design with TigerBeetle, PostgreSQL and Golang."
+description: "A deep dive into handling the 1B payments/day challenge using first-principles system design with TigerBeetle, PostgreSQL and Golang."
 tags: ["golang", "tigerbeetle", "payments", "first-principles" , "system-design"]
 draft: false
 ---
@@ -193,9 +193,11 @@ CREATE TABLE transfers (
 
 ## Benchmark
 
-Accounts - [Git](https://github.com/pratikgajjar/1b-payments/blob/main/cmd/pg/accounts/main.go)
+Perform 10M Accounts creation and 1M Payments via [Git](https://github.com/pratikgajjar/1b-payments/blob/main/cmd/pg/).
 
-### COPY FROM
+### Accounts
+
+#### COPY FROM
 
 - Latency[^2] = we were able to create 10M accounts in 14s
   - As accounts creation can happen in bulk, postgres doesn't need to perform complex logic here.
@@ -319,7 +321,7 @@ mydatabase=# SELECT
 
 ```
 
-### INSERT INTO
+#### INSERT INTO
 
 Since accounts would get created in single entity, Here we are running 8 go-routines to insert data concurrently with each account creation as separate query. Now we are in same order of magnitude as TigerBeetle.
 
@@ -392,7 +394,7 @@ Attaching 4 probes...
 
 Write latency remained ~200ns for all 6M fsync calls, imposing no load on the SSD. In contrast, COPY showed significant fsync latency spikes >400ns, indicating higher storage overhead.
 
-Transfers - [Git](https://github.com/pratikgajjar/1b-payments/blob/main/cmd/pg/transfer/main.go)
+## Transfers
 
 with 10 go-routines and 10 db connection
 
