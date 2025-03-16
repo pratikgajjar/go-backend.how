@@ -1,0 +1,658 @@
+#separator:tab
+#html:true
+"<span style=""left: 136.386px; top: 111.495px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05908);"" role=""presentation"" dir=""ltr"">Power of Two</span><br role=""presentation""><span style=""left: 189.435px; top: 147.745px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05967);"" role=""presentation"" dir=""ltr"">1 KB?</span>"	"<span style=""left: 536.451px; top: 129.62px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.0539);"" role=""presentation"" dir=""ltr"">1 KB = 2^10 bytes<br></span>1024 Bytes = 2^10&nbsp;"
+"<span style=""left: 136.392px; top: 359.92px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05908);"" role=""presentation"" dir=""ltr"">Power of Two</span><br role=""presentation""><span style=""left: 181.099px; top: 396.17px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04934);"" role=""presentation"" dir=""ltr"">64 KB?</span>"	"<span style=""left: 528.115px; top: 378.045px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05037);"" role=""presentation"" dir=""ltr"">64 KB = 2^16 bytes</span>"
+"<span style=""left: 136.392px; top: 608.345px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05908);"" role=""presentation"" dir=""ltr"">Power of Two</span><br role=""presentation""><span style=""left: 187.779px; top: 644.595px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03697);"" role=""presentation"" dir=""ltr"">1 MB?</span>"	"<span style=""left: 534.795px; top: 626.47px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.0461);"" role=""presentation"" dir=""ltr"">1 MB = 2^20 bytes<br></span>2^3.33 = 10<br>10^6 B = 2^(3.33 * 6) = 2^20"
+"<span style=""left: 136.392px; top: 856.771px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05908);"" role=""presentation"" dir=""ltr"">Power of Two</span><br role=""presentation""><span style=""left: 188.607px; top: 893.021px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03754);"" role=""presentation"" dir=""ltr"">1 GB?</span>"	"<span style=""left: 535.622px; top: 874.896px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04635);"" role=""presentation"" dir=""ltr"">1 GB = 2^30 bytes<br></span>2^3.33 ~= 10<br>10^9 B =&gt; 2^(3.33 * 9 ) = 2^29.97 = 2^30"
+"<span style=""left: 136.392px; top: 1105.2px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05908);"" role=""presentation"" dir=""ltr"">Power of Two</span><br role=""presentation""><span style=""left: 188.607px; top: 1141.45px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03754);"" role=""presentation"" dir=""ltr"">4 GB?</span>"	"<span style=""left: 535.622px; top: 1123.32px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04635);"" role=""presentation"" dir=""ltr"">4 GB = 2^32 bytes</span>"
+"<span style=""left: 136.386px; top: 111.495px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05908);"" role=""presentation"" dir=""ltr"">Power of Two</span><br role=""presentation""><span style=""left: 191.105px; top: 147.745px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03976);"" role=""presentation"" dir=""ltr"">1 TB?</span>"	"<span style=""left: 538.121px; top: 129.62px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04727);"" role=""presentation"" dir=""ltr"">1 TB = 2^40 bytes<br></span>10^12 = 2^(3.33 * 12) = 2^39.96 = 2^40<br>1 GB = 2^30 ; 1024 GB = 2^(10 + 30) = 2^40&nbsp;"
+"<span style=""left: 198.04px; top: 359.92px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 89.378px; top: 396.17px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04099);"" role=""presentation"" dir=""ltr"">L1 Cache Reference</span>"	"<span style=""left: 622.341px; top: 378.045px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03905);"" role=""presentation"" dir=""ltr"">1 ns<br></span>fastest"
+"<span style=""left: 198.04px; top: 608.345px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 101.917px; top: 644.595px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.08872);"" role=""presentation"" dir=""ltr"">Branch Mispredict</span><span style=""left: 363.427px; top: 644.595px; font-size: 30px; font-family: sans-serif;"" role=""presentation"" dir=""ltr""></span>"	"<span style=""left: 634.851px; top: 626.47px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05705);"" role=""presentation"" dir=""ltr"">3 ns</span>"
+"<span style=""left: 198.04px; top: 856.771px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 89.378px; top: 893.021px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04099);"" role=""presentation"" dir=""ltr"">L2 Cache Reference</span>"	"<span style=""left: 634.851px; top: 856.771px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05705);"" role=""presentation"" dir=""ltr"">4 ns</span><br role=""presentation""><span style=""left: 608.176px; top: 893.021px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.02884);"" role=""presentation"" dir=""ltr"">(4x L1)<br></span>25x faster than main memory ref"
+"<span style=""left: 198.04px; top: 1105.2px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 102.752px; top: 1141.45px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.08916);"" role=""presentation"" dir=""ltr"">Mutex lock/unlock</span>"	"<span style=""left: 618.166px; top: 1123.32px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03547);"" role=""presentation"" dir=""ltr"">17 ns<br></span>1/5th of Main memory ref"
+"<span style=""left: 198.034px; top: 111.495px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 60.2137px; top: 147.745px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04953);"" role=""presentation"" dir=""ltr"">Main Memory Reference</span>"	"<span style=""left: 618.16px; top: 111.495px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03547);"" role=""presentation"" dir=""ltr"">100 ns</span><br role=""presentation""><span style=""left: 544.793px; top: 147.745px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.02699);"" role=""presentation"" dir=""ltr"">(25x L2, 100x L1)</span>"
+"<span style=""left: 198.04px; top: 359.92px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 42.752px; top: 396.17px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.07386);"" role=""presentation"" dir=""ltr"">Compress 1 KB with Zippy</span>"	"<span style=""left: 597.314px; top: 359.92px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.02376);"" role=""presentation"" dir=""ltr"">2,000 ns</span><br role=""presentation""><span style=""left: 626.509px; top: 396.17px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.0438);"" role=""presentation"" dir=""ltr"">2 us<br></span>0.002 ms"
+"<span style=""left: 198.04px; top: 590.22px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 87.752px; top: 626.47px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05729);"" role=""presentation"" dir=""ltr"">Send 1 KB over Gbit </span><br role=""presentation""><span style=""left: 175.269px; top: 662.72px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.09353);"" role=""presentation"" dir=""ltr"">network</span>"	"<span style=""left: 597.314px; top: 608.345px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.02376);"" role=""presentation"" dir=""ltr"">10,000 ns</span><br role=""presentation""><span style=""left: 626.509px; top: 644.595px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.0438);"" role=""presentation"" dir=""ltr"">10 us<br></span>1KB = 8 * 10^3 B<br>time = 8 * 10^3 / 10^9 bit = 8 us ~= 10 us&nbsp;"
+"<span style=""left: 198.04px; top: 838.646px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 48.5748px; top: 874.896px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.06441);"" role=""presentation"" dir=""ltr"">Read 4 KB randomly from </span><br role=""presentation""><span style=""left: 201.937px; top: 911.146px; font-size: 30px; font-family: sans-serif; transform: scaleX(0.999243);"" role=""presentation"" dir=""ltr"">SSD</span>"	"<span style=""left: 588.972px; top: 856.771px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.02096);"" role=""presentation"" dir=""ltr"">20,000 ns</span><br role=""presentation""><span style=""left: 618.166px; top: 893.021px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03547);"" role=""presentation"" dir=""ltr"">20 us</span>"
+"<span style=""left: 198.034px; top: 93.3699px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 65.2235px; top: 129.62px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05615);"" role=""presentation"" dir=""ltr"">Read 1 MB sequentially</span><br role=""presentation""><span style=""left: 136.913px; top: 165.87px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.08397);"" role=""presentation"" dir=""ltr"">from memory</span>"	"<span style=""left: 618.16px; top: 147.745px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03547);"" role=""presentation"" dir=""ltr"">10,000 ns<br>10 us<br>0.01 ms<br></span>100x Main memory ref<br><br><span>Number of pages in </span>\(1\,\text{MB}\)&nbsp;\[\text{Pages} = \frac{1\,\text{MB}}{8\,\text{KB}} = \frac{1024\,\text{KB}}{8\,\text{KB}} = 128\,\text{pages}\]
+
+Next, compute the total time required:  
+\[\text{Total Time} = 128 \times 100\,\text{ns Main Memory Ref} = 12,\!800\,\text{ns}\]
+
+Converting to microseconds:  
+\[12,\!800\,\text{ns} = 12.8\,\text{µs} \sim 10 \text{µs}\]<br>"
+"<span style=""left: 198.04px; top: 341.795px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 109.476px; top: 378.045px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.10155);"" role=""presentation"" dir=""ltr"">Round trip within</span><br role=""presentation""><span style=""left: 114.383px; top: 414.295px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05845);"" role=""presentation"" dir=""ltr"">same datacenter</span>"	"<span style=""left: 588.972px; top: 359.92px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.02096);"" role=""presentation"" dir=""ltr"">500,000 ns</span><br role=""presentation""><span style=""left: 618.166px; top: 396.17px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03547);"" role=""presentation"" dir=""ltr"">500 us<br></span>0.5 ms"
+"<span style=""left: 198.04px; top: 590.22px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 65.23px; top: 626.47px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05464);"" role=""presentation"" dir=""ltr"">Read 1 MB sequentially </span><br role=""presentation""><span style=""left: 164.437px; top: 662.72px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05019);"" role=""presentation"" dir=""ltr"">from SSD</span>"	"<span style=""left: 630.676px; top: 608.345px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05085);"" role=""presentation"" dir=""ltr"">1 ms</span><br role=""presentation""><span style=""left: 575.664px; top: 644.595px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.0587);"" role=""presentation"" dir=""ltr"">(100x memory)<br></span>4KB Random Read = 20us<br>\[\text{Latency} = 20 \times 10^{-6} \times \frac{1 \times 10^{6}\,\text{Bytes}}{4 \times 10^{3}\,\text{Bytes}} = 5 \times 10^{-3} = 5\,\text{ms}\]<br>5x Faster than reading 1MB randomly from SSD<br>"
+"<span style=""left: 198.04px; top: 856.771px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 163.558px; top: 893.021px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.06376);"" role=""presentation"" dir=""ltr"">Disk seek</span>"	"<span style=""left: 622.334px; top: 856.771px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04021);"" role=""presentation"" dir=""ltr"">10 ms</span><br role=""presentation""><span style=""left: 474.831px; top: 893.021px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.07342);"" role=""presentation"" dir=""ltr"">(20x data center roundtrip)</span>"
+"<span style=""left: 198.04px; top: 1087.07px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 65.23px; top: 1123.32px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05615);"" role=""presentation"" dir=""ltr"">Read 1 MB sequentially</span><br role=""presentation""><span style=""left: 103.609px; top: 1159.57px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.08975);"" role=""presentation"" dir=""ltr"">from 1 Gbit network</span>"	"<span style=""left: 622.334px; top: 1105.2px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04021);"" role=""presentation"" dir=""ltr"">8ms ~10 ms</span><br role=""presentation""><span style=""left: 500.063px; top: 1141.45px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03575);"" role=""presentation"" dir=""ltr"">(100x memory, 10x SSD)<br></span>\[     1\,\text{Gbit/s} = 10^9\,\text{bits/s}
+     \]
+   - Convert to bytes per second (since \(1\,\text{byte} = 8\,\text{bits}\)):
+     \[     \text{Bandwidth} = \frac{10^9\,\text{bits/s}}{8} \approx 125 \times 10^6\,\text{bytes/s}
+     \]&nbsp;\[     \text{Time} = \frac{\text{Data Size}}{\text{Bandwidth}}
+     \]\[     \text{Time} = \frac{10^6\,\text{bytes}}{125 \times 10^6\,\text{bytes/s}} = 0.008\,\text{s} = 8\,\text{ms} \approx 10 \text{ms}
+     \]<br>"
+"<span style=""left: 198.034px; top: 93.3699px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 65.2235px; top: 129.62px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05615);"" role=""presentation"" dir=""ltr"">Read 1 MB sequentially</span><br role=""presentation""><span style=""left: 165.258px; top: 165.87px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.10824);"" role=""presentation"" dir=""ltr"">from disk</span>"	"<span style=""left: 622.327px; top: 111.495px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04021);"" role=""presentation"" dir=""ltr"">30 ms</span><br role=""presentation""><span style=""left: 491.714px; top: 147.745px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03391);"" role=""presentation"" dir=""ltr"">(120x memory, 30x SSD)</span>"
+"<span style=""left: 198.04px; top: 359.92px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05877);"" role=""presentation"" dir=""ltr"">Time</span><br role=""presentation""><span style=""left: 66.1456px; top: 396.17px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05658);"" role=""presentation"" dir=""ltr"">Round trip CA-AMS-CA</span>"	"<span style=""left: 613.991px; top: 378.045px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03319);"" role=""presentation"" dir=""ltr"">150 ms</span>"
+"<span style=""left: 133.609px; top: 608.345px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.06976);"" role=""presentation"" dir=""ltr"">Power of ten?</span><br role=""presentation""><span style=""left: 151.085px; top: 644.595px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.06369);"" role=""presentation"" dir=""ltr"">ns / us / ms</span>"	"<span style=""left: 578.974px; top: 590.22px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05018);"" role=""presentation"" dir=""ltr"">ns = 10^-9 s</span><br role=""presentation""><span style=""left: 578.974px; top: 626.47px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05018);"" role=""presentation"" dir=""ltr"">us = 10^-6 s</span><br role=""presentation""><span style=""left: 574.8px; top: 662.72px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.04817);"" role=""presentation"" dir=""ltr"">ms = 10^-3 s</span>"
+"<span style=""left: 187.764px; top: 838.646px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03618);"" role=""presentation"" dir=""ltr"">Speed</span><br role=""presentation""><span style=""left: 105.235px; top: 874.896px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.06796);"" role=""presentation"" dir=""ltr"">Read sequentially</span><br role=""presentation""><span style=""left: 165.264px; top: 911.146px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.10824);"" role=""presentation"" dir=""ltr"">from HDD</span>"	"<span style=""left: 608.176px; top: 874.896px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.02947);"" role=""presentation"" dir=""ltr"">~200 MB/s</span>"
+"<span style=""left: 187.764px; top: 1087.07px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03618);"" role=""presentation"" dir=""ltr"">Speed</span><br role=""presentation""><span style=""left: 105.235px; top: 1123.32px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.06796);"" role=""presentation"" dir=""ltr"">Read sequentially</span><br role=""presentation""><span style=""left: 103.609px; top: 1159.57px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.08975);"" role=""presentation"" dir=""ltr"">from Gbit network</span>"	"<span style=""left: 599.834px; top: 1123.32px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.02543);"" role=""presentation"" dir=""ltr"">100 MB/s</span>"
+"<span style=""left: 187.758px; top: 93.3699px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03618);"" role=""presentation"" dir=""ltr"">Speed</span><br role=""presentation""><span style=""left: 105.228px; top: 129.62px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.06796);"" role=""presentation"" dir=""ltr"">Read sequentially</span><br role=""presentation""><span style=""left: 164.43px; top: 165.87px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05019);"" role=""presentation"" dir=""ltr"">from SSD</span>"	"<span style=""left: 617.339px; top: 129.62px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03544);"" role=""presentation"" dir=""ltr"">1 GB/s</span>"
+"<span style=""left: 187.764px; top: 341.795px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03618);"" role=""presentation"" dir=""ltr"">Speed</span><br role=""presentation""><span style=""left: 105.235px; top: 378.045px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.06796);"" role=""presentation"" dir=""ltr"">Read sequentially</span><br role=""presentation""><span style=""left: 136.92px; top: 414.295px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.08397);"" role=""presentation"" dir=""ltr"">from main memory</span>"	"<span style=""left: 617.346px; top: 378.045px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03544);"" role=""presentation"" dir=""ltr"">100 GB/s burst rate</span>"
+"<span style=""left: 187.764px; top: 590.22px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03618);"" role=""presentation"" dir=""ltr"">Speed</span><br role=""presentation""><span style=""left: 68.8995px; top: 626.47px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.09205);"" role=""presentation"" dir=""ltr"">World-wide round trips</span><br role=""presentation""><span style=""left: 143.592px; top: 662.72px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.07847);"" role=""presentation"" dir=""ltr"">per second?</span>"	"<span style=""left: 477.358px; top: 608.345px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.08459);"" role=""presentation"" dir=""ltr"">6-7 world-wide round trips</span><br role=""presentation""><span style=""left: 584.841px; top: 644.595px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.07653);"" role=""presentation"" dir=""ltr"">per second</span>"
+"<span style=""left: 187.764px; top: 820.521px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03618);"" role=""presentation"" dir=""ltr"">Speed</span><br role=""presentation""><span style=""left: 101.133px; top: 856.771px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.10221);"" role=""presentation"" dir=""ltr"">Round trips within</span><br role=""presentation""><span style=""left: 110.215px; top: 893.021px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05625);"" role=""presentation"" dir=""ltr"">same data center</span><br role=""presentation""><span style=""left: 143.592px; top: 929.271px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.07847);"" role=""presentation"" dir=""ltr"">per second?</span>"	"<span style=""left: 496.511px; top: 838.646px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.08356);"" role=""presentation"" dir=""ltr"">2,000 round trips within</span><br role=""presentation""><span style=""left: 542.302px; top: 874.896px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.05625);"" role=""presentation"" dir=""ltr"">same data center</span><br role=""presentation""><span style=""left: 584.841px; top: 911.146px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.07653);"" role=""presentation"" dir=""ltr"">per second</span>"
+"<span style=""left: 187.764px; top: 1087.07px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.03618);"" role=""presentation"" dir=""ltr"">Speed</span><br role=""presentation""><span style=""left: 105.235px; top: 1123.32px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.06796);"" role=""presentation"" dir=""ltr"">Read sequentially</span><br role=""presentation""><span style=""left: 103.609px; top: 1159.57px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.08975);"" role=""presentation"" dir=""ltr"">from 10Gbit network</span>"	"<span style=""left: 599.834px; top: 1123.32px; font-size: 30px; font-family: sans-serif; transform: scaleX(1.02543);"" role=""presentation"" dir=""ltr"">1000 MB/s<br></span>1 GB/s"
+Max rund trips between Europe and the US per second	No more than 6-7 (150ms);&nbsp; but<br>approximately 2000 per second can be achieved within a datacenter (0.5 ms * 2000)
+Max rund trips within a datacenter&nbsp;per second	Approximately 2000 per second can be achieved within a datacenter (0.5 ms * 2000) ;&nbsp;<br>Between US-EU&nbsp; - No more than 6-7 (150ms);&nbsp; but 300x faster within datacenter
+What is the overall latency of retrieving 30 256kB images from one server?	Naïve design: do all the work on one machine - dominated by disk seek time.<br><br>Reads required to generate page:<br>30 images / 2 disks per machine = 15<br>Time to read one image from HDD:<br>(256KB / 1MB) * 5 ms + 10 ms seek = 11.28 ms<br>Approximate time to generate results:<br>15 reads * 11.28 ms = 169.2 ms<br>One HDD-based server can generate 1000 ms / 169.2 ms ~= 5 result pages per second.
+"<pre><span style=""font-family: Arial;"">Latency Throughput: </span>Sequential Memory R/W (64 bytes)</pre>"	"<table border=""1"" cellpadding=""5"">
+  <tbody><tr>
+    <th>Operation</th>
+    <th>Latency</th>
+    <th>Throughput</th>
+    <th>1 MiB</th>
+    <th>1 GiB</th>
+  </tr>
+  <tr>
+    <td>Sequential Memory R/W (64 bytes)</td>
+    <td>0.5 ns</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Single Thread, No SIMD</td>
+    <td></td>
+    <td>10 GiB/s</td>
+    <td>100 μs</td>
+    <td>100 ms</td>
+  </tr>
+  <tr>
+    <td>Single Thread, SIMD</td>
+    <td></td>
+    <td>20 GiB/s</td>
+    <td>50 μs</td>
+    <td>50 ms</td>
+  </tr>
+  <tr>
+    <td>Threaded, No SIMD</td>
+    <td></td>
+    <td>30 GiB/s</td>
+    <td>35 μs</td>
+    <td>35 ms</td>
+  </tr>
+  <tr>
+    <td>Threaded, SIMD</td>
+    <td></td>
+    <td>35 GiB/s</td>
+    <td>30 μs</td>
+    <td>30 ms</td>
+  </tr>
+</tbody></table>
+"
+Latency Throughput: Network Same-Zone	"<table border=""1"" cellpadding=""5"">
+  <tbody><tr>
+    <th>Operation</th>
+    <th>Latency</th>
+    <th>Throughput</th>
+    <th>1 MiB</th>
+    <th>1 GiB</th>
+  </tr>
+  <tr>
+    <td>Network Same-Zone</td>
+    <td></td>
+    <td>10 GiB/s</td>
+    <td>100 μs</td>
+    <td>100 ms</td>
+  </tr>
+  <tr>
+    <td> ├ Inside VPC</td>
+    <td></td>
+    <td>10 GiB/s</td>
+    <td>100 μs</td>
+    <td>100 ms</td>
+  </tr>
+  <tr>
+    <td> ├ Outside VPC</td>
+    <td></td>
+    <td>3 GiB/s</td>
+    <td>300 μs</td>
+    <td>300 ms</td>
+  </tr>
+</tbody></table>
+"
+Latency Throughput: Blob Storage	"<table border=""1"" cellpadding=""5"">
+  <tbody><tr>
+    <th>Operation</th>
+    <th>Latency</th>
+    <th>Throughput</th>
+    <th>1 MiB</th>
+    <th>1 GiB</th>
+  </tr>
+  <tr>
+    <td>Blob Storage GET, 1 conn</td>
+    <td>50 ms</td>
+    <td>500 MiB/s</td>
+    <td>2 ms</td>
+    <td>2 s</td>
+  </tr>
+  <tr>
+    <td>Blob Storage GET, n conn (offsets)</td>
+    <td>50 ms</td>
+    <td>NW limit</td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Blob Storage PUT, 1 conn</td>
+    <td>50 ms</td>
+    <td>100 MiB/s</td>
+    <td>10 ms</td>
+    <td>10 s</td>
+  </tr>
+  <tr>
+    <td>Blob Storage PUT, n conn (multipart)</td>
+    <td>150 ms</td>
+    <td>NW limit</td>
+    <td></td>
+    <td></td>
+  </tr>
+</tbody></table>
+"
+Latency Throughput: Misc	"<table border=""1"" style=""text-align: center;"">
+  <tbody><tr>
+    <th>Operation</th>
+    <th>Latency</th>
+    <th>Throughput</th>
+    <th>1 MiB</th>
+    <th>1 GiB</th>
+  </tr>
+  <tr>
+    <td>Hashing, not crypto-safe (64 bytes)</td>
+    <td>25 ns</td>
+    <td>2 GiB/s</td>
+    <td>500 μs</td>
+    <td>500 ms</td>
+  </tr>
+  <tr>
+    <td>Random Memory R/W (64 bytes)</td>
+    <td>50 ns</td>
+    <td>1 GiB/s</td>
+    <td>1 ms</td>
+    <td>1 s</td>
+  </tr>
+  <tr>
+    <td>Fast Serialization <sup>[8] [9]</sup> †</td>
+    <td>N/A</td>
+    <td>1 GiB/s</td>
+    <td>1 ms</td>
+    <td>1 s</td>
+  </tr>
+  <tr>
+    <td>Fast Deserialization <sup>[8] [9]</sup> †</td>
+    <td>N/A</td>
+    <td>1 GiB/s</td>
+    <td>1 ms</td>
+    <td>1 s</td>
+  </tr>
+  <tr>
+    <td>System Call</td>
+    <td>500 ns</td>
+    <td>N/A</td>
+    <td>N/A</td>
+    <td>N/A</td>
+  </tr>
+  <tr>
+    <td>Hashing, crypto-safe (64 bytes)</td>
+    <td>100 ns</td>
+    <td>1 GiB/s</td>
+    <td>1 ms</td>
+    <td>1 s</td>
+  </tr>
+  <tr>
+    <td>Sequential SSD read (8 KiB)</td>
+    <td>1 μs</td>
+    <td>4 GiB/s</td>
+    <td>200 μs</td>
+    <td>200 ms</td>
+  </tr>
+  <tr>
+    <td>Context Switch <sup>[1] [2]</sup></td>
+    <td>10 μs</td>
+    <td>N/A</td>
+    <td>N/A</td>
+    <td>N/A</td>
+  </tr>
+  <tr>
+    <td>Sequential SSD write, -fsync (8 KiB)</td>
+    <td>10 μs</td>
+    <td>1 GiB/s</td>
+    <td>1 ms</td>
+    <td>1 s</td>
+  </tr>
+  <tr>
+    <td>TCP Echo Server (32 KiB)</td>
+    <td>10 μs</td>
+    <td>4 GiB/s</td>
+    <td>200 μs</td>
+    <td>200 ms</td>
+  </tr>
+  <tr>
+    <td>Decompression <sup>[11]</sup></td>
+    <td>N/A</td>
+    <td>1 GiB/s</td>
+    <td>1 ms</td>
+    <td>1 s</td>
+  </tr>
+  <tr>
+    <td>Compression <sup>[11]</sup></td>
+    <td>N/A</td>
+    <td>500 MiB/s</td>
+    <td>2 ms</td>
+    <td>2 s</td>
+  </tr>
+  <tr>
+    <td>Sequential SSD write, +fsync (8 KiB)</td>
+    <td>1 ms</td>
+    <td>10 MiB/s</td>
+    <td>100 ms</td>
+    <td>2 min</td>
+  </tr>
+  <tr>
+    <td>Sorting (64-bit integers)</td>
+    <td>N/A</td>
+    <td>200 MiB/s</td>
+    <td>5 ms</td>
+    <td>5 s</td>
+  </tr>
+  <tr>
+    <td>Sequential HDD Read (8 KiB)</td>
+    <td>10 ms</td>
+    <td>250 MiB/s</td>
+    <td>2 ms</td>
+    <td>2 s</td>
+  </tr>
+</tbody></table>
+"
+Latency Throughput: Random IO/ Ser/De	"<table border=""1"" cellpadding=""5"">
+  <tbody><tr>
+    <th>Operation</th>
+    <th>Latency</th>
+    <th>Throughput</th>
+    <th>1 MiB</th>
+    <th>1 GiB</th>
+  </tr>
+  <tr>
+    <td>Random SSD Read (8 KiB)</td>
+    <td>100 μs</td>
+    <td>70 MiB/s</td>
+    <td>15 ms</td>
+    <td>15 s</td>
+  </tr>
+  <tr>
+    <td>Serialization <sup>[8] [9]</sup> †</td>
+    <td>N/A</td>
+    <td>100 MiB/s</td>
+    <td>10 ms</td>
+    <td>10 s</td>
+  </tr>
+  <tr>
+    <td>Deserialization <sup>[8] [9]</sup> †</td>
+    <td>N/A</td>
+    <td>100 MiB/s</td>
+    <td>10 ms</td>
+    <td>10 s</td>
+  </tr>
+  <tr>
+    <td>Proxy: Envoy/ProxySQL/Nginx/HAProxy</td>
+    <td>50 μs</td>
+    <td>?</td>
+    <td>?</td>
+    <td>?</td>
+  </tr>
+  <tr>
+    <td>Network within same region</td>
+    <td>250 μs</td>
+    <td>2 GiB/s</td>
+    <td>500 μs</td>
+    <td>500 ms</td>
+  </tr>
+  <tr>
+    <td>Premium network within zone/VPC</td>
+    <td>250 μs</td>
+    <td>25 GiB/s</td>
+    <td>50 μs</td>
+    <td>40 ms</td>
+  </tr>
+  <tr>
+    <td>{MySQL, Memcached, Redis, ..} Query</td>
+    <td>500 μs</td>
+    <td>?</td>
+    <td>?</td>
+    <td>?</td>
+  </tr>
+  <tr>
+    <td>Random HDD Read (8 KiB)</td>
+    <td>10 ms</td>
+    <td>0.7 MiB/s</td>
+    <td>2 s</td>
+    <td>30 m</td>
+  </tr>
+</tbody></table>
+
+
+
+<span>
+**†:** ""Fast serialization/deserialization"" is typically a simple wire-protocol
+that just dumps bytes, or a very efficient environment. Typically standard
+serialization such as e.g. JSON will be of the slower kind. We include both here
+as serialization/deserialization is a very, very broad topic with extremely
+different performance characteristics depending on data and implementation.
+</span>"
+Latency Throughput: Network VPC	"<table border=""1"" cellpadding=""5"">
+  <tbody><tr>
+    <th>Operation</th>
+    <th>Latency</th>
+    <th>Throughput</th>
+    <th>1 MiB</th>
+    <th>1 GiB</th>
+  </tr>
+  <tr>
+    <td>Network between regions <sup>[6]</sup></td>
+    <td>[Varies]<sup>[i]</sup></td>
+    <td>25 MiB/s</td>
+    <td>40 ms</td>
+    <td>40 s</td>
+  </tr>
+  <tr>
+    <td>Network NA Central ↔ East</td>
+    <td>25 ms</td>
+    <td>25 MiB/s</td>
+    <td>40 ms</td>
+    <td>40 s</td>
+  </tr>
+  <tr>
+    <td>Network NA Central ↔ West</td>
+    <td>40 ms</td>
+    <td>25 MiB/s</td>
+    <td>40 ms</td>
+    <td>40 s</td>
+  </tr>
+  <tr>
+    <td>Network NA East ↔ West</td>
+    <td>60 ms</td>
+    <td>25 MiB/s</td>
+    <td>40 ms</td>
+    <td>40 s</td>
+  </tr>
+  <tr>
+    <td>Network EU West ↔ NA East</td>
+    <td>80 ms</td>
+    <td>25 MiB/s</td>
+    <td>40 ms</td>
+    <td>40 s</td>
+  </tr>
+  <tr>
+    <td>Network EU West ↔ NA Central</td>
+    <td>100 ms</td>
+    <td>25 MiB/s</td>
+    <td>40 ms</td>
+    <td>40 s</td>
+  </tr>
+  <tr>
+    <td>Network NA West ↔ Singapore</td>
+    <td>180 ms</td>
+    <td>25 MiB/s</td>
+    <td>40 ms</td>
+    <td>40 s</td>
+  </tr>
+  <tr>
+    <td>Network EU West ↔ Singapore</td>
+    <td>160 ms</td>
+    <td>25 MiB/s</td>
+    <td>40 ms</td>
+    <td>40 s</td>
+  </tr>
+</tbody></table>
+"
+Cost $$ Network / CPU / GPU	"<table border=""1"" cellpadding=""5"">
+  <tbody><tr>
+    <th>What</th>
+    <th>Amount</th>
+    <th>$ / Month</th>
+    <th>1y commit $ / Month</th>
+    <th>Spot $ / Month</th>
+    <th>Hourly Spot $</th>
+  </tr>
+  <tr>
+    <td>CPU</td>
+    <td>1</td>
+    <td>$15</td>
+    <td>$10</td>
+    <td>$2</td>
+    <td>$0.005</td>
+  </tr>
+  <tr>
+    <td>GPU</td>
+    <td>1</td>
+    <td>$5000</td>
+    <td>$3000</td>
+    <td>$1500</td>
+    <td>$2</td>
+  </tr>
+  <tr>
+    <td>Memory</td>
+    <td>1 GB</td>
+    <td>$2</td>
+    <td>$1</td>
+    <td>$0.2</td>
+    <td>$0.0005</td>
+  </tr>
+  <tr>
+    <td colspan=""6""><b>Storage</b></td>
+  </tr>
+  <tr>
+    <td>├ Warehouse Storage</td>
+    <td>1 GB</td>
+    <td>$0.02</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Blob (S3, GCS)</td>
+    <td>1 GB</td>
+    <td>$0.02</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Zonal HDD</td>
+    <td>1 GB</td>
+    <td>$0.05</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Ephemeral SSD</td>
+    <td>1 GB</td>
+    <td>$0.08</td>
+    <td>$0.05</td>
+    <td>$0.05</td>
+    <td>$0.07</td>
+  </tr>
+  <tr>
+    <td>├ Regional HDD</td>
+    <td>1 GB</td>
+    <td>$0.1</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Zonal SSD</td>
+    <td>1 GB</td>
+    <td>$0.2</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Regional SSD</td>
+    <td>1 GB</td>
+    <td>$0.35</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td colspan=""6""><b>Networking</b></td>
+  </tr>
+  <tr>
+    <td>├ Same Zone</td>
+    <td>1 GB</td>
+    <td>$0</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Blob</td>
+    <td>1 GB</td>
+    <td>$0</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Ingress</td>
+    <td>1 GB</td>
+    <td>$0</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ L4 LB</td>
+    <td>1 GB</td>
+    <td>$0.008</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Inter-Zone</td>
+    <td>1 GB</td>
+    <td>$0.01</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Inter-Region</td>
+    <td>1 GB</td>
+    <td>$0.02</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>├ Internet Egress †</td>
+    <td>1 GB</td>
+    <td>$0.1</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>CDN Egress</td>
+    <td>1 GB</td>
+    <td>$0.05</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>CDN Fill ‡</td>
+    <td>1 GB</td>
+    <td>$0.01</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Warehouse Query</td>
+    <td>1 GB</td>
+    <td>$0.005</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Logs/Traces ♣</td>
+    <td>1 GB</td>
+    <td>$0.5</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Metrics</td>
+    <td>1000</td>
+    <td>$20</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>EKM Keys</td>
+    <td>1</td>
+    <td>$1</td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+</tbody></table>
+
+<span style=""font-family: monospace; font-size: 1rem;"">
+  † This refers to network leaving your cloud provider, e.g. sending data to S3
+from GCP or egress network for sending HTML from AWS to a client.
+
+‡ An additional per cache-fill fee is incurred that costs close to blob storage
+write costs (see just below).
+
+7 This is standard pricing among a few logging providers, but e.g. <p><a href=""https://www.datadoghq.com/pricing/?product=log-management#products"">Datadog
+pricing</a></p>
+ is
+different and charges \$0.1 per ingested logs with \$1.5 per 1m on top for 7d
+retention.
+
+Furthermore, for blob storage (S3/GCS/R2/...), you're charged per read/write
+operation (fewer, large files is cheaper)
+</span>
+
+
+<table border=""1"">
+  <tbody><tr>
+    <th></th>
+    <th>1M</th>
+    <th>1000</th>
+  </tr>
+  <tr>
+    <td>Reads</td>
+    <td>$0.4</td>
+    <td>$0.0004</td>
+  </tr>
+  <tr>
+    <td>Writes</td>
+    <td>$5</td>
+    <td>$0.005</td>
+  </tr>
+  <tr>
+    <td>EKM Encryption</td>
+    <td>$3</td>
+    <td>$0.003</td>
+  </tr>
+</tbody></table>
+"
