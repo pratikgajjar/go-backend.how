@@ -398,7 +398,7 @@ with 10 go-routines and 10 db connection
 - Throughput = 300 RPS
 - Storage = ~2GB assuming it scales linearly as at 4.5M it used `440M` table storage + `442M` index usage
 
-## Conclusion & Future Directions
+# Conclusion & Future
 
 > TigerBeetle demonstrates significant speed advantages (up to 22x faster than PostgreSQL in our benchmarks) with lower CPU usage for immutable, sequential writes. However, its single-core architecture limits parallelism.
 
