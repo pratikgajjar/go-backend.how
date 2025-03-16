@@ -1,5 +1,5 @@
 ---
-title: "💸 BAD: Billion Payments a day with TigerBeetle/PostgreSQL: A First-Principles Approach"
+title: "💸 A Billion Payments a day with TigerBeetle & PostgreSQL: A First-Principles Approach"
 date: 2025-03-01
 description: "A deep dive into handling the 1B payments/day challenge using first-principles system design with TigerBeetle, PostgreSQL and Golang."
 tags: ["golang", "tigerbeetle", "payments", "first-principles" , "system-design"]
