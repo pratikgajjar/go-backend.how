@@ -120,6 +120,26 @@ With **20TB SSDs**, vertical scaling remains feasible.
 
 [TigerBeetle](https://tigerbeetle.com/) is a high-performance, distributed financial database designed for mission-critical payments and ledger applications. Engineered for speed, resilience, and correctness, it handles millions of transactions per second with strict consistency. Built in Zig, it prioritizes safety and efficiency while ensuring minimal operational complexity.
 
+TigerBeetle uses a consensus-based replication model with a recommended minimum of 3 nodes for fault tolerance:
+
+1. **Leader-Follower Model**: One node acts as the leader, processing all writes, while followers replicate data.
+2. **Consensus Protocol**: Uses a custom consensus protocol for strong consistency.
+3. **Cluster Configuration**: Typically deployed in odd-numbered clusters (3, 5, or 7 nodes) across different availability zones.
+
+```diag
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   TigerBeetle   │     │   TigerBeetle   │     │   TigerBeetle   │
+│      Node 1     │◄────┤      Node 2     │◄────┤      Node 3     │
+│    (Leader)     │     │    (Follower)   │     │    (Follower)   │
+└────────┬────────┘     └─────────────────┘     └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Application   │
+│      Layer      │
+└─────────────────┘
+```
+
 ### Benchmark Analysis: Storage vs Expectations
 
 Storage Discrepancy Breakdown
@@ -402,6 +422,34 @@ with 10 go-routines and 10 db connection
 - Throughput = 300 RPS
 - Storage = ~2GB assuming it scales linearly as at 4.5M it used `440M` table storage + `442M` index usage
 
+### PostgreSQL Horizontal Scaling
+
+PostgreSQL offers more flexible horizontal scaling options:
+
+1. **Read Replicas**: Offload read queries to replica instances.
+2. **Partitioning**: Divide tables by time periods or account ranges.
+3. **Connection Pooling**: Use PgBouncer or Pgpool-II to manage connection overhead.
+4. **Citus Extension**: For true distributed PostgreSQL deployments.
+
+```diag
+┌─────────────────┐
+│   Application   │
+│      Layer      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Connection    │
+│      Pool       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────┬─────────┬─────────┐
+│ Primary │ Read    │ Read    │
+│ DB      │ Replica │ Replica │
+└─────────┴─────────┴─────────┘
+```
+
 # Conclusion & Future
 
 > TigerBeetle demonstrates significant speed advantages (up to 22x faster than PostgreSQL in our benchmarks) with lower CPU usage for immutable, sequential writes. However, its single-core architecture limits parallelism.
@@ -410,17 +458,87 @@ with 10 go-routines and 10 db connection
 
   Both systems incur overheads beyond raw data sizes due to indexing and journaling. For TigerBeetle, understanding and potentially mitigating this overhead (e.g., with custom indexing strategies) could further optimize storage.
 
-### System Trade-offs
+TigerBeetle Wishlist;
 
-- **TigerBeetle** excels in scenarios demanding high throughput and predictable low latency.
-- **PostgreSQL** remains a strong candidate when complex query capabilities and multi-core processing are required.
+- Layered archival, ex transfers done >90 days moves to another disk, >6 months data moves to object storage.
+- Transparent loading of specific payment data back to hot storage for read access in case linked transfer needs to be created on older payment.
+- 2PC with N shards ensuring reducing blast radius in case primary node has issues.
+- Change data capture to listens payment stream for downstream services like reconciliation.
 
-### Further Exploration
+### Hot-Warm-Cold Storage Architecture
 
-- Investigate distributed processing strategies to overcome single-core limitations.
-- Experiment with custom indexing or journaling strategies to reduce storage overhead.
+1. **Hot Storage (0-90 days)**:
+   - Kept in primary database (TigerBeetle or PostgreSQL)
+   - Fully indexed and immediately accessible
+   - Estimated size: 11.52TB (with replication: 69.42TB)
 
--- #TODO Add horizontal scaling, archival, conclude on 1B requirement, include screenshots
+2. **Warm Storage (90 days - 1 year)**:
+   - Moved to a secondary database or columnar storage (e.g., ClickHouse)
+   - Partially indexed for common queries
+   - Accessible within minutes
+   - Estimated size: ~46.72TB
+
+3. **Cold Storage (1-10 years)**:
+   - Archived to object storage (e.g., S3, GCS)
+   - Compressed and potentially partitioned by time
+   - Accessible within hours
+   - Estimated size: ~467.2TB
+
+### Archival Process
+
+1. **Scheduled Jobs**: Run during off-peak hours to move data between tiers
+2. **Data Compression**: Apply columnar compression for archived data (typically 5-10x reduction)
+3. **Selective Indexing**: Maintain indices only for frequently accessed fields in warm storage
+4. **Immutable Storage**: Use append-only formats like Parquet or ORC for cold storage
+
+## Meeting the 1B Requirement: Final Assessment
+
+Based on our analysis, can a system handle 1 billion payments per day? Let's summarize:
+
+### Storage Requirements: ✅ Feasible
+
+- **Account Data**: 51.2GB (raw) → ~150GB with indices and overhead
+- **Daily Transfers**: 128GB (raw) → ~1.5TB with indices and overhead
+- **90-Day Hot Storage**: ~135TB with replication
+- Modern cloud infrastructure can easily accommodate these storage requirements
+
+### Throughput Requirements: ✅ Feasible with Constraints
+
+- **Average Load**: ~12,000 TPS
+- **Peak Load**: ~30,000 TPS
+- **TigerBeetle Performance**: Single node can handle ~6,600 TPS
+- **PostgreSQL Performance**: Single node can handle ~300 TPS
+
+To meet the throughput requirements:
+
+- **TigerBeetle**: Would need 5 sharded clusters to handle peak load
+- **PostgreSQL**: Would need 100+ sharded instances to handle peak load
+
+### Latency Requirements: ✅ Feasible
+
+- **TigerBeetle**: ~1.3ms per transaction (best case) to ~274ms (worst case with batching)
+- **PostgreSQL**: ~100-200ms per transaction
+- Both systems can meet reasonable payment latency requirements (sub-second)
+
+### Operational Complexity: ⚠️ Challenging
+
+- **TigerBeetle**: Lower operational complexity due to simpler architecture, but requires custom sharding logic
+- **PostgreSQL**: Higher operational complexity due to the large number of instances required
+
+## Conclusion
+
+A system handling 1 billion payments per day is technically feasible with current technology, but requires careful architecture decisions:
+
+1. **TigerBeetle** offers superior performance for the core payment processing with significantly lower resource requirements, making it the preferred choice for the transaction engine.
+
+2. **PostgreSQL** remains valuable for supporting systems where complex queries and joins are needed (reporting, analytics, user management).
+
+3. **Hybrid Architecture** combining both systems likely offers the best balance:
+   - TigerBeetle for core payment processing
+   - PostgreSQL for supporting services and complex queries
+   - Specialized analytics databases for reporting
+
+The key challenge isn't the technical feasibility but rather the operational complexity of managing such a system at scale. With proper sharding, batching strategies, and a well-designed archival system, processing 1 billion payments daily is achievable with current technology.
 
 ---
 Reference
