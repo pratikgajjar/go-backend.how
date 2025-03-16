@@ -6,8 +6,9 @@ html {
 }
 
 :root {
-  --color-yellow: #ffff99;
   --color-link: #ffbb7a;
+  --selection: hsl(32, 98%, 70%);
+  --selection-fg: black;
   --font-mono: "JetBrains Mono", monospace;
 }
 
@@ -325,8 +326,8 @@ table thead tr {
 }
 
 ::selection {
-    background: var(--mocha-yellow);
-    color: black;
+    background: var(--selection);
+    color: var(--selection-fg);
 }
 
 figure {
@@ -346,15 +347,14 @@ figure div a {
 
 /* For webkit browsers (e.g., Chrome, Safari) */
 ::-webkit-selection {
-    background: var(--color-yellow);
-    background: var(--mocha-yellow);
-    color: black;
+    background: var(--selection);
+    color: var(--selection-fg);
 }
 
 /* For Firefox */
 ::-moz-selection {
-    background: var(--mocha-yellow);
-    color: black;
+    background: var(--selection);
+    color: var(--selection-fg);
 }
 
 sup a[href^="#fn"]::before {
