@@ -116,8 +116,6 @@ With **20TB SSDs**, vertical scaling remains feasible.
   - Worst-case = 8,190 / 30,000 = `0.27 sec` (273 ms) to fill a batch + 1.3 ms ≈ 274 ms.
 - Parallel batches = Use 2–4 NVMe drives in parallel to reduce contention.
 
-# TigerBeetle vs PostgreSQL Performance
-
 # TigerBeetle
 
 [TigerBeetle](https://tigerbeetle.com/) is a high-performance, distributed financial database designed for mission-critical payments and ledger applications. Engineered for speed, resilience, and correctness, it handles millions of transactions per second with strict consistency. Built in Zig, it prioritizes safety and efficiency while ensuring minimal operational complexity.
@@ -390,7 +388,7 @@ Attaching 4 probes...
 [2000, ...)          141 |                                                    |
 ```
 
-Here we can clearly see write latency were ~200ns for all 6M writes and it didn't create load on SSD unlike latency distributed of COPY from where we find significant amount of fsync call taking >400ns.
+Write latency remained ~200ns for all 6M fsync calls, imposing no load on the SSD. In contrast, COPY showed significant fsync latency spikes >400ns, indicating higher storage overhead.
 
 Transfers - [Git](https://github.com/pratikgajjar/1b-payments/blob/main/cmd/pg/transfer/main.go)
 
