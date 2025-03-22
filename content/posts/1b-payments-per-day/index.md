@@ -3,8 +3,10 @@ title: "💸 Billion Payments per day with TigerBeetle & PostgreSQL: A First-Pri
 date: 2025-03-01
 description: "A deep dive into handling the 1B payments/day challenge using first-principles system design with TigerBeetle, PostgreSQL and Golang."
 tags: ["golang", "tigerbeetle", "payments", "first-principles", "system-design"]
-draft: true
+draft: false
 ---
+
+🚧 ---- In progress --- feel free send review comments.
 
 tldr;
 This post explores what it takes for a single bank in India to handle 1 billion digital transactions daily—roughly 12,000 TPS on average and up to 30,000 TPS at peak load (using a 2.5x multiplier for resiliency). We break down the storage requirements for accounts and transfers, estimate throughput and latency using batching strategies, and compare two systems: TigerBeetle, a high-performance, single-core ledger optimized for sequential writes (demonstrating up to 22x better performance than PostgreSQL), and PostgreSQL, a robust multi-core relational database ideal for complex queries but with slower write throughput under extreme loads.
