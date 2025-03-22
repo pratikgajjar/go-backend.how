@@ -4,6 +4,7 @@ description = " Tiger Style is a coding philosophy focused on safety, performanc
 date = 2024-06-29T18:34:30+05:30
 lastmod = 2024-06-29T18:34:30+05:30
 publishDate = 2024-06-29T18:34:30+05:30
+featured = true
 draft = false
 tags = ['TigerBeetle', 'System Design', 'Repost']
 images = []

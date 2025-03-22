@@ -7,6 +7,7 @@ publishDate = "2024-07-17T19:54:52+05:30"
 draft = false
 tags = ['Django', 'Redis', 'DRF', 'CDC']
 images = []
+featured = true
 hnItemId = 41282624
 +++
 
@@ -300,10 +301,13 @@ While we could use sorting (`SORT` command)[^2] on lists or sets to retrieve ele
 Sorted sets allow us to efficiently filter and retrieve data based on attributes using set theory[^4] operations:
 
 - Retrieve cars with prices between 100K INR and 500K INR:
+
   ```
   ZRANGEBYSCORE car:price 100000 500000
   ```
+
 - Fetch cars with color_id = 5:
+
   ```
   ZRANGEBYSCORE car:color 5 5
   ```
@@ -380,13 +384,17 @@ If the filtered car set is not cached in ValKey following query string hash calc
 2. Cache-Miss: Proceed to build the target car set with filters.
 3. Build target car IDs using set operations:
    - Intersect existing sets using `ZINTERSTORE` to efficiently create new sets based on given filter combinations:
+
      ```
      ZINTERSTORE filtered_cars 2 cars_set_1 cars_set_2
      ```
+
    - Alternatively, combine existing sets using `ZUNIONSTORE`:
+
      ```
      ZUNIONSTORE all_cars 3 cars_set_1 cars_set_2 cars_set_3 AGGREGATE MAX
      ```
+
 4. Fetch car IDs based on required order using `ZRANGEBYSCORE`.
 
 In some cases, perform set operations at the application (web server) level to compute the resulting list of cars before fetching details with `HMGET`.
