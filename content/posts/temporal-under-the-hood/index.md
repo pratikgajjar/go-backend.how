@@ -1,5 +1,5 @@
 +++
-title = "Temporal: Under the Hood"
+title = "🚂 Temporal: Under the Hood"
 description = ""
 date = 2024-11-28T21:51:38+05:30
 lastmod = 2024-11-28T21:51:38+05:30

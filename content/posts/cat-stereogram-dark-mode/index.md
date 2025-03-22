@@ -5,6 +5,7 @@ date = 2024-07-16T23:10:26+05:30
 lastmod = 2024-07-16T23:10:26+05:30
 publishDate = "2024-07-16T23:10:26+05:30"
 draft = false
+featured = true
 tags = []
 images = []
 +++
