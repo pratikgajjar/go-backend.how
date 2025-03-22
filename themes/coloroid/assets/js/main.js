@@ -1,4 +1,6 @@
-document.addEventListener("DOMContentLoaded", () => {
+// Add defer attribute to script tag in HTML
+// This function handles lazy loading of images
+function initLazyLoadImages() {
     const images = document.querySelectorAll('.lazyload-image');
 
     images.forEach(img => {
@@ -22,5 +24,15 @@ document.addEventListener("DOMContentLoaded", () => {
             img.addEventListener('load', handleImageLoaded, { once: true });
         }
     });
-});
+}
+
+// Use requestIdleCallback for non-critical operations if supported
+if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => {
+        initLazyLoadImages();
+    });
+} else {
+    // Fallback to setTimeout for browsers that don't support requestIdleCallback
+    setTimeout(initLazyLoadImages, 1);
+}
 
