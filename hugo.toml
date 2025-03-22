@@ -123,9 +123,9 @@ title = "Everything Engineering"
 schemaType = "Person"
 schemaName = "Pratik"
 schemaLogo = "favicon-32x32.png"
-schemaTwitter = "https://twitter.com/"
-schemaLinkedIn = "https://www.linkedin.com/"
-schemaGitHub = "https://github.com/"
+schemaTwitter = "https://x.com/pratikgajjar_in"
+schemaLinkedIn = "https://www.linkedin.com/profile/pratik-gajjar"
+schemaGitHub = "https://github.com/pratikgajjar"
 schemaSection = "posts"
 siteLinksSearchBox = true
 
