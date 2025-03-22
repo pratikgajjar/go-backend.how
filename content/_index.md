@@ -26,4 +26,6 @@ More at [about me!](/about/)
 
 ---
 
-# Posts
+## ⭐️ Featured Posts
+
+Checkout [posts](/posts/) for all 😄

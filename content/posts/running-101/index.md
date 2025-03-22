@@ -7,6 +7,7 @@ publishDate = "2024-10-12T23:45:31+05:30"
 draft = false
 tags = [ "gyan", "health" ]
 images = []
+featured = true
 +++
 
 tldr;
