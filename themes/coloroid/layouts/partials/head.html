@@ -3,12 +3,6 @@
 <meta name="author" content="{{ .Site.Params.author.name }}">
 <meta name="copyright" content="{{ .Site.Copyright }}">
 
-<!-- Security & Performance -->
-<meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-XSS-Protection" content="1; mode=block">
-<meta http-equiv="Referrer-Policy" content="no-referrer-when-downgrade">
-
-<!-- Web App Capability Tags -->
 <meta name="application-name" content="{{ .Site.Title }}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,7 +30,6 @@
   {{ printf `<link rel=%q type=%q href=%q title=%q>` .Rel .MediaType.Type .Permalink site.Title | safeHTML }}
 {{ end }}
 
-<!-- Analytics -->
 <script defer data-domain="backend.how" src="https://stats.backend.how/js/script.js"></script>
 
 <!-- Language options -->
