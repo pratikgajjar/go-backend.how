@@ -2,7 +2,7 @@
 title: "💸 A Billion Payments a day with TigerBeetle & PostgreSQL: A First-Principles Approach"
 date: 2025-03-01
 description: "A deep dive into handling the 1B payments/day challenge using first-principles system design with TigerBeetle, PostgreSQL and Golang."
-tags: ["golang", "tigerbeetle", "payments", "first-principles" , "system-design"]
+tags: ["golang", "tigerbeetle", "payments", "first-principles", "system-design"]
 draft: false
 ---
 
@@ -13,11 +13,11 @@ This post explores what it takes for a single bank in India to handle 1 billion 
 
 In India, digital payments have transformed the economy. According to NPCI (Government of India), in January 2025 alone, we collectively executed approximately **17 billion** digital transactions in 31 days. To ensure resiliency, a system should handle at least **2x the peak load**. This raises the question: What kind of system is required to perform **1 billion transactions daily**, assuming there is only **one** bank?
 
-| Month  | No. of Banks live on UPI | Volume (in Mn) | Value (in Cr.)    |
-|--------|--------------------------|----------------|-------------------|
-| Jan-25 | 647                      | 16,996.00     | 23,48,037.12      |
-| Dec-24 | 641                      | 16,730.01     | 23,24,699.91      |
-| Nov-24 | 637                      | 15,482.02     | 21,55,187.40      |
+| Month  | No. of Banks live on UPI | Volume (in Mn) | Value (in Cr.) |
+| ------ | ------------------------ | -------------- | -------------- |
+| Jan-25 | 647                      | 16,996.00      | 23,48,037.12   |
+| Dec-24 | 641                      | 16,730.01      | 23,24,699.91   |
+| Nov-24 | 637                      | 15,482.02      | 21,55,187.40   |
 
 Source: [NPCI product-statistics](https://web.archive.org/https://www.npci.org.in/what-we-do/upi/product-statistics)
 
@@ -25,8 +25,8 @@ Source: [NPCI product-statistics](https://web.archive.org/https://www.npci.org.i
 
 - **Scale & Usage:** Out of India’s 1.4 billion people, around 400 million use digital payments.
 - **Transactions:** To support 1 billion daily transactions, we estimate an average of ~12,000 TPS. With a **2.5x peak load multiplier**, peak throughput can reach ~30,000 TPS.
-- **Rationale for Assumptions:**  
-  - **1 Billion Transactions/Day:** Based on observed trends and projections in digital adoption.  
+- **Rationale for Assumptions:**
+  - **1 Billion Transactions/Day:** Based on observed trends and projections in digital adoption.
   - **2.5x Multiplier:** To ensure resiliency during traffic surges, it’s standard to design for twice the expected load.
 
 # Defining the Data Model
@@ -120,24 +120,41 @@ With **20TB SSDs**, vertical scaling remains feasible.
 
 [TigerBeetle](https://tigerbeetle.com/) is a high-performance, distributed financial database designed for mission-critical payments and ledger applications. Engineered for speed, resilience, and correctness, it handles millions of transactions per second with strict consistency. Built in Zig, it prioritizes safety and efficiency while ensuring minimal operational complexity.
 
-TigerBeetle uses a consensus-based replication model with a recommended minimum of 3 nodes for fault tolerance:
+TigerBeetle uses a consensus-based replication model with a recommended optimal cluster size of 6 nodes for production environments:
 
-1. **Leader-Follower Model**: One node acts as the leader, processing all writes, while followers replicate data.
-2. **Consensus Protocol**: Uses a custom consensus protocol for strong consistency.
-3. **Cluster Configuration**: Typically deployed in odd-numbered clusters (3, 5, or 7 nodes) across different availability zones.
+1. **Consensus Protocol**: Uses a custom consensus protocol to maintain strong consistency and strict serializability.
 
-```diag
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   TigerBeetle   │     │   TigerBeetle   │     │   TigerBeetle   │
-│      Node 1     │◄────┤      Node 2     │◄────┤      Node 3     │
-│    (Leader)     │     │    (Follower)   │     │    (Follower)   │
-└────────┬────────┘     └─────────────────┘     └─────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│   Application   │
-│      Layer      │
-└─────────────────┘
+2. **Leader-Follower Model**: One node acts as the primary (leader), processing all writes, while followers replicate data.
+
+3. **[Fault Tolerance](https://docs.tigerbeetle.com/operating/cluster/#fault-tolerance) Requirements**:
+
+   - 4/6 replicas are required to elect a new primary if the current primary fails
+   - Cluster remains highly available (processing transactions) when at least 3/6 nodes are operational (if primary is still active)
+   - Cluster remains highly available when at least 4/6 nodes are operational (if primary has failed and new election is needed)
+
+4. **Data Durability**: The cluster preserves data integrity and can repair corruption as long as it maintains availability.
+
+5. **Safety Mechanism**: If too many machines fail permanently, the cluster will correctly remain unavailable rather than risk data inconsistency.
+
+```txt
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│ TigerBeetle │     │ TigerBeetle │     │ TigerBeetle │
+│   Node 1    │◄────┤   Node 2    │◄────┤   Node 3    │
+│  (Primary)  │     │ (Follower)  │     │ (Follower)  │
+└──────┬──────┘     └─────────────┘     └─────────────┘
+       │
+       │            ┌─────────────┐     ┌─────────────┐
+       └───────────►│ TigerBeetle │     │ TigerBeetle │
+                    │   Node 4    │◄────┤   Node 5    │
+                    │ (Follower)  │     │ (Follower)  │
+                    └─────────────┘     └─────────────┘
+                                              │
+                                              ▼
+                                        ┌─────────────┐
+                                        │ TigerBeetle │
+                                        │   Node 6    │
+                                        │ (Follower)  │
+                                        └─────────────┘
 ```
 
 ### Benchmark Analysis: Storage vs Expectations
@@ -174,11 +191,11 @@ Storage calculations must account for indexing and journaling overhead, not just
 
 # PostgreSQL
 
-[PostgreSQL 17](https://www.postgresql.org/about/news/postgresql-174-168-1512-1417-and-1320-released-3018/) is the latest release of the powerful open-source relational database, offering enhanced performance, security, and developer features. It introduces improvements in query execution, logical replication, and JSON processing, making it even more efficient for modern applications. With a strong focus on scalability and reliability, it remains a top choice for enterprise databases.
+[PostgreSQL](https://www.postgresql.org/about/news/postgresql-174-168-1512-1417-and-1320-released-3018/) is a powerful, open source object-relational database system that uses and extends the SQL language combined with many features that safely store and scale the most complicated data workloads. The origins of PostgreSQL date back to 1986 as part of the POSTGRES project at the University of California at Berkeley and has more than 35 years of active development on the core platform.
 
 ## Schema
 
-We have design the schema in PostgreSQL to match the same account and transaction model in TigerBeetle
+We have created the schema in PostgreSQL to match the same account and transaction model in TigerBeetle
 
 ```sql
 
@@ -431,7 +448,7 @@ PostgreSQL offers more flexible horizontal scaling options:
 3. **Connection Pooling**: Use PgBouncer or Pgpool-II to manage connection overhead.
 4. **Citus Extension**: For true distributed PostgreSQL deployments.
 
-```diag
+```txt
 ┌─────────────────┐
 │   Application   │
 │      Layer      │
@@ -456,7 +473,7 @@ PostgreSQL offers more flexible horizontal scaling options:
 
 ### Storage Considerations
 
-  Both systems incur overheads beyond raw data sizes due to indexing and journaling. For TigerBeetle, understanding and potentially mitigating this overhead (e.g., with custom indexing strategies) could further optimize storage.
+Both systems incur overheads beyond raw data sizes due to indexing and journaling. For TigerBeetle, understanding and potentially mitigating this overhead (e.g., with custom indexing strategies) could further optimize storage.
 
 TigerBeetle Wishlist;
 
@@ -468,11 +485,13 @@ TigerBeetle Wishlist;
 ### Hot-Warm-Cold Storage Architecture
 
 1. **Hot Storage (0-90 days)**:
+
    - Kept in primary database (TigerBeetle or PostgreSQL)
    - Fully indexed and immediately accessible
    - Estimated size: 11.52TB (with replication: 69.42TB)
 
 2. **Warm Storage (90 days - 1 year)**:
+
    - Moved to a secondary database or columnar storage (e.g., ClickHouse)
    - Partially indexed for common queries
    - Accessible within minutes
@@ -500,7 +519,8 @@ Based on our analysis, can a system handle 1 billion payments per day? Let's sum
 - **Account Data**: 51.2GB (raw) → ~150GB with indices and overhead
 - **Daily Transfers**: 128GB (raw) → ~1.5TB with indices and overhead
 - **90-Day Hot Storage**: ~135TB with replication
-- Modern cloud infrastructure can easily accommodate these storage requirements
+
+Modern cloud infrastructure can easily accommodate these storage requirements
 
 ### Throughput Requirements: ✅ Feasible with Constraints
 
@@ -518,7 +538,8 @@ To meet the throughput requirements:
 
 - **TigerBeetle**: ~1.3ms per transaction (best case) to ~274ms (worst case with batching)
 - **PostgreSQL**: ~100-200ms per transaction
-- Both systems can meet reasonable payment latency requirements (sub-second)
+
+Both systems can meet reasonable payment latency requirements (sub-second)
 
 ### Operational Complexity: ⚠️ Challenging
 
@@ -541,6 +562,7 @@ A system handling 1 billion payments per day is technically feasible with curren
 The key challenge isn't the technical feasibility but rather the operational complexity of managing such a system at scale. With proper sharding, batching strategies, and a well-designed archival system, processing 1 billion payments daily is achievable with current technology.
 
 ---
+
 Reference
 
 GitHub Source code used for benchmarking - [Git](https://github.com/pratikgajjar/1b-payments/)
@@ -551,4 +573,4 @@ Sirupsen - GitHub [napkin-math](https://github.com/sirupsen/napkin-math)
 
 [^2]: [1B Payments Benchmark Repository](https://github.com/pratikgajjar/1b-payments/tree/main?tab=readme-ov-file)
 
-[^3]: *Disclaimer:* Benchmarks were performed on an M3 Max MacBook Pro 14" under specific conditions. Real-world performance may vary based on hardware and workload.
+[^3]: _Disclaimer:_ Benchmarks were performed on an M3 Max MacBook Pro 14" under specific conditions. Real-world performance may vary based on hardware and workload.
