@@ -135,7 +135,7 @@ twitterSite = "https://x.com/pratikgajjar_in"
 twitterCreator = "pratikgajjar_in"
 
 # Images for social media sharing
-images = ["/og-image.png"]
+images = ["https://backend.how/og-image.png"]
 
 [params.author]
 email = 'pg@backend.how'
