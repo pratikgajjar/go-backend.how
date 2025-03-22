@@ -1,24 +1,45 @@
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width">
+<!-- Theme and display settings -->
 <meta name="theme-color" content="#100f0f"/>
+<meta name="author" content="{{ .Site.Params.author.name }}">
+<meta name="copyright" content="{{ .Site.Copyright }}">
 
+<!-- Security & Performance -->
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-XSS-Protection" content="1; mode=block">
+<meta http-equiv="Referrer-Policy" content="no-referrer-when-downgrade">
+
+<!-- Web App Capability Tags -->
+<meta name="application-name" content="{{ .Site.Title }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- Favicon -->
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
 
-<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ printf "%s | %s" .Title site.Title }}{{ end }}</title>
-{{ with .Description -}}
-  <meta name="description" content="{{ . }}">
-{{ else -}}
-  <meta name="description" content="{{ .Site.Params.description }}">
-{{ end -}}
+<!-- Preload Critical Resources -->
+<link rel="preload" href="/css/main.css" as="style">
+<link rel="dns-prefetch" href="https://stats.backend.how">
 
+<!-- SEO Components -->
+{{ partial "head/seo.html" . }}
+
+<!-- CSS & JS -->
 {{ partialCached "head/css.html" . }}
 {{ partialCached "head/js.html" . }}
+
+<!-- RSS Feed -->
 {{ with .OutputFormats.Get "rss" -}}
   {{ printf `<link rel=%q type=%q href=%q title=%q>` .Rel .MediaType.Type .Permalink site.Title | safeHTML }}
 {{ end }}
 
+<!-- Analytics -->
 <script defer data-domain="backend.how" src="https://stats.backend.how/js/script.js"></script>
+
+<!-- Language options -->
+<meta name="language" content="{{ .Site.LanguageCode }}">
+<meta name="generator" content="Hugo {{ hugo.Version }}">
 
