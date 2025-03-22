@@ -14,9 +14,9 @@ contributors:
   - Pratik Gajjar
 ---
 
-# Hi There 👋
+Hi There 👋
 
-Hi, I'm Pratik. As a software engineer, I enjoy tackling both technical challenges and everyday problems. My passion lies in finding solutions and making improvements where possible, whether that means optimizing AWS costs, enhancing server response times, or streamlining processes.
+I'm Pratik. As a software engineer, I enjoy tackling both technical challenges and everyday problems. My passion lies in finding solutions and making improvements where possible, whether that means optimizing AWS costs, enhancing server response times, or streamlining processes.
 
 **Want to talk ?**
 

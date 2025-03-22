@@ -13,8 +13,8 @@ pageRef = '/posts'
 weight = 20
 
 [[menus.main]]
-name = 'Tags'
-pageRef = '/tags'
+name = 'About'
+pageRef = '/about'
 weight = 30
 
 [module]
