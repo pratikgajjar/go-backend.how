@@ -26,3 +26,6 @@
 
 /*.png
   Cache-Control: public, max-age=2592000, stale-while-revalidate
+
+/*.webmanifest
+  Cache-Control: public, max-age=2592000, stale-while-revalidate
