@@ -401,6 +401,24 @@ hr {
   border-top: 1px dashed;
 }
 
+.section-tags {
+  margin-top: 10px;
+  padding: 5px 0;
+}
+
+.section-tags span {
+  display: inline-block;
+  margin: 5px;
+}
+
+.section-tags a {
+  text-decoration: none;
+}
+
+.section-tags a:hover {
+  text-decoration: 1px underline dashed;
+}
+
 
 /* Syntax highlight base theme colors */
 :root {
