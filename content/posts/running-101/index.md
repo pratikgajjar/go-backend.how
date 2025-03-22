@@ -6,7 +6,7 @@ lastmod = 2024-10-12T23:45:31+05:30
 publishDate = "2024-10-12T23:45:31+05:30"
 draft = false
 tags = [ "gyan", "health" ]
-images = ["aws-reinvent-2024-5k.jpg"]
+images = ["aws-reinvent-2024-5k.jpg", "running-101-dark.png"]
 featured = true
 +++
 
@@ -53,7 +53,7 @@ Now, with my customized plan in hand, I have clear guidance on when and how much
 
 Let's look at top line metrics that we should chase to become efficient runner.
 
-{{< figure src="running-metric.svg" title="Metrics" alt="Running metrics" width="auto" >}}
+{{< figure src="running-101-dark.png" title="Metrics" alt="Running metrics optimize" width="auto" >}}
 
 ## Metrics
 
