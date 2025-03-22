@@ -24,8 +24,6 @@ I'm Pratik. As a software engineer, I enjoy tackling both technical challenges a
 
 More at [about me!](/about/)
 
----
-
 ## ⭐️ Featured Posts
 
 Checkout [posts](/posts/) for all 😄
