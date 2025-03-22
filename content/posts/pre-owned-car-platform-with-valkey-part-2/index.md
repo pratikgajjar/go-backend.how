@@ -6,7 +6,7 @@ lastmod = 2024-07-17T19:54:52+05:30
 publishDate = "2024-07-17T19:54:52+05:30"
 draft = false
 tags = ['Django', 'Redis', 'DRF', 'CDC']
-images = []
+images = ["listing-viewset-list.png", "listing-viewset-detail.png", "overall-stats.png"]
 featured = true
 hnItemId = 41282624
 +++
@@ -383,6 +383,7 @@ If the filtered car set is not cached in ValKey following query string hash calc
    - Ensure hashes are consistent regardless of filter order (e.g., `F('city_id=1&color=3,4') eq F('color=4,3&city_id=1')`).
 2. Cache-Miss: Proceed to build the target car set with filters.
 3. Build target car IDs using set operations:
+
    - Intersect existing sets using `ZINTERSTORE` to efficiently create new sets based on given filter combinations:
 
      ```

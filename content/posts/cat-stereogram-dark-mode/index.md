@@ -7,7 +7,7 @@ publishDate = "2024-07-16T23:10:26+05:30"
 draft = false
 featured = true
 tags = []
-images = []
+images = ["cat-stereogram.png", "cat-vision.png"]
 +++
 
 A stereogram is a unique type of image that creates the illusion of a three-dimensional scene from a two-dimensional pattern. When viewed correctly, stereograms appear to pop out of the background, offering viewers a captivating 3D experience.
