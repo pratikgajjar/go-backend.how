@@ -151,5 +151,12 @@ contentType = "application/xml"
 gzip = true
 
 [[deployment.matchers]]
+# Cache webmanifest files for 1 week
+pattern = "^.+\\.(webmanifest)$"
+cacheControl = "max-age=604800, no-transform, public"
+contentType = "application/manifest+json"
+gzip = true
+
+[[deployment.matchers]]
 pattern = "^.+\\.(html|xml|json)$"
 gzip = true
