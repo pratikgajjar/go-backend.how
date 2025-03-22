@@ -22,10 +22,13 @@
   Cache-Control: public, max-age=2592000, stale-while-revalidate
 
 /*.svg
+  ! Cache-Control
   Cache-Control: public, max-age=2592000, stale-while-revalidate
 
 /*.png
+  ! Cache-Control
   Cache-Control: public, max-age=2592000, stale-while-revalidate
 
 /*.webmanifest
+  ! Cache-Control
   Cache-Control: public, max-age=2592000, stale-while-revalidate
