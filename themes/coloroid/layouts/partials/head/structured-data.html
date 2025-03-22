@@ -65,9 +65,9 @@
       },
       "publisher": {
         "@type": "{{ .Site.Params.schemaType }}",
-        "name": "{{ .Site.Params.title }}",
+        "name": "{{ .Site.Params.title }}"
         {{ if eq .Site.Params.schemaType "Organization" -}}
-        "logo": {
+        ,"logo": {
           "@type": "ImageObject",
           "url": "{{ "/" | relURL }}{{ .Site.Params.schemaLogo }}"
         }
