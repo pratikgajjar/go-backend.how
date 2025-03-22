@@ -12,6 +12,7 @@
       <span class="read-time">~{{ $readingTime }} min</span>
     </div>
     {{ .Description }}
+    <hr>
   {{ end }}
   <div class="section-tags">
     {{ range $tag, $taxonomy := .Site.Taxonomies.tags }}
