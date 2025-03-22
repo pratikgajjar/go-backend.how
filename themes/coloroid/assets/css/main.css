@@ -100,7 +100,7 @@ img {
   transition: background-color 0.3s, color 0.3s; /* Smooth transition */
   padding: 5px;
   box-sizing: border-box; /* Include padding and border in total width and height */
-  border: 2px dotted var(--color-link);
+  border: 1px dashed var(--color-link);
 }
 
 .prev-post {
@@ -173,9 +173,9 @@ footer {
 
 a {
     color: var(--color-link);
-    text-underline-offset: 0.25em;
-    text-decoration: underline dotted;
-    text-decoration-thickness: 2px;
+    text-underline-offset: 0.35em;
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
 }
 
 a:hover {
@@ -394,6 +394,11 @@ sup a[href^="#fn"]::after {
     max-width: 100%;
     margin: 0 auto;
     word-wrap: break-word;
+}
+
+hr {
+  border: 0;
+  border-top: 1px dashed;
 }
 
 
