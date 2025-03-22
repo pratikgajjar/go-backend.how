@@ -116,6 +116,27 @@ reading_speed = 180
 
 [params]
 Description = "Pratik's blog for thoughtful articles on engineering, tech trends, and other insightful topics."
+titleSeparator = "|"
+title = "Everything Engineering"
+
+# Schema.org settings
+schemaType = "Person"
+schemaName = "Pratik"
+schemaLogo = "favicon-32x32.png"
+schemaTwitter = "https://twitter.com/"
+schemaLinkedIn = "https://www.linkedin.com/"
+schemaGitHub = "https://github.com/"
+schemaSection = "posts"
+siteLinksSearchBox = true
+
+# OpenGraph and Twitter Card settings
+ogLocale = "en_US"
+twitterSite = "https://x.com/pratikgajjar_in"
+twitterCreator = "pratikgajjar_in"
+
+# Images for social media sharing
+images = ["/og-image.png"]
+
 [params.author]
 email = 'pg@backend.how'
 name = 'Pratik'
