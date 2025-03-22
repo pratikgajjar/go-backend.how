@@ -6,6 +6,34 @@ copyright = 'backend.how © 2024 by Pratik is licensed under CC BY-SA 4.0'
 enableRobotsTXT = true
 enableEmoji = true
 
+[params]
+title = "Backend.how | Everything Engineering"
+url = "https://backend.how/"
+Description = "Pratik's blog for thoughtful articles on engineering, tech trends, and other insightful topics."
+titleSeparator = "|"
+
+# Schema.org settings
+schemaType = "Person"
+schemaName = "Pratik"
+schemaLogo = "favicon-32x32.png"
+schemaTwitter = "https://x.com/pratikgajjar_in"
+schemaLinkedIn = "https://www.linkedin.com/in/pratik-gajjar"
+schemaGitHub = "https://github.com/pratikgajjar"
+schemaSection = "posts"
+siteLinksSearchBox = true
+
+# OpenGraph and Twitter Card settings
+ogLocale = "en_US"
+twitterSite = "https://x.com/pratikgajjar_in"
+twitterCreator = "pratikgajjar_in"
+
+# Images for social media sharing
+images = ["/og-image.png"]
+
+[params.author]
+email = 'pg@backend.how'
+name = 'Pratik'
+
 [outputs]
 home = ['html', 'amp', 'rss']
 page = ['html', 'rss']
@@ -113,33 +141,6 @@ startLevel = 0
 [languages]
 [languages.en.params]
 reading_speed = 180
-
-[params]
-Description = "Pratik's blog for thoughtful articles on engineering, tech trends, and other insightful topics."
-titleSeparator = "|"
-title = "Everything Engineering"
-
-# Schema.org settings
-schemaType = "Person"
-schemaName = "Pratik"
-schemaLogo = "favicon-32x32.png"
-schemaTwitter = "https://x.com/pratikgajjar_in"
-schemaLinkedIn = "https://www.linkedin.com/profile/pratik-gajjar"
-schemaGitHub = "https://github.com/pratikgajjar"
-schemaSection = "posts"
-siteLinksSearchBox = true
-
-# OpenGraph and Twitter Card settings
-ogLocale = "en_US"
-twitterSite = "https://x.com/pratikgajjar_in"
-twitterCreator = "pratikgajjar_in"
-
-# Images for social media sharing
-images = ["https://backend.how/og-image.png"]
-
-[params.author]
-email = 'pg@backend.how'
-name = 'Pratik'
 
 
 [security]

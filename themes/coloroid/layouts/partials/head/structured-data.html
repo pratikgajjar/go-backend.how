@@ -60,6 +60,7 @@
       "datePublished": "{{ .PublishDate.Format "2006-01-02T15:04:05CET" }}",
       "dateModified": "{{ .Lastmod.Format "2006-01-02T15:04:05CET" }}",
       "author": {
+        "url": "{{ "/" | relURL }}",
         "@type": "{{ .Site.Params.schemaType }}",
         "name": "{{ .Site.Params.title }}"
       },
