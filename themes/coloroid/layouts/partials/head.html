@@ -1,38 +1,35 @@
 <!-- Theme and display settings -->
-<meta name="theme-color" content="#100f0f"/>
-<meta name="author" content="{{ .Site.Params.author.name }}">
-<meta name="copyright" content="{{ .Site.Copyright }}">
-
-<meta name="application-name" content="{{ .Site.Title }}">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#100f0f" />
+<meta name="author" content="{{ .Site.Params.author.name }}" />
+<meta name="copyright" content="{{ .Site.Copyright }}" />
+<meta name="language" content="{{ .Site.LanguageCode }}" />
+<meta name="generator" content="Hugo {{ hugo.Version }}" />
+<!-- Mobile App Settings -->
+<meta name="application-name" content="{{ .Site.Title }}" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <!-- Favicon -->
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
-<link rel="shortcut icon" href="/favicon.ico">
-
-<!-- Preload Critical Resources -->
-<link rel="preload" href="/css/main.css" as="style">
-<link rel="dns-prefetch" href="https://stats.backend.how">
-
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<link rel="shortcut icon" href="/favicon.ico" />
 <!-- SEO Components -->
 {{ partial "head/seo.html" . }}
-
 <!-- CSS & JS -->
-{{ partialCached "head/css.html" . }}
-{{ partialCached "head/js.html" . }}
-
+{{ partialCached "head/css.html" . }} {{ partialCached "head/js.html" . }}
 <!-- RSS Feed -->
-{{ with .OutputFormats.Get "rss" -}}
-  {{ printf `<link rel=%q type=%q href=%q title=%q>` .Rel .MediaType.Type .Permalink site.Title | safeHTML }}
-{{ end }}
+{{ with .OutputFormats.Get "rss" -}} {{ printf `<link
+    rel="%q"
+    type="%q"
+    href="%q"
+    title="%q"
+/>` .Rel .MediaType.Type .Permalink site.Title | safeHTML }} {{ end }}
 
-<script defer data-domain="backend.how" src="https://stats.backend.how/js/script.js"></script>
-
-<!-- Language options -->
-<meta name="language" content="{{ .Site.LanguageCode }}">
-<meta name="generator" content="Hugo {{ hugo.Version }}">
-
+<script
+    defer
+    data-domain="backend.how"
+    src="https://stats.backend.how/js/script.js"
+></script>
