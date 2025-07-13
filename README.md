@@ -1,32 +1,32 @@
-# bakcend.how
+# backend.how
 
 ## Development
 
-To run server
+To run server:
 
 ```sh
 hugo server -D --buildDrafts --buildFuture
 ```
 
-To add new post
+To add new post:
 
 ```sh
-hugo new  content posts/{post-name}.md
+hugo new content posts/{post-name}.md
 ```
 
 ## Deployment
 
 ## CD
 
-- Connect github with cloudflare pages
+- Connect GitHub with Cloudflare Pages
 - Select main branch and grant access.
 
-With each commit it builds the site and publishes on cloudflare pages
+With each commit it builds the site and publishes on Cloudflare Pages.
 
 ## Cron
 
-- To ensure future dated arcticle gets published build and deploy once a day.
-- ./crontab/ - cloudlfare wrangle cron worker, uses deploy hook url to trigger deployment
+- To ensure future dated article gets published, build and deploy once a day.
+- ./crontab/ - Cloudflare Wrangler cron worker, uses deploy hook URL to trigger deployment
 
 ## License
 
