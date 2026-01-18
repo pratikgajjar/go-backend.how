@@ -8,6 +8,7 @@ draft = false
 tags = [ "gyan", "health" ]
 images = ["aws-reinvent-2024-5k.jpg", "running-101-dark.png"]
 featured = true
+theme = "mint"
 +++
 
 tldr;

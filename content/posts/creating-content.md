@@ -7,6 +7,7 @@ tags = ['gyan']
 draft = false
 images = []
 hnItemId = 40781712
+theme = "vanilla"
 +++
 
 At the end of this, you'll understand the importance of creating content, when to start, and how to begin.
