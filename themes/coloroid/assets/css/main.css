@@ -28,7 +28,7 @@ body {
     background-color: var(--article-bg);
     color: var(--article-text);
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     min-height: 100vh;
     margin: 0;
@@ -332,10 +332,13 @@ blockquote p {
 .container {
     max-width: 800px;
     width: 100%;
-    flex-grow: 1;
     box-sizing: border-box;
     padding-left: 1rem;
     padding-right: 1rem;
+}
+
+main.container {
+    flex-grow: 1;
 }
 
 @media (min-width: 600px) {
@@ -682,15 +685,20 @@ hr {
 }
 
 .section-tags a {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     text-decoration: none;
-    padding: 0.35rem 0.75rem;
-    border: 1px solid currentColor;
-    border-radius: 2rem;
+    padding: 0.5rem 1rem;
+    border: 1px dashed var(--color-link);
+    border-radius: 0;
     font-size: 0.75rem;
+    font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    transition: all 0.2s ease;
+    color: var(--color-link);
+    background-color: transparent;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .section-tags a:hover {
