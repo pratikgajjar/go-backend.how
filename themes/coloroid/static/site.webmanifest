@@ -1,7 +1,7 @@
 {
-  "name": "Backend How - Everything Engineering",
+  "name": "Backend.how - How It Works",
   "short_name": "backend.how",
-  "description": "Pratik's blog for thoughtful articles on engineering, tech trends, and other insightful topics.",
+  "description": "Deep dives into backend systems, databases, and infrastructure. First-principles engineering explained simply.",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",

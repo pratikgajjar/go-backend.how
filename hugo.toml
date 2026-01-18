@@ -1,15 +1,15 @@
 baseURL = "https://backend.how/"
 languageCode = "en-us"
-title = "Everything Engineering"
+title = "How It Works"
 theme = "coloroid"
-copyright = 'backend.how © 2024 by Pratik is licensed under CC BY-SA 4.0'
+copyright = 'backend.how © 2026 by Pratik is licensed under CC BY-SA 4.0'
 enableRobotsTXT = true
 enableEmoji = true
 
 [params]
-title = "Backend.how | Everything Engineering"
+title = "Backend.how | How It Works"
 url = "https://backend.how/"
-Description = "Pratik's blog for thoughtful articles on engineering, tech trends, and other insightful topics."
+Description = "Deep dives into backend systems, databases, and infrastructure. First-principles engineering explained simply."
 titleSeparator = "|"
 
 # Schema.org settings
