@@ -1160,44 +1160,95 @@ body.theme-plum hr {
 }
 
 /* Mobile-specific overrides - must be at end for specificity */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 820px) {
     html {
-        font-size: 0.8rem;
+        font-size: 14px;
+    }
+    
+    body {
+        overflow-x: hidden;
     }
     
     .container {
-        padding-left: 1rem;
-        padding-right: 1rem;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     
+    /* Code blocks - full width with internal padding */
     .highlight,
     .chroma,
-    pre {
-        font-size: 0.65rem !important;
-        margin-left: -1rem;
-        margin-right: -1rem;
-        border-radius: 0;
+    div.highlight,
+    div.chroma {
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+        border-radius: 0 !important;
+        width: calc(100% + 32px) !important;
+        max-width: none !important;
     }
     
     .highlight pre,
     .chroma pre,
-    pre code,
+    div.highlight pre,
+    div.chroma pre {
+        font-size: 11px !important;
+        line-height: 1.5 !important;
+        padding: 16px 20px !important;
+        margin: 0 !important;
+        overflow-x: auto !important;
+    }
+    
+    .highlight pre code,
+    .chroma pre code,
     .highlight code,
-    .chroma code {
-        font-size: 0.65rem !important;
-        line-height: 1.4;
-        padding: 0.75rem 1rem;
+    .chroma code,
+    pre code {
+        font-size: 11px !important;
+        padding: 0 !important;
+        background: transparent !important;
+    }
+    
+    /* Inline code in text */
+    p code, li code, td code, span code {
+        font-size: 12px !important;
+        padding: 2px 6px !important;
     }
     
     .article-title {
-        font-size: 1.75rem;
+        font-size: 1.6rem !important;
     }
     
-    .article-content h2 {
-        font-size: 1.3rem;
+    .article-content h2,
+    article h2,
+    main h2 {
+        font-size: 1.25rem !important;
     }
     
-    .article-content h3 {
-        font-size: 1.1rem;
+    .article-content h3,
+    article h3,
+    main h3 {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Mermaid diagrams */
+    .mermaid {
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+        padding: 16px !important;
+        width: calc(100% + 32px) !important;
+    }
+    
+    /* Tables */
+    table {
+        font-size: 11px !important;
+    }
+    
+    /* TOC */
+    .table-of-content {
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+        border-radius: 0 !important;
+        padding: 12px 16px !important;
     }
 }
