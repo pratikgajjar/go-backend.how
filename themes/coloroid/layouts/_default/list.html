@@ -15,9 +15,13 @@
     <hr>
   {{ end }}
   <div class="section-tags">
+    {{- $currentTagLower := .Title | lower -}}
+    {{- $isTermPage := eq .Kind "term" -}}
     {{ range $tag, $taxonomy := .Site.Taxonomies.tags }}
+      {{- $tagSlug := $tag | urlize -}}
+      {{- $isActive := and $isTermPage (eq $tag $currentTagLower) -}}
       <span>
-        <a href="{{ "/tags/" | relURL }}{{ $tag | urlize }}">#{{ $tag }}</a>&nbsp;
+        <a href="{{ "/tags/" | relURL }}{{ $tagSlug }}"{{ if $isActive }} class="active"{{ end }}>#{{ $tag }}</a>
       </span>
     {{ end }}
   </div>
