@@ -77,3 +77,21 @@ Themes are inherited in this order:
 3. Site-wide default (dark theme)
 
 This means individual tag pages (`/tags/golang/`) will inherit from `/tags/_index.md`.
+
+## Code Block Formatting
+
+### Text/ASCII Diagrams
+
+Use the `txt` language tag for plain text blocks, ASCII diagrams, and non-code content:
+
+```txt
+┌──────────┐     ┌──────────┐
+│  Client  │────▶│  Server  │
+└──────────┘     └──────────┘
+```
+
+**Do NOT** use empty language tags for text blocks. Always specify `txt` for:
+- ASCII art and diagrams
+- Plain text calculations
+- Non-code textual content
+- System architecture diagrams
