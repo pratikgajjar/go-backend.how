@@ -1,4 +1,4 @@
 +++
 title = "Tags"
-theme = "sage"
+theme = "arctic"
 +++
