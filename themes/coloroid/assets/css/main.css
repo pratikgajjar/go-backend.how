@@ -334,6 +334,15 @@ blockquote p {
     width: 100%;
     flex-grow: 1;
     box-sizing: border-box;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+@media (min-width: 600px) {
+    .container {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
 }
 
 .container * {
@@ -494,16 +503,35 @@ ul ul {
 }
 
 .highlight {
-    max-width: 800px;
-    overflow-x: auto; /* Enable horizontal scrolling if needed */
-    border-radius: 2px;
+    max-width: 100%;
+    overflow-x: auto;
+    border-radius: 4px;
 }
 
 .highlight pre {
     margin: 0;
     padding: 1em;
-    overflow-x: auto; /* Enable horizontal scrolling if needed */
-    min-width: 88ch;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .highlight {
+        margin-left: -1rem;
+        margin-right: -1rem;
+        border-radius: 0;
+    }
+    
+    .highlight pre {
+        padding: 0.75em 1rem;
+        font-size: 0.7rem;
+        line-height: 1.4;
+    }
+    
+    .highlight pre code {
+        font-size: 0.7rem !important;
+    }
 }
 
 .mermaid {
@@ -741,7 +769,7 @@ code {
 .chroma .lnt {
     color: var(--mocha-overlay0);
     padding: 0 0.4em 0 0.4em;
-    font-size: 0.875rem;
+    font-size: inherit;
     margin-right: 0.4em;
 }
 .chroma .ln {
@@ -1129,4 +1157,47 @@ body.theme-plum hr {
     font-weight: 600;
     font-display: swap;
     src: url("/fonts/intertight/NGSyv5HMAFg6IuGlBNMjxLsCwalkREW-emmbxg.woff2") format("woff2");
+}
+
+/* Mobile-specific overrides - must be at end for specificity */
+@media screen and (max-width: 768px) {
+    html {
+        font-size: 0.8rem;
+    }
+    
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .highlight,
+    .chroma,
+    pre {
+        font-size: 0.65rem !important;
+        margin-left: -1rem;
+        margin-right: -1rem;
+        border-radius: 0;
+    }
+    
+    .highlight pre,
+    .chroma pre,
+    pre code,
+    .highlight code,
+    .chroma code {
+        font-size: 0.65rem !important;
+        line-height: 1.4;
+        padding: 0.75rem 1rem;
+    }
+    
+    .article-title {
+        font-size: 1.75rem;
+    }
+    
+    .article-content h2 {
+        font-size: 1.3rem;
+    }
+    
+    .article-content h3 {
+        font-size: 1.1rem;
+    }
 }
