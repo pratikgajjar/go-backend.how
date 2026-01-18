@@ -4,6 +4,7 @@ description = "Optimize your PostgreSQL queries with these techniques to improve
 date = 2023-02-15T10:00:00-07:00
 draft = false
 tags = ['DB','postgres', 'ai']
+theme = "periwinkle"
 +++
 
 PostgreSQL is a powerful and popular open-source relational database management system. It is known for its reliability, scalability, and ability to handle large amounts of data. However, as with any database system, it is important to optimize queries to ensure that they run as efficiently as possible. In this blog post, we will discuss some techniques for optimizing PostgreSQL queries to improve performance.

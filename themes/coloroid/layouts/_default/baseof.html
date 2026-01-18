@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {{ partial "head.html" . }}
   </head>
-  <body>
+  {{/* Theme priority: page > section > site config */}}
+  {{- $theme := .Params.theme -}}
+  {{- if not $theme }}{{ with .CurrentSection }}{{ $theme = .Params.theme }}{{ end }}{{ end -}}
+  {{- if not $theme }}{{ $theme = site.Params.theme }}{{ end -}}
+  <body{{ with $theme }} class="theme-{{ . }}"{{ end }}>
     <header class="container">
       {{ partial "header.html" . }}
     </header>
