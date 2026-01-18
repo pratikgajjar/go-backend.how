@@ -5,9 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {{ partial "head.html" . }}
   </head>
-  {{/* Theme priority: page > section > site config */}}
+  {{/* Theme priority: page > section > taxonomy section > site config */}}
   {{- $theme := .Params.theme -}}
   {{- if not $theme }}{{ with .CurrentSection }}{{ $theme = .Params.theme }}{{ end }}{{ end -}}
+  {{- if not $theme }}
+    {{- /* For taxonomy term pages (e.g., /tags/hld/), get theme from taxonomy _index.md */}}
+    {{- if eq .Kind "term" }}
+      {{- $taxonomyPage := .GetPage (printf "/%s" .Data.Plural) }}
+      {{- with $taxonomyPage }}{{ $theme = .Params.theme }}{{ end }}
+    {{- end }}
+  {{- end -}}
   {{- if not $theme }}{{ $theme = site.Params.theme }}{{ end -}}
   <body{{ with $theme }} class="theme-{{ . }}"{{ end }}>
     <header class="container">
