@@ -701,10 +701,21 @@ hr {
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.section-tags a:hover {
+.section-tags a:hover,
+.section-tags a:active,
+.section-tags a.active {
     background-color: var(--color-link);
     color: var(--article-bg);
     border-color: var(--color-link);
+}
+
+/* Ensure mobile tap shows filled state */
+@media (hover: none) {
+    .section-tags a:active {
+        background-color: var(--color-link);
+        color: var(--article-bg);
+        border-color: var(--color-link);
+    }
 }
 
 /* Syntax highlight base theme colors */
