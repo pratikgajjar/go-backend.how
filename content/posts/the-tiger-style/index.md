@@ -8,6 +8,7 @@ featured = true
 draft = false
 tags = ['TigerBeetle', 'System Design', 'Repost']
 images = ["beetle.webp"]
+theme = "tiger"
 +++
 
 # The Essence Of Style

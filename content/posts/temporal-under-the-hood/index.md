@@ -7,6 +7,7 @@ publishDate = "2024-11-28T21:51:38+05:30"
 draft = true
 tags = []
 images = []
+theme = "teal"
 +++
 
 # What is Temporal

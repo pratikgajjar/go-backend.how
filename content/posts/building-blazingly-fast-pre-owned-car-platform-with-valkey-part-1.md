@@ -6,6 +6,7 @@ lastmod = 2024-06-16T23:27:27+05:30
 tags = ['Django', 'Redis', 'DRF', 'CDC']
 draft = false
 images = []
+theme = "tangerine"
 +++
 
 **Introduction**

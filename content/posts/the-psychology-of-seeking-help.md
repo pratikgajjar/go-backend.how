@@ -7,6 +7,7 @@ publishDate = "2024-07-05T22:21:15+05:30"
 draft = false
 tags = []
 images = []
+theme = "lilac"
 +++
 
 In my experience as a backend engineer, I've observed various patterns in how people seek help when they encounter problems. Understanding these patterns not only aids in providing effective assistance but also helps in fostering a culture of collaborative problem-solving.

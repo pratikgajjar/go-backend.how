@@ -17,9 +17,12 @@ backend.how! I love hearing from readers. For corrections, feel free to create a
     xmlns:cc="http://creativecommons.org/ns#"
     xmlns:dct="http://purl.org/dc/terms/"
 >
+    {{ $commit := getenv "CF_PAGES_COMMIT_SHA" }}
+    {{ if $commit }}
     <a href="https://github.com/pratikgajjar/go-backend.how"
-        >{{ slicestr (getenv "CF_PAGES_COMMIT_SHA") 0 7 }}</a
+        >{{ slicestr $commit 0 7 }}</a
     >
+    {{ end }}
     |
     <a property="dct:title" rel="cc:attributionURL" href="https://backend.how"
         >backend.how</a

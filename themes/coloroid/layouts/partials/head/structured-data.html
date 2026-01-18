@@ -1,6 +1,5 @@
-{{ if .IsHome -}}
-  {{ if eq .Site.Params.schemaType "Organization" -}}
-    <script type="application/ld+json">
+{{ if .IsHome -}} {{ if eq .Site.Params.schemaType "Organization" -}}
+<script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
@@ -13,10 +12,9 @@
         "{{ .Site.Params.schemaGitHub | safeURL }}"
       ]
     }
-    </script>
-  {{ end -}}
-  {{ if eq .Site.Params.schemaType "Person" -}}
-    <script type="application/ld+json">
+</script>
+{{ end -}} {{ if eq .Site.Params.schemaType "Person" -}}
+<script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Person",
@@ -28,10 +26,9 @@
         "{{ .Site.Params.schemaGitHub | safeURL }}"
       ]
     }
-    </script>
-  {{ end -}}
-  {{ if .Site.Params.siteLinksSearchBox -}}
-    <script type="application/ld+json">
+</script>
+{{ end -}} {{ if .Site.Params.siteLinksSearchBox -}}
+<script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
@@ -42,12 +39,10 @@
         "query-input": "required name=search_term_string"
       }
     }
-    </script>
-  {{ end -}}
-{{ end -}}
-{{ if .IsPage -}}
-  {{ if eq .Section .Site.Params.schemaSection -}}
-    <script type="application/ld+json">
+</script>
+{{ end -}} {{ end -}} {{ if .IsPage -}} {{ if eq .Section
+.Site.Params.schemaSection -}}
+<script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Article",
@@ -60,15 +55,14 @@
       "datePublished": "{{ .PublishDate.Format "2006-01-02T15:04:05CET" }}",
       "dateModified": "{{ .Lastmod.Format "2006-01-02T15:04:05CET" }}",
       "author": {
-        "url": "{{ "/" | relURL }}",
         "@type": "{{ .Site.Params.schemaType }}",
         "name": "{{ .Site.Params.title }}"
       },
       "publisher": {
         "@type": "{{ .Site.Params.schemaType }}",
-        "name": "{{ .Site.Params.title }}"
+        "name": "{{ .Site.Params.title }}",
         {{ if eq .Site.Params.schemaType "Organization" -}}
-        ,"logo": {
+        "logo": {
           "@type": "ImageObject",
           "url": "{{ "/" | relURL }}{{ .Site.Params.schemaLogo }}"
         }
@@ -76,35 +70,25 @@
       },
       "description": "{{ .Description }}"
     }
-    </script>
-  {{ end -}}
-{{ end -}}
-
-{{ $dot := . -}}
-{{ $dot.Scratch.Set "path" "" -}}
-{{ $dot.Scratch.Set "breadcrumb" slice -}}
-
-{{ $url := replace .RelPermalink ( printf "%s" .Site.BaseURL) "" -}}
-{{ $.Scratch.Add "path" .Site.BaseURL -}}
-
-{{ $.Scratch.Add "breadcrumb" (slice (dict "url" .Site.BaseURL "name" "home" "position" 1 )) -}}
-  {{ range $index, $element := split $url "/" -}}
-    {{ $dot.Scratch.Add "path" $element -}}
-    {{ $.Scratch.Add "path" "/" -}}
-    {{ if ne $element "" -}}
-    {{ $.Scratch.Add "breadcrumb" (slice (dict "url" ($.Scratch.Get "path") "name" . "position" (add $index 2))) -}}
-  {{ end -}}
-{{ end -}}
+</script>
+{{ end -}} {{ end -}} {{ $dot := . -}} {{ $dot.Scratch.Set "path" "" -}} {{
+$dot.Scratch.Set "breadcrumb" slice -}} {{ $url := replace .RelPermalink (
+printf "%s" .Site.BaseURL) "" -}} {{ $.Scratch.Add "path" .Site.BaseURL -}} {{
+$.Scratch.Add "breadcrumb" (slice (dict "url" .Site.BaseURL "name" "home"
+"position" 1 )) -}} {{ range $index, $element := split $url "/" -}} {{
+$dot.Scratch.Add "path" $element -}} {{ $.Scratch.Add "path" "/" -}} {{ if ne
+$element "" -}} {{ $.Scratch.Add "breadcrumb" (slice (dict "url" ($.Scratch.Get
+"path") "name" . "position" (add $index 2))) -}} {{ end -}} {{ end -}}
 
 <script type="application/ld+json">
-{
-  "@context": "http://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [{{ range $.Scratch.Get "breadcrumb" }}{{ if ne .position 1 }},{{ end }}{
-        "@type": "ListItem",
-        "position": {{ .position }},
-        "name": "{{ .name | humanize | title }}",
-        "item": "{{ .url }}"
-    }{{ end }}]
-}
+    {
+      "@context": "http://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [{{ range $.Scratch.Get "breadcrumb" }}{{ if ne .position 1 }},{{ end }}{
+            "@type": "ListItem",
+            "position": {{ .position }},
+            "name": "{{ .name | humanize | title }}",
+            "item": "{{ .url }}"
+        }{{ end }}]
+    }
 </script>

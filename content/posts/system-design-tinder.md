@@ -4,6 +4,7 @@ description = "Explore the high and low-level design of a Tinder-like applicatio
 date = 2023-02-15T10:00:00-07:00
 draft = false
 tags = ['System Design','HLD', 'ai']
+theme = "blush"
 +++
 
 High + Low level design of Tinder

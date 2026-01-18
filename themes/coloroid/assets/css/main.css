@@ -10,27 +10,135 @@ html {
     --selection: oklch(83.08% 0.126316 68.2133);
     --selection-fg: oklch(0% 0 0);
     --font-mono: "JetBrains Mono", monospace;
+    --font-display: "Inter Tight", system-ui, sans-serif;
+    
+    /* Article theme colors - can be overridden per-page */
+    --article-bg: oklch(16.96% 0.0017 17.32);
+    --article-text: oklch(100% 0 0);
+    --header-bg: oklch(16.96% 0.0017 17.32);
+    
+    /* 
+     * 50 Global Theme Palette
+     * Each theme: unique pastel/muted background
+     * Usage: theme = "name" in frontmatter
+     */
 }
 
 body {
-    background-color: oklch(16.96% 0.0017 17.32); /* Pitch black background */
-    color: oklch(100% 0 0); /* White text color */
+    background-color: var(--article-bg);
+    color: var(--article-text);
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    margin: 20px;
+    margin: 0;
     font-family: var(--font-mono);
     font-optical-sizing: auto;
     font-weight: 200;
     font-style: normal;
-    flex-direction: column; /* Align items vertically */
+    flex-direction: column;
     line-height: 1.6em;
+}
+
+/*
+ * ============================================
+ * 50 GLOBAL THEMES
+ * Add `theme = "name"` to post frontmatter
+ * ============================================
+ */
+
+/* ========== REDS & PINKS (1-8) ========== */
+body.theme-blush { --article-bg: oklch(90% 0.06 10); --article-text: oklch(25% 0.04 10); --color-link: oklch(45% 0.12 350); --selection: oklch(75% 0.08 10); --selection-fg: oklch(20% 0.02 10); }
+body.theme-coral { --article-bg: oklch(85% 0.10 25); --article-text: oklch(25% 0.04 25); --color-link: oklch(42% 0.14 15); --selection: oklch(68% 0.12 25); --selection-fg: oklch(18% 0.02 25); }
+body.theme-salmon { --article-bg: oklch(82% 0.12 30); --article-text: oklch(22% 0.04 30); --color-link: oklch(40% 0.14 20); --selection: oklch(65% 0.14 30); --selection-fg: oklch(15% 0.02 30); }
+body.theme-rose { --article-bg: oklch(88% 0.08 355); --article-text: oklch(24% 0.04 355); --color-link: oklch(45% 0.12 340); --selection: oklch(72% 0.10 355); --selection-fg: oklch(18% 0.02 355); }
+body.theme-dustyrose { --article-bg: oklch(78% 0.06 5); --article-text: oklch(22% 0.03 5); --color-link: oklch(38% 0.10 350); --selection: oklch(60% 0.08 5); --selection-fg: oklch(95% 0.02 5); }
+body.theme-raspberry { --article-bg: oklch(75% 0.10 350); --article-text: oklch(20% 0.04 350); --color-link: oklch(35% 0.12 340); --selection: oklch(55% 0.12 350); --selection-fg: oklch(95% 0.02 350); }
+body.theme-cherry { --article-bg: oklch(72% 0.12 15); --article-text: oklch(18% 0.04 15); --color-link: oklch(32% 0.14 5); --selection: oklch(52% 0.14 15); --selection-fg: oklch(95% 0.02 15); }
+body.theme-rosewood { --article-bg: oklch(68% 0.08 20); --article-text: oklch(18% 0.03 20); --color-link: oklch(35% 0.10 10); --selection: oklch(48% 0.10 20); --selection-fg: oklch(95% 0.02 20); }
+
+/* ========== ORANGES & AMBERS (9-16) ========== */
+body.theme-peach { --article-bg: oklch(88% 0.08 55); --article-text: oklch(25% 0.04 55); --color-link: oklch(42% 0.12 40); --selection: oklch(72% 0.10 55); --selection-fg: oklch(18% 0.02 55); }
+body.theme-apricot { --article-bg: oklch(85% 0.10 50); --article-text: oklch(24% 0.04 50); --color-link: oklch(40% 0.14 35); --selection: oklch(68% 0.12 50); --selection-fg: oklch(18% 0.02 50); }
+body.theme-tangerine { --article-bg: oklch(82% 0.12 45); --article-text: oklch(22% 0.04 45); --color-link: oklch(38% 0.14 30); --selection: oklch(65% 0.14 45); --selection-fg: oklch(15% 0.02 45); }
+body.theme-amber { --article-bg: oklch(80% 0.14 70); --article-text: oklch(22% 0.04 70); --color-link: oklch(38% 0.14 55); --selection: oklch(62% 0.16 70); --selection-fg: oklch(15% 0.02 70); }
+body.theme-honey { --article-bg: oklch(82% 0.12 80); --article-text: oklch(22% 0.04 80); --color-link: oklch(38% 0.12 65); --selection: oklch(65% 0.14 80); --selection-fg: oklch(15% 0.02 80); }
+body.theme-gold { --article-bg: oklch(84% 0.11 85); --article-text: oklch(23% 0.04 85); --color-link: oklch(40% 0.12 70); --selection: oklch(68% 0.12 85); --selection-fg: oklch(16% 0.02 85); }
+body.theme-butterscotch { --article-bg: oklch(78% 0.10 60); --article-text: oklch(22% 0.03 60); --color-link: oklch(38% 0.12 45); --selection: oklch(60% 0.12 60); --selection-fg: oklch(95% 0.02 60); }
+body.theme-terracotta { --article-bg: oklch(72% 0.10 40); --article-text: oklch(20% 0.03 40); --color-link: oklch(35% 0.12 25); --selection: oklch(55% 0.12 40); --selection-fg: oklch(95% 0.02 40); }
+
+/* ========== YELLOWS & CREAMS (17-22) ========== */
+body.theme-cream { --article-bg: oklch(95% 0.03 90); --article-text: oklch(28% 0.03 90); --color-link: oklch(45% 0.10 60); --selection: oklch(82% 0.05 90); --selection-fg: oklch(20% 0.02 90); }
+body.theme-vanilla { --article-bg: oklch(92% 0.04 95); --article-text: oklch(26% 0.03 95); --color-link: oklch(42% 0.10 70); --selection: oklch(78% 0.06 95); --selection-fg: oklch(20% 0.02 95); }
+body.theme-butter { --article-bg: oklch(90% 0.08 100); --article-text: oklch(25% 0.04 100); --color-link: oklch(42% 0.12 80); --selection: oklch(75% 0.10 100); --selection-fg: oklch(18% 0.02 100); }
+body.theme-lemon { --article-bg: oklch(92% 0.10 105); --article-text: oklch(26% 0.04 105); --color-link: oklch(45% 0.12 85); --selection: oklch(78% 0.12 105); --selection-fg: oklch(18% 0.02 105); }
+body.theme-sand { --article-bg: oklch(88% 0.05 85); --article-text: oklch(25% 0.03 85); --color-link: oklch(42% 0.10 65); --selection: oklch(72% 0.08 85); --selection-fg: oklch(18% 0.02 85); }
+body.theme-wheat { --article-bg: oklch(85% 0.06 75); --article-text: oklch(24% 0.03 75); --color-link: oklch(40% 0.10 55); --selection: oklch(68% 0.08 75); --selection-fg: oklch(18% 0.02 75); }
+
+/* ========== GREENS (23-32) ========== */
+body.theme-mint { --article-bg: oklch(90% 0.06 155); --article-text: oklch(24% 0.04 155); --color-link: oklch(40% 0.10 170); --selection: oklch(75% 0.08 155); --selection-fg: oklch(18% 0.02 155); }
+body.theme-seafoam { --article-bg: oklch(88% 0.07 165); --article-text: oklch(24% 0.04 165); --color-link: oklch(38% 0.10 180); --selection: oklch(72% 0.09 165); --selection-fg: oklch(18% 0.02 165); }
+body.theme-sage { --article-bg: oklch(82% 0.05 140); --article-text: oklch(22% 0.03 140); --color-link: oklch(38% 0.08 155); --selection: oklch(65% 0.07 140); --selection-fg: oklch(15% 0.02 140); }
+body.theme-pistachio { --article-bg: oklch(85% 0.08 130); --article-text: oklch(23% 0.04 130); --color-link: oklch(40% 0.10 145); --selection: oklch(68% 0.10 130); --selection-fg: oklch(16% 0.02 130); }
+body.theme-olive { --article-bg: oklch(72% 0.06 115); --article-text: oklch(20% 0.03 115); --color-link: oklch(35% 0.08 130); --selection: oklch(55% 0.08 115); --selection-fg: oklch(95% 0.02 115); }
+body.theme-moss { --article-bg: oklch(68% 0.07 125); --article-text: oklch(18% 0.03 125); --color-link: oklch(32% 0.08 140); --selection: oklch(50% 0.09 125); --selection-fg: oklch(95% 0.02 125); }
+body.theme-forest { --article-bg: oklch(65% 0.08 145); --article-text: oklch(18% 0.03 145); --color-link: oklch(30% 0.10 160); --selection: oklch(48% 0.10 145); --selection-fg: oklch(95% 0.02 145); }
+body.theme-jade { --article-bg: oklch(75% 0.08 160); --article-text: oklch(20% 0.03 160); --color-link: oklch(35% 0.10 175); --selection: oklch(58% 0.10 160); --selection-fg: oklch(95% 0.02 160); }
+body.theme-emerald { --article-bg: oklch(70% 0.10 155); --article-text: oklch(18% 0.04 155); --color-link: oklch(32% 0.12 170); --selection: oklch(52% 0.12 155); --selection-fg: oklch(95% 0.02 155); }
+body.theme-eucalyptus { --article-bg: oklch(78% 0.06 170); --article-text: oklch(22% 0.03 170); --color-link: oklch(38% 0.08 185); --selection: oklch(60% 0.08 170); --selection-fg: oklch(15% 0.02 170); }
+
+/* ========== TEALS & CYANS (33-38) ========== */
+body.theme-teal { --article-bg: oklch(82% 0.07 180); --article-text: oklch(22% 0.04 180); --color-link: oklch(38% 0.10 195); --selection: oklch(65% 0.09 180); --selection-fg: oklch(15% 0.02 180); }
+body.theme-turquoise { --article-bg: oklch(85% 0.08 185); --article-text: oklch(23% 0.04 185); --color-link: oklch(40% 0.10 200); --selection: oklch(68% 0.10 185); --selection-fg: oklch(16% 0.02 185); }
+body.theme-aqua { --article-bg: oklch(88% 0.06 190); --article-text: oklch(24% 0.04 190); --color-link: oklch(42% 0.08 205); --selection: oklch(72% 0.08 190); --selection-fg: oklch(18% 0.02 190); }
+body.theme-cyan { --article-bg: oklch(86% 0.08 200); --article-text: oklch(23% 0.04 200); --color-link: oklch(40% 0.10 215); --selection: oklch(70% 0.10 200); --selection-fg: oklch(16% 0.02 200); }
+body.theme-arctic { --article-bg: oklch(90% 0.05 210); --article-text: oklch(25% 0.03 210); --color-link: oklch(42% 0.08 225); --selection: oklch(75% 0.07 210); --selection-fg: oklch(18% 0.02 210); }
+body.theme-ocean { --article-bg: oklch(75% 0.08 195); --article-text: oklch(20% 0.04 195); --color-link: oklch(35% 0.10 210); --selection: oklch(58% 0.10 195); --selection-fg: oklch(95% 0.02 195); }
+
+/* ========== BLUES (39-45) ========== */
+body.theme-sky { --article-bg: oklch(90% 0.05 230); --article-text: oklch(24% 0.03 230); --color-link: oklch(42% 0.08 245); --selection: oklch(75% 0.07 230); --selection-fg: oklch(18% 0.02 230); }
+body.theme-powder { --article-bg: oklch(92% 0.04 235); --article-text: oklch(26% 0.03 235); --color-link: oklch(45% 0.08 250); --selection: oklch(78% 0.06 235); --selection-fg: oklch(20% 0.02 235); }
+body.theme-periwinkle { --article-bg: oklch(85% 0.07 260); --article-text: oklch(23% 0.04 260); --color-link: oklch(42% 0.10 275); --selection: oklch(68% 0.09 260); --selection-fg: oklch(16% 0.02 260); }
+body.theme-cornflower { --article-bg: oklch(80% 0.10 250); --article-text: oklch(22% 0.04 250); --color-link: oklch(40% 0.12 265); --selection: oklch(62% 0.12 250); --selection-fg: oklch(15% 0.02 250); }
+body.theme-steel { --article-bg: oklch(75% 0.04 240); --article-text: oklch(22% 0.02 240); --color-link: oklch(38% 0.06 255); --selection: oklch(58% 0.06 240); --selection-fg: oklch(95% 0.02 240); }
+body.theme-slate { --article-bg: oklch(70% 0.03 250); --article-text: oklch(20% 0.02 250); --color-link: oklch(35% 0.05 265); --selection: oklch(52% 0.05 250); --selection-fg: oklch(95% 0.02 250); }
+body.theme-denim { --article-bg: oklch(68% 0.08 245); --article-text: oklch(18% 0.04 245); --color-link: oklch(32% 0.10 260); --selection: oklch(50% 0.10 245); --selection-fg: oklch(95% 0.02 245); }
+
+/* ========== PURPLES & VIOLETS (46-50) ========== */
+body.theme-lavender { --article-bg: oklch(88% 0.06 290); --article-text: oklch(24% 0.04 290); --color-link: oklch(42% 0.10 305); --selection: oklch(72% 0.08 290); --selection-fg: oklch(18% 0.02 290); }
+body.theme-lilac { --article-bg: oklch(85% 0.08 295); --article-text: oklch(23% 0.04 295); --color-link: oklch(40% 0.12 310); --selection: oklch(68% 0.10 295); --selection-fg: oklch(16% 0.02 295); }
+body.theme-wisteria { --article-bg: oklch(80% 0.10 285); --article-text: oklch(22% 0.04 285); --color-link: oklch(38% 0.12 300); --selection: oklch(62% 0.12 285); --selection-fg: oklch(15% 0.02 285); }
+body.theme-mauve { --article-bg: oklch(78% 0.06 320); --article-text: oklch(22% 0.03 320); --color-link: oklch(38% 0.10 335); --selection: oklch(60% 0.08 320); --selection-fg: oklch(95% 0.02 320); }
+body.theme-plum { --article-bg: oklch(72% 0.10 310); --article-text: oklch(20% 0.04 310); --color-link: oklch(35% 0.12 325); --selection: oklch(55% 0.12 310); --selection-fg: oklch(95% 0.02 310); }
+
+/* ========== SPECIAL: TIGERBEETLE INSPIRED ========== */
+body.theme-tiger { 
+    --article-bg: oklch(18% 0.02 50); 
+    --article-text: oklch(92% 0.02 60); 
+    --color-link: oklch(75% 0.18 55); 
+    --selection: oklch(65% 0.20 50); 
+    --selection-fg: oklch(10% 0.02 50);
 }
 
 @media (pointer: fine) {
     body {
         padding: 20px;
+    }
+}
+
+/* Article title - elegant display typography */
+.article-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 2.8rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5em;
+}
+
+@media (max-width: 600px) {
+    .article-title {
+        font-size: 2rem;
     }
 }
 
@@ -44,6 +152,24 @@ h6 {
     font-optical-sizing: auto;
     font-style: normal;
     line-height: 1.3em;
+    color: var(--article-text);
+}
+
+/* Section headings in articles - blend of display and mono */
+.article-content h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.6rem;
+    margin-top: 2.5em;
+    margin-bottom: 0.8em;
+    letter-spacing: -0.01em;
+}
+
+.article-content h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 1.25rem;
+    margin-top: 2em;
 }
 
 h1 a,
@@ -89,12 +215,45 @@ img {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px; /* Adjust as needed */
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Featured post links on homepage - larger and title case */
+.meta-info > a {
+    text-transform: none;
+    font-size: 1rem;
+    font-weight: 400;
+    opacity: 1;
+    letter-spacing: 0;
 }
 
 .read-time {
-    margin-left: auto; /* Pushes the read time to the right */
-    font-style: italic; /* Optional: Italicize the read time */
+    margin-left: auto;
+    font-style: normal;
+}
+
+/* Author byline like Figma */
+.author-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.author-info img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin: 0;
+}
+
+.author-info span {
+    font-size: 0.9rem;
 }
 
 .post-navigation {
@@ -140,15 +299,27 @@ code {
 }
 
 blockquote {
+    background: oklch(from var(--article-bg) calc(l - 0.08) c h);
+    border-left: 3px solid var(--color-link);
+    margin: 1.5em 0;
+    padding: 1em 1.5em;
+    font-style: italic;
+}
+
+/* Fallback for browsers without relative color syntax */
+@supports not (background: oklch(from white l c h)) {
+    blockquote {
+        background: rgba(128, 128, 128, 0.1);
+    }
+}
+
+body:not([class*="theme-"]) blockquote {
     background: oklch(24.78% 0 0);
-    border-left: 3px solid oklch(73.65% 0.1675 41.01);
-    margin: 1.5em 10px;
-    padding: 0.5em 10px;
-    /*border-radius: 8px;*/
 }
 
 blockquote p {
     display: inline-block;
+    margin: 0;
 }
 
 .inline-image {
@@ -192,17 +363,38 @@ a {
 }
 
 a:hover {
-    color: var(--mocha-red);
+    color: oklch(from var(--color-link) calc(l - 0.15) calc(c + 0.05) h);
+    font-weight: 600;
+}
+
+/* Don't apply bold hover to heading anchor links - just show # */
+h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover, h5 a:hover, h6 a:hover {
+    font-weight: inherit;
+    color: inherit;
+}
+
+/* Fallback for browsers without relative color syntax */
+@supports not (color: oklch(from white l c h)) {
+    a:hover {
+        opacity: 0.8;
+        font-weight: 600;
+    }
+}
+
+/* Dark themes: brighten on hover instead of darken */
+body:not([class*="theme-"]) a:hover,
+body.theme-tiger a:hover {
+    color: oklch(from var(--color-link) calc(l + 0.12) c h);
 }
 
 .anchor {
-    color: oklch(100% 0 0);
+    color: var(--article-text);
     display: inline;
     text-decoration: none;
 }
 
 .anchor:hover {
-    color: oklch(100% 0 0);
+    color: var(--article-text);
     display: inline;
 }
 
@@ -214,17 +406,35 @@ a:hover {
 @media (hover: hover) and (pointer: fine) {
     .anchor:hover .pound {
         display: inline;
-        color: var(--mocha-red);
+        color: var(--color-link);
     }
 }
 
 .table-of-content {
+    background-color: oklch(from var(--article-bg) calc(l - 0.06) c h);
+    padding: 1rem 1.25rem;
+    border-radius: 4px;
+    margin-bottom: 2rem;
+}
+
+/* Fallback for browsers without relative color syntax */
+@supports not (background: oklch(from white l c h)) {
+    .table-of-content {
+        background: rgba(128, 128, 128, 0.1);
+    }
+}
+
+body:not([class*="theme-"]) .table-of-content {
     background-color: oklch(24.78% 0 0);
-    padding: 10px;
 }
 
 .table-of-content h4 {
-    margin: 0;
+    margin: 0 0 0.75rem 0;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
 
 .table-of-content ol {
@@ -234,11 +444,18 @@ a:hover {
 }
 
 .table-of-content ol li {
-    margin-bottom: 6px;
+    margin-bottom: 0.5rem;
 }
 
 .table-of-content ol li a {
-    transition: color 0.3s ease;
+    transition: color 0.2s ease;
+    text-decoration: none;
+}
+
+.table-of-content ol li a:hover {
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
 }
 
 /* For Webkit browsers (Chrome, Safari, Edge) */
@@ -292,6 +509,10 @@ ul ul {
     max-width: 100%;
     overflow-x: auto;
     box-sizing: border-box;
+    background-color: oklch(18% 0.01 250);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1.5em 0;
 }
 
 .highlight pre code {
@@ -326,7 +547,7 @@ table {
 table,
 th,
 td {
-    border: 1px solid oklch(100% 0 0); /* Adds a white border to the table, headers, and cells */
+    border: 1px solid var(--article-text);
 }
 
 th,
@@ -351,8 +572,10 @@ figure {
 
 figcaption {
     font-style: italic;
-    color: var(--mocha-pink);
+    color: var(--article-text);
+    opacity: 0.75;
     text-align: left;
+    margin-top: 0.5em;
 }
 
 figure div a {
@@ -386,7 +609,7 @@ sup a[href^="#fn"]::after {
 }
 
 #hn-comments h2 {
-    color: oklch(100% 0 0);
+    color: var(--article-text);
 }
 
 .hn-comment {
@@ -417,21 +640,34 @@ hr {
 }
 
 .section-tags {
-    margin-top: 10px;
-    padding: 5px 0;
+    margin-top: 2rem;
+    padding: 1rem 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .section-tags span {
     display: inline-block;
-    margin: 5px;
+    margin: 0;
 }
 
 .section-tags a {
+    display: inline-block;
     text-decoration: none;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid currentColor;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.2s ease;
 }
 
 .section-tags a:hover {
-    text-decoration: 1px underline dashed;
+    background-color: var(--color-link);
+    color: var(--article-bg);
+    border-color: var(--color-link);
 }
 
 /* Syntax highlight base theme colors */
@@ -746,16 +982,120 @@ code {
     color: var(--mocha-red);
 }
 
-/* Variable font: normal */
+/* 
+ * All themes use dark code blocks for contrast
+ */
+body[class*="theme-"] .chroma {
+    background-color: oklch(18% 0.01 250);
+    color: oklch(90% 0.02 250);
+    border-radius: 6px;
+}
+
+body[class*="theme-"] .highlight pre {
+    background-color: oklch(18% 0.01 250);
+}
+
+/* Inline code for all themes */
+body[class*="theme-"] code {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: var(--article-text);
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+}
+
+/* Reset code inside code blocks */
+body[class*="theme-"] .chroma code {
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+/* Table styling for all themes */
+body[class*="theme-"] table {
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+body[class*="theme-"] th,
+body[class*="theme-"] td {
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+body[class*="theme-"] table thead tr {
+    background-color: oklch(25% 0.02 250);
+    color: oklch(95% 0 0);
+}
+
+/* HR and divider for all themed pages */
+body[class*="theme-"] hr {
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+body[class*="theme-"] .header-divider {
+    background-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Darker themes: invert inline code and adjust dividers */
+body.theme-dustyrose .header-divider,
+body.theme-raspberry .header-divider,
+body.theme-cherry .header-divider,
+body.theme-rosewood .header-divider,
+body.theme-terracotta .header-divider,
+body.theme-olive .header-divider,
+body.theme-moss .header-divider,
+body.theme-forest .header-divider,
+body.theme-ocean .header-divider,
+body.theme-steel .header-divider,
+body.theme-slate .header-divider,
+body.theme-denim .header-divider,
+body.theme-mauve .header-divider,
+body.theme-plum .header-divider {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+body.theme-dustyrose code,
+body.theme-raspberry code,
+body.theme-cherry code,
+body.theme-rosewood code,
+body.theme-terracotta code,
+body.theme-olive code,
+body.theme-moss code,
+body.theme-forest code,
+body.theme-ocean code,
+body.theme-steel code,
+body.theme-slate code,
+body.theme-denim code,
+body.theme-mauve code,
+body.theme-plum code {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+body.theme-dustyrose hr,
+body.theme-raspberry hr,
+body.theme-cherry hr,
+body.theme-rosewood hr,
+body.theme-terracotta hr,
+body.theme-olive hr,
+body.theme-moss hr,
+body.theme-forest hr,
+body.theme-ocean hr,
+body.theme-steel hr,
+body.theme-slate hr,
+body.theme-denim hr,
+body.theme-mauve hr,
+body.theme-plum hr {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Variable font: JetBrains Mono normal */
 @font-face {
     font-family: "JetBrains Mono";
     font-style: normal;
-    font-weight: 100 900; /* This indicates the weight range (100–900) */
-    font-display: swap; /* Helps avoid "invisible text" while loading */
+    font-weight: 100 900;
+    font-display: swap;
     src: url("/fonts/jetbrains/JetBrainsMono[wght].ttf") format("truetype-variations");
 }
 
-/* Variable font: italic */
+/* Variable font: JetBrains Mono italic */
 @font-face {
     font-family: "JetBrains Mono";
     font-style: italic;
@@ -763,4 +1103,29 @@ code {
     font-display: swap;
     src: url("/fonts/jetbrains/JetBrainsMono-Italic[wght].ttf")
         format("truetype-variations");
+}
+
+/* Inter Tight for display typography - static weights from Google Fonts */
+@font-face {
+    font-family: "Inter Tight";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/intertight/NGSwv5HMAFg6IuGlBNMjxLsH8ahuQ2e8.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter Tight";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("/fonts/intertight/NGSyv5HMAFg6IuGlBNMjxLsCwapkREW-emk.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter Tight";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/intertight/NGSyv5HMAFg6IuGlBNMjxLsCwalkREW-emmbxg.woff2") format("woff2");
 }

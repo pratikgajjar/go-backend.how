@@ -1,6 +1,4 @@
 {{ define "main" }}
-  <h1>{{ .Title }}</h1>
-
   {{ $dateMachine := .Date | time.Format "2006-01-02T15:04:05-07:00" }}
   {{ $dateHuman := .Date | time.Format ":date_long" }}
   {{ $readingTime := div (float .FuzzyWordCount) .Site.Params.reading_speed }}
@@ -8,16 +6,25 @@
   
   <div class="meta-info">
     <time datetime="{{ $dateMachine }}">{{ $dateHuman }}</time>
-    <span class="read-time">~{{ $readingTime }} min</span>
+    <span class="read-time">~{{ $readingTime }} min read</span>
   </div>
 
-  <div>
+  <h1 class="article-title">{{ .Title }}</h1>
+
+  {{/* Author info - uncomment and customize if needed
+  <div class="author-info">
+    <span>By {{ .Site.Params.author.name }}</span>
+  </div>
+  */}}
+
+  <article class="article-content">
     <div class="table-of-content">
-      <h4> Contents </h4>
+      <h4>Contents</h4>
       {{ .TableOfContents }}
     </div>
     {{ partial "ext_link.html" .Content }}
-  </div>
+  </article>
+
   {{ partial "terms.html" (dict "taxonomy" "tags" "page" .) }}
   {{ partial "hacker-news-comments.html" . }}
 {{ end }}

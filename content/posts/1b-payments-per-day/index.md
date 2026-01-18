@@ -4,6 +4,7 @@ date: 2025-03-01
 description: "A deep dive into handling the 1B payments/day challenge using first-principles system design with TigerBeetle, PostgreSQL and Golang."
 tags: ["golang", "tigerbeetle", "payments", "first-principles", "system-design"]
 draft: false
+theme: "honey"
 ---
 
 🚧 ---- In progress --- feel free send review comments.
@@ -239,7 +240,7 @@ Perform 10M Accounts creation and 1M Payments via [Git](https://github.com/prati
 #### COPY FROM
 
 - Latency[^2] = we were able to create 10M accounts in 14s
-  - As accounts creation can happen in bulk, postgres doesn't need to perform complex logic here.
+  - As accounts creation can happen in bulk, Postgres doesn't need to perform complex logic here.
 - Expected: `10M × 128B = 1.28GB`, actual = `1256MB` table storage is around the same.
   - PK Index used `453MB`, thus here also we should consider index storage usage in our napkin math.
 
@@ -575,4 +576,4 @@ Sirupsen - GitHub [napkin-math](https://github.com/sirupsen/napkin-math)
 
 [^2]: [1B Payments Benchmark Repository](https://github.com/pratikgajjar/1b-payments/tree/main?tab=readme-ov-file)
 
-[^3]: _Disclaimer:_ Benchmarks were performed on an M3 Max MacBook Pro 14" under specific conditions. Real-world performance may vary based on hardware and workload.
+[^3]: _Disclaimer:_ Benchmarks were performed on a M3 Max MacBook Pro 14 under specific conditions. Real-world performance may vary based on hardware and workload.
