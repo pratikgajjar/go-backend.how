@@ -10,7 +10,8 @@ html {
     --selection: oklch(83.08% 0.126316 68.2133);
     --selection-fg: oklch(0% 0 0);
     --font-mono: "JetBrains Mono", monospace;
-    --font-display: "Inter Tight", system-ui, sans-serif;
+    --font-display: "Departure Mono", monospace;
+    --font-heading: var(--font-display);
     
     /* Article theme colors - can be overridden per-page */
     --article-bg: oklch(16.96% 0.0017 17.32);
@@ -128,7 +129,6 @@ body.theme-tiger {
 
 /* Article title - elegant display typography */
 .article-title {
-    font-family: var(--font-display);
     font-weight: 400;
     font-size: 2.8rem;
     line-height: 1.15;
@@ -148,16 +148,15 @@ h3,
 h4,
 h5,
 h6 {
-    font-family: var(--font-mono);
+    font-family: var(--font-heading);
     font-optical-sizing: auto;
     font-style: normal;
     line-height: 1.3em;
     color: var(--article-text);
 }
 
-/* Section headings in articles - blend of display and mono */
+/* Section headings in articles */
 .article-content h2 {
-    font-family: var(--font-display);
     font-weight: 600;
     font-size: 1.6rem;
     margin-top: 1.5em;
@@ -166,7 +165,6 @@ h6 {
 }
 
 .article-content h3 {
-    font-family: var(--font-display);
     font-weight: 500;
     font-size: 1.25rem;
     margin-top: 1.25em;
@@ -443,7 +441,6 @@ body:not([class*="theme-"]) .table-of-content {
 
 .table-of-content h4 {
     margin: 0 0 0.75rem 0;
-    font-family: var(--font-display);
     font-weight: 600;
     font-size: 0.9rem;
     text-transform: uppercase;
@@ -1153,29 +1150,13 @@ body.theme-plum hr {
         format("truetype-variations");
 }
 
-/* Inter Tight for display typography - static weights from Google Fonts */
+/* Departure Mono for display typography */
 @font-face {
-    font-family: "Inter Tight";
+    font-family: "Departure Mono";
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url("/fonts/intertight/NGSwv5HMAFg6IuGlBNMjxLsH8ahuQ2e8.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "Inter Tight";
-    font-style: normal;
-    font-weight: 500;
-    font-display: swap;
-    src: url("/fonts/intertight/NGSyv5HMAFg6IuGlBNMjxLsCwapkREW-emk.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "Inter Tight";
-    font-style: normal;
-    font-weight: 600;
-    font-display: swap;
-    src: url("/fonts/intertight/NGSyv5HMAFg6IuGlBNMjxLsCwalkREW-emmbxg.woff2") format("woff2");
+    src: url("/fonts/departuremono/DepartureMono-Regular.woff2") format("woff2");
 }
 
 /* Mobile-specific overrides - must be at end for specificity */
