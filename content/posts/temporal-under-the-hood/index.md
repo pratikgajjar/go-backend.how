@@ -899,6 +899,33 @@ back to normal dispatch). Absurd's p99 for a 10-step task was **20.1 ms**
 
 # Head to head
 
+Architecturally, here's what you deploy for each:
+
+```txt
+         TEMPORAL                              ABSURD
+  (5 processes + database)                (workers + database)
+
+ ┌───────────────┐                        ┌───────────────┐
+ │ Your worker   │                        │ Your worker   │
+ │   (1 or N)    │                        │   (1 or N)    │
+ └───────┬───────┘                        └───────┬───────┘
+         │ gRPC                                   │ SQL
+         ▼                                        │
+ ┌───────────────┐                                │
+ │   Frontend    │                                │
+ └───┬───┬───┬───┘                                │
+     ▼   ▼   ▼                                    │
+ ┌───┐ ┌───┐ ┌───┐                                │
+ │Hst│ │Mtg│ │Wkr│                                │
+ └─┬─┘ └─┬─┘ └─┬─┘                                │
+   └─────┼─────┘                                  │
+         ▼                                        ▼
+ ╔═══════════════╗                        ╔═══════════════╗
+ ║   Postgres    ║                        ║   Postgres    ║
+ ║   37 tables   ║                        ║ 5 tables/queue║
+ ╚═══════════════╝                        ╚═══════════════╝
+```
+
 Same workload (3-step order fulfillment), same hardware, same Postgres
 instance, same VM:
 
