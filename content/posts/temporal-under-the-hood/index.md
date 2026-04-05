@@ -904,27 +904,20 @@ back to normal dispatch). Absurd's p99 for a 10-step task was **20.1 ms**
 Same workload (3-step order fulfillment), same hardware, same Postgres
 instance, same VM:
 
-```txt
-┌──────────────────────────────────────┬────────────────┬─────────────┐
-│                                      │   Temporal     │    Absurd   │
-├──────────────────────────────────────┼────────────────┼─────────────┤
-│ Tables in schema                     │      37        │   5 per q   │
-│ SQL / unit of work (cost model)      │ ~40 + 35×N     │ ~11 + 7×N   │
-│ SQL for a 3-unit workflow            │     145        │     32      │
-│ Throughput (1k units @ c=64)         │    65.6/s      │  1,435.8/s  │
-│ p50 latency (ms)                     │    660.9       │    285.4    │
-│ p99 latency (ms)                     │   2,976.3      │    518.9    │
-│ Storage / workflow                   │    ~15 kB      │    ~2 kB    │
-│ Separate server process?             │     yes        │     no      │
-│ Runtime deterministic constraint     │     yes        │     no      │
-│ SDK LOC (Python, non-generated)      │    ~49,000     │    1,900    │
-│ SDK LOC (TypeScript, non-generated)  │    ~38,000     │    1,400    │
-│ Dependencies outside Postgres        │  gRPC server,  │    none     │
-│                                      │  history svc,  │             │
-│                                      │  matching svc, │             │
-│                                      │  frontend svc  │             │
-└──────────────────────────────────────┴────────────────┴─────────────┘
-```
+| Dimension | Temporal | Absurd |
+|---|---|---|
+| Tables in schema | 37 | 5 per queue |
+| SQL / unit of work (cost model) | ~40 + 35×N | ~11 + 7×N |
+| SQL for a 3-unit workflow | 145 | 32 |
+| Throughput (1k units @ c=64) | 65.6/s | 1,435.8/s |
+| p50 latency (ms) | 660.9 | 285.4 |
+| p99 latency (ms) | 2,976.3 | 518.9 |
+| Storage / workflow | ~15 kB | ~2 kB |
+| Separate server process? | yes | no |
+| Runtime deterministic constraint | yes | no |
+| SDK LOC (Python, non-generated) | ~49,000 | 1,900 |
+| SDK LOC (TypeScript, non-generated) | ~38,000 | 1,400 |
+| Dependencies outside Postgres | gRPC + history + matching + frontend services | none |
 
 # What does Temporal buy you for that tax?
 
