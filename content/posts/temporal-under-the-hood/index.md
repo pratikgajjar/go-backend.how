@@ -795,9 +795,11 @@ tighter tail latencies (519 ms p99 vs 2976 ms p99 at N=1000). On this
 hardware Postgres plus 16 worker goroutines is the bottleneck, not
 anything Absurd does.
 
-## Single-workflow round-trip latency
+# Single-workflow round-trip latency
 
-If you throw a single workflow at the wall and wait for it, sequentially:
+Throughput under load is one axis; latency for a _single_ workflow is
+another. If you throw one workflow at each system at a time and wait for
+completion before starting the next:
 
 | N  | Temporal p50 | Absurd p50 | ratio |
 |---:|-------------:|-----------:|------:|
@@ -806,17 +808,19 @@ If you throw a single workflow at the wall and wait for it, sequentially:
 |  5 |     41.1 ms  |   11.3 ms  |  3.6× |
 | 10 |     69.1 ms  |   12.6 ms  |  5.5× |
 
-The per-activity slope is **~6.2 ms in Temporal** versus **~0.27 ms in
-Absurd** — a 23× difference per unit of work. Each Absurd step is
+The per-activity latency slope is **~6.2 ms in Temporal** versus **~0.27 ms
+in Absurd** — a 23× difference per unit of work. Each Absurd step is
 essentially just a single `set_task_checkpoint_state` stored-procedure call
-(0.342 ms measured). Each Temporal activity has to route through the
-matching service's dispatch loop, decision round-trip back to the worker,
-then history event persistence — several network hops per activity.
+(0.342 ms measured). Each Temporal activity routes through the matching
+service's dispatch loop, a decision round-trip back to the worker, then
+history event persistence — several network hops per activity, even on a
+single-node deploy.
 
 Temporal's long-tail latency is also more dramatic: the p90 for a
 10-activity workflow was **1.04 seconds**, with most of that variance
-attributable to matching-service dispatch jitter. Absurd's p99 for a
-10-step task was **20.1 ms** — essentially no tail.
+attributable to matching-service dispatch jitter (sticky queue falling
+back to normal dispatch). Absurd's p99 for a 10-step task was **20.1 ms**
+— essentially no tail.
 
 # Head to head
 
