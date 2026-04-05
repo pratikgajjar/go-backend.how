@@ -29,7 +29,7 @@ This post dissects that cost. By the end you'll know:
 - **How much durability costs you** — in queries, in storage, in Postgres
   IOPS, and in machines
 - **What a radically simpler alternative looks like** — I benchmark
-  [Absurd](https://github.com/earendil-works/absurd), a single-SQL-file
+  [Absurd](https://github.com/earendil-works/absurd)[^1], a single-SQL-file
   durable-execution engine by Armin Ronacher, against Temporal on the
   same workload
 - **When Temporal's complexity is worth paying for, and when it isn't**
@@ -218,14 +218,14 @@ namespaces               ─ tenant isolation
 
 Plus another 21 tables for request cancellations, signals, child workflows,
 chasm nodes, namespace metadata, nexus endpoints, replication DLQ, schema
-versioning, etc.
+versioning, etc. (the full schema lives in upstream Temporal[^6]).
 
 Every one of these tables is there to support a _specific_ distributed-systems
 guarantee. Let's unpack the important ones.
 
 ## Sharding: workflows → shards
 
-When a workflow is created, Temporal computes which shard owns it:
+When a workflow is created, Temporal computes which shard owns it[^5]:
 
 ```go
 // common/util.go — upstream Temporal source
@@ -594,12 +594,13 @@ Now let's look at the other extreme.
 
 [Absurd](https://github.com/earendil-works/absurd) was built by Armin Ronacher
 (of Flask / Jinja fame) for Earendil's agent workloads. It's a **single `.sql`
-file** — 1,685 lines — that installs a durable-execution engine into your
+file** — 1,685 lines[^4] — that installs a durable-execution engine into your
 existing Postgres. There is no server. There are no microservices. The SDK is
 under 2,000 lines of code per language. You apply the SQL, create a queue,
 connect workers, and go.
 
-It came out in November 2025. I ran the same benchmark against it.
+It came out in November 2025[^1]. Armin has since written about running it
+in production at Earendil[^2]. I ran the same benchmark against it.
 
 ## The schema
 
@@ -720,13 +721,11 @@ END;
 $$;
 ```
 
-`SELECT ... FOR UPDATE SKIP LOCKED` [was added to Postgres 9.5 in
-2016](https://www.2ndquadrant.com/en/blog/what-is-select-skip-locked-for-in-postgresql-9-5/)
+`SELECT ... FOR UPDATE SKIP LOCKED` was added to Postgres 9.5 in 2016[^7]
 specifically for this use case: multiple consumers can poll the same queue
-without blocking each other. This is also the basis for
-[pgmq](https://github.com/pgmq/pgmq), [River](https://riverqueue.com/), and
-a half-dozen other Postgres-native queues. Absurd just layers state machines
-and checkpoints on top.
+without blocking each other. This is also the basis for pgmq[^8],
+[River](https://riverqueue.com/), and a half-dozen other Postgres-native
+queues. Absurd just layers state machines and checkpoints on top.
 
 ## A step is just a checkpoint
 
@@ -1004,7 +1003,7 @@ the workflow-level replication semantics.
 **6. A huge ecosystem.** UI, metrics, observability integrations, a CLI,
 dozens of SDKs, a Temporal Cloud. When things go wrong at 3am, that matters.
 
-From the [Absurd comparison docs](https://earendil-works.github.io/absurd/comparison/):
+From the Absurd comparison docs[^3]:
 
 > Temporal gives you more, but asks for more:
 >
@@ -1056,8 +1055,7 @@ Most of us don't. Most of the durable-execution needs I've seen in practice
 are "run this 4-step thing, make sure it eventually finishes, retry on
 failure, let me wait for this webhook." That's an afternoon's worth of SQL.
 
-When [sirupsen's napkin
-math](https://github.com/sirupsen/napkin-math) tells you to start with the
+When sirupsen's napkin math[^9] tells you to start with the
 first-principles back of the envelope, this is what it looks like in the
 workflow-engine domain. The two cost models I measured are:
 
@@ -1124,23 +1122,21 @@ Storage comes from `pg_total_relation_size()` per table.
 
 ---
 
-# References
-
-- [Absurd announcement — Armin Ronacher](https://lucumr.pocoo.org/2025/11/3/absurd-workflows/) (Nov 2025)
-- [Absurd in production — Armin Ronacher](https://lucumr.pocoo.org/2026/4/4/absurd-in-production/) (Apr 2026)
-- [Absurd vs Temporal / Cadence / Inngest / PGMQ / DBOS](https://earendil-works.github.io/absurd/comparison/)
-- [Absurd SQL source](https://github.com/earendil-works/absurd/blob/main/sql/absurd.sql) — the whole engine
-- [Temporal source: `WorkflowIDToHistoryShard`](https://github.com/temporalio/temporal/blob/main/common/util.go) — how workflows map to shards
-- [Temporal Postgres schema](https://github.com/temporalio/temporal/tree/main/schema/postgresql/v12/temporal/versioned)
-- [What is SELECT … SKIP LOCKED for? — 2ndQuadrant](https://www.2ndquadrant.com/en/blog/what-is-select-skip-locked-for-in-postgresql-9-5/)
-- [pgmq — a battle-tested Postgres queue](https://github.com/pgmq/pgmq)
-- [napkin-math — Sirupsen](https://github.com/sirupsen/napkin-math)
-
 _Disclaimer: benchmarks ran on a single M4 Mac mini inside a 4-CPU Podman VM.
 Production Temporal deployments scale history and matching services
 horizontally and use much larger Postgres clusters. The throughput numbers
 here should be read as "ratio of orchestration work per unit of user work,"
 not as production capacity planning._
+
+[^1]: [Absurd announcement — Armin Ronacher (Nov 2025)](https://lucumr.pocoo.org/2025/11/3/absurd-workflows/)
+[^2]: [Absurd in production — Armin Ronacher (Apr 2026)](https://lucumr.pocoo.org/2026/4/4/absurd-in-production/)
+[^3]: [Absurd vs Temporal / Cadence / Inngest / PGMQ / DBOS — Absurd docs](https://earendil-works.github.io/absurd/comparison/)
+[^4]: [Absurd SQL source — the whole engine in one file](https://github.com/earendil-works/absurd/blob/main/sql/absurd.sql)
+[^5]: [Temporal source: `WorkflowIDToHistoryShard`](https://github.com/temporalio/temporal/blob/main/common/util.go)
+[^6]: [Temporal Postgres schema (v12)](https://github.com/temporalio/temporal/tree/main/schema/postgresql/v12/temporal/versioned)
+[^7]: [What is SELECT … SKIP LOCKED for? — 2ndQuadrant](https://www.2ndquadrant.com/en/blog/what-is-select-skip-locked-for-in-postgresql-9-5/)
+[^8]: [pgmq — a battle-tested Postgres queue](https://github.com/pgmq/pgmq)
+[^9]: [napkin-math — Sirupsen](https://github.com/sirupsen/napkin-math)
 
 ---
 
