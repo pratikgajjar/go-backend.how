@@ -1031,3 +1031,22 @@ Production Temporal deployments scale history and matching services
 horizontally and use much larger Postgres clusters. The throughput numbers
 here should be read as "ratio of orchestration work per unit of user work,"
 not as production capacity planning._
+
+---
+
+## Colophon — AI assistance
+
+This post was researched, benchmarked, and drafted with the help of
+**Claude Sonnet 4.5** (via the [pi](https://github.com/mariozechner/pi)
+coding agent). The agent set up Temporal + Postgres + Absurd in Podman on
+my Mac mini, wrote the benchmark drivers, ran the workloads, queried
+`pg_stat_statements`, and produced the first draft of this write-up.
+Every number in this post was measured on real infrastructure, then
+hand-verified by me; every claim was cross-checked against upstream
+source before publication.
+
+Approximate session cost: **~1.5M input tokens, ~80K output tokens**
+across ~3 hours of iteration (13 commits). The benchmark code in
+`bench/` is open in the [repo for this
+site](https://github.com/pratikgajjar/go-backend.how/tree/main/bench) if
+you want to reproduce or extend it.
