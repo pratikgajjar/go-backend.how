@@ -894,28 +894,28 @@ anything Absurd does.
 
 Throughput under load is one axis; latency for a _single_ workflow is
 another. If you throw one workflow at each system at a time and wait for
-completion before starting the next:
+completion before starting the next (n=100 per row):
 
 | N  | Temporal p50 | Absurd p50 | ratio |
 |---:|-------------:|-----------:|------:|
-|  1 |     13.4 ms  |   10.2 ms  |  1.3× |
-|  3 |     27.7 ms  |   11.4 ms  |  2.4× |
-|  5 |     41.1 ms  |   11.3 ms  |  3.6× |
-| 10 |     69.1 ms  |   12.6 ms  |  5.5× |
+|  1 |     14.2 ms  |   10.3 ms  |  1.4× |
+|  3 |     47.0 ms  |   11.1 ms  |  4.2× |
+|  5 |     67.3 ms  |   11.1 ms  |  6.1× |
+| 10 |     90.7 ms  |   12.1 ms  |  7.5× |
 
-The per-activity latency slope is **~6.2 ms in Temporal** versus **~0.27 ms
-in Absurd** — a 23× difference per unit of work. Each Absurd step is
+The per-activity latency slope is **~8.5 ms in Temporal** versus **~0.2 ms
+in Absurd** — a 40× difference per unit of work. Each Absurd step is
 essentially just a single `set_task_checkpoint_state` stored-procedure call
 (0.342 ms measured). Each Temporal activity routes through the matching
 service's dispatch loop, a decision round-trip back to the worker, then
 history event persistence — several network hops per activity, even on a
 single-node deploy.
 
-Temporal's long-tail latency is also more dramatic: the p90 for a
-10-activity workflow was **1.04 seconds**, with most of that variance
-attributable to matching-service dispatch jitter (sticky queue falling
-back to normal dispatch). Absurd's p99 for a 10-step task was **20.1 ms**
-— essentially no tail.
+Temporal's tail is dramatic and bimodal: the p50 for a 10-activity workflow
+is ~91 ms, but the p90 is **1.05 seconds** — an 11× gap inside one
+distribution. Most of that variance is matching-service dispatch jitter
+(sticky queue falling back to normal dispatch). Absurd's p99 for a 10-step
+task was **20.2 ms** — tail essentially matches the median.
 
 # Head to head
 
