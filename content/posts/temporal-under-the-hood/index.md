@@ -1,7 +1,7 @@
 +++
 title = "🚂 Temporal — Under the Hood"
 description = "What actually happens when you start a Temporal workflow? We trace every SQL statement, count the event-history nodes, and then watch Absurd — a 5-table, single-SQL-file system — do the same job with one-fifth the queries and twenty-times the throughput."
-date = 2024-11-28T21:51:38+05:30
+date = 2026-04-05T12:00:00+05:30
 lastmod = 2026-04-05T12:00:00+05:30
 publishDate = "2026-04-05T12:00:00+05:30"
 draft = false
