@@ -173,9 +173,9 @@ internal services_:
 **Frontend** terminates gRPC, authenticates, and routes requests to one of
 the three back-end services. **History** owns workflow state machines
 (executions, event history, scheduled tasks). **Matching** runs the task
-queues activities and workflow tasks get dispatched through.  **Worker**
-runs Temporal's own internal maintenance workflows — confusingly named,
-nothing to do with _your_ worker processes.
+queues that activities and workflow tasks are dispatched through.
+**Worker** runs Temporal's own internal maintenance workflows — confusingly
+named, nothing to do with _your_ worker processes.
 
 All four talk to the same database. When you scale Temporal horizontally,
 you scale those services, not your database (until you do).
