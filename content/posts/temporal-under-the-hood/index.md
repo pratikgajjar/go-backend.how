@@ -41,7 +41,19 @@ execution to another machine and keep going as if nothing happened.
 Almost everyone is in distributed-systems land without realising. A microservice
 making a network call looks like this:
 
-{{< figure src="sample-app.svg" title="Next Gen app" alt="Wireframes of basic app" >}}
+```txt
+┌────────┐  1   ┌──────────┐  2   ┌────┐
+│  App   │─────▶│ Backend  │─────▶│ DB │
+│        │      │          │      │    │
+└────────┘      └────┬─────┘      └────┘
+                     │
+                     │  3   ⚠️  may fail
+                     ▼
+               ┌──────────┐
+               │ External │
+               │  Service │
+               └──────────┘
+```
 
 Step 3 can fail for a dozen reasons — buggy code, a network blip, the
 third-party is down, the instance is gone. How do you guarantee that the call
@@ -99,7 +111,25 @@ whole thing "durable".
 
 # Basics — the runtime model
 
-{{< figure src="temporal-svc.svg" title="Temporal runtime" alt="Diagram showing worker and temporal backend connected" width="auto" >}}
+```txt
+┌──────────────┐    1 (gRPC)     ┌───────────────┐
+│   Workers    │────────────────▶│   Temporal    │
+│              │                 │    Backend    │
+│  N worker    │                 │   (engine)    │
+│  processes   │                 │               │
+└──────────────┘                 └───────┬───────┘
+                                         │
+                                         │  2 (DB protocol)
+                                         ▼
+                                 ┌───────────────┐
+                                 │   Database    │
+                                 │  stores state │
+                                 │               │
+                                 │  Postgres /   │
+                                 │  Cassandra /  │
+                                 │  managed      │
+                                 └───────────────┘
+```
 
 1. **Workers** (your code) talk to the **Temporal server** via gRPC.
 2. The **Temporal server** uses a database-specific protocol to read and write state.
