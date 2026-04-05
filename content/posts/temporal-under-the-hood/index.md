@@ -1147,9 +1147,6 @@ This post was researched, benchmarked, and drafted with the help of
 coding agent). The agent set up Temporal + Postgres + Absurd in Podman on
 my Mac mini, wrote the benchmark drivers, ran the workloads, queried
 `pg_stat_statements`, and produced the first draft of this write-up.
-Every number in this post was measured on real infrastructure, then
-hand-verified by me; every claim was cross-checked against upstream
-source before publication.
 
 Session stats (snapshot from the pi harness mid-way through the edit pass):
 
