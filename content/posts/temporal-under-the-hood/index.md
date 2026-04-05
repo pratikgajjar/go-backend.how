@@ -813,8 +813,8 @@ instance, same VM:
 │ Storage / workflow                   │    ~15 kB      │    ~2 kB    │
 │ Separate server process?             │     yes        │     no      │
 │ Runtime deterministic constraint     │     yes        │     no      │
-│ SDK lines of code (Python)           │    170,000     │    1,900    │
-│ SDK lines of code (TypeScript)       │    ~50,000     │    1,400    │
+│ SDK LOC (Python, non-generated)      │    ~49,000     │    1,900    │
+│ SDK LOC (TypeScript, non-generated)  │    ~38,000     │    1,400    │
 │ Dependencies outside Postgres        │  gRPC server,  │    none     │
 │                                      │  history svc,  │             │
 │                                      │  matching svc, │             │
