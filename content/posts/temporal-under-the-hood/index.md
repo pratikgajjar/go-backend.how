@@ -1131,10 +1131,10 @@ Session stats (final total from the pi harness):
 
 ```txt
 model           input   output  cache_read  cache_write   cost    turns
-claude-opus-4-6   744    354k     193.1M        1.8M    $116.54   611
+claude-opus-4-6   781    364k     196.0M        2.0M    $119.50   628
 ```
 
-**611 tool turns and $116.54 later, here we are** — at a 99% cache hit
+**628 tool turns and $119.50 later, here we are** — at a 99% cache hit
 rate, which is the only reason this wasn't a four-figure bill. A post
 about query efficiency that also turns out to be a lesson in
 context-window efficiency. Memoization all the way down.
