@@ -138,11 +138,47 @@ whole thing "durable".
 2. The **Temporal server** uses a database-specific protocol to read and write state.
 
 Your worker is stateless. The Temporal server itself is split into _four
-internal services_: **frontend** (gRPC terminator), **history** (workflow
-state machine), **matching** (task dispatch), and **worker** (internal
-maintenance workflows — confusingly named, nothing to do with _your_
-workers). All four talk to the same database. When you scale Temporal
-horizontally, you scale those services, not your database (until you do).
+internal services_:
+
+```txt
+       ┌───────────────┐
+       │  Your workers │
+       │   (your code) │
+       └───────┬───────┘
+               │  gRPC
+               ▼
+ ┌─────────────────────────────────────┐
+ │             Frontend                │   gRPC terminator:
+ │    auth · rate-limit · routing      │   stateless, scale out freely
+ └───┬─────────────┬─────────────┬─────┘
+     │             │             │
+     ▼             ▼             ▼
+ ┌────────┐   ┌─────────┐   ┌────────┐
+ │History │   │Matching │   │ Worker │    (all stateful-ish;
+ │        │   │         │   │        │     state in Postgres)
+ │workflow│   │ task    │   │internal│
+ │ state  │   │dispatch │   │ mainte-│
+ │machine │   │(queues) │   │ nance  │    ← "worker" here is
+ └───┬────┘   └────┬────┘   └───┬────┘      a Temporal service,
+     │             │            │            NOT your worker
+     └─────────────┼────────────┘
+                   ▼
+            ┌─────────────┐
+            │  Database   │
+            │ (Postgres / │
+            │  Cassandra) │
+            └─────────────┘
+```
+
+**Frontend** terminates gRPC, authenticates, and routes requests to one of
+the three back-end services. **History** owns workflow state machines
+(executions, event history, scheduled tasks). **Matching** runs the task
+queues activities and workflow tasks get dispatched through.  **Worker**
+runs Temporal's own internal maintenance workflows — confusingly named,
+nothing to do with _your_ worker processes.
+
+All four talk to the same database. When you scale Temporal horizontally,
+you scale those services, not your database (until you do).
 
 # Under the hood
 
