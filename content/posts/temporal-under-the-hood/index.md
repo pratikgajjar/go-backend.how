@@ -1161,21 +1161,24 @@ arithmetic — which caught three mistakes I'd have otherwise shipped
 Turns out "reviewed by the same LLM that wrote it" still beats "not
 reviewed."
 
-Session stats (snapshot from the pi harness mid-polish):
+Session stats (final total from the pi harness):
 
 ```txt
 model           input   output  cache_read  cache_write   cost    turns
-claude-opus-4-6   225    143k       37.8M         403k   $24.99    199
+claude-opus-4-6   744    354k     193.1M        1.8M    $116.54   611
 ```
 
-38 million cached-read tokens, 143k output tokens, 199 tool turns,
-**$24.99** at that point. Total session cost climbed a bit higher
-after the refinement passes — let's call it $30 and move on. The
-benchmark code lives in [`bench/`](https://github.com/pratikgajjar/go-backend.how/tree/main/bench)
+**611 tool turns and $116.54 later, here we are.** An earlier snapshot
+at turn 199 showed $24.99 — so the core story cost ~$25, and the
+remaining $90 went into verification: re-running benchmarks, writing
+the validation script, fixing the three arithmetic errors it caught,
+and the several times I said "no, that diagram contradicts the text
+two sections up, redo it." The benchmark code lives in
+[`bench/`](https://github.com/pratikgajjar/go-backend.how/tree/main/bench)
 if you want to reproduce or extend it.
 
-I'm publishing the numbers so the next person doesn't have to burn $30,
-a weekend, and one Mac mini's fan life to know them.
+I'm publishing the numbers so the next person doesn't have to burn
+$120, a weekend, and one Mac mini's fan life to know them.
 
 ---
 
