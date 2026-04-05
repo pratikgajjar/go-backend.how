@@ -1134,7 +1134,7 @@ Every number in this post was measured on real infrastructure, then
 hand-verified by me; every claim was cross-checked against upstream
 source before publication.
 
-Session stats (from the pi harness):
+Session stats (snapshot from the pi harness mid-way through the edit pass):
 
 ```txt
 model           input   output  cache_read  cache_write   cost    turns
@@ -1142,7 +1142,7 @@ claude-opus-4-6   225    143k       37.8M         403k   $24.99    199
 ```
 
 38 million cached-read tokens, 143k output tokens, 199 tool turns,
-**$24.99 total** over ~3 hours. The benchmark code in `bench/` is open in
-the [repo for this
-site](https://github.com/pratikgajjar/go-backend.how/tree/main/bench) if
-you want to reproduce or extend it.
+**$24.99** at that point — total session cost ended up a bit higher
+after the polish passes. The benchmark code in `bench/` is open in the
+[repo for this site](https://github.com/pratikgajjar/go-backend.how/tree/main/bench)
+if you want to reproduce or extend it.
