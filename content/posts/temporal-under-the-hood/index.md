@@ -388,6 +388,42 @@ Temporal cost model:  ~40 + 35 × N   SQL statements per workflow
                                      (where N = activity count)
 ```
 
+Where do the 35 per-activity queries land? I diffed the N=1 and N=5 runs
+and computed the delta per activity:
+
+| Per-activity ops                | N=1  | N=5   | delta÷4 |
+|---------------------------------|-----:|------:|--------:|
+| UPDATE executions               |  6.0 | 22.0  |  **4**  |
+| SELECT FROM executions          |  6.0 | 22.0  |  **4**  |
+| UPDATE current_executions       |  6.0 | 22.0  |  **4**  |
+| SELECT FROM current_executions  |  6.0 | 22.0  |  **4**  |
+| SELECT range_id FROM shards     |  7.0 | 23.0  |  **4**  |
+| INSERT INTO history_node        |  6.0 | 18.0  |  **3**  |
+| INSERT INTO timer_tasks         |  5.0 | 17.0  |  **3**  |
+| INSERT INTO activity_info_maps  |  2.0 | 10.0  |  **2**  |
+| INSERT INTO transfer_tasks      |  4.0 | 12.0  |  **2**  |
+| SELECT FROM history_node        |  3.0 |  7.0  |  **1**  |
+| DELETE FROM activity_info_maps  |  1.0 |  5.0  |  **1**  |
+| INSERT INTO tasks (matching)    |  1.2 |  3.9  |  **0.7**|
+| SELECT FROM tasks (matching)    |  1.0 |  3.1  |  **0.5**|
+| SELECT/UPDATE task_queues       |  1.5 |  5.1  |  **0.9**|
+|                                 |      | **sum**| **~34** |
+
+Each activity triggers:
+
+- **4×** fencing writes (shard range_id, executions × 2, current_executions × 2)
+- **3×** history event writes (schedule, start, complete) into `history_node`
+- **3×** timer task inserts (retry timeouts, heartbeat timeouts, schedule-to-start)
+- **2×** activity lifecycle writes (transfer task enqueue + dispatch via matching)
+- **2×** activity metadata writes (insert on schedule, delete on completion)
+- **1×** history read for replay
+- **~1×** matching service round-trip via `tasks`/`task_queues`
+
+That is the decomposition of the 35. None of it is wasted — every statement
+corresponds to a specific distributed-systems guarantee. But every
+statement **also** corresponds to a row you've got to vacuum, a WAL entry
+you've got to flush, and a lock you've got to acquire.
+
 Run these numbers against your own workflow: a 20-activity checkout flow is
 ~740 SQL statements against 16 tables, per checkout. On a 1K-checkouts/sec
 service, that's **740,000 statements/sec in Postgres**. Sharding and
