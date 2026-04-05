@@ -3,19 +3,17 @@
   {{ $dateHuman := .Date | time.Format ":date_long" }}
   {{ $readingTime := div (float .FuzzyWordCount) .Site.Params.reading_speed }}
   {{ $readingTime = math.Ceil $readingTime }}
-  
+
   <div class="meta-info">
     <time datetime="{{ $dateMachine }}">{{ $dateHuman }}</time>
     <span class="read-time">~{{ $readingTime }} min read</span>
   </div>
 
-  <h1 class="article-title">{{ .Title }}</h1>
+  {{ if .Lastmod.After .Date }}
+  <div class="last-updated">↻ Updated: {{ .Lastmod | time.Format ":date_long" }}</div>
+  {{ end }}
 
-  {{/* Author info - uncomment and customize if needed
-  <div class="author-info">
-    <span>By {{ .Site.Params.author.name }}</span>
-  </div>
-  */}}
+  <h1 class="article-title">{{ .Title }}</h1>
 
   <article class="article-content">
     <div class="table-of-content">
@@ -26,5 +24,28 @@
   </article>
 
   {{ partial "terms.html" (dict "taxonomy" "tags" "page" .) }}
+
+  {{ if .IsPage }}
+  <div class="share-links">
+    <span>Share:</span>
+    <a href="https://twitter.com/intent/tweet?url={{ .Permalink | urlquery }}&text={{ .Title | urlquery }}" target="_blank" rel="noopener noreferrer">twitter/x</a>
+    <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ .Permalink | urlquery }}" target="_blank" rel="noopener noreferrer">linkedin</a>
+    <button class="share-copy-btn">copy link</button>
+  </div>
+  {{ end }}
+
+  {{ $related := .Site.RegularPages.Related . | first 3 }}
+  {{ with $related }}
+  <div class="related-posts">
+    <h4>Related</h4>
+    {{ range . }}
+    <div class="related-post">
+      <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+      <span class="read-time">~{{ math.Ceil (div (float .FuzzyWordCount) $.Site.Params.reading_speed) }} min</span>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+
   {{ partial "hacker-news-comments.html" . }}
 {{ end }}

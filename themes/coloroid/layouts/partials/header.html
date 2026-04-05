@@ -1,6 +1,7 @@
 <h1>
-  {{ site.Title }}
+  <a href="/" style="text-decoration: none; color: inherit;">{{ site.Title }}</a>
 </h1>
-<div> 
+<div class="header-nav">
   {{ partial "menu.html" (dict "menuID" "main" "page" .) }}
+  <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark/light mode" title="Toggle dark/light mode">◑</button>
 </div>
