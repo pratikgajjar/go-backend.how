@@ -897,16 +897,19 @@ the workflow-level replication semantics.
 **6. A huge ecosystem.** UI, metrics, observability integrations, a CLI,
 dozens of SDKs, a Temporal Cloud. When things go wrong at 3am, that matters.
 
-Armin (Absurd's author) [put it well himself](https://lucumr.pocoo.org/2026/4/4/absurd-in-production/):
+From the [Absurd comparison docs](https://earendil-works.github.io/absurd/comparison/):
 
-> Temporal gives you more, but asks for more: you run Temporal Server, not
-> just a database schema; the SDK runtime is more opinionated about how
-> workflow code executes; the system exposes more first-class workflow
-> concepts; the ecosystem, tooling, and battle-tested patterns are broader.
+> Temporal gives you more, but asks for more:
 >
-> Absurd is intentionally less invasive. It does *not* try to turn your code
-> into a deterministic workflow runtime. Instead, it relies on explicit step
-> boundaries and persisted step results. This results in much simpler SDKs.
+> - you run **Temporal Server**, not just a database schema
+> - the SDK runtime is more opinionated about how workflow code executes
+> - the system exposes more first-class workflow concepts
+> - the ecosystem, tooling, and battle-tested patterns are broader
+>
+> Absurd is intentionally less invasive. It does **not** try to turn your
+> code into a deterministic workflow runtime. Instead, it relies on
+> explicit step boundaries and persisted step results. This results in
+> much simpler SDKs.
 
 # When each one makes sense
 
