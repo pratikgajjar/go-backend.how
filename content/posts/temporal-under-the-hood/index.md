@@ -119,42 +119,40 @@ Temporal server itself is _not_ a single binary; it's four internal
 services (processes you run) that all share one database:
 
 ```txt
-    Solid box = process you deploy/run
-    Dashed box = data (lives in Postgres)
+    Solid box = process you deploy and run
+    Double box = database (state lives here, not in processes)
 
        ┌───────────────┐
-       │  Your worker  │    ← your code, as many replicas as you want
-       │   process     │
+       │  Your worker  │  ← your code, as many replicas as you want
        └───────┬───────┘
                │  gRPC
                ▼
  ┌─────────────────────────────────────┐
- │          Frontend process           │    gRPC terminator:
- │    auth · rate-limit · routing      │    stateless, scale out freely
+ │             Frontend                │  gRPC terminator:
+ │    auth · rate-limit · routing      │  stateless, scale out freely
  └───┬─────────────┬─────────────┬─────┘
      │             │             │
      ▼             ▼             ▼
  ┌─────────┐  ┌──────────┐  ┌──────────┐
- │ History │  │ Matching │  │  Worker  │   ← "worker" here is a
- │ process │  │  process │  │  process │     Temporal service,
- │         │  │          │  │          │     NOT your worker
- │workflow │  │  task    │  │ internal │
+ │ History │  │ Matching │  │  Worker  │  ← "Worker" here is a
+ │         │  │          │  │          │    Temporal service,
+ │workflow │  │  task    │  │ internal │    NOT your worker
  │ state   │  │ dispatch │  │ mainte-  │
  │machines │  │  queues  │  │ nance    │
  └────┬────┘  └─────┬────┘  └─────┬────┘
       │             │             │
-      │        all read/write     │
-      └────────────┐│┌────────────┘
-                   ▼▼▼
+      │      all read/write       │
+      └─────────────┼─────────────┘
+                    ▼
          ╔═══════════════════════╗
-         ║   Postgres / MySQL    ║
-         ║   Cassandra           ║
-         ║ ┌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┐  ║
-         ║ ╎ executions        ╎  ║    ← state lives here,
-         ║ ╎ history_node      ╎  ║      NOT in any process
-         ║ ╎ shards · tasks    ╎  ║
-         ║ ╎ ...  (37 tables)  ╎  ║
-         ║ └╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘  ║
+         ║  Postgres/MySQL/      ║   ← one logical DB (may be a
+         ║  Cassandra            ║     clustered one under the hood)
+         ║                       ║
+         ║  37 tables:           ║
+         ║  executions           ║
+         ║  history_node         ║
+         ║  shards · tasks       ║
+         ║  ... etc              ║
          ╚═══════════════════════╝
 ```
 
