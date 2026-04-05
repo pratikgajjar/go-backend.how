@@ -116,37 +116,46 @@ whole thing "durable".
 
 Your worker is stateless and talks to the Temporal server via gRPC. The
 Temporal server itself is _not_ a single binary; it's four internal
-services that all share one database:
+services (processes you run) that all share one database:
 
 ```txt
+    Solid box = process you deploy/run
+    Dashed box = data (lives in Postgres)
+
        ┌───────────────┐
-       │  Your workers │
-       │   (your code) │
+       │  Your worker  │    ← your code, as many replicas as you want
+       │   process     │
        └───────┬───────┘
                │  gRPC
                ▼
  ┌─────────────────────────────────────┐
- │             Frontend                │   gRPC terminator:
- │    auth · rate-limit · routing      │   stateless, scale out freely
+ │          Frontend process           │    gRPC terminator:
+ │    auth · rate-limit · routing      │    stateless, scale out freely
  └───┬─────────────┬─────────────┬─────┘
      │             │             │
      ▼             ▼             ▼
- ┌────────┐   ┌─────────┐   ┌────────┐
- │History │   │Matching │   │ Worker │    (all stateful-ish;
- │        │   │         │   │        │     state in Postgres)
- │workflow│   │ task    │   │internal│
- │ state  │   │dispatch │   │ mainte-│
- │machine │   │(queues) │   │ nance  │    ← "worker" here is
- └───┬────┘   └────┬────┘   └───┬────┘      a Temporal service,
-     │             │            │            NOT your worker
-     └─────────────┼────────────┘
-                   ▼
-            ┌─────────────┐
-            │  Database   │
-            │ (Postgres / │
-            │  MySQL /    │
-            │  Cassandra) │
-            └─────────────┘
+ ┌─────────┐  ┌──────────┐  ┌──────────┐
+ │ History │  │ Matching │  │  Worker  │   ← "worker" here is a
+ │ process │  │  process │  │  process │     Temporal service,
+ │         │  │          │  │          │     NOT your worker
+ │workflow │  │  task    │  │ internal │
+ │ state   │  │ dispatch │  │ mainte-  │
+ │machines │  │  queues  │  │ nance    │
+ └────┬────┘  └─────┬────┘  └─────┬────┘
+      │             │             │
+      │        all read/write     │
+      └────────────┐│┌────────────┘
+                   ▼▼▼
+         ╔═══════════════════════╗
+         ║   Postgres / MySQL    ║
+         ║   Cassandra           ║
+         ║ ┌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┐  ║
+         ║ ╎ executions        ╎  ║    ← state lives here,
+         ║ ╎ history_node      ╎  ║      NOT in any process
+         ║ ╎ shards · tasks    ╎  ║
+         ║ ╎ ...  (37 tables)  ╎  ║
+         ║ └╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘  ║
+         ╚═══════════════════════╝
 ```
 
 **Frontend** terminates gRPC, authenticates, and routes requests to one of
@@ -156,9 +165,10 @@ queues that activities and workflow tasks are dispatched through.
 **Worker** runs Temporal's own internal maintenance workflows — confusingly
 named, nothing to do with _your_ worker processes.
 
-When you scale Temporal horizontally, you scale those services, not your
-database (until you do). That's the whole operational contract: the
-services are stateless replicas of each other, the database is the truth.
+When you scale Temporal horizontally, you scale those services (more
+process replicas), not your database (until you do). That's the whole
+operational contract: the services are stateless replicas of each other,
+Postgres is the truth.
 
 # Under the hood
 
