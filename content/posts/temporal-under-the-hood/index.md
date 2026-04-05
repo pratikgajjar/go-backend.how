@@ -1,6 +1,6 @@
 +++
 title = "🚂 Temporal — Under the Hood"
-description = "What actually happens when you start a Temporal workflow? We trace every SQL statement, count the event-history nodes, and then watch Absurd — a 4-table, single-SQL-file system — do the same job with one-fifth the queries and twenty-times the throughput."
+description = "What actually happens when you start a Temporal workflow? We trace every SQL statement, count the event-history nodes, and then watch Absurd — a 5-table, single-SQL-file system — do the same job with one-fifth the queries and twenty-times the throughput."
 date = 2024-11-28T21:51:38+05:30
 lastmod = 2026-04-05T12:00:00+05:30
 publishDate = "2026-04-05T12:00:00+05:30"
@@ -15,8 +15,8 @@ theme = "teal"
 A Temporal install on Postgres creates **37 tables**. A 3-activity workflow
 executes **~145 SQL statements** against 16 of them. A comparable system
 called Absurd — by Armin Ronacher, it came out five months ago — does the
-same 3-step job with **~32 SQL statements** against 4 tables, at ~20× the
-throughput on the same hardware.
+same 3-step job with **~32 SQL statements** against 3 tables (of 5 in its
+per-queue schema), at ~20× the throughput on the same hardware.
 
 So the obvious question is: **what are those extra ~113 queries buying you?**
 
@@ -104,9 +104,12 @@ whole thing "durable".
 1. **Workers** (your code) talk to the **Temporal server** via gRPC.
 2. The **Temporal server** uses a database-specific protocol to read and write state.
 
-The worker is stateless. The server has *four* internal services — frontend,
-history, matching, worker — that all talk to the same database. When you
-scale Temporal, you scale those services, not your database (until you do).
+Your worker is stateless. The Temporal server itself is split into _four
+internal services_: **frontend** (gRPC terminator), **history** (workflow
+state machine), **matching** (task dispatch), and **worker** (internal
+maintenance workflows — confusingly named, nothing to do with _your_
+workers). All four talk to the same database. When you scale Temporal
+horizontally, you scale those services, not your database (until you do).
 
 # Under the hood
 
@@ -507,7 +510,7 @@ But the ratio of "SQL statements per workflow" is constant. You pay it always.
 
 Now let's look at the other extreme.
 
-# Absurd: the 4-table counterpart
+# Absurd: the Postgres-only counterpart
 
 [Absurd](https://github.com/earendil-works/absurd) was built by Armin Ronacher
 (of Flask / Jinja fame) for Earendil's agent workloads. It's a **single `.sql`
@@ -520,8 +523,8 @@ It came out in November 2025. I ran the same benchmark against it.
 
 ## The schema
 
-When you call `create_queue('default')`, Absurd generates **four tables** with
-a `<prefix>_default` name:
+When you call `create_queue('default')`, Absurd generates **five tables**
+with a `<prefix>_default` name:
 
 ```sql
 t_default   ─ tasks (the durable work units)
@@ -531,7 +534,9 @@ e_default   ─ events (external signals, first-write-wins)
 w_default   ─ wait registrations (sleeping on events)
 ```
 
-That's it. There is no shard table, no history log, no transfer queue. The
+That's it. There is no shard table, no history log, no transfer queue.
+Three of the five tables carry the primary workload (tasks, runs,
+checkpoints); the other two (`e_`, `w_`) only grow when you use events. The
 full schema for one queue:
 
 ```sql
@@ -691,7 +696,9 @@ After running **5000 Absurd tasks** with 3 steps each:
   4420 |  0.618 |   ~0.88  | (claim_task internals)
 ```
 
-**~32 SQL statements per 3-step task**, across 4 tables. Running the same
+**~32 SQL statements per 3-step task**, touching only 3 of the 5 tables
+(`t_`, `r_`, `c_`; `e_` and `w_` are unused because we don't emit events).
+Running the same
 1/3/5/10 scaling experiment:
 
 | steps | total SQL | per-task | throughput |
@@ -831,7 +838,7 @@ instance, same VM:
 ┌──────────────────────────────────────┬────────────────┬─────────────┐
 │                                      │   Temporal     │    Absurd   │
 ├──────────────────────────────────────┼────────────────┼─────────────┤
-│ Tables in schema                     │      37        │   4 per q   │
+│ Tables in schema                     │      37        │   5 per q   │
 │ SQL / unit of work (cost model)      │ ~40 + 35×N     │ ~11 + 7×N   │
 │ SQL for a 3-unit workflow            │     145        │     32      │
 │ Throughput (1k units @ c=64)         │    65.6/s      │  1,435.8/s  │
