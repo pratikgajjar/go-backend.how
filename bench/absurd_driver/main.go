@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -113,10 +114,45 @@ func main() {
 		if int(completedCount) >= *total {
 			break
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(25 * time.Millisecond)
 	}
 
 	elapsed := time.Since(start)
+
+	// Latency distribution: per-task end-to-end time
+	// We'll read enqueue_at from t_ and completed_at from r_ joined by last_attempt_run.
+	rows, err := pool.Query(ctx, fmt.Sprintf(`
+		SELECT extract(epoch from (r.completed_at - t.enqueue_at))*1000 AS ms
+		FROM absurd.%q t
+		JOIN absurd.%q r ON r.run_id = t.last_attempt_run
+		WHERE t.task_id = ANY($1::uuid[]) AND r.completed_at IS NOT NULL`,
+		"t_"+*queue, "r_"+*queue), taskIDs)
+	if err == nil {
+		defer rows.Close()
+		var lat []float64
+		for rows.Next() {
+			var ms float64
+			if err := rows.Scan(&ms); err == nil {
+				lat = append(lat, ms)
+			}
+		}
+		sort.Float64s(lat)
+		p := func(q float64) float64 {
+			if len(lat) == 0 {
+				return 0
+			}
+			i := int(q * float64(len(lat)-1))
+			return lat[i]
+		}
+		fmt.Printf("\n===== Absurd benchmark =====\n")
+		fmt.Printf("Spawned:     %d in %s\n", atomic.LoadInt64(&spawnedCount), spawnElapsed)
+		fmt.Printf("Completed:   %d\n", completedCount)
+		fmt.Printf("Total time:  %s\n", elapsed)
+		fmt.Printf("Throughput:  %.1f tasks/sec\n", float64(completedCount)/elapsed.Seconds())
+		fmt.Printf("Latency (ms): p50=%.1f p90=%.1f p99=%.1f max=%.1f\n", p(0.5), p(0.9), p(0.99), p(1.0))
+		return
+	}
+
 	fmt.Printf("\n===== Absurd benchmark =====\n")
 	fmt.Printf("Spawned:     %d in %s\n", atomic.LoadInt64(&spawnedCount), spawnElapsed)
 	fmt.Printf("Completed:   %d\n", completedCount)
