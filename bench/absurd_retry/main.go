@@ -145,7 +145,7 @@ func main() {
 	maxAttempts := *fails + 2
 	opts, _ := json.Marshal(map[string]interface{}{
 		"max_attempts":   maxAttempts,
-		"retry_strategy": map[string]string{"kind": "fixed", "delay": "50ms"},
+		"retry_strategy": map[string]interface{}{"kind": "fixed", "base_seconds": 0.05},
 	})
 
 	for i := 0; i < *n; i++ {

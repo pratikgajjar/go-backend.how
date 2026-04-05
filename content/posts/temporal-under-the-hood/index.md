@@ -555,9 +555,11 @@ task_queues                   67 rows    344 kB
 total                                     93 MB
 ```
 
-The `history_node` table alone is 44 MB — on average **~285 bytes per event,
-23 events per workflow, 6500 workflows**. That's Temporal's "receipts file",
-and **it never goes away** unless you explicitly configure history retention.
+The `history_node` table alone is 44 MB across 91,522 rows — each row
+batches multiple protobuf-encoded events (averaging **~280 bytes of
+event-payload per row**, plus btree overhead). That's Temporal's
+"receipts file", and **it never goes away** unless you explicitly
+configure history retention.
 
 Even `activity_info_maps` is interesting: 16 live rows, but 2.6 MB because
 its btree indexes are not yet vacuumed. Temporal churns this table hard —
@@ -580,7 +582,8 @@ and concurrent starts from a single client:
 Adding spawn concurrency lifts throughput because Temporal's backend is doing
 dozens of writes per workflow and the client bottleneck at 16 is the
 round-trip time, not the backend. The backend saturates near ~80 workflows/s
-on this hardware — **~8000 SQL statements/s across all those tables**.
+on this hardware — **~11,000 SQL statements/s across all those tables**
+(80 × 145).
 
 This is a single `auto-setup` pod on a 4-CPU VM. Real Temporal clusters run
 history/matching as separate replicas and scale linearly with database IOPS.
@@ -957,7 +960,7 @@ instance, same VM:
 | Throughput (1k units @ c=64) | 65.6/s | 1,435.8/s |
 | p50 latency (ms) | 660.9 | 285.4 |
 | p99 latency (ms) | 2,976.3 | 518.9 |
-| Storage / workflow | ~15 kB | ~2 kB |
+| Storage / workflow | ~19 kB | ~2.7 kB |
 | Separate server process? | yes | no |
 | Runtime deterministic constraint | yes | no |
 | SDK LOC (Python, non-generated) | ~49,000 | 1,900 |
