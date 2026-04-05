@@ -10,26 +10,43 @@ images = []
 theme = "teal"
 +++
 
-# The setup
+# What you'll learn
 
-A Temporal install on Postgres creates **37 tables**. A 3-activity workflow
-executes **~145 SQL statements** against 16 of them. A comparable system
-called Absurd — by Armin Ronacher, it came out five months ago — does the
-same 3-step job with **~32 SQL statements** against 3 tables (of 5 in its
-per-queue schema), at ~20× the throughput on the same hardware.
+Durable execution engines like [Temporal](https://temporal.io/) are
+increasingly how backend teams handle multi-step workflows — payments,
+order fulfilment, LLM agent loops, scheduled jobs. They make "run this
+4-step thing, retry on failure, wait for a webhook on step 3" trivial to
+express in code. That's the pitch.
 
-So the obvious question is: **what are those extra ~113 queries buying you?**
+The pitch makes the _cost_ invisible. By the time you ship, your Postgres
+is handling an order of magnitude more queries than you expected, and
+you're not sure why.
 
-That's what this post is about. I'm going to:
+This post dissects that cost. By the end you'll know:
 
-1. Walk through Temporal's internal schema — what each of the 37 tables is for
-2. Trace exactly what happens in Postgres when a workflow runs
-3. Do the same for [Absurd](https://github.com/earendil-works/absurd) as the counterpoint
-4. Benchmark both on the same hardware, fairly
-5. Talk about when each one is worth it
+- **What Temporal actually does in Postgres** — every table it creates,
+  every SQL statement per workflow, and why each one exists
+- **How much durability costs you** — in queries, in storage, in Postgres
+  IOPS, and in machines
+- **What a radically simpler alternative looks like** — I benchmark
+  [Absurd](https://github.com/earendil-works/absurd), a single-SQL-file
+  durable-execution engine by Armin Ronacher, against Temporal on the
+  same workload
+- **When Temporal's complexity is worth paying for, and when it isn't**
+  — with concrete cost models you can apply to your own workload
+
+The numbers that will anchor everything:
+
+> A Temporal install on Postgres creates **37 tables**. A 3-activity
+> workflow executes **~145 SQL statements** against 16 of them.
+> Absurd does the same 3-step job with **~32 SQL statements** against
+> 3 tables, at **~20× the throughput** on the same hardware.
+>
+> What are those extra ~113 queries buying you?
 
 This isn't a "Temporal is overkill" post — it's a "let's see what you're
-paying for" post.
+paying for" post. Both systems are good. They're solving slightly
+different versions of the same problem.
 
 # What is Temporal?
 
