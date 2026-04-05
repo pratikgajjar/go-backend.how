@@ -1037,7 +1037,7 @@ not as production capacity planning._
 ## Colophon — AI assistance
 
 This post was researched, benchmarked, and drafted with the help of
-**Claude Sonnet 4.5** (via the [pi](https://github.com/mariozechner/pi)
+**Claude Opus 4.6** (via the [pi](https://github.com/mariozechner/pi)
 coding agent). The agent set up Temporal + Postgres + Absurd in Podman on
 my Mac mini, wrote the benchmark drivers, ran the workloads, queried
 `pg_stat_statements`, and produced the first draft of this write-up.
@@ -1045,10 +1045,15 @@ Every number in this post was measured on real infrastructure, then
 hand-verified by me; every claim was cross-checked against upstream
 source before publication.
 
-Rough session stats: ~3 hours of iteration, 14 commits, on the order of
-**a few hundred thousand input tokens** processed and **~60k output tokens**
-produced (I don't have an exact counter — these are eyeball estimates from
-the conversation length). The benchmark code in `bench/` is open in the
-[repo for this
+Session stats (from the pi harness):
+
+```txt
+model           input   output  cache_read  cache_write   cost    turns
+claude-opus-4-6   225    143k       37.8M         403k   $24.99    199
+```
+
+38 million cached-read tokens, 143k output tokens, 199 tool turns,
+**$24.99 total** over ~3 hours. The benchmark code in `bench/` is open in
+the [repo for this
 site](https://github.com/pratikgajjar/go-backend.how/tree/main/bench) if
 you want to reproduce or extend it.
