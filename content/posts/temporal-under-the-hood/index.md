@@ -1046,40 +1046,6 @@ From the Absurd comparison docs[^3]:
 between these poles. The space is young and healthy; the choices are better
 than they were two years ago.
 
-# The lesson
-
-Temporal's complexity isn't incidental. Event sourcing, sharded fencing
-tokens, separate matching/history/frontend services, and 37 tables are what
-you need to build a distributed workflow runtime that scales to millions of
-workflows, survives zone failures, and supports multi-decade workflow
-lifetimes. If you need that, pay the tax.
-
-Most of us don't. Most of the durable-execution needs I've seen in practice
-are "run this 4-step thing, make sure it eventually finishes, retry on
-failure, let me wait for this webhook." That's an afternoon's worth of SQL.
-
-When sirupsen's napkin math[^9] tells you to start with the
-first-principles back of the envelope, this is what it looks like in the
-workflow-engine domain. The two cost models I measured are:
-
-```txt
-Temporal:  ~40 + 35 × N   SQL statements per workflow
-Absurd:    ~11 +  7 × N   SQL statements per task
-           └───┘  └───┘
-        scaffolding   per work unit
-```
-
-The ~5× ratio between them is _your_ operational cost — in query count, in
-Postgres IOPS, in storage, and (ultimately) in machines. It's the price of
-event-sourced, fenced, deterministic replay versus checkpoint-based resume.
-If you need those guarantees, they're worth it. If you don't, you're
-paying for insurance you won't cash in.
-
-Pick the model that matches your problem's complexity. Don't pay for
-invariants you don't need.
-
----
-
 # Appendix: reproducing the benchmarks
 
 Everything runs inside a Podman Linux VM on macOS — the same setup I used
@@ -1181,9 +1147,22 @@ $120, a weekend, and one Mac mini's fan life to know them.
 
 ---
 
-# Bottom line
+# The lesson
 
-Two cost models, same hardware, same workload:
+Temporal's complexity isn't incidental. Event sourcing, sharded fencing
+tokens, separate matching/history/frontend services, and 37 tables are
+what you need to build a distributed workflow runtime that scales to
+millions of workflows, survives zone failures, and supports multi-decade
+workflow lifetimes. If you need that, pay the tax.
+
+Most of us don't. Most of the durable-execution needs I've seen in
+practice are "run this 4-step thing, make sure it eventually finishes,
+retry on failure, let me wait for this webhook." That's an afternoon's
+worth of SQL.
+
+When sirupsen's napkin math[^9] tells you to start with the
+first-principles back of the envelope, this is what it looks like in
+the workflow-engine domain:
 
 ```txt
 Temporal:  ~40 + 35·N   SQL per workflow   (37 tables, event-sourced, fenced)
@@ -1196,10 +1175,13 @@ Absurd:    ~11 +  7·N   SQL per task       ( 5 tables, checkpoint-based)
        latency-slope ratio:   40×
 ```
 
-Temporal is event-sourced **insurance** — deterministic replay, cross-DC
-replication, decade-long workflow lifetimes. Absurd is checkpoint-based
-**minimalism** — one SQL file, one database, no extra services.
+Temporal is event-sourced **insurance** — deterministic replay,
+cross-DC replication, decade-long workflow lifetimes. Absurd is
+checkpoint-based **minimalism** — one SQL file, one database, no
+extra services.
 
 Both are correct answers. Just not for the same problem. Before you
 adopt either, multiply `35 × activities_per_workflow × workflows_per_sec`
 and check whether that's what you want your Postgres doing all day.
+
+Don't pay for invariants you don't need.
