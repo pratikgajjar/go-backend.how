@@ -6,6 +6,9 @@ MM=../mm.sh
 N=${1:-200}
 C=${2:-32}
 
+bash $(dirname "$0")/bench-lock.sh acquire "activity_scaling N=$N c=$C"
+trap 'bash $(dirname "$0")/bench-lock.sh release' EXIT
+
 for WF in Var1 Var3 Var5 Var10; do
   # Reset stats
   bash $MM "/opt/podman/bin/podman exec postgres psql -U myuser -d temporal -c 'SELECT pg_stat_statements_reset();'" > /dev/null 2>&1
