@@ -121,7 +121,7 @@ respectDoNotTrack = true
 [privacy.instagram]
 disable = false
 simple = true
-[privacy.twitter]
+[privacy.x]
 disable = false
 enableDNT = true
 simple = true
@@ -133,6 +133,34 @@ simple = true
 disable = false
 privacyEnhanced = true
 
+[related]
+  includeNewer = true
+  threshold = 80
+  toLower = true
+  [[related.indices]]
+    name = "tags"
+    weight = 100
+  [[related.indices]]
+    name = "date"
+    weight = 10
+
+[[menus.main]]
+  name = "posts"
+  url = "/posts/"
+  weight = 10
+[[menus.main]]
+  name = "archive"
+  url = "/archive/"
+  weight = 20
+[[menus.main]]
+  name = "tags"
+  url = "/tags/"
+  weight = 30
+[[menus.main]]
+  name = "about"
+  url = "/about/"
+  weight = 40
+
 [markup.tableOfContents]
 endLevel = 1
 ordered = true
@@ -142,6 +170,10 @@ startLevel = 0
 [languages.en.params]
 reading_speed = 180
 
+
+[taxonomies]
+  tag = "tags"
+  series = "series"
 
 [security]
 [security.funcs]

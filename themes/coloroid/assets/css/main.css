@@ -3,6 +3,10 @@ html {
     font-size: 0.875rem;
     font-feature-settings: normal;
     font-variation-settings: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-synthesis: none;
 }
 
 :root {
@@ -35,7 +39,7 @@ body {
     margin: 0;
     font-family: var(--font-mono);
     font-optical-sizing: auto;
-    font-weight: 200;
+    font-weight: 400;
     font-style: normal;
     flex-direction: column;
     line-height: 1.6em;
@@ -132,7 +136,7 @@ body.theme-tiger {
     font-weight: 400;
     font-size: 2.8rem;
     line-height: 1.15;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.07em;
     margin-bottom: 0.5em;
 }
 
@@ -152,6 +156,7 @@ h6 {
     font-optical-sizing: auto;
     font-style: normal;
     line-height: 1.3em;
+    letter-spacing: -0.05em;
     color: var(--article-text);
 }
 
@@ -161,7 +166,7 @@ h6 {
     font-size: 1.6rem;
     margin-top: 1.5em;
     margin-bottom: 0.6em;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.06em;
 }
 
 .article-content h3 {
@@ -169,6 +174,7 @@ h6 {
     font-size: 1.25rem;
     margin-top: 1.25em;
     margin-bottom: 0.5em;
+    letter-spacing: -0.05em;
 }
 
 h1 a,
@@ -1079,55 +1085,19 @@ body[class*="theme-"] .header-divider {
     background-color: rgba(0, 0, 0, 0.12);
 }
 
-/* Darker themes: invert inline code and adjust dividers */
-body.theme-dustyrose .header-divider,
-body.theme-raspberry .header-divider,
-body.theme-cherry .header-divider,
-body.theme-rosewood .header-divider,
-body.theme-terracotta .header-divider,
-body.theme-olive .header-divider,
-body.theme-moss .header-divider,
-body.theme-forest .header-divider,
-body.theme-ocean .header-divider,
-body.theme-steel .header-divider,
-body.theme-slate .header-divider,
-body.theme-denim .header-divider,
-body.theme-mauve .header-divider,
-body.theme-plum .header-divider {
+/* Tiger is the only genuinely dark theme (bg=18% lightness).
+   All other "medium" themes have dark text on light-ish backgrounds
+   and already get correct dark-on-light treatment from the defaults above. */
+body.theme-tiger .header-divider {
     background-color: rgba(255, 255, 255, 0.15);
 }
 
-body.theme-dustyrose code,
-body.theme-raspberry code,
-body.theme-cherry code,
-body.theme-rosewood code,
-body.theme-terracotta code,
-body.theme-olive code,
-body.theme-moss code,
-body.theme-forest code,
-body.theme-ocean code,
-body.theme-steel code,
-body.theme-slate code,
-body.theme-denim code,
-body.theme-mauve code,
-body.theme-plum code {
+body.theme-tiger code {
     background-color: rgba(255, 255, 255, 0.12);
+    color: var(--article-text);
 }
 
-body.theme-dustyrose hr,
-body.theme-raspberry hr,
-body.theme-cherry hr,
-body.theme-rosewood hr,
-body.theme-terracotta hr,
-body.theme-olive hr,
-body.theme-moss hr,
-body.theme-forest hr,
-body.theme-ocean hr,
-body.theme-steel hr,
-body.theme-slate hr,
-body.theme-denim hr,
-body.theme-mauve hr,
-body.theme-plum hr {
+body.theme-tiger hr {
     border-color: rgba(255, 255, 255, 0.15);
 }
 
@@ -1156,6 +1126,7 @@ body.theme-plum hr {
     font-style: normal;
     font-weight: 400;
     font-display: swap;
+    font-feature-settings: "locl";
     src: url("/fonts/departuremono/DepartureMono-Regular.woff2") format("woff2");
 }
 
@@ -1253,5 +1224,402 @@ body.theme-plum hr {
         margin-right: -16px !important;
         border-radius: 0 !important;
         padding: 12px 16px !important;
+    }
+}
+
+/* ============================================
+ * FEATURES — 2025
+ * ============================================ */
+
+/* Smooth theme toggle transition */
+body {
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Dark mode force override — prevents FOUC with inline script in <head> */
+html[data-force-dark] body[class*="theme-"] {
+    --article-bg: oklch(16.96% 0.0017 17.32);
+    --article-text: oklch(100% 0 0);
+    --color-link: oklch(84.14% 0.1134 63.98);
+    --header-bg: oklch(16.96% 0.0017 17.32);
+    --selection: oklch(83.08% 0.126316 68.2133);
+    --selection-fg: oklch(0% 0 0);
+}
+
+/* Reading Progress Bar */
+#reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: var(--color-link);
+    z-index: 9999;
+    transition: width 0.08s linear;
+    pointer-events: none;
+}
+
+/* Back to Top Button */
+#back-to-top {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--article-bg);
+    color: var(--color-link);
+    border: 1px dashed var(--color-link);
+    padding: 0.35rem 0.7rem;
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease, background 0.15s ease;
+    z-index: 100;
+    line-height: 1;
+}
+
+#back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+#back-to-top:hover {
+    background: var(--color-link);
+    color: var(--article-bg);
+}
+
+/* Code Block — copy button + language label */
+.highlight-wrapper {
+    position: relative;
+    margin: 1em 0;
+}
+
+.highlight-wrapper > .highlight {
+    margin: 0;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: transparent;
+    color: var(--mocha-overlay0);
+    border: 1px solid var(--mocha-overlay0);
+    padding: 0.15rem 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    cursor: pointer;
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    z-index: 10;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.highlight-wrapper:hover .copy-btn {
+    opacity: 1;
+}
+
+.copy-btn:hover {
+    background: var(--mocha-overlay0);
+    color: var(--mocha-base);
+}
+
+.code-lang-label {
+    position: absolute;
+    top: 0.45rem;
+    left: 1rem;
+    font-size: 0.6rem;
+    font-family: var(--font-mono);
+    color: var(--mocha-overlay0);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    pointer-events: none;
+    opacity: 0.65;
+    z-index: 10;
+}
+
+/* Active TOC link */
+.table-of-content a.toc-active {
+    color: var(--color-link);
+    font-weight: 600;
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
+}
+
+/* Last Updated Badge */
+.last-updated {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    opacity: 0.6;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px dashed currentColor;
+    border-radius: 2px;
+}
+
+/* Social Sharing */
+.share-links {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+}
+
+.share-links > span {
+    font-size: 0.72rem;
+    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.share-links a,
+.share-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.65rem;
+    border: 1px dashed var(--color-link);
+    color: var(--color-link);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    border-radius: 1px;
+}
+
+.share-links a:hover,
+.share-copy-btn:hover {
+    background: var(--color-link);
+    color: var(--article-bg);
+    font-weight: 400;
+}
+
+/* Related Posts */
+.related-posts {
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+    border-top: 1px dashed;
+}
+
+.related-posts h4 {
+    margin: 0 0 0.85rem 0;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.55;
+    font-weight: 600;
+}
+
+.related-post {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.55rem;
+    font-size: 0.92rem;
+}
+
+.related-post a {
+    text-decoration: none;
+}
+
+.related-post a:hover {
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
+}
+
+.related-post .read-time {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    background: transparent;
+    border: none;
+    color: var(--article-text);
+    cursor: pointer;
+    font-size: 1.05rem;
+    padding: 0.2rem 0.35rem;
+    opacity: 0.55;
+    transition: opacity 0.15s;
+    font-family: var(--font-mono);
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+    opacity: 1;
+}
+
+/* Header nav layout — menu + toggle side-by-side */
+.header-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+/* Post list — tags inline */
+.post-description {
+    margin: 0.2rem 0 0.4rem;
+    font-size: 0.88rem;
+    opacity: 0.8;
+    line-height: 1.5;
+}
+
+.post-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.6rem;
+}
+
+.post-tag {
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.4rem;
+    border: 1px dashed var(--color-link);
+    color: var(--color-link);
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+}
+
+.post-tag:hover {
+    background: var(--color-link);
+    color: var(--article-bg);
+    font-weight: 400;
+}
+
+/* Archive page */
+.archive-year {
+    margin-bottom: 2.5rem;
+}
+
+.archive-year h2 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    opacity: 0.4;
+    margin-bottom: 0.6rem;
+    font-weight: 400;
+    border-bottom: 1px dashed;
+    padding-bottom: 0.4rem;
+}
+
+.archive-entry {
+    display: grid;
+    grid-template-columns: 4rem 1fr;
+    gap: 0.75rem;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+    font-size: 0.92rem;
+}
+
+.archive-entry time {
+    opacity: 0.75;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.archive-entry a {
+    text-decoration: none;
+}
+
+.archive-entry a:hover {
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
+}
+
+/* 404 page */
+.page-404 {
+    text-align: center;
+    padding: 4rem 1rem;
+}
+
+.page-404 .error-code {
+    font-size: 6rem;
+    margin: 0;
+    opacity: 0.2;
+    line-height: 1;
+    font-family: var(--font-display);
+    font-weight: 400;
+}
+
+.page-404 p {
+    font-size: 1rem;
+    margin: 1rem 0 2rem;
+    opacity: 0.75;
+}
+
+.page-404 .links-404 {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Keyboard nav hint (desktop hover only) */
+.keyboard-hint {
+    display: none;
+    font-size: 0.65rem;
+    opacity: 0.35;
+    font-family: var(--font-mono);
+    text-align: center;
+    margin-top: 0.4rem;
+    letter-spacing: 0.06em;
+    user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .keyboard-hint {
+        display: block;
+    }
+}
+
+/* Mobile adjustments for new features */
+@media screen and (max-width: 820px) {
+    .copy-btn {
+        opacity: 1; /* Always visible on touch */
+    }
+
+    #back-to-top {
+        bottom: 1rem;
+        right: 1rem;
+        font-size: 1rem;
+        padding: 0.3rem 0.6rem;
+    }
+
+    .archive-entry {
+        grid-template-columns: 3rem 1fr;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .share-links {
+        gap: 0.4rem;
     }
 }
