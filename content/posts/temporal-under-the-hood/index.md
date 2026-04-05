@@ -290,8 +290,10 @@ benchmark, which calls three activities in sequence:
 └─────────────────────────┘   = 6 events per activity
 ```
 
-Plus 2 events to start and 1 to complete, plus 2 for the initial workflow task
-= 23 for three activities. Every one of these is a proto-serialised row in
+Plus 4 framing events (`WorkflowExecutionStarted`, then the first workflow
+task's Scheduled/Started/Completed trio) and 1 to finish
+(`WorkflowExecutionCompleted`). So: **`4 + 6×N + 1`** events per N-activity
+workflow. For N=3 that's 23. Every one is a proto-serialised row in
 `history_node`.
 
 **Why all this ceremony?** Because replay is deterministic. If your worker
