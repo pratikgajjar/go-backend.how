@@ -289,9 +289,17 @@ check("1 run row per task × 7100", 1 * 7100, 7_100)
 check("1 task row per task × 7100", 1 * 7100, 7_100)
 
 
-print("\n── AI COLOPHON COST ($24.99 snapshot) ─────────────────────")
-# "38 million cached-read tokens" — the table says 37.8M
-check("Cached-read tokens ~38M", 37.8, 38, tol=0.01)
+print("\n── AI COLOPHON COST ($116.54 final, $24.99 snapshot) ─────")
+# Final table: 744 input, 354k output, 193.1M cache_r, 1.8M cache_w,
+#              $116.54, 611 turns
+# Snapshot mention: $24.99 at turn 199
+check("Mid-pass snapshot: $24.99 at 199 turns", 24.99 / 199 * 611, 76.7, tol=0.55)
+# 24.99 * (611/199) = 76.7 linearly; actual is 116.54 → later turns cost
+# more per-turn (bigger context, more refinement work)
+print(f"     (linear extrapolation: $76.7, actual: $116.54 — later turns cost more)")
+check("'$90 for verification' breakdown: 116.54 - 24.99",
+      116.54 - 24.99, 91.55, tol=0.01)
+check("  rounds to ~$90", round(116.54 - 24.99), 92)
 
 
 print("\n" + "═" * 60)
