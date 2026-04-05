@@ -1170,18 +1170,10 @@ claude-opus-4-6   744    354k     193.1M        1.8M    $116.54   611
 
 **611 tool turns and $116.54 later, here we are** — at a 99% cache hit
 rate, which is the only reason this wasn't a four-figure bill. A post
-about query efficiency turns out to also be a lesson in context-window
-efficiency: Anthropic charges ~10× less for cached input, so every turn
-reuses the previous turn's prompt instead of re-uploading 193M tokens
-of "here's the draft, here's the benchmarks, here's the feedback so
-far." Memoization all the way down.
+about query efficiency that also turns out to be a lesson in
+context-window efficiency. Memoization all the way down.
 
-An earlier snapshot at turn 199 showed $24.99 — so the core story cost
-~$25, and the remaining $90 went into verification: re-running
-benchmarks, writing the validation script, fixing the three arithmetic
-errors it caught, and the several times I said "no, that diagram
-contradicts the text two sections up, redo it." The benchmark code
-lives in [`bench/`](https://github.com/pratikgajjar/go-backend.how/tree/main/bench)
+Benchmark code is in [`bench/`](https://github.com/pratikgajjar/go-backend.how/tree/main/bench)
 if you want to reproduce or extend it.
 
 I'm publishing the numbers so the next person doesn't have to burn
