@@ -85,8 +85,24 @@ Full audit of the Hugo blogging site. Organized by priority and effort.
 
 ## 📝 Content Gaps
 
-- "Temporal Under the Hood" is a draft with empty description — finish or remove
+- ~~"Temporal Under the Hood" is a draft with empty description~~ **done 2026-04-05** (temporal-blog-complete branch)
 - "1B Payments/Day" marked as 🚧 in-progress
 - About page is fairly generic — could link to specific achievements, projects, or talks
 - No `/uses/` or `/now/` page (common in dev blogs)
 - No contributors page content beyond Pratik's empty `_index.md`
+
+---
+
+## 🔬 Follow-up Research (from Temporal post)
+
+Ideas that came up while benchmarking Temporal vs Absurd but didn't make it
+into the post:
+
+- **Retry cost measurement** — how many extra queries does one failed+retried workflow cost? Needs a controlled benchmark with a deterministic failure injector.
+- **Temporal replay cost** — force a workflow to replay by killing worker mid-execution. Measure extra `history_node` SELECTs during replay. Visual: "the replay tax."
+- **Postgres WAL throughput analysis** — measure WAL bytes/sec for both systems. Could show Absurd is CPU-bound, Temporal is WAL-bound.
+- **Absurd at larger scale** — my test topped out at ~1450 task/s because Postgres got saturated. With connection pooling + HOT updates tuning, where does the ceiling go?
+- **Comparison with DBOS / Inngest** — same workload against their Postgres schemas. Would round out the "Postgres-native" landscape.
+- **Temporal dev-mode (sqlite)** — temporal-lite/dev server has a different backend. Single-machine developer-experience comparison.
+- **Signal / event comparison** — measure signal-to-workflow latency in Temporal vs event-to-task latency in Absurd. Both claim "race-free" but the mechanisms differ.
+- **A "napkin math workflow calculator"** — interactive table where you punch in activity count + volume and see storage/IOPS estimates for each system.
