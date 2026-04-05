@@ -1365,38 +1365,50 @@ html[data-force-dark] body[class*="theme-"] {
 
 /* Social Sharing */
 .share-links {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: 0.5rem;
-    font-family: var(--font-mono);
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
 }
 
 .share-links > span {
+    font-family: var(--font-mono);
     font-size: 0.72rem;
     opacity: 0.5;
     text-transform: uppercase;
     letter-spacing: 0.1em;
+    white-space: nowrap;
+}
+
+.share-links > div {
+    flex: 1; /* empty spacer — pushes buttons to half the row */
 }
 
 .share-links a,
 .share-copy-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.28rem 0.65rem;
+    /* equal share of remaining space — works for any number of buttons */
+    flex: 1;
+    /* hard reset browser defaults */
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    margin: 0;
+    /* visual */
+    text-align: center;
+    padding: 0.3rem 0.25rem;
     border: 1px dashed var(--color-link);
     color: var(--color-link);
     text-decoration: none;
     font-family: var(--font-mono);
     font-size: 0.72rem;
+    font-weight: inherit;
+    line-height: 1.4;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     background: transparent;
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
-    border-radius: 1px;
 }
 
 .share-links a:hover,
