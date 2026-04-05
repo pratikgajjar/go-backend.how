@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -41,6 +42,7 @@ func main() {
 	var failedCount int64
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, *concurrency)
+	latencies := make([]float64, *total)
 
 	for i := 0; i < *total; i++ {
 		wg.Add(1)
@@ -57,6 +59,7 @@ func main() {
 				Email:   "c@example.com",
 			}
 
+			t0 := time.Now()
 			we, err := c.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 				ID:        orderID,
 				TaskQueue: "order-fulfillment-q",
@@ -73,6 +76,7 @@ func main() {
 					atomic.AddInt64(&failedCount, 1)
 					return
 				}
+				latencies[i] = float64(time.Since(t0).Microseconds()) / 1000.0 // ms
 				atomic.AddInt64(&completedCount, 1)
 			}
 		}(i)
@@ -91,6 +95,22 @@ func main() {
 	fmt.Printf("Elapsed:     %s\n", elapsed)
 	if *waitFinish {
 		fmt.Printf("Throughput:  %.1f workflows/sec\n", float64(completed)/elapsed.Seconds())
+		// Filter out zero entries (failed workflows)
+		var lat []float64
+		for _, l := range latencies {
+			if l > 0 {
+				lat = append(lat, l)
+			}
+		}
+		sort.Float64s(lat)
+		p := func(q float64) float64 {
+			if len(lat) == 0 {
+				return 0
+			}
+			i := int(q * float64(len(lat)-1))
+			return lat[i]
+		}
+		fmt.Printf("Latency (ms): p50=%.1f p90=%.1f p99=%.1f max=%.1f\n", p(0.5), p(0.9), p(0.99), p(1.0))
 	} else {
 		fmt.Printf("Throughput:  %.1f starts/sec\n", float64(started)/elapsed.Seconds())
 	}
