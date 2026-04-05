@@ -98,10 +98,10 @@ Apart from [temporal.io](https://temporal.io/), there is an entire zoo:
 |---|---|---|---|---|
 | [Temporal](https://temporal.io/) | Go server | Pluggable (Postgres, MySQL, Cassandra) | MIT | Fork of Cadence |
 | [Cadence](https://github.com/cadence-workflow/cadence) | Go server | same | MIT | The original, by Uber |
-| [Conductor](https://conductor-oss.org/) | Java server | Dynomite / Postgres | Apache-2.0 | By Netflix |
+| [Conductor](https://conductor-oss.org/) | Java server | Cassandra / MySQL / Postgres / Redis | Apache-2.0 | By Netflix, now OSS fork |
 | [Restate](https://restate.dev/) | Rust server | own storage | BSL | Promising, single-binary |
-| [DBOS](https://docs.dbos.dev/) | Python/TS SDK | Postgres | MIT | SDK-heavy, 40k LOC Python |
-| [Inngest](https://www.inngest.com/) | Go server | Postgres | SSPL | Event-driven, HTTP-based |
+| [DBOS](https://docs.dbos.dev/) | Python/TS SDK | Postgres | MIT | SDK-heavy, ~22k LOC Python |
+| [Inngest](https://www.inngest.com/) | Go server | Postgres + Redis | SSPL | Event-driven, HTTP-based |
 | [Absurd](https://github.com/earendil-works/absurd) | *none* (SDK only) | Postgres | Apache-2.0 | One SQL file, pull-based |
 | [CloudFlare Workflows](https://developers.cloudflare.com/workflows/) | Workers runtime | Cloudflare | proprietary | Vendor-locked |
 | [AWS Step Functions](https://aws.amazon.com/step-functions/) | AWS | AWS | proprietary | Vendor-locked |
