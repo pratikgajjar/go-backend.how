@@ -778,23 +778,32 @@ Absurd cost model:  ~11 + 7 × N   SQL statements per task
 Side-by-side:
 
 ```txt
-          SQL statements per N-activity work unit
-                                                             [~35 × N]
-          400 ─┐                                              ┌
-               │                                              │
-          300 ─┤                                      ┌───────┤
-               │                                      │       │
-          200 ─┤                              ┌───────┤       │
-               │                              │       │       │
-          100 ─┤                      ┌───────┤       │       │
-               │              ┌───────┤       │       │       │
-               │  ┌───────────┤       │       │       │       │
-            0 ─┴──┴───────────┴───────┴───────┴───────┴───────┘
-               │        │              │              │
-              N=1      N=3            N=5            N=10
+  SQL statements per N-activity work unit
+  (T = Temporal, A = Absurd)
 
-          Temporal:  75.7 → 144.8 → 214.0 → 385.2  (slope ≈ 35)
-          Absurd:    17.7 →  32.0 →  46.1 →  81.2  (slope ≈ 7)
+  400 ─┐                                        T╸385
+       │
+  350 ─┤
+       │
+  300 ─┤
+       │
+  250 ─┤
+       │                              T╸214
+  200 ─┤
+       │
+  150 ─┤              T╸145
+       │
+  100 ─┤
+       │  T╸76
+   75 ─┤                                        A╸81
+       │                              A╸46
+   50 ─┤              A╸32
+       │  A╸18
+    0 ─┴──────────────┴───────────────┴──────────┴──
+       N=1           N=3             N=5         N=10
+
+  Temporal:  75.7 → 144.8 → 214.0 → 385.2   slope ≈ 35 per activity
+  Absurd:    17.7 →  32.0 →  46.1 →  81.2   slope ≈  7 per step
 ```
 
 **A Temporal activity costs about 5× as many SQL statements as an Absurd
