@@ -1,6 +1,6 @@
 +++
 title = "🚂 Temporal — Under the Hood"
-description = "What actually happens when you start a Temporal workflow? We trace every SQL statement, count the event-history nodes, and then watch a 4-table, single-SQL-file system called Absurd do the same job with one-twentieth the machinery."
+description = "What actually happens when you start a Temporal workflow? We trace every SQL statement, count the event-history nodes, and then watch Absurd — a 4-table, single-SQL-file system — do the same job with one-fifth the queries and twenty-times the throughput."
 date = 2024-11-28T21:51:38+05:30
 lastmod = 2026-04-05T12:00:00+05:30
 publishDate = "2026-04-05T12:00:00+05:30"
@@ -349,13 +349,50 @@ Here are the top queries by call count, after `pg_stat_statements_reset()`:
    932 |  0.009 |    2   | SELECT task_id, data FROM tasks WHERE ... LIMIT ...
 ```
 
-**≈ 100 SQL statements per workflow.** Across 16 different tables.
+Counting every non-trivial statement (ignoring `BEGIN`/`COMMIT`/`SET`) gives
+**~145 SQL statements per 3-activity workflow**. Across 16 different tables.
 
 That's not a bug. That's the cost of event sourcing with strict ordering and
 fencing. Each activity requires: read current state, append events, update
 blob, schedule transfer task, schedule timer for timeout, update activity map,
 bump range_id. On completion: same pattern in reverse. Every statement is
 fast — 0.003 to 0.023 ms — but there are a lot of them.
+
+## How does it scale per activity?
+
+This is the part I really wanted to pin down. I ran the same 200-workflow
+benchmark but with 1, 3, 5, and 10 no-op activities per workflow, resetting
+`pg_stat_statements` each time:
+
+| activities | total SQL | per-workflow | throughput |
+|-----------:|----------:|-------------:|-----------:|
+|     1      |  15,159   |     **75.7** |    35.1/s  |
+|     3      |  28,978   |    **144.8** |    43.3/s  |
+|     5      |  42,811   |    **214.0** |    28.2/s  |
+|    10      |  77,054   |    **385.2** |    16.6/s  |
+
+Subtract row-to-row:
+
+```txt
+(144.8 − 75.7) / (3 − 1) = 34.55 queries per additional activity
+(214.0 − 144.8) / (5 − 3) = 34.60 queries per additional activity
+(385.2 − 214.0) / (10 − 5) = 34.24 queries per additional activity
+```
+
+The per-activity slope is **~35 SQL statements**, independent of N.  The
+baseline (fixed cost to start and complete any workflow) is about **40
+queries**, so:
+
+```
+Temporal cost model:  ~40 + 35 × N   SQL statements per workflow
+                                     (where N = activity count)
+```
+
+Run these numbers against your own workflow: a 20-activity checkout flow is
+~740 SQL statements against 16 tables, per checkout. On a 1K-checkouts/sec
+service, that's **740,000 statements/sec in Postgres**. Sharding and
+matching replicas scale horizontally, but the database is where the meter
+ticks.
 
 ## Storage cost
 
@@ -597,11 +634,61 @@ After running **5000 Absurd tasks** with 3 steps each:
   4420 |  0.618 |   ~0.88  | (claim_task internals)
 ```
 
-**≈ 8 SQL statements per task.** Across 4 tables.
+**~32 SQL statements per 3-step task**, across 4 tables. Running the same
+1/3/5/10 scaling experiment:
 
-Each step is:
+| steps | total SQL | per-task | throughput |
+|------:|----------:|---------:|-----------:|
+|   1   |   3,543   | **17.7** | 1,724/s    |
+|   3   |   6,406   | **32.0** | 1,206/s    |
+|   5   |   9,216   | **46.1** |   908/s    |
+|  10   |  16,236   | **81.2** |   546/s    |
+
+Subtract row-to-row:
+
+```txt
+(32.0 − 17.7) / (3 − 1) = 7.15 queries per additional step
+(46.1 − 32.0) / (5 − 3) = 7.05 queries per additional step
+(81.2 − 46.1) / (10 − 5) = 7.02 queries per additional step
+```
+
+The per-step slope is **~7 SQL statements**, flat. The baseline is about
+**11 queries** for spawn + claim-share + complete, so:
+
+```
+Absurd cost model:  ~11 + 7 × N   SQL statements per task
+                                  (where N = step count)
+```
+
+Side-by-side:
+
+```txt
+          SQL statements per N-activity work unit
+                                                             [~35 × N]
+          400 ─┐                                              ┌
+               │                                              │
+          300 ─┤                                      ┌───────┤
+               │                                      │       │
+          200 ─┤                              ┌───────┤       │
+               │                              │       │       │
+          100 ─┤                      ┌───────┤       │       │
+               │              ┌───────┤       │       │       │
+               │  ┌───────────┤       │       │       │       │
+            0 ─┴──┴───────────┴───────┴───────┴───────┴───────┘
+               │        │              │              │
+              N=1      N=3            N=5            N=10
+
+          Temporal:  75.7 → 144.8 → 214.0 → 385.2  (slope ≈ 35)
+          Absurd:    17.7 →  32.0 →  46.1 →  81.2  (slope ≈ 7)
+```
+
+**A Temporal activity costs about 5× as many SQL statements as an Absurd
+step.** That ratio stays constant as you add more units of work.
+
+Each Absurd step is:
 - 1 checkpoint read (returns empty on first run, cached value on replay)
 - 1 checkpoint write (on first run)
+- plus amortized claim polling and implicit internal queries in the SPs
 
 Task lifecycle is:
 - 1 spawn_task (inserts a row in `t_` and `r_`)
@@ -656,24 +743,25 @@ Same workload (3-step order fulfillment), same hardware, same Postgres
 instance, same VM:
 
 ```txt
-┌──────────────────────────────────┬──────────────┬─────────────┐
-│                                  │   Temporal   │    Absurd   │
-├──────────────────────────────────┼──────────────┼─────────────┤
-│ Tables in schema                 │      37      │    4 per q  │
-│ SQL statements / workflow        │     ~100     │     ~8      │
-│ Throughput (wf/s, 1k @ c=64)     │     65.6     │   1435.8    │
-│ p50 latency (ms)                 │    660.9     │    285.4    │
-│ p99 latency (ms)                 │   2976.3     │    518.9    │
-│ Storage / workflow               │    ~15 kB    │    ~2 kB    │
-│ Separate server process?         │      yes     │     no      │
-│ Runtime deterministic constraint │      yes     │     no      │
-│ SDK lines of code (Python)       │    170,000   │    1,900    │
-│ SDK lines of code (TypeScript)   │    ~50,000   │    1,400    │
-│ Dependencies outside Postgres    │    gRPC,     │     none    │
-│                                  │    history,  │             │
-│                                  │    matching, │             │
-│                                  │    frontend  │             │
-└──────────────────────────────────┴──────────────┴─────────────┘
+┌──────────────────────────────────────┬────────────────┬─────────────┐
+│                                      │   Temporal     │    Absurd   │
+├──────────────────────────────────────┼────────────────┼─────────────┤
+│ Tables in schema                     │      37        │   4 per q   │
+│ SQL / unit of work (cost model)      │ ~40 + 35×N     │ ~11 + 7×N   │
+│ SQL for a 3-unit workflow            │     145        │     32      │
+│ Throughput (1k units @ c=64)         │    65.6/s      │  1,435.8/s  │
+│ p50 latency (ms)                     │    660.9       │    285.4    │
+│ p99 latency (ms)                     │   2,976.3      │    518.9    │
+│ Storage / workflow                   │    ~15 kB      │    ~2 kB    │
+│ Separate server process?             │     yes        │     no      │
+│ Runtime deterministic constraint     │     yes        │     no      │
+│ SDK lines of code (Python)           │    170,000     │    1,900    │
+│ SDK lines of code (TypeScript)       │    ~50,000     │    1,400    │
+│ Dependencies outside Postgres        │  gRPC server,  │    none     │
+│                                      │  history svc,  │             │
+│                                      │  matching svc, │             │
+│                                      │  frontend svc  │             │
+└──────────────────────────────────────┴────────────────┴─────────────┘
 ```
 
 # What does Temporal buy you for that tax?
@@ -767,11 +855,20 @@ failure, let me wait for this webhook." That's an afternoon's worth of SQL.
 When [sirupsen's napkin
 math](https://github.com/sirupsen/napkin-math) tells you to start with the
 first-principles back of the envelope, this is what it looks like in the
-workflow-engine domain. Ask: how many writes do I need per workflow for
-durability? For a checkpoint-based model, it's `1 + steps × 2 + 1`. For an
-event-sourced model with fencing and multiple internal queues, it's
-`~20 × events`. The 10–20× ratio between these two is _your_ operational
-cost, in query count, IOPS, storage, and — ultimately — machines.
+workflow-engine domain. The two cost models I measured are:
+
+```txt
+Temporal:  ~40 + 35 × N   SQL statements per workflow
+Absurd:    ~11 +  7 × N   SQL statements per task
+           └───┘  └───┘
+        scaffolding   per work unit
+```
+
+The ~5× ratio between them is _your_ operational cost — in query count, in
+Postgres IOPS, in storage, and (ultimately) in machines. It's the price of
+event-sourced, fenced, deterministic replay versus checkpoint-based resume.
+If you need those guarantees, they're worth it. If you don't, you're
+paying for insurance you won't cash in.
 
 Pick the model that matches your problem's complexity. Don't pay for
 invariants you don't need.
