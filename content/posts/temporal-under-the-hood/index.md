@@ -795,6 +795,29 @@ tighter tail latencies (519 ms p99 vs 2976 ms p99 at N=1000). On this
 hardware Postgres plus 16 worker goroutines is the bottleneck, not
 anything Absurd does.
 
+## Single-workflow round-trip latency
+
+If you throw a single workflow at the wall and wait for it, sequentially:
+
+| N  | Temporal p50 | Absurd p50 | ratio |
+|---:|-------------:|-----------:|------:|
+|  1 |     13.4 ms  |   10.2 ms  |  1.3× |
+|  3 |     27.7 ms  |   11.4 ms  |  2.4× |
+|  5 |     41.1 ms  |   11.3 ms  |  3.6× |
+| 10 |     69.1 ms  |   12.6 ms  |  5.5× |
+
+The per-activity slope is **~6.2 ms in Temporal** versus **~0.27 ms in
+Absurd** — a 23× difference per unit of work. Each Absurd step is
+essentially just a single `set_task_checkpoint_state` stored-procedure call
+(0.342 ms measured). Each Temporal activity has to route through the
+matching service's dispatch loop, decision round-trip back to the worker,
+then history event persistence — several network hops per activity.
+
+Temporal's long-tail latency is also more dramatic: the p90 for a
+10-activity workflow was **1.04 seconds**, with most of that variance
+attributable to matching-service dispatch jitter. Absurd's p99 for a
+10-step task was **20.1 ms** — essentially no tail.
+
 # Head to head
 
 Same workload (3-step order fulfillment), same hardware, same Postgres
