@@ -42,12 +42,12 @@ Almost everyone is in distributed-systems land without realising. A microservice
 making a network call looks like this:
 
 ```txt
-┌────────┐  1   ┌──────────┐  2   ┌────┐
-│  App   │─────▶│ Backend  │─────▶│ DB │
-│        │      │          │      │    │
-└────────┘      └────┬─────┘      └────┘
+┌────────┐  1   ┌──────────┐  2  ⚠️  ┌────┐
+│  App   │─────▶│ Backend  │────────▶│ DB │
+│        │      │          │         │    │
+└────────┘      └────┬─────┘         └────┘
                      │
-                     │  3   ⚠️  may fail
+                     │  3  ⚠️
                      ▼
                ┌──────────┐
                │ External │
@@ -55,9 +55,12 @@ making a network call looks like this:
                └──────────┘
 ```
 
-Step 3 can fail for a dozen reasons — buggy code, a network blip, the
-third-party is down, the instance is gone. How do you guarantee that the call
-happened *at least once* and that the system converges?
+Any of **2** (DB write) or **3** (external service call) can fail for a
+dozen reasons — buggy code, a network blip, the third-party is down, the
+DB is failing over, the instance is gone. Step 2 failing is often worse
+than step 3, because your state store is how you'd even _remember_ to
+retry step 3. How do you guarantee that both calls happened *at least
+once* and that the system converges?
 
 Here are the common approaches:
 
