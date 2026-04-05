@@ -10,6 +10,27 @@ images = []
 theme = "teal"
 +++
 
+# The setup
+
+A Temporal install on Postgres creates **37 tables**. A 3-activity workflow
+executes **~145 SQL statements** against 16 of them. A comparable system
+called Absurd — by Armin Ronacher, it came out five months ago — does the
+same 3-step job with **~32 SQL statements** against 4 tables, at ~20× the
+throughput on the same hardware.
+
+So the obvious question is: **what are those extra ~113 queries buying you?**
+
+That's what this post is about. I'm going to:
+
+1. Walk through Temporal's internal schema — what each of the 37 tables is for
+2. Trace exactly what happens in Postgres when a workflow runs
+3. Do the same for [Absurd](https://github.com/earendil-works/absurd) as the counterpoint
+4. Benchmark both on the same hardware, fairly
+5. Talk about when each one is worth it
+
+This isn't a "Temporal is overkill" post — it's a "let's see what you're
+paying for" post.
+
 # What is Temporal?
 
 Temporal is an open-source durable execution system that abstracts away the
@@ -768,10 +789,11 @@ Same hardware, same workload:
 |  1000  |     64      |   8     | 1435.8/s   |  285.4 | 518.9  |  524.0 |
 |  5000  |    128      |  16     | 1450.6/s   | 1564.5 |2705.1  | 2729.4 |
 
-Absurd saturates around 1,450 tasks/s — **~19× higher throughput** than
-Temporal on identical hardware, and much tighter tail latencies (519 ms p99
-vs 2976 ms p99 at N=1000). On this hardware Postgres plus 16 worker
-goroutines is the bottleneck, not anything Absurd does.
+Absurd saturates around 1,450 tasks/s — **~20× higher throughput** than
+Temporal on identical hardware (22× at N=1000, 19× at N=5000), and much
+tighter tail latencies (519 ms p99 vs 2976 ms p99 at N=1000). On this
+hardware Postgres plus 16 worker goroutines is the bottleneck, not
+anything Absurd does.
 
 # Head to head
 
