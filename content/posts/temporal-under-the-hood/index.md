@@ -1045,8 +1045,10 @@ Every number in this post was measured on real infrastructure, then
 hand-verified by me; every claim was cross-checked against upstream
 source before publication.
 
-Approximate session cost: **~1.5M input tokens, ~80K output tokens**
-across ~3 hours of iteration (13 commits). The benchmark code in
-`bench/` is open in the [repo for this
+Rough session stats: ~3 hours of iteration, 14 commits, on the order of
+**a few hundred thousand input tokens** processed and **~60k output tokens**
+produced (I don't have an exact counter — these are eyeball estimates from
+the conversation length). The benchmark code in `bench/` is open in the
+[repo for this
 site](https://github.com/pratikgajjar/go-backend.how/tree/main/bench) if
 you want to reproduce or extend it.
