@@ -361,6 +361,10 @@ again. The 23 events are what makes that replay possible.
 
 ## The four internal task queues
 
+_(Not to be confused with the four services above. These are four
+background queues that live **inside** the History service, each a
+Postgres table with its own polling loop.)_
+
 When a workflow decides to schedule an activity, _that intent_ is a row written
 to `transfer_tasks`. A separate loop in the history service picks it up and
 tells the matching service to dispatch it. Here's the rough flow:
