@@ -83,6 +83,18 @@ total                                     13 MB
 
 **Storage ratio: ~7:1 (Temporal:Absurd)** for the same completed workload.
 
+## Reproducibility
+
+All numbers in this table were verified twice — the original benchmark run
+plus a fresh verification pass. Query-count numbers (`per-workflow`,
+`per-task`, cost-model slopes) reproduced to within 1 query. Throughput
+numbers vary ±15% run-to-run due to Temporal's sticky-queue dispatch
+behaviour (the ~20× ratio between the systems holds in all runs).
+
+Single-workflow latency table in the post was updated to n=100 sample
+medians after the first-run measurement proved to be a lucky outlier
+for Temporal.
+
 ## Fairness notes
 
 1. Temporal worker: `MaxConcurrentActivityExecutionSize=500`,
