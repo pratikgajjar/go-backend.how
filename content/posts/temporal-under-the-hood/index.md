@@ -114,31 +114,9 @@ whole thing "durable".
 
 # Basics — the runtime model
 
-```txt
-┌──────────────┐    1 (gRPC)     ┌───────────────┐
-│   Workers    │────────────────▶│   Temporal    │
-│              │                 │    Backend    │
-│  N worker    │                 │   (engine)    │
-│  processes   │                 │               │
-└──────────────┘                 └───────┬───────┘
-                                         │
-                                         │  2 (DB protocol)
-                                         ▼
-                                 ┌───────────────┐
-                                 │   Database    │
-                                 │  stores state │
-                                 │               │
-                                 │  Postgres /   │
-                                 │  Cassandra /  │
-                                 │  managed      │
-                                 └───────────────┘
-```
-
-1. **Workers** (your code) talk to the **Temporal server** via gRPC.
-2. The **Temporal server** uses a database-specific protocol to read and write state.
-
-Your worker is stateless. The Temporal server itself is split into _four
-internal services_:
+Your worker is stateless and talks to the Temporal server via gRPC. The
+Temporal server itself is _not_ a single binary; it's four internal
+services that all share one database:
 
 ```txt
        ┌───────────────┐
@@ -166,6 +144,7 @@ internal services_:
             ┌─────────────┐
             │  Database   │
             │ (Postgres / │
+            │  MySQL /    │
             │  Cassandra) │
             └─────────────┘
 ```
@@ -177,8 +156,9 @@ queues that activities and workflow tasks are dispatched through.
 **Worker** runs Temporal's own internal maintenance workflows — confusingly
 named, nothing to do with _your_ worker processes.
 
-All four talk to the same database. When you scale Temporal horizontally,
-you scale those services, not your database (until you do).
+When you scale Temporal horizontally, you scale those services, not your
+database (until you do). That's the whole operational contract: the
+services are stateless replicas of each other, the database is the truth.
 
 # Under the hood
 
