@@ -1163,3 +1163,31 @@ claude-opus-4-6   225    143k       37.8M         403k   $24.99    199
 after the polish passes. The benchmark code in `bench/` is open in the
 [repo for this site](https://github.com/pratikgajjar/go-backend.how/tree/main/bench)
 if you want to reproduce or extend it.
+
+I'm publishing the numbers so the next person doesn't need to spend
+another $25 or a weekend on a Mac mini to know them.
+
+---
+
+# Bottom line
+
+Two cost models, same hardware, same workload:
+
+```txt
+Temporal:  ~40 + 35·N   SQL per workflow   (37 tables, event-sourced, fenced)
+Absurd:    ~11 +  7·N   SQL per task       ( 5 tables, checkpoint-based)
+
+               ↑
+       per-unit-of-work slope: 5×
+       throughput ratio:      20×
+       storage ratio:          7×
+       latency-slope ratio:   40×
+```
+
+Temporal is event-sourced **insurance** — deterministic replay, cross-DC
+replication, decade-long workflow lifetimes. Absurd is checkpoint-based
+**minimalism** — one SQL file, one database, no extra services.
+
+Both are correct answers. Just not for the same problem. Before you
+adopt either, multiply `35 × activities_per_workflow × workflows_per_sec`
+and check whether that's what you want your Postgres doing all day.
