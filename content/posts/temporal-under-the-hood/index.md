@@ -654,8 +654,8 @@ and checkpoints on top.
 
 Here's what the Absurd worker does for each task:
 
-```go
-// Pseudocode — the real SDK wraps this more ergonomically
+```txt
+# pseudocode — the real SDK wraps this more ergonomically
 for step in ["process-payment", "reserve-inventory", "send-notification"]:
     cached = get_task_checkpoint_state(queue, task_id, step)
     if cached is not NULL:
