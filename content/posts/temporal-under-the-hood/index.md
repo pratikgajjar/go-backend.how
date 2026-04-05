@@ -409,7 +409,7 @@ The per-activity slope is **~35 SQL statements**, independent of N.  The
 baseline (fixed cost to start and complete any workflow) is about **40
 queries**, so:
 
-```
+```txt
 Temporal cost model:  ~40 + 35 × N   SQL statements per workflow
                                      (where N = activity count)
 ```
@@ -721,7 +721,7 @@ Subtract row-to-row:
 The per-step slope is **~7 SQL statements**, flat. The baseline is about
 **11 queries** for spawn + claim-share + complete, so:
 
-```
+```txt
 Absurd cost model:  ~11 + 7 × N   SQL statements per task
                                   (where N = step count)
 ```
