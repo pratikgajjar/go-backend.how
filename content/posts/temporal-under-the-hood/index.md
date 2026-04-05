@@ -1143,15 +1143,25 @@ not as production capacity planning._
 
 ---
 
-## Colophon — AI assistance
+## Colophon — who did what
 
-This post was researched, benchmarked, and drafted with the help of
-**Claude Opus 4.6** (via the [pi](https://github.com/mariozechner/pi)
-coding agent). The agent set up Temporal + Postgres + Absurd in Podman on
-my Mac mini, wrote the benchmark drivers, ran the workloads, queried
-`pg_stat_statements`, and produced the first draft of this write-up.
+This post was researched, benchmarked, and drafted by **Claude Opus 4.6**
+(via the [pi](https://github.com/mariozechner/pi) coding agent) while I
+sat in an adjacent terminal saying things like "no, re-run that,"
+"use underscores for italics, not asterisks," and "that number doesn't
+match the table you wrote four sections ago." My contribution was
+supervision and vibes.
 
-Session stats (snapshot from the pi harness mid-way through the edit pass):
+Claude set up Temporal + Postgres + Absurd in Podman on my Mac mini,
+wrote the Go benchmark drivers, ran the workloads, queried
+`pg_stat_statements` more times than I'd care to count, drew the ASCII
+diagrams, and then wrote a Python script to double-check its own
+arithmetic — which caught three mistakes I'd have otherwise shipped
+(see [`bench/validate_math.py`](https://github.com/pratikgajjar/go-backend.how/blob/main/bench/validate_math.py)).
+Turns out "reviewed by the same LLM that wrote it" still beats "not
+reviewed."
+
+Session stats (snapshot from the pi harness mid-polish):
 
 ```txt
 model           input   output  cache_read  cache_write   cost    turns
@@ -1159,13 +1169,13 @@ claude-opus-4-6   225    143k       37.8M         403k   $24.99    199
 ```
 
 38 million cached-read tokens, 143k output tokens, 199 tool turns,
-**$24.99** at that point — total session cost ended up a bit higher
-after the polish passes. The benchmark code in `bench/` is open in the
-[repo for this site](https://github.com/pratikgajjar/go-backend.how/tree/main/bench)
+**$24.99** at that point. Total session cost climbed a bit higher
+after the refinement passes — let's call it $30 and move on. The
+benchmark code lives in [`bench/`](https://github.com/pratikgajjar/go-backend.how/tree/main/bench)
 if you want to reproduce or extend it.
 
-I'm publishing the numbers so the next person doesn't need to spend
-another $25 or a weekend on a Mac mini to know them.
+I'm publishing the numbers so the next person doesn't have to burn $30,
+a weekend, and one Mac mini's fan life to know them.
 
 ---
 
