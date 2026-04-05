@@ -405,7 +405,7 @@ Subtract row-to-row:
 (385.2 − 214.0) / (10 − 5) = 34.24 queries per additional activity
 ```
 
-The per-activity slope is **~35 SQL statements**, independent of N.  The
+The per-activity slope is **~35 SQL statements**, independent of N. The
 baseline (fixed cost to start and complete any workflow) is about **40
 queries**, so:
 
