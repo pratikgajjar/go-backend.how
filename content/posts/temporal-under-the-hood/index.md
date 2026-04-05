@@ -191,7 +191,7 @@ cluster_membership       ─ which server nodes are alive
 namespaces               ─ tenant isolation
 ```
 
-Plus another 20 tables for request cancellations, signals, child workflows,
+Plus another 21 tables for request cancellations, signals, child workflows,
 chasm nodes, namespace metadata, nexus endpoints, replication DLQ, schema
 versioning, etc.
 
