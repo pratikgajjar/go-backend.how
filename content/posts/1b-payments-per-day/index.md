@@ -313,30 +313,30 @@ Where does it go? Everything lives in one file — `0_0.tigerbeetle` — divided
 
 ```txt
 0_0.tigerbeetle (21 GB after 10M accounts + 10M transfers)
-┌──────────────────────────────────────────────────────────────┐
-│  Superblock (×4 copies)                           ~64 MiB   │
-│  Root pointers: manifest + free set + checksums             │
-│  Updated infrequently; swaps atomically                     │
-├──────────────────────────────────────────────────────────────┤
-│  WAL — write-ahead log (ring buffer)             ~1.06 GiB  │
-│  1,024 prepare slots × 1 MiB each + 256 KiB headers        │
-│  This is the durability layer: O_DIRECT writes go here      │
-│  No fsync needed — circular journal + checksums             │
-├──────────────────────────────────────────────────────────────┤
-│  Grid (elastic, grows with data)                 ~20 GB     │
-│  512 KiB blocks: LSM tree tables + indexes                  │
-│                                                             │
-│  Each table = 1 index block + N value blocks (sorted)       │
-│  Levels: L0 (in-memory) → L1 → L2 → ... (exponential)      │
-│  Compaction merges levels asynchronously                    │
-│                                                             │
-│  LSM trees stored:                                          │
-│   · accounts (by timestamp key)                             │
-│   · transfers (by timestamp key)                            │
-│   · transfers_by_debit_account_id (secondary index)         │
-│   · transfers_by_credit_account_id (secondary index)        │
-│   · transfers_by_timestamp (secondary index)                │
-└──────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│  Superblock (x4 copies)                            ~64 MiB     │
+│  Root pointers: manifest + free set + checksums                │
+│  Updated infrequently; swaps atomically                        │
+├────────────────────────────────────────────────────────────────┤
+│  WAL -- write-ahead log (ring buffer)             ~1.06 GiB    │
+│  1,024 prepare slots x 1 MiB each + 256 KiB headers            │
+│  This is the durability layer: O_DIRECT writes go here         │
+│  No fsync needed -- circular journal + checksums               │
+├────────────────────────────────────────────────────────────────┤
+│  Grid (elastic, grows with data)                  ~20 GB       │
+│  512 KiB blocks: LSM tree tables + indexes                     │
+│                                                                │
+│  Each table = 1 index block + N value blocks (sorted)          │
+│  Levels: L0 (in-memory) -> L1 -> L2 -> ... (exponential)       │
+│  Compaction merges levels asynchronously                       │
+│                                                                │
+│  LSM trees stored:                                             │
+│    accounts (by timestamp key)                                 │
+│    transfers (by timestamp key)                                │
+│    transfers_by_debit_account_id  (secondary index)            │
+│    transfers_by_credit_account_id (secondary index)            │
+│    transfers_by_timestamp         (secondary index)            │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 - **Superblock**: the root pointer to all state. Stores block references (index + u128 checksum) for the manifest and free-set. Written atomically as 4 copies on disk — if a crash corrupts one copy, 2+ survive.
