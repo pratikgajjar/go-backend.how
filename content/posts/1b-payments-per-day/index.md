@@ -700,6 +700,12 @@ Full setup, teardown, and bpftrace scripts are in the [benchmark repo](https://g
 
 [^4]: _Benchmarks were performed on an Apple M4 Mac Mini (10-core, 24 GB RAM) inside a Podman Linux VM (Fedora CoreOS 41, 4 CPU / 8 GB). Real-world performance will vary with storage, kernel, and workload._
 
+[^5]: [TigerBeetle](https://tigerbeetle.com/) — the financial transactions database used in this post's benchmarks.
+
+[^6]: [PostgreSQL](https://www.postgresql.org/) — the open-source relational database used in this post's benchmarks.
+
+_TigerBeetle® is a trademark of TigerBeetle, Inc. PostgreSQL® is a trademark of The PostgreSQL Global Development Group. This post is an independent benchmark and analysis — it is not affiliated with, endorsed by, or sponsored by either project. All trademarks belong to their respective owners._
+
 ## Colophon
 
 This post sat in `draft: true` for 13 months before an LLM with infinite patience for re-running benchmarks showed up. **Sonnet 4.6** drafted and ran the first traces; **Opus 4.6** came later for the skepticism sweep — caught a 4.5M→4.17M fsync discrepancy, a 567-vs-564 TB Parquet math bug, two dead TB-docs links, and a concurrency-degradation claim that turned out to be an artifact of dirty test state. **1,279 tool turns, $266, 95% cache hit.** Writing a blog post about a $600 box that can do 4 billion payments/day cost half a $600 box.
