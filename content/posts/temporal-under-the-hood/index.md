@@ -1108,6 +1108,12 @@ not as production capacity planning._
 [^8]: [pgmq — a battle-tested Postgres queue](https://github.com/pgmq/pgmq)
 [^9]: [napkin-math — Sirupsen](https://github.com/sirupsen/napkin-math)
 
+[^10]: [Temporal](https://temporal.io/) — the durable execution platform benchmarked in this post.
+
+[^11]: [PostgreSQL](https://www.postgresql.org/) — the open-source relational database used as Temporal's persistence backend.
+
+_Temporal® is a trademark of Temporal Technologies, Inc. PostgreSQL® is a trademark of The PostgreSQL Global Development Group. Absurd is by Armin Ronacher / Earendil Works. This post is an independent benchmark and analysis — it is not affiliated with, endorsed by, or sponsored by any of these projects. All trademarks belong to their respective owners._
+
 ---
 
 ## Colophon — who did what
