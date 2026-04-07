@@ -8,7 +8,7 @@ draft = false
 tags = ['Django', 'Redis', 'DRF', 'CDC', 'Valkey']
 series = ['valkey-car-platform']
 images = ["listing-viewset-list.png", "listing-viewset-detail.png", "overall-stats.png"]
-featured = true
+featured = false
 hnItemId = 41282624
 theme = "coral"
 +++
