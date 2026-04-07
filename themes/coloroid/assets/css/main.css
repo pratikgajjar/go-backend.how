@@ -552,7 +552,8 @@ ul ul {
 
 .highlight pre code {
     display: block;
-    white-space: pre-wrap; /* Preserve line breaks */
+    white-space: pre; /* horizontal scroll on overflow, don't break ASCII diagrams */
+    overflow-x: auto;
 }
 
 .rss-feed {
