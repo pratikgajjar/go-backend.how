@@ -57,23 +57,9 @@ function initCopyButtons() {
   });
 }
 
-// === Code Language Labels ===
+// === Code Language Labels (disabled) ===
 function initCodeLabels() {
-  document.querySelectorAll('.highlight pre code').forEach(code => {
-    const langClass = Array.from(code.classList).find(c => c.startsWith('language-'));
-    if (!langClass) return;
-    const lang = langClass.replace('language-', '');
-    if (!lang || lang === 'plaintext' || lang === 'text' || lang === 'txt' || lang === 'fallback') return;
-
-    const block = code.closest('.highlight');
-    if (!block) return;
-    block.style.position = 'relative';
-
-    const label = document.createElement('span');
-    label.className = 'code-lang-label';
-    label.textContent = lang;
-    block.appendChild(label);
-  });
+  // Language labels removed — copy button is sufficient
 }
 
 // === Reading Progress Bar ===
