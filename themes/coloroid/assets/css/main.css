@@ -556,6 +556,17 @@ ul ul {
     overflow-x: auto;
 }
 
+/* KaTeX display math: scroll on mobile instead of overflowing */
+.katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.5em 0;
+}
+
+.katex-display > .katex {
+    white-space: nowrap;
+}
+
 .rss-feed {
     display: inline-block;
 }
