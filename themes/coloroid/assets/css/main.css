@@ -538,6 +538,8 @@ ul ul {
     white-space: pre; /* horizontal scroll on overflow, don't break ASCII diagrams */
     width: max-content;
     padding-right: 1.5em; /* breathing room when scrolled to the end */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 /* KaTeX display math: scroll on mobile instead of overflowing */
