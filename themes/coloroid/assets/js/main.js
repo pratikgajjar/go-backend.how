@@ -63,7 +63,7 @@ function initCodeLabels() {
     const langClass = Array.from(code.classList).find(c => c.startsWith('language-'));
     if (!langClass) return;
     const lang = langClass.replace('language-', '');
-    if (!lang || lang === 'plaintext' || lang === 'text' || lang === 'fallback') return;
+    if (!lang || lang === 'plaintext' || lang === 'text' || lang === 'txt' || lang === 'fallback') return;
 
     const block = code.closest('.highlight');
     if (!block) return;
