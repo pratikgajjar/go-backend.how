@@ -199,9 +199,20 @@ function initShareButtons() {
   });
 }
 
+// === Wrap Tables in Scroll Containers ===
+function initTableScrollWrappers() {
+  document.querySelectorAll('.article-content > table').forEach(table => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    table.parentNode.insertBefore(wrapper, table);
+    wrapper.appendChild(table);
+  });
+}
+
 // === Init All ===
 function initAll() {
   initLazyLoadImages();
+  initTableScrollWrappers();
   initCopyButtons();
   initCodeLabels();
   initProgressBar();
