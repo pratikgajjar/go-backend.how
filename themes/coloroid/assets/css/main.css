@@ -553,7 +553,6 @@ ul ul {
 .highlight pre code {
     display: block;
     white-space: pre; /* horizontal scroll on overflow, don't break ASCII diagrams */
-    overflow-x: auto;
 }
 
 /* KaTeX display math: scroll on mobile instead of overflowing */
