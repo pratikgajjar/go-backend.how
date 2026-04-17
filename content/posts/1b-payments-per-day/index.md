@@ -187,7 +187,7 @@ Those two flags are worth unpacking, because they're half the reason the numbers
 
 Together they give TigerBeetle the shortest path from "I want to write this transfer" to "the platter has the bits": no kernel page cache to lie about durability, no syscall tax per I/O. We'll watch this directly with eBPF later — thousands of I/Os completing with tens of syscalls total.
 
-The production topology is a 6-node VR-style consensus cluster: one primary processes all writes, five followers replicate. Critically, **adding followers buys reliability, not throughput** — the primary is still a single thread. You scale TigerBeetle by sharding account ranges across *multiple* clusters, not by adding cores to one cluster.
+The production topology is a 6-node VR-style[^7] consensus cluster: one primary processes all writes, five followers replicate. Critically, **adding followers buys reliability, not throughput** — the primary is still a single thread. You scale TigerBeetle by sharding account ranges across *multiple* clusters, not by adding cores to one cluster.
 
 $$
 \begin{CD}
@@ -703,6 +703,8 @@ Full setup, teardown, and bpftrace scripts are in the [benchmark repo](https://g
 [^5]: [TigerBeetle](https://tigerbeetle.com/) — the financial transactions database used in this post's benchmarks.
 
 [^6]: [PostgreSQL](https://www.postgresql.org/) — the open-source relational database used in this post's benchmarks.
+
+[^7]: VR = [Viewstamped Replication](https://pmg.csail.mit.edu/papers/vr-revisited.pdf) — a leader-based consensus protocol by Oki & Liskov (1988), in the same family as Paxos and Raft. TigerBeetle's implementation is documented in their [VSR protocol docs](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/internals/vsr.md).
 
 _TigerBeetle® is a trademark of TigerBeetle, Inc. PostgreSQL® is a trademark of The PostgreSQL Global Development Group. This post is an independent benchmark and analysis — it is not affiliated with, endorsed by, or sponsored by either project. All trademarks belong to their respective owners._
 
