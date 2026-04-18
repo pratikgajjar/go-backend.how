@@ -423,9 +423,10 @@ only because it's fast, but because it's small!
 
 Authors[^1]
 
+- [Joran Dirk Greef](https://github.com/jorangreef)
 - [Evan Schwartz](https://github.com/emschwartz)
 - [Alex Kladov](https://github.com/matklad)
 
 This document is licensed under the Apache License 2.0. See the [LICENSE-APACHE](./LICENSE) file for details.
 
-[^1]: List of authors taken from git blame. Credits to authors of [tiger beetle](https://github.com/tigerbeetle/tigerbeetle/blame/main/docs/TIGER_STYLE.md)
+[^1]: List of authors taken from git history. Original author is Joran Dirk Greef ([first commit](https://github.com/tigerbeetle/tigerbeetle/commit/78939d266fd2da9bf39e576e7730d457006ae6eb)). Credits to all contributors of [TIGER_STYLE.md](https://github.com/tigerbeetle/tigerbeetle/blame/main/docs/TIGER_STYLE.md)
