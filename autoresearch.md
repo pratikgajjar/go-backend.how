@@ -195,6 +195,55 @@ best-practices + seo categories.
 | Iter 25 italic preload   | 94 | **91** (FCP -300ms) | **86** (FCP -291ms, LCP -150ms) |
 | Iter 26 KaTeX preload    | (reverted — bandwidth competition pushed 1b LCP +775ms) | | |
 
+---
+
+## Session 2026-05-07: Site-quality cycle (12 iterations)
+
+After perf plateau at 94, switched metric from `lh_perf` to a composite
+`defects` count (lower is better). Built a comprehensive defect detector
+(`scripts/site-quality-check.py`) that scans 24 categories. Baseline 10
+defects → final 5 (only the fdyno-draft orphan footnotes remain,
+intentionally deferred to author's polish pass).
+
+### Real bugs fixed beyond what the perf cycle caught
+
+| iter | issue                                            | scope              |
+|---:|---|---|
+| 2  | Orphan footnote defs in published posts (4)       | content cleanup |
+| 3  | OG image regenerated 1200×630 with branding       | social previews |
+| 4  | RSS icon dimensions (CLS prevention)              | every page |
+| 5  | External link rot (4 broken/redirected URLs)      | tiger, 1b, temporal |
+| 6  | **Term pages were broken** — taxonomy.html was rendering the full tag cloud instead of post listings on /tags/postgres/ etc. | every tag page |
+| 7  | Tag case collision (TigerBeetle/tigerbeetle)      | tag cloud |
+| 8  | Stereogram heading skip (a11y) via h3→h2 promote (different from h1→h2 demote which regressed perf -8 in iter 32 of perf cycle) | stereogram post |
+| 9  | Article schema empty `image: []` — fallback to OG image | every post without hero image |
+| 10 | h1 hierarchy across 56 pages — site title `<h1>` was rendered on every page; `# Heading` in markdown was h1 too. Fixed via header.html `IsHome` branch + render-heading.html bumps level by 1 inside posts | every page |
+| 11 | **CSS bug**: `scrollbar-width: thin` was floating outside any selector since the theme's inception. Hugo's minifier merged it with the `summary` rule, breaking summary's padding for years. Wrapped in `* { ... }`. Bonus: tiger 91→93, valkey-part-1 91→93, post-query-optimise 91→92 | global |
+| 11 | Blockquote link contrast (light themes)           | valkey-part-1 |
+| 11 | Mermaid edge-label contrast (auto-styled)         | valkey-part-2 |
+| 12 | 404 page `.error-code` opacity 0.2 (a11y)         | 404 page |
+
+### Detector dimensions tracked (24 categories)
+
+orphan_footnote_def, orphan_footnote_ref, broken_anchor, img_no_alt,
+img_no_dimensions, duplicate_id, json_ld_invalid, json_ld_missing_field,
+missing_og_field, missing_twitter_field, broken_internal_href,
+dangling_local_file, duplicate_title, empty_title, missing_canonical,
+og_image_missing, og_image_aspect_ratio, sitemap_dead_url,
+robots_disallow_all, term_page_no_posts, tag_case_collision,
+md_heading_skip, no_h1, multiple_h1, external_link_broken (cached, opt-in).
+
+### Final scores (cycle 2 conclusion)
+
+All tested pages: **a11y 100**, bp 100, seo 100 (except 404 which is
+intentionally noindex'd → seo 69).
+
+Perf scores held or improved across the board. Notable post bumps:
+- tiger-style: 91 → **93** (LCP 1801 → 1651 ms)
+- /about/: 92 → **94**
+- valkey-part-1: 91 → 93
+- post-query-optimise: 91 → 92
+
 ### Final scores across all tested pages
 
 | Page | perf | a11y | bp | seo | LCP (ms) | FCP (ms) |
