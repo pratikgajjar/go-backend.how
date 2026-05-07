@@ -2,7 +2,27 @@
 
 Living backlog. Items get crossed off as they're done; stale claims get pruned.
 
-Last reviewed: **2026-05-06** (autoresearch session, 20 iterations: bug-fixes + perf + UX).
+Last reviewed: **2026-05-07** (autoresearch session, ~12 iterations: lh_perf optimization).
+
+## ⚡ Perf optimizations attempted in this cycle
+
+- ✅ **WOFF2 conversion** (iter 2). 303 KB TTF → 113 KB WOFF2. perf 83 → 89.
+- ✅ **JBM Latin subset** (iter 3). 113 → 76 KB. perf 89 → 91.
+- ✅ **Italic subset** (iter 9). 82 → 52 KB. tiger 81 → 84.
+- ✅ **Lean theme palettes** (iter 11). Extracted 51 theme color rules to data/themes.yaml; baseof inlines only the active theme. main.css 34 → 25 KB. home 91 → 92, tiger 84 → 87, 1b 78 → 80.
+- ❌ **font-display: optional** (iter 6). No movement; reverted.
+- ❌ **Inline all CSS** (probe). No measurable score change; reverted (saves no real bytes — main.css still required for posts and inline duplicates per page request).
+- ❌ **Unicode-range JBM split** (iter 12). Two woff2 files (49+33 KB) outweighed monolithic 76 KB on pages that need both. Net negative on posts. Reverted.
+
+## ⚡ Perf optimizations not yet tried
+
+- **Async-load main.css with media swap** — `<link media="print" data-async-css>` flipped to `media="all"` by main.js. Requires careful inline critical CSS to avoid CLS. CSP-safe via external defer'd script. Could drop home FCP from 906 → ~400 ms.
+- **Per-route CSS split** — extract `.chroma` syntax-highlight block (~7 KB minified) and other post-only rules into chroma.css; load only when Kind=="page". Saves ~10-15 KB on home/list/term pages.
+- **font-display: fallback** — 100 ms swap window then fallback locks in. Could eliminate LCP swap on slow networks but penalize first-time visitors.
+- **Critical CSS extraction tool** — use `critters` or `critical` npm package to auto-extract above-fold rules at build time.
+- **HTTP/2 server push from Cloudflare** — deployment-side; not measurable in localhost test.
+- **103 Early Hints** — Cloudflare Workers feature; deployment-side.
+- **Regenerate `og-image.png` at 1200×630** — current is 512×512 (graphics-tool work).
 
 ---
 

@@ -169,15 +169,19 @@ best-practices + seo categories.
 
 ### Score trajectory across three pages
 
-|                   | Home | Tiger Style | 1B Payments |
+|                       | Home | Tiger Style | 1B Payments |
 |---|---:|---:|---:|
-| Iter 1 baseline   | 83 / 100 / 100 / 100 | 82 / 94 / 100 / 100  | — |
-| Iter 2 woff2      | 89 / 100 / 100 / 100 | — | — |
-| Iter 3 subset     | 91 / 100 / 100 / 100 | — | — |
-| Iter 4-7 a11y     | (no perf change)     | 82 / 100 / 100 / 100 | 76 / 100 / 100 / 100 |
-| Iter 9 italic     | 91 / 100 / 100 / 100 | 84 / 100 / 100 / 100 | 78 / 100 / 100 / 100 |
+| Iter 1 baseline       | 83 / 100 / 100 / 100 | 82 / 94 / 100 / 100  | 64 / 95 / 100 / 100  |
+| Iter 2 woff2          | 89 / 100 / 100 / 100 | — | — |
+| Iter 3 subset         | 91 / 100 / 100 / 100 | — | — |
+| Iter 4-7 a11y         | (no perf change)     | 82 / 100 / 100 / 100 | 76 / 100 / 100 / 100 |
+| Iter 9 italic subset  | 91 / 100 / 100 / 100 | 84 / 100 / 100 / 100 | 78 / 100 / 100 / 100 |
+| Iter 11 lean themes   | **92 / 100 / 100 / 100** | **87 / 100 / 100 / 100** | **80 / 100 / 100 / 100** |
+| Iter 12 unicode-range | (reverted — net negative) |     |     |
 
 (scores: perf / a11y / best-practices / seo)
+
+**LCP progression on home**: 2927ms → 2026ms (woff2) → 1802ms (subset) → 1727ms (lean themes). 41% improvement.
 
 ### Real fixes from this cycle
 
@@ -203,31 +207,46 @@ best-practices + seo categories.
    which is ASCII + 3 non-ASCII chars across all posts. Was using the
    wide subset (82 KB); cut down to ASCII + Latin-1 + Latin-Ext-A +
    smart quotes (52 KB). Tiger-style perf 81 → 84.
+8. **Lean theme palettes** (iter 11). The 51 `body.theme-X { --vars }`
+   rules in main.css were ~10 KB of dead bytes for any single page
+   (each page only ever uses ONE theme). Extracted to
+   `data/themes.yaml`; baseof.html inlines only the active theme's vars.
+   main.css 34 KB → 25 KB minified; home perf 91 → 92, LCP -150 ms;
+   tiger 84 → 87; 1b 78 → 80.
 
 ### Probes that didn't move the metric
 
 - **font-display: optional** (iter 6). No score change because the font
-  is preloaded with high priority anyway. Reverted to `swap` to keep
-  better UX (first-time visitors actually see JBM).
+  is preloaded. Reverted to `swap`.
+- **Inline all CSS in head** (untracked probe between iter 10 and 11).
+  +0 / +1 / +0 across pages while inflating each HTML by ~30 KB.
+  Reverted as not worth the bandwidth cost.
+- **Unicode-range JBM split into common + extended subsets** (iter 12,
+  discarded). Two woff2 files (49 + 33 KB) outweighed monolithic 76 KB
+  on pages that legitimately need both ranges (any page with µs, ↻,
+  box-drawing, etc.). Home gained +1 but tiger lost 3 and 1b lost 4.
+  Reverted.
 
 ### Key insight
 
-Lighthouse penalties on this site come almost entirely from **font load
-time gating LCP**. With `font-display: swap` the page paints with system
-mono first, then re-paints when JBM arrives — and Lighthouse measures
-LCP as the moment the largest text element settles, which is the swap.
-Cutting font bytes cuts LCP.
+Lighthouse penalties come almost entirely from **font load time gating
+LCP**. With `font-display: swap` the page paints with system mono first
+(FCP ~900 ms), then re-paints when JBM arrives (LCP at swap). Lighthouse
+measures LCP as the moment the largest text element settles. Cutting
+font bytes cuts LCP.
 
-The home page reached perf=91 with LCP ~1.8 s. To push higher would
-require either dropping JBM entirely (UX regression), inlining critical
-CSS, or further per-route font subsets (e.g., a regular-only build for
-home, italic-included for posts). The next-most-likely big win is
-inline critical CSS — currently 39 KB of CSS is unused on home; an
-inline-critical-CSS pipeline would let CSS load async without blocking.
+The home page reached **perf=92, LCP 1727 ms** with all a11y/bp/seo at
+100. The next likely big lever is **per-route CSS split** (extract
+Chroma syntax-highlight ~7 KB and post-only rules) so home doesn't ship
+post-only styles. Estimated home perf 93-94 if it lands. Other deferred
+levers (inline-critical-CSS pipeline, async-load main.css with media
+swap) are recorded in autoresearch.ideas.md.
 
-**Backlog adds**: inline critical CSS pipeline (`critters`/`critical`
-npm tools or hand-curated above-fold rules); regenerate `og-image.png`
-at 1200×630.
+**Cumulative gains across this Lighthouse cycle**:
+- Home: 78 (dev) → 83 (prod baseline) → 92 (current). LCP 2927 → 1727 ms.
+- Tiger: 82 → 87. LCP 2401 → 2102 ms.
+- 1B-payments: 64 → 80. LCP 3879 → 2552 ms.
+- a11y: 95-100 across all pages → 100 across all pages.
 
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
