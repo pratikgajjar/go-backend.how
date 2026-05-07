@@ -104,9 +104,9 @@ block = false
 title = true
 [markup.goldmark.renderHooks]
 [markup.goldmark.renderHooks.image]
-enableDefault = false
+useEmbedded = "never"
 [markup.goldmark.renderHooks.link]
-enableDefault = false
+useEmbedded = "never"
 [markup.goldmark.renderer]
 hardWraps = false
 unsafe = false
