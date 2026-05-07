@@ -1,44 +1,48 @@
 # backend.how — Improvement Ideas
 
-Full audit of the Hugo blogging site. Organized by priority and effort.
+Living backlog. Items get crossed off as they're done; stale claims get pruned.
+
+Last reviewed: **2026-05-06** (autoresearch session, 8 iterations of bug-fixes).
 
 ---
 
-## 🐛 Bugs & Issues (Fix First)
+## 🐛 Bugs & Issues
 
-- **Theme conflict**: `lilac` used by both About page AND "Psychology of Seeking Help" post — one needs a different theme
-- **Hugo deprecation warnings**: `privacy.twitter.enableDNT` and `privacy.twitter.simple` → should be `privacy.x.enableDNT` and `privacy.x.simple` (deprecated since Hugo v0.141.0)
-- **OG URL uses relURL**: `opengraph.html` uses `.RelPermalink` instead of `.Permalink` for `og:url` — Facebook/Twitter will get broken URLs
-- **Structured data image URLs are relative**: `structured-data.html` builds image URLs as `{{ $.RelPermalink }}{{ $e }}` — Google wants absolute URLs
-- **SearchAction without search**: `siteLinksSearchBox = true` emits a SearchAction schema but there's no actual search on the site — misleading to Google
-- **No navigation menu**: `hugo.toml` has no `[menus]` section — the nav menu partial renders nothing
-- **Missing tags**: "Psychology of Seeking Help" and "Lost SSH Access" have empty `tags = []`
-- **Stale public/ assets**: ~12 old fingerprinted `particles.min.*.js` files in `public/` — should be cleaned on build
+### Done in this session
+- ✅ **Hugo 0.148+ deprecations** — `markup.goldmark.renderHooks.{image,link}.enableDefault` → `useEmbedded = "never"` (was emitting 8 INFO-level deprecation messages per build)
+- ✅ **OG image broken absolute URLs** — `opengraph.html` was using `.RelPermalink` for `og:image`, `og:see_also`, `og:video`. Switched to `.Permalink` / `absURL`. Verified: social previews now embed `https://backend.how/...` URLs
+- ✅ **JSON-LD invalid + relative URLs** — `structured-data.html` was emitting `"image": [https://.../foo.webp]` (UNQUOTED url because of `safeJS`) — invalid JSON. Also Article `@id` was relative. Both fixed; image array now properly quoted and absolute
+- ✅ **Dishonest SearchAction schema** — `siteLinksSearchBox = true` was emitting a SearchAction with `urlTemplate=/tags/{q}/` but that endpoint doesn't accept queries. Set to `false`
+- ✅ **Empty tags on cat-stereogram-dark-mode** — added `["stereograms", "vision", "dark-mode", "focus"]`
+- ✅ **Stale public/ assets** — `rm -rf public/ resources/ && hugo --gc` removed 11 leftover `particles.min.*.js` fingerprints (gitignored, just local clutter)
+- ✅ **Raw HTML omitted warning** — `1b-payments-per-day` had a centered `<p style="...">` caption under the cluster diagram. Replaced with markdown italics. Build now emits **0 warnings/deprecations**
+
+### Stale (verified — these claims no longer apply)
+- ~~Theme conflict `lilac` used by About + "Psychology of Seeking Help"~~ — neither uses lilac anymore
+- ~~`privacy.twitter.*` deprecation~~ — already migrated to `privacy.x.*` in hugo.toml
+- ~~No navigation menu in hugo.toml~~ — `[[menus.main]]` entries exist for posts, archive, tags, about
+- ~~Lost SSH Access has empty tags~~ — verified, tags exist
 
 ---
 
-## ⚡ Quick Wins (High Impact, ≤30 min each)
+## ⚡ Quick Wins (≤30 min each)
 
-- **Copy button on code blocks** — JS snippet + small CSS, huge UX for technical blog
+- **Copy button on code blocks** — JS snippet + small CSS, big UX win for a technical blog
 - **Reading progress bar** — thin bar at top of article pages showing scroll progress
-- **Back-to-top button** — appears after scrolling down, smooth scroll back
-- **Custom 404 page** — `layouts/404.html` with a themed "page not found" message
-- **Add nav menu items** — add `[[menus.main]]` entries in `hugo.toml` for Posts, About, Tags, RSS
-- **Fix privacy.twitter → privacy.x** — 2-line config change to silence Hugo warnings
-- **Font preloading** — add `<link rel="preload">` for DepartureMono and JetBrains Mono woff2
+- **Back-to-top button** — appears after scrolling, smooth scroll back
+- **Font preloading** — `<link rel="preload">` for DepartureMono + JetBrains Mono woff2
 - **dns-prefetch/preconnect** for `stats.backend.how` (Plausible analytics)
 
 ---
 
-## 🔧 Medium Effort (1-3 hours each)
+## 🔧 Medium Effort (1–3 hours each)
 
-- **Related posts section** — show 2-3 related posts at article bottom based on shared tags
-- **Series linking for multi-part posts** — Valkey Part 1 & 2 should auto-link to each other with prev/next series navigation (Hugo has built-in series taxonomy)
-- **Post archive page** — `/archive/` showing all posts grouped by year
-- **Active TOC highlighting** — highlight current section in table of contents as user scrolls (IntersectionObserver)
-- **"Last updated" badge** — show "Updated: date" when `lastmod` differs from `date`
+- **Related posts section** — 2–3 related posts at article bottom based on shared tags
+- **Series linking** — Valkey Part 1 & 2 should auto-link via prev/next series navigation (Hugo has built-in series taxonomy)
+- **Active TOC highlighting** — highlight current section in TOC as user scrolls (IntersectionObserver)
+- **"Last updated" badge** — show `Updated: <date>` when `lastmod` differs from `date`
 - **Image lightbox/zoom** — click to enlarge images in articles (especially diagrams)
-- **Social sharing buttons** — Twitter/X, LinkedIn, copy-link for each post
+- **Social sharing buttons** — X, LinkedIn, copy-link for each post
 - **Print-friendly CSS** — `@media print` stylesheet for clean article printing
 - **Footnote back-links** — improve footnote UX with bidirectional linking
 - **Post descriptions on list page** — show `.Description` under each post title in `/posts/`
@@ -47,62 +51,61 @@ Full audit of the Hugo blogging site. Organized by priority and effort.
 
 ## 🏗️ Larger Features (Half day+)
 
-- **Client-side search** — Pagefind (static search, ~15KB) or Fuse.js for instant search across posts
-- **Dark/light mode toggle** — already have dark default + light themes; add a toggle button that persists preference in localStorage
-- **Comments via Giscus** — GitHub Discussions-backed comments (beyond HN comments which only work for HN-linked posts)
-- **Auto-generated OG images** — per-post social preview images with title + theme color (Hugo can do this with images.Text)
-- **Newsletter/email subscription** — Buttondown or similar, with a signup form in footer or post bottom
-- **RSS per-tag feeds** — so readers can subscribe to specific topics (e.g., `/tags/system-design/index.xml`)
+- **Client-side search** — Pagefind (static, ~15 KB) or Fuse.js for instant search
+- **Dark/light mode toggle** — themes are already there, just need a button + localStorage
+- **Comments via Giscus** — GitHub Discussions-backed comments
+- **Auto-generated OG images** — per-post social preview images with title + theme color (Hugo `images.Text`)
+- **RSS per-tag feeds** — `/tags/system-design/index.xml`
 - **Keyboard navigation** — `j`/`k` for next/prev post, `/` to focus search
-- **View counter** — pull from Plausible API and display on posts (already have Plausible analytics)
-- **Webmention support** — receive and display webmentions for IndieWeb integration
+- **View counter** — pull from Plausible API and display on posts
+- **Webmention support** — IndieWeb integration
 
 ---
 
 ## 🎨 Design/UX Polish
 
-- **Homepage featured posts** — current layout is bare; add post descriptions, tags, or card-style layout
-- **Tag cloud with post counts** — show how many posts per tag on `/tags/`
-- **Gradient or pattern header per theme** — subtle visual differentiation beyond just background color
-- **Mobile hamburger menu** — for when nav menu items are added
-- **Smooth page transitions** — View Transitions API for same-origin navigation
-- **Code block language label** — show "go", "sql", "python" etc. in top-right corner of code blocks
+- **Homepage featured posts** — current layout is bare; add post descriptions, tags, card layout
+- **Tag cloud with post counts** — show post counts per tag on `/tags/`
+- **Gradient/pattern header per theme** — subtle visual differentiation
+- **Mobile hamburger menu** — for narrow viewports
+- **Smooth page transitions** — View Transitions API for same-origin nav
+- **Code block language label** — "go", "sql", "python" in top-right of code blocks
 
 ---
 
-## 📊 SEO & Performance
+## 📊 SEO & Performance (most fixed, remaining)
 
-- **Fix og:url to absolute URL** — change `.RelPermalink` to `.Permalink` in opengraph.html
-- **Fix structured data images** — use absolute URLs (`site.BaseURL + path`)
-- **Remove bogus SearchAction** — or implement actual search and point to it
 - **Add FAQ structured data** — for posts like "Lost SSH Access" that answer specific questions
-- **Optimize font loading** — subset JetBrains Mono to latin-only, convert TTF to WOFF2
-- **Add `fetchpriority="high"`** to hero/above-fold images
-- **Lazy load below-fold images** — already done for figure shortcode; ensure markdown images also lazy load
-- **Cache busting strategy** — clean old fingerprinted assets from public/ on build
+- **Optimize font loading** — subset JetBrains Mono to latin-only, ensure WOFF2
+- **`fetchpriority="high"`** on hero/above-fold images
+- **Lazy load below-fold images** — markdown images may not be lazy yet (figure shortcode is)
 
 ---
 
 ## 📝 Content Gaps
 
-- ~~"Temporal Under the Hood" is a draft with empty description~~ **done 2026-04-05** (temporal-blog-complete branch)
-- "1B Payments/Day" marked as 🚧 in-progress
-- About page is fairly generic — could link to specific achievements, projects, or talks
-- No `/uses/` or `/now/` page (common in dev blogs)
-- No contributors page content beyond Pratik's empty `_index.md`
+- ~~"Temporal Under the Hood" draft~~ **done 2026-04-05**
+- ~~"1B Payments/Day" 🚧 in-progress~~ **shipped 2026-04-05**
+- ~~"fdyno — DynamoDB on FoundationDB" draft~~ **drafted 2026-05-06** (still `draft: true`, 13 iters of polish)
+- About page is fairly generic — could link to specific achievements, projects, talks
+- No `/uses/` or `/now/` page
 
 ---
 
-## 🔬 Follow-up Research (from Temporal post)
+## 🔬 Follow-up Research
 
-Ideas that came up while benchmarking Temporal vs Absurd but didn't make it
-into the post:
+### From Temporal post
+- **Retry cost measurement** — how many extra queries does one failed+retried workflow cost?
+- **Temporal replay cost** — force replay by killing worker mid-execution; measure extra `history_node` SELECTs
+- **Postgres WAL throughput** — WAL bytes/sec for both Temporal and Absurd
+- **Absurd at larger scale** — current ceiling at ~1,450 task/s; with connection pooling + HOT updates, where does it go?
+- **Comparison with DBOS / Inngest** — same workload, their Postgres schemas
+- **Signal/event latency** — Temporal signals vs Absurd events, race-freeness mechanisms
+- **Napkin-math workflow calculator** — interactive form, storage/IOPS estimates per system
 
-- **Retry cost measurement** — how many extra queries does one failed+retried workflow cost? Needs a controlled benchmark with a deterministic failure injector.
-- **Temporal replay cost** — force a workflow to replay by killing worker mid-execution. Measure extra `history_node` SELECTs during replay. Visual: "the replay tax."
-- **Postgres WAL throughput analysis** — measure WAL bytes/sec for both systems. Could show Absurd is CPU-bound, Temporal is WAL-bound.
-- **Absurd at larger scale** — my test topped out at ~1450 task/s because Postgres got saturated. With connection pooling + HOT updates tuning, where does the ceiling go?
-- **Comparison with DBOS / Inngest** — same workload against their Postgres schemas. Would round out the "Postgres-native" landscape.
-- **Temporal dev-mode (sqlite)** — temporal-lite/dev server has a different backend. Single-machine developer-experience comparison.
-- **Signal / event comparison** — measure signal-to-workflow latency in Temporal vs event-to-task latency in Absurd. Both claim "race-free" but the mechanisms differ.
-- **A "napkin math workflow calculator"** — interactive table where you punch in activity count + volume and see storage/IOPS estimates for each system.
+### From fdyno post (NEW)
+- **Multi-node FDB benchmark** — current numbers are single-node memory engine; need 3-node SSD on real network
+- **CGO crossing reduction** — pipelined transactions, batched ops, or sketch a Go client wrapper that minimizes round-trips
+- **Property-based stateful testing** — random op sequences against fdyno + DynamoDB Local, compare at every step
+- **TTL background scanner + CDC GC** — operational gaps for production-shaped use
+- **Fdyno vs Scylla Alternator** — both implement DynamoDB on different engines, would round out the "DynamoDB on X" landscape
