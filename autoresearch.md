@@ -1,6 +1,6 @@
 # Autoresearch — Latest sessions
 
-## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 38 iterations across 5 cycles)
+## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 45 iterations across 6 cycles)
 
 **Metric**: `hugo_warnings` (lower is better). 11 → 0.
 
@@ -77,11 +77,41 @@ in RSS, sitemap, and config that no metric was watching:
   works) plus `[params]` (back-compat for templates that reference
   `site.Params.description` explicitly).
 
-The cumulative effect of cycles A–E: 11 → 0 warnings (cycle A), real
-SEO/social-preview correctness verified via reading templates + parsing
-emitted HTML/XML (cycles D–E). At no point did the primary metric
-shift, yet 13 distinct semantic-correctness bugs were fixed. The
-floor-then-audit pattern keeps producing value.
+**Cycle F (iter 40–45)** — final-pass audit, found 5 more issues:
+
+- Iter 40: validated 0 broken internal links across all built HTML
+  via Python script that walks public/, builds the set of every
+  reachable path, and checks every `href` against it. Validated all
+  3 XML output endpoints parse via ElementTree. Validated CSS brace
+  balance (364 opens vs 364 closes).
+- Iter 41: added conditional DNS prefetch + preconnect for
+  `cdn.jsdelivr.net` on math posts. KaTeX loads 3 separate files
+  from jsdelivr — without prefetch, DNS lookup happens after head
+  parse. Conditional gate via `Params.math` so non-math pages don't
+  add unnecessary hints.
+- Iter 42: removed duplicate `<meta charset>` and `<meta viewport>`
+  tags. baseof.html emitted them at the very top of `<head>` and
+  head.html partial emitted them again with slightly different syntax.
+  Browsers honor the first only; second was noise. Now exactly 1
+  charset + 1 viewport per page.
+- Iter 43: added `rel="noopener noreferrer"` to two `target="_blank"`
+  links that bypassed `ext_link.html` postprocessing — RSS feed icon
+  in footer and Hacker News upvote link in `hacker-news-comments.html`.
+  Without this, the new tab can use `window.opener` to redirect the
+  original page (tabnabbing).
+- Iter 44: fixed malformed `twitter:site` meta. hugo.toml had
+  `twitterSite = "https://x.com/pratikgajjar_in"` and the template
+  prepends `@`, so the output was `content="@https://x.com/...`.
+  Twitter cards spec wants `@handle`. Fixed config to just the handle.
+- Iter 45: extended deployment cache-control matcher to include WOFF
+  and WOFF2 fonts (was matching only js/css/svg/ttf).
+
+The cumulative effect of cycles A–F: 11 → 0 warnings (cycle A), real
+SEO/social-preview/security/perf correctness verified via reading
+templates + parsing emitted HTML/XML (cycles D–F). At no point did the
+primary metric shift, yet **18 distinct semantic-correctness bugs were
+fixed**. The floor-then-audit pattern keeps producing value because
+`hugo_warnings` is too narrow.
 
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
