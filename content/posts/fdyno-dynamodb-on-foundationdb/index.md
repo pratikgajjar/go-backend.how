@@ -49,13 +49,13 @@ This post is what fell out. By the end you'll know:
 - **What it takes to clone the DynamoDB API faithfully** — every operation,
   every error message, every ordering rule, validated against DynamoDB Local
   with 780 differential probes and against a 526-test conformance suite
-- **Why FDB makes some DynamoDB constraints disappear** — strongly-consistent
-  secondary indexes, full ACID across base + indexes + CDC in one transaction,
-  no 10 GB LSI partition cap, no 3,000 RCU hot-partition throttle
+- **What changes when you put it on FDB** — strongly-consistent secondary
+  indexes, ACID across base + indexes + CDC in one transaction, no LSI
+  partition cap, no per-partition throttle — and what stays the same
 - **What it costs in Go** — every operation pays a CGO crossing into the FDB
   client; we'll measure that with a profile
-- **Where FDB layering shines and where it doesn't** — the tradeoffs are
-  honest, not marketing
+- **What DynamoDB the service still does better** — operational maturity,
+  managed scale, AWS ecosystem fit; this layer doesn't try to replace those
 
 The numbers that anchor the rest of the post:
 
