@@ -190,22 +190,24 @@ best-practices + seo categories.
 | Iter 20 narrower weight  | **93** (LCP 1651) | **88** (LCP 1951) | **81** (LCP 2402) |
 | Iter 21 @font-face match | 93 (correctness fix, no perf delta) | 88 | 81 |
 | Iter 22 drop TTF fallback | 93 (lean code, no perf delta) | 88 | 81 |
-| Iter 23 tight font subset | **94** (LCP 1576) | **89** (LCP 1801) | 81 |
+| Iter 23 tight font subset | **94** (LCP 1576) | 89 (LCP 1801) | 81 |
 | Iter 24 archive a11y     | (perf unchanged) — /archive/ a11y 95 → **100** | | |
+| Iter 25 italic preload   | 94 | **91** (FCP -300ms) | **86** (FCP -291ms, LCP -150ms) |
+| Iter 26 KaTeX preload    | (reverted — bandwidth competition pushed 1b LCP +775ms) | | |
 
 ### Final scores across all tested pages
 
 | Page | perf | a11y | bp | seo | LCP (ms) | FCP (ms) |
 |---|---:|---:|---:|---:|---:|---:|
-| `/` (home, theme-vanilla) | **94** | 100 | 100 | 100 | 1576 | 777 |
-| `/about/` | **94** | 100 | 100 | 100 | ~1576 | ~775 |
-| `/posts/` (list) | **94** | 100 | 100 | 100 | 1576 | 779 |
-| `/tags/` (cloud) | **94** | 100 | 100 | 100 | 1576 | 772 |
-| `/tags/postgres/` (term) | **94** | 100 | 100 | 100 | 1576 | 769 |
-| `/tags/tigerbeetle/` (term) | **94** | 100 | 100 | 100 | 1576 | 769 |
-| `/archive/` | **93** | 100 | 100 | 100 | 1576 | 906 |
-| `/posts/the-tiger-style/` | **89** | 100 | 100 | 100 | 1801 | 1201 |
-| `/posts/1b-payments-per-day/` | **81** | 100 | 100 | 100 | 2402 | 1502 |
+| `/` (home, theme-vanilla)   | **94** | 100 | 100 | 100 | 1576 | 776 |
+| `/about/`                   | **94** | 100 | 100 | 100 | 1576 | 781 |
+| `/posts/` (list)            | **94** | 100 | 100 | 100 | 1576 | 777 |
+| `/tags/` (cloud)            | **94** | 100 | 100 | 100 | 1576 | 769 |
+| `/tags/postgres/`           | **94** | 100 | 100 | 100 | 1576 | 769 |
+| `/tags/tigerbeetle/`        | **94** | 100 | 100 | 100 | 1576 | 769 |
+| `/archive/`                 | **92-93** | 100 | 100 | 100 | 1576-1726 | 906 |
+| `/posts/the-tiger-style/`   | **91** | 100 | 100 | 100 | 1801 | 902 |
+| `/posts/1b-payments-per-day/` | **86** | 100 | 100 | 100 | 2101 | 1212 |
 
 (scores: perf / a11y / best-practices / seo)
 
@@ -332,10 +334,11 @@ post pages can also use the async-CSS pattern without CLS. Recorded in
 autoresearch.ideas.md as a future tooling-required experiment.
 
 **Cumulative gains across this Lighthouse cycle**:
-- Home: 78 (dev) → 83 (prod baseline) → **94** (current). LCP 2927 → 1576 ms (-46%). FCP 906 → 777 ms.
-- /posts/ list, /tags/, /archive/: **93-94**.
-- Tiger Style: 82 → **89**. LCP 2401 → 1801 ms (-25%).
-- 1B-payments: 64 → **81**. LCP 3879 → 2402 ms (-38%).
+- Home: 78 (dev) → 83 (prod baseline) → **94** (current). LCP 2927 → 1576 ms (-46%). FCP 906 → 776 ms.
+- /posts/ list, /tags/, /about/: **94**.
+- /archive/: 92-93.
+- Tiger Style: 82 → **91**. LCP 2401 → 1801 ms (-25%). FCP 1509 → 902 ms (-40%).
+- 1B-payments: 64 → **86**. LCP 3879 → 2101 ms (-46%). FCP 2656 → 1212 ms (-54%).
 - a11y: 95-100 across pages → **100** across all pages.
 
 **Total wire savings on the home page** (vs initial baseline):
