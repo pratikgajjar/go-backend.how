@@ -337,6 +337,62 @@ number at commit time, atomic with the base mutation. Stream consumers
 can iterate `v/...` in commit order without worrying about clock skew or
 Lamport timestamps.
 
+# The hot path — a single PutItem, traced
+
+Before getting to the architectural ACID story, here's exactly what
+happens to one `PutItem` from the moment it hits the socket. I'll
+annotate it with measured latencies (single-node FDB on the bench
+machine, p50 numbers).
+
+```txt
+                               t (µs)        what
+   ┌──────────────────────────┐
+   │ HTTP POST / arrives      │     0        accept(2) returns
+   ├──────────────────────────┤
+   │ JSON decode              │   +30        goccy/go-json into putItemInput
+   │ X-Amz-Target → "PutItem" │              (decoded once, no reflection)
+   ├──────────────────────────┤
+   │ Validate input           │   +15        table-name regex, item-size
+   │                          │              ≤ 400 KB, expression syntax
+   ├──────────────────────────┤
+   │ db.Transact(...)         │   +40        ┐ CGO crossing #1: open txn
+   │   read schema            │   +500       │  fdb.NewTransaction()
+   │   readItem(old)          │   +1200      │  ↓ go ↔ C ↔ network
+   │   apply UpdateExpression │   +80        │  pure Go, no FDB
+   │   writeItem(new)         │   +20        │  buffered locally in client
+   │   for idx in indexes:    │   +20        │  buffered locally
+   │     writeIndexEntry      │              │
+   │   writeChangeRecord      │   +20        │  buffered locally
+   │   tx.Commit()            │   +6000      │  CGO + log fsync — the cost
+   │                          │              ┘
+   ├──────────────────────────┤
+   │ Encode response (CC etc) │   +25
+   │ HTTP write               │   +50        TCP_NODELAY
+   ├──────────────────────────┤
+   │ socket close (keepalive) │   +5
+   └──────────────────────────┘
+
+                            ≈ 8 ms total, p50
+```
+
+Two things stand out:
+
+1. **The commit alone is ~75% of wall-clock time.** Everything fdyno does
+   in Go between `db.Transact` opening and `tx.Commit` returning is
+   buffered locally in the FDB client; nothing crosses the network until
+   commit. Optimizing JSON parsing or expression evaluation cannot move
+   this needle.
+
+2. **Reads are CGO-heavy.** `readItem` is one FDB `Get` for ≤10 KB items,
+   so it incurs one round-trip. Even at ~1.2 ms p50 on a local cluster,
+   it's the second-largest line item. Multiply this across `Query`
+   (potentially hundreds of FDB reads in one transaction) and the CGO
+   overhead compounds.
+
+The rest of the post — the ACID property, the conformance story, the
+performance numbers — all sit on top of this profile. Knowing the shape
+of the hot path makes everything else easier to interpret.
+
 # The win that's worth the post: ACID across base + index + CDC
 
 In DynamoDB, an `UpdateItem` that touches a GSI does this:
