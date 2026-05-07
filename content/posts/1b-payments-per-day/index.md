@@ -707,10 +707,6 @@ Full setup, teardown, and bpftrace scripts are in the [benchmark repo](https://g
 
 [^4]: _Benchmarks were performed on an Apple M4 Mac Mini (10-core, 24 GB RAM) inside a Podman Linux VM (Fedora CoreOS 41, 4 CPU / 8 GB). Real-world performance will vary with storage, kernel, and workload._
 
-[^5]: [TigerBeetle](https://tigerbeetle.com/) — the financial transactions database used in this post's benchmarks.
-
-[^6]: [PostgreSQL](https://www.postgresql.org/) — the open-source relational database used in this post's benchmarks.
-
 [^7]: VR = [Viewstamped Replication](vr-revisited.pdf) — a leader-based consensus protocol by Oki & Liskov (1988), in the same family as Paxos and Raft. TigerBeetle's implementation is documented in their [VSR protocol docs](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/internals/vsr.md).
 
 _TigerBeetle® is a trademark of TigerBeetle, Inc. PostgreSQL® is a trademark of The PostgreSQL Global Development Group. This post is an independent benchmark and analysis — it is not affiliated with, endorsed by, or sponsored by either project. All trademarks belong to their respective owners._
