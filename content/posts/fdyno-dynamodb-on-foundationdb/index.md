@@ -108,33 +108,33 @@ other over the FDB transport. Most users never see this layout because the
 client hides it — but it shapes everything about how transactions work.
 
 ```txt
-                 ╔═════════════════╗
-                 ║    Client      ║   your app, our fdyno binary,
-                 ║  (Go via CGO)  ║   chooses keys to read/write
-                 ╚═══════┬════════╝
-                         │ read version, conflict ranges,
-                         │ mutation buffer
-                         ▼
-                 ┌────────────────┐
-                 │     Proxy      │   stateless: assigns commit
-                 │  (commit txn)  │   versions, fans out to logs
-                 └───────┬────────┘
-                         │
-                 ┌───────┴───────┐
-                 │   Resolver(s)  │   serializability checker
-                 │  (conflicts?)  │   over the read range
-                 └───────┬────────┘
-                         │ OK to commit
-                         ▼
-          ┌───────────────────────────┐
-          │   Transaction Logs (durable)   │  fsync here = committed
-          └─────────────┬──────────────┘
-                         │ async
-                         ▼
-          ┌───────────────────────────┐
-          │  Storage Servers (key ranges)  │  serve reads at any
-          │        b-tree on disk          │  version up to N seconds
-          └───────────────────────────┘
+            ┌────────────────┐
+            │     Client     │  your app / our fdyno binary
+            │  (Go via CGO)  │  chooses keys to read & write
+            └───────┬────────┘
+                    │ read version, conflict ranges, mutation buffer
+                    ▼
+            ┌────────────────┐
+            │     Proxy      │  stateless: hands out commit versions,
+            │  (commit txn)  │  fans mutations out to logs
+            └───────┬────────┘
+                    │
+                    ▼
+            ┌────────────────┐
+            │   Resolver(s)  │  optimistic-CC conflict checker
+            │  (conflicts?)  │  over your read range
+            └───────┬────────┘
+                    │  OK → commit
+                    ▼
+       ┌──────────────────────────────┐
+       │   Transaction Logs (durable) │  fsync here = committed
+       └──────────────┬───────────────┘
+                      │ replicate async
+                      ▼
+       ┌──────────────────────────────┐
+       │ Storage Servers (key ranges) │  serve reads at any version
+       │        b-tree on disk        │  for the past few seconds
+       └──────────────────────────────┘
 ```
 
 - **Client** is your process holding the FDB native client (`libfdb_c`).
