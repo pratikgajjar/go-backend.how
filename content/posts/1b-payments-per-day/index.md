@@ -199,7 +199,7 @@ $$
 \end{CD}
 $$
 
-<p style="text-align:center; font-family: var(--font-mono); font-size: 0.85rem; opacity: 0.7; margin-top: -0.5rem;">one thread · LSM + journal · io_uring + O_DIRECT</p>
+_one thread · LSM + journal · io_uring + O_DIRECT_
 
 With 6 replicas you tolerate 2 simultaneous node failures. A primary election needs 4 live nodes (4-of-6 quorum). The quorum math drives the "6" default — you want Byzantine-safe counts without paying for 7 or 9.
 
