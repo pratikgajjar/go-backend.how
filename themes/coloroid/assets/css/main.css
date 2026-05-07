@@ -1709,3 +1709,75 @@ html[data-force-dark] body[class*="theme-"] {
         gap: 0.4rem;
     }
 }
+
+/* Print-friendly: clean article reading on paper / PDF export */
+@media print {
+    /* Drop chrome that's irrelevant to a printed article */
+    .left-pane, .menu-button, .expand-button, .collapse-button,
+    .copy-btn, #back-to-top, #reading-progress,
+    .share-links, .keyboard-hint, .hacker-news-comments,
+    nav.menu, .resizer {
+        display: none !important;
+    }
+
+    /* Reset to a sensible paper-friendly base */
+    html, body, main, article {
+        background: white !important;
+        color: black !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 11pt;
+        line-height: 1.45;
+    }
+
+    a {
+        color: black !important;
+        text-decoration: underline;
+    }
+
+    /* Show full URL after each external link so paper readers can find them */
+    a[href^="http"]:not([href*="backend.how"])::after {
+        content: " <" attr(href) ">";
+        font-size: 0.85em;
+        word-break: break-all;
+    }
+
+    /* Code blocks: hairline border, no scrollbars, allow page breaks */
+    pre, .highlight {
+        background: #f5f5f5 !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+        page-break-inside: avoid;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    code {
+        background: #f5f5f5 !important;
+        color: black !important;
+    }
+
+    /* Don't split headings off from their following paragraph */
+    h1, h2, h3, h4 {
+        page-break-after: avoid;
+    }
+
+    /* Tables: keep rows together where possible */
+    table {
+        page-break-inside: avoid;
+    }
+
+    img {
+        max-width: 100% !important;
+        page-break-inside: avoid;
+    }
+
+    /* Footnotes show inline-ish in print */
+    .footnotes {
+        font-size: 0.85em;
+        border-top: 1px solid #ccc;
+        margin-top: 2rem;
+        padding-top: 1rem;
+    }
+}
