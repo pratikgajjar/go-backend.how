@@ -3,6 +3,10 @@
 <link rel="preload" href="/fonts/jetbrains/JetBrainsMono[wght].ttf" as="font" type="font/ttf" crossorigin>
 <link rel="dns-prefetch" href="//stats.backend.how">
 <link rel="preconnect" href="https://stats.backend.how">
+{{- if .Params.math }}
+<link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+{{- end }}
 <!-- Cross-document View Transitions: smooth fade between pages on supporting browsers -->
 <meta name="view-transition" content="same-origin">
 <!-- Theme and display settings -->
