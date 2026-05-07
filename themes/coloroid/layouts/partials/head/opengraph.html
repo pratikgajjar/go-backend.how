@@ -80,6 +80,10 @@
 {{ if .IsPage -}}
   {{ with .Site.Params.facebookAuthor -}}
     <meta property="article:author" content="https://www.facebook.com/{{ . }}">
+  {{ else -}}
+    {{ with .Site.Params.author.name -}}
+    <meta property="article:author" content="{{ . }}">
+    {{ end -}}
   {{ end -}}
   {{ with .Site.Params.facebookPublisher -}}
     <meta property="article:publisher" content="https://www.facebook.com/{{ . }}">
