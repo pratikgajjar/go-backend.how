@@ -14,28 +14,35 @@ math: true
 
 The thesis is one line:
 
-> **FoundationDB is a great database with a bad API.
-> DynamoDB is a great API hidden behind a proprietary service.
+> **FoundationDB has a wonderful engine and a tiny API.
+> DynamoDB has a wonderful API and a closed engine.
 > Put one on top of the other.**
 
-DynamoDB the API is some of the best data-store design I've worked with —
-partition + sort key, conditional writes, transactions, streams. The shape
-fits 80% of OLTP problems without a SQL planner in sight. But every byte
-lives in AWS, the consistency knobs are dictated by how the service was
-implemented (not by the API), and you can never own the engine.
+I use DynamoDB at work. The API is a joy to design against — partition +
+sort key, conditional writes, transactions, streams. The shape fits a lot
+of OLTP problems without a SQL planner in sight. The tradeoffs (eventually-
+consistent GSIs, partition limits, AWS-only) are real, and they're
+consequences of how the service was built for the scale it serves. Not
+wrong, just specific.
 
-FoundationDB is the opposite problem. It's the most underrated database in
-production today — Apple runs iCloud on it, Snowflake runs metadata on it,
-a handful of payment shops bet their ledgers on it — and it ships full ACID
-transactions across an ordered keyspace with deterministic simulation
-testing as the correctness story. The catch: the public API is `Get(key)`,
-`Set(key, value)`, `ClearRange`, and a transaction handle. That's it. No
-secondary indexes, no query language, no schema. You build the rest as a
-*layer* — and most teams don't have months to build a layer.
+FoundationDB is the engine I keep coming back to. Apple runs iCloud on it,
+Snowflake runs metadata on it, and a number of payment teams trust it with
+their ledgers. It ships full ACID transactions across an ordered keyspace
+and has [deterministic simulation testing](https://www.youtube.com/watch?v=OJb8A6h9jQQ)
+as the correctness story. What it doesn't ship is a friendly API: the
+public surface is `Get(key)`, `Set(key, value)`, `ClearRange`, and a
+transaction handle. No secondary indexes, no query language, no schema.
+You build the rest as a *layer*.
 
-fdyno is that layer. It takes the API people already know how to use and
-puts it on the engine I already trust to run things. Neither half is novel
-on its own; the combination is what makes it interesting.
+fdyno is that layer. The API people already know how to use, on the engine
+I already trust to run. Neither half is novel on its own; the combination
+is what makes it fun to write.
+
+A quick note on what this isn't: it isn't a competitor to DynamoDB the
+service. AWS runs DynamoDB at a scale and with operational guarantees I
+can't match from a Mac mini. fdyno is interesting in the niches where
+you'd rather own the engine than rent it — strong-consistency requirements,
+data sovereignty, or simply already running FDB.
 
 This post is what fell out. By the end you'll know:
 
@@ -64,23 +71,25 @@ The numbers that anchor the rest of the post:
 > **3,660 PutItem/s**, **13,533 GetItem/s** at 32 workers. The bottleneck
 > isn't FDB or Go logic — it's the **CGO boundary** burning ~48% of CPU.
 
-# The problem with DynamoDB the service
+# Where the API and the service part ways
 
-DynamoDB the API is excellent. DynamoDB the service has known sharp edges
-that fall out of how AWS implemented it:
+DynamoDB's tradeoffs are tradeoffs, not flaws. They were chosen carefully
+for the scale and operational profile AWS targets. Worth listing them
+side-by-side because the same set of choices, made on a different engine,
+lands somewhere different:
 
-| Constraint | Why it exists | What it costs you |
+| Property | DynamoDB the service | Why it's that way |
 |---|---|---|
-| GSI is eventually consistent | Async propagation across partitions | Reading-your-writes through an index requires backoff or app-level retries |
-| Cross-table writes aren't atomic | TransactWriteItems batches scoped per request | Two related tables can diverge on partial failure |
-| LSI partition cap of 10 GB | Single partition holds the LSI | Hot partitions stall once the LSI grows |
-| 3,000 RCU / 1,000 WCU per partition | Hash-based partition selection + hot-key throttling | Adaptive capacity helps but doesn't eliminate it |
-| 5 LSI + 20 GSI hard cap | Per-partition write amplification budget | Forces awkward access-pattern compromises |
-| AWS-only deployment | Service architecture | Vendor lock-in, region availability, data sovereignty |
+| GSI consistency | Eventual | Async propagation keeps writes fast at any scale |
+| Cross-table atomicity | Per-request scope (TransactWriteItems) | Bounded blast radius for retries |
+| LSI partition size | 10 GB cap | Single partition holds the LSI |
+| Per-partition throughput | 3,000 RCU / 1,000 WCU | Hash-based partition selection |
+| Index count | 5 LSI + 20 GSI | Per-partition write amplification budget |
+| Deployment | AWS regions only | Service architecture |
 
-None of these are wrong. They're consequences of how AWS chose to build the
-service on its underlying storage. The interesting question is: if you held
-the API constant and changed the engine, which constraints could you lift?
+Each of these is the right answer for the workload AWS optimizes for. The
+question fdyno asks isn't "are these wrong?" — they aren't — it's *if you
+held the API constant and changed the engine, which of these would change?*
 
 # A FoundationDB primer
 
@@ -441,8 +450,8 @@ Either every step lands together or none of them do. There is no window
 where the index is stale, no window where the stream is missing a record,
 no window where two consumers see different states. The cost is
 concentrated at the commit boundary (~5–8 ms for a single FDB
-transaction on a local cluster); the benefit is a guarantee DynamoDB
-literally cannot offer through its API.
+transaction on a local cluster); in return you get a property that falls
+out naturally of FDB's transaction model.
 
 Visually, the difference between the two write paths:
 
@@ -476,9 +485,11 @@ $$
 simultaneously. Either all of them, or none of them — there is no
 $\Delta$.
 
-This is the single architectural reason this experiment was worth
-running. Everything else (PartiQL, error messages, validation ordering)
-is grunt work. ACID-across-everything is the new property.
+This is the property that made the experiment worth running for me.
+Everything else (PartiQL, error messages, validation ordering) is grunt
+work — important grunt work, but the kind any team can grind through
+given enough patience. ACID-across-everything is what falls out for
+free once you put the API on top of FDB's transaction model.
 
 # Napkin math — what does this engine give us?
 
@@ -741,11 +752,11 @@ I learned that wasn't obvious before I started:
   cloning a black-box API, the only honest measure is differential
   parity with a reference implementation.**
 
-- **Strong consistency is achievable, and it's a real product feature.**
-  The cost is one FDB transaction per write. That's the entire price.
-  In return: GSI reads-your-writes, atomic cross-table updates, and
-  CDC records that arrive in commit order with no gaps. DynamoDB
-  literally cannot offer this property through its API.
+- **Strong consistency falls out of FDB's transaction model.**
+  The cost is one FDB transaction per write — that's the entire price.
+  What you get: GSI reads-your-writes, atomic cross-table updates, and
+  CDC records that arrive in commit order with no gaps. It's a property
+  the DynamoDB API doesn't promise on AWS, but it's free here.
 
 - **CGO is the silent tax on Go-on-FDB.** Every hot-path optimization in
   Go is wasted effort until the CGO crossings are reduced. Batching is
@@ -765,6 +776,31 @@ I learned that wasn't obvious before I started:
   up from reading TigerBeetle's source apply cleanly to a Go codebase.
   9,000 lines, no file over 1,740 LOC, every operation looks the same
   shape.
+
+# What DynamoDB the service buys you that fdyno doesn't
+
+This would be a poor post if I only listed what FDB makes possible.
+DynamoDB the service has a long list of properties that an experimental
+layer on a self-hosted engine simply doesn't offer:
+
+- **Operational simplicity.** No FDB cluster to run, no coordinators to
+  monitor, no log-server fsync queues to tune. You hand AWS your data and
+  they handle the rest.
+- **Predictable scale.** Adaptive capacity, on-demand mode, and
+  auto-splitting partitions are mature engineering. fdyno on a single FDB
+  cluster has its own ceilings, and shifting them is your problem.
+- **Multi-region.** Global Tables ship today. fdyno's multi-region story
+  defers to FDB, which has its own design problem.
+- **AWS ecosystem fit.** IAM, KMS, VPC endpoints, CloudWatch, X-Ray.
+  These are first-party features; fdyno would have to reimplement each
+  one if you need it.
+- **A decade of hardening.** DynamoDB has run real workloads at planet
+  scale for over ten years. fdyno passes a lot of tests; it has not run
+  Black Friday.
+
+If any of these matter for your workload, DynamoDB the service is the
+right answer. fdyno is interesting in the niches where the API matters
+to you but the hosted service doesn't fit \u2014 not as a replacement.
 
 # Limitations — things that aren't done
 
@@ -863,19 +899,20 @@ by ACID transactions on infrastructure you control.
 
 # Closing
 
-The thesis I opened with was one line:
+The thesis I opened with:
 
-> *FoundationDB is a great database with a bad API. DynamoDB is a great
-> API hidden behind a proprietary service. Put one on top of the other.*
+> *FoundationDB has a wonderful engine and a tiny API. DynamoDB has a
+> wonderful API and a closed engine. Put one on top of the other.*
 
 After 1,152 autoresearch iterations, 526/526 conformance tests, and
-~9,000 lines of Go, the thesis holds. The combination is the interesting
-part. Neither half is novel; the layer in between is.
+~9,000 lines of Go, I'm comfortable saying the layer is achievable
+without heroics. The combination is the interesting part — neither half
+is novel on its own.
 
-If you take one thing from this post: **a great API and a great engine
-are decoupleable.** The API is what users build against; the engine is
-what you operate. When the right one is open and the right one is
-proprietary, the gap is a project waiting to be written.
+The broader takeaway, if there is one: **APIs and engines are easier to
+decouple than people assume.** When a great API is closed and a great
+engine is open, the gap between them is a project. Sometimes a
+rewarding one.
 
 # Further reading
 
@@ -902,20 +939,25 @@ _DynamoDB® is a trademark of Amazon Web Services. FoundationDB® is a trademark
 
 ## Colophon
 
-fdyno was built end-to-end via an autoresearch loop: an LLM-driven
-agent run that proposes one experiment at a time, runs it, logs the
-result against the conformance + differential test suites, and either
-keeps or discards the change. **1,152 iterations. From `0/6` CRUD ops
-on day 1 to `526/526` conformance + `780/780` differential + `1,331/1,357`
-Alternator on day N.** The ledger is in
+fdyno was built end-to-end through an [autoresearch loop](https://github.com/pratikgajjar/txn-store/blob/main/autoresearch.md)
+— an LLM-driven agent that proposes one experiment at a time, runs it,
+logs the result against the conformance + differential test suites, and
+either keeps or discards the change. **1,152 iterations.** From `0/6`
+CRUD ops on day 1 to `526/526` conformance + `780/780` differential +
+`1,331/1,357` Alternator on day N. The ledger is in
 [`autoresearch.jsonl`](https://github.com/pratikgajjar/txn-store/blob/main/autoresearch.jsonl)
-and every commit it produced is on `main`.
+and every commit it produced is on `main`. My contribution was prompting,
+reviewing, and an awful lot of "no, the error message must match exactly,
+run it again."
 
 The blog post you just read is iteration 5 of the same loop applied to
-prose. Sonnet drafted the first version from the README + ARCHITECTURE
+prose. Sonnet drafted the first pass from the README + ARCHITECTURE
 doc; subsequent iterations added the napkin math, the FDB primer, the
-hot-path trace, and the lessons section. Hugo build was the
-correctness check — every iteration had to keep the site building.
+hot-path trace, the balance section. Hugo's build was the correctness
+check — every iteration had to keep the site building. Then [Chaitanya
+from TigerBeetle's correction](https://backend.how/posts/1b-payments-per-day#corrections)
+on a previous post taught me to be careful with framings, so this draft
+got extra passes for tone.
 
 As with every microbenchmark post: take the numbers with a pinch of
 salt. They're from one Mac mini, single-node FDB on the memory engine,
