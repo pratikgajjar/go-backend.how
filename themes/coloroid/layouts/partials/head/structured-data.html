@@ -85,7 +85,7 @@ $element "" -}} {{ $.Scratch.Add "breadcrumb" (slice (dict "url" ($.Scratch.Get
 
 <script type="application/ld+json">
     {
-      "@context": "http://schema.org",
+      "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "itemListElement": [{{ range $.Scratch.Get "breadcrumb" }}{{ if ne .position 1 }},{{ end }}{
             "@type": "ListItem",
