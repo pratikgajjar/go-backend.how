@@ -1111,7 +1111,9 @@ body.theme-tiger hr {
     font-style: normal;
     font-weight: 100 900;
     font-display: swap;
-    src: url("/fonts/jetbrains/JetBrainsMono[wght].ttf") format("truetype-variations");
+    src:
+        url("/fonts/jetbrains/JetBrainsMono[wght].woff2") format("woff2-variations"),
+        url("/fonts/jetbrains/JetBrainsMono[wght].ttf") format("truetype-variations");
 }
 
 /* Variable font: JetBrains Mono italic */
@@ -1120,8 +1122,9 @@ body.theme-tiger hr {
     font-style: italic;
     font-weight: 100 900;
     font-display: swap;
-    src: url("/fonts/jetbrains/JetBrainsMono-Italic[wght].ttf")
-        format("truetype-variations");
+    src:
+        url("/fonts/jetbrains/JetBrainsMono-Italic[wght].woff2") format("woff2-variations"),
+        url("/fonts/jetbrains/JetBrainsMono-Italic[wght].ttf") format("truetype-variations");
 }
 
 /* Departure Mono for display typography */
