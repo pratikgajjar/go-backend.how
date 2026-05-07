@@ -149,7 +149,7 @@ img {
     align-items: center;
     margin-bottom: 1.5rem;
     font-size: 0.85rem;
-    opacity: 0.7;
+    opacity: 0.85;
     font-family: var(--font-mono);
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -393,6 +393,14 @@ body:not([class*="theme-"]) .table-of-content {
 .table-of-content ol li a {
     transition: color 0.2s ease;
     text-decoration: none;
+    /* TOC sits on a slightly darker bg; force enough contrast by
+       darkening the link color further for the TOC context. */
+    color: oklch(from var(--color-link) calc(l - 0.15) c h);
+}
+@supports not (color: oklch(from white l c h)) {
+    .table-of-content ol li a {
+        color: var(--article-text);
+    }
 }
 
 .table-of-content ol li a:hover {
@@ -598,6 +606,17 @@ sup a[href^="#fn"]::after {
     max-width: 100%;
     margin: 0 auto;
     word-wrap: break-word;
+}
+
+/* Footnote back-link targets must be >=24x24 CSS px for WCAG target-size. */
+a.footnote-backref {
+    display: inline-block;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0.1em 0.4em;
+    text-align: center;
+    line-height: 1.4;
+    margin-left: 0.25em;
 }
 
 hr {
