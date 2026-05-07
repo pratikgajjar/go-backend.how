@@ -1,6 +1,6 @@
 # Pre-push review note — backend.how
 
-**Status**: 124 local commits ahead of `origin/main`, NOT pushed.
+**Status**: 127 local commits ahead of `origin/main`, NOT pushed.
 **Working tree**: clean.
 **Build**: deterministic (verified hash `c6087a980ba5` reproduces across two
 sequential `hugo --environment production --minify --gc` runs).
@@ -26,6 +26,7 @@ in here is a code change.
 | 6 | Lighthouse perf (lh_perf) | 33 | 01:46 → 03:37 | home 83 → 95, all a11y 100 |
 | 7 | Site-quality (defects metric, cycle 2+3) | 22 | 03:44 → 04:58 | defects 10 → 5 |
 | 8 | fdyno polish + final baseline | 6 | 05:03 → 05:05 | defects 5 → 0 |
+| 9 | Post-review experiments | 4 | (later session) | KaTeX self-host (reverted), description_too_long detector, twitter→x cleanup |
 
 ---
 
@@ -206,6 +207,30 @@ other systems. **Decision required from author** to flip `draft: true` →
   literal `\u2014` escape sequence with em-dash character; added inline
   `[^1]`–`[^5]` references for 5 orphan footnote definitions (Goldmark
   was silently dropping them)
+
+### Phase 9: Post-review experiments (`3c531d7..efcf4f5`)
+- **Iter 20** (DISCARDED): self-host KaTeX 0.16.11 vendored under
+  `/vendor/katex/` (woff2-only fonts, ~600 KB), CSP tightened to drop
+  `cdn.jsdelivr.net` from `font-src` and `style-src`. Localhost
+  Lighthouse on 1b-payments regressed perf 85→77, LCP 2251→3752 ms
+  (3-run consistent). Cause: same-origin connection-pool contention
+  on HTTP/1.1 — 272 KB `katex.min.js` (Low defer priority) serializes
+  vs critical-path assets, KaTeX fonts (re-elected as LCP element when
+  math renders) wait on the JS chain. Preload hints made it worse
+  (FCP 1212→3153 ms — preempted main CSS/fonts). Reverted entirely.
+  Production HTTP/2 may flip the result but our test rig (Python
+  `http.server` HTTP/1.1) cannot validate. Documented in
+  `autoresearch.ideas.md`.
+- **Iter 21** (KEPT): added a `SOFT WARNINGS` tier to
+  `scripts/site-quality-check.py`. First dimension:
+  `description_too_long` (>200 chars). Surfaces 11 posts; values
+  range 210 → 376 chars. Author-voice prose so flagged but not
+  auto-fixed. METRIC stays at 0; only hard defects count.
+- **Iter 22** (KEPT): twitter.com → x.com brand consistency.
+  `themes/coloroid/layouts/_default/single.html` share-twitter button
+  now uses `https://x.com/intent/tweet` directly (was twitter.com,
+  redirected). `content/contributors/pratik-gajjar/_index.md` link
+  updated to x.com. ZERO `twitter.com` refs left in rendered output.
 
 ---
 
