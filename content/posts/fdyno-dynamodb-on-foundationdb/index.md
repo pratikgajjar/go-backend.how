@@ -722,6 +722,50 @@ I haven't yet measured fdyno against a multi-node FDB cluster on real
 hardware. That's the obvious next step — and the place where this
 project either earns its keep or doesn't.
 
+# What this experiment actually proved
+
+Stripping out the napkin math and the architecture diagrams, here's what
+I learned that wasn't obvious before I started:
+
+- **DynamoDB the API is more "compositional primitives" than "API."**
+  Once you have ordered KV + ACID transactions + tuples + versionstamps,
+  the entire DynamoDB shape (PutItem, Query, GSI, streams, transactions)
+  falls out of layered code. There's no magic at the storage layer —
+  every interesting property comes from FDB's transaction model.
+
+- **Differential testing was worth more than every doc I read.** The
+  780-probe `compatbench` runs the same operation against fdyno and
+  DynamoDB Local and compares responses byte-for-byte. It found bugs in
+  number normalization, validation ordering, and ReturnValues semantics
+  that I'd never have caught from the AWS docs alone. **If you're
+  cloning a black-box API, the only honest measure is differential
+  parity with a reference implementation.**
+
+- **Strong consistency is achievable, and it's a real product feature.**
+  The cost is one FDB transaction per write. That's the entire price.
+  In return: GSI reads-your-writes, atomic cross-table updates, and
+  CDC records that arrive in commit order with no gaps. DynamoDB
+  literally cannot offer this property through its API.
+
+- **CGO is the silent tax on Go-on-FDB.** Every hot-path optimization in
+  Go is wasted effort until the CGO crossings are reduced. Batching is
+  the lever, but DynamoDB's API contract pins single-item operations to
+  single FDB transactions. Future work: a Go client that pipelines
+  multiple in-flight transactions to amortize the CGO cost.
+
+- **FDB's 5-s / 10-MB transaction limits are wide enough for everything
+  DynamoDB can express.** TransactWriteItems caps at 100 items;
+  BatchWriteItem at 25; the largest single operation is a 400-KB item.
+  All of this comfortably fits inside one FDB transaction with
+  hundreds of multiples of headroom.
+
+- **The "Tiger Style" coding discipline transfers.** Onion architecture
+  (transport-agnostic ops, thin HTTP adapters, no shared mutable state),
+  static-ish allocation, no global state — all the practices I picked
+  up from reading TigerBeetle's source apply cleanly to a Go codebase.
+  9,000 lines, no file over 1,740 LOC, every operation looks the same
+  shape.
+
 # Limitations — things that aren't done
 
 This is an experiment, not a production database. Concrete gaps:
