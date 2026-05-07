@@ -35,8 +35,8 @@ email = 'pg@backend.how'
 name = 'Pratik'
 
 [outputs]
-home = ['html', 'amp', 'rss']
-page = ['html', 'rss']
+home = ['html', 'rss']
+page = ['html']
 
 [markup]
 [markup.highlight]
