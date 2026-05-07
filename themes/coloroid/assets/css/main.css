@@ -290,8 +290,15 @@ header {
     text-align: center;
 }
 
-header h1 {
+header h1,
+header .site-title {
     margin: 0;
+    font-family: var(--font-heading);
+    line-height: 1.3em;
+    letter-spacing: -0.05em;
+    color: var(--article-text);
+    font-size: 2em;
+    font-weight: bold;
 }
 
 footer {
