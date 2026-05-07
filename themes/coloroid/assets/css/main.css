@@ -1461,19 +1461,51 @@ html[data-force-dark] body[class*="theme-"] {
 }
 
 /* Related Posts */
-.related-posts {
+.related-posts,
+.series-nav {
     margin-top: 2rem;
     padding-top: 1.25rem;
     border-top: 1px dashed;
 }
 
-.related-posts h4 {
+.related-posts h4,
+.series-nav h4 {
     margin: 0 0 0.85rem 0;
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     opacity: 0.55;
     font-weight: 600;
+}
+
+.series-nav ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.series-nav li {
+    margin-bottom: 0.45rem;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.series-nav li.current {
+    opacity: 0.85;
+}
+
+.series-nav .series-current {
+    margin-left: 0.5rem;
+    font-size: 0.78rem;
+    opacity: 0.6;
+}
+
+.series-nav a {
+    text-decoration: none;
+}
+
+.series-nav a:hover {
+    text-decoration: underline dashed;
 }
 
 .related-post {

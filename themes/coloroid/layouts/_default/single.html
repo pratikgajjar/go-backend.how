@@ -25,6 +25,32 @@
 
   {{ partial "terms.html" (dict "taxonomy" "tags" "page" .) }}
 
+  {{ with .Params.series }}
+    {{ $page := $ }}
+    {{ range $seriesName := . }}
+      {{ with index $.Site.Taxonomies.series $seriesName }}
+        {{ $pages := .Pages.ByDate }}
+        {{ if gt (len $pages) 1 }}
+        <nav class="series-nav" aria-label="{{ $seriesName }} series navigation">
+          <h4>Series: {{ $seriesName | humanize | title }}</h4>
+          <ol>
+            {{ range $i, $p := $pages }}
+              <li{{ if eq $p.RelPermalink $page.RelPermalink }} class="current"{{ end }}>
+                {{ if eq $p.RelPermalink $page.RelPermalink }}
+                  <strong>{{ add $i 1 }}. {{ $p.Title }}</strong>
+                  <span class="series-current">(you are here)</span>
+                {{ else }}
+                  <a href="{{ $p.RelPermalink }}">{{ add $i 1 }}. {{ $p.Title }}</a>
+                {{ end }}
+              </li>
+            {{ end }}
+          </ol>
+        </nav>
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+
   {{ if .IsPage }}
   <div class="share-links">
     <span>Share:</span>
