@@ -10,16 +10,26 @@
 {{- $isInlineableKind := ne .Kind "page" -}}
 {{- $isArchive := eq .Layout "archive" -}}
 {{- if or $isInlineableKind $isArchive -}}
-  {{- /* Non-post pages don't render code blocks, so use a CSS variant
-         that omits the Chroma syntax-highlight rules (~5 KB saved on
-         every list/home/about/archive/term page). The full main.css
-         is still used by individual posts. */ -}}
-  {{- with resources.Get "css/main-nochroma.css" }}
+  {{- /* Non-post pages don't render code blocks, so strip the Chroma
+         syntax-highlight rules from main.css before inlining (~5 KB
+         saved on every list/home/about/archive/term page). The full
+         main.css is still used by individual posts. The strip uses a
+         regex to remove the Chroma section delimited by the comments
+         in the source CSS. */ -}}
+  {{- with resources.Get "css/main.css" }}
     {{- if eq hugo.Environment "development" }}
     <link rel="stylesheet" href="{{ .RelPermalink }}" crossorigin>
     {{- else }}
       {{- with . | minify }}
-    <style>{{ .Content | safeCSS }}</style>
+        {{- $css := .Content -}}
+        {{- /* Strip the Chroma block (lines 688-965ish in source) and
+               the body[class*="theme-"] .chroma|.highlight pre|chroma
+               code rules. The minified single-line CSS uses these
+               selectors so we strip by matching them directly. */ -}}
+        {{- $css = replaceRE `\.chroma[ .{][^{]*\{[^}]*\}` "" $css -}}
+        {{- $css = replaceRE `body\[class\*=theme-\] \.chroma[^{]*\{[^}]*\}` "" $css -}}
+        {{- $css = replaceRE `body\[class\*=theme-\] \.highlight pre\{[^}]*\}` "" $css -}}
+    <style>{{ $css | safeCSS }}</style>
       {{- end }}
     {{- end }}
   {{- end }}
