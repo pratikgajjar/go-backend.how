@@ -1032,28 +1032,23 @@ body.theme-tiger hr {
     border-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Variable font: JetBrains Mono normal — restricted to weights 400-700
-   (the only weights this design system uses). The TTF fallback retains
-   the full 100-900 range; modern browsers all support woff2. */
+/* Variable font: JetBrains Mono — restricted to weights 400-700 (the
+   only weights this design system uses). woff2 is universally supported
+   by all browsers >=2018; the TTF fallback was dead bytes. */
 @font-face {
     font-family: "JetBrains Mono";
     font-style: normal;
     font-weight: 400 700;
     font-display: swap;
-    src:
-        url("/fonts/jetbrains/JetBrainsMono[wght].woff2") format("woff2-variations"),
-        url("/fonts/jetbrains/JetBrainsMono[wght].ttf") format("truetype-variations");
+    src: url("/fonts/jetbrains/JetBrainsMono[wght].woff2") format("woff2-variations");
 }
 
-/* Variable font: JetBrains Mono italic */
 @font-face {
     font-family: "JetBrains Mono";
     font-style: italic;
     font-weight: 400 700;
     font-display: swap;
-    src:
-        url("/fonts/jetbrains/JetBrainsMono-Italic[wght].woff2") format("woff2-variations"),
-        url("/fonts/jetbrains/JetBrainsMono-Italic[wght].ttf") format("truetype-variations");
+    src: url("/fonts/jetbrains/JetBrainsMono-Italic[wght].woff2") format("woff2-variations");
 }
 
 /* Departure Mono for display typography */
