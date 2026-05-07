@@ -1710,6 +1710,53 @@ html[data-force-dark] body[class*="theme-"] {
     }
 }
 
+/* Image Lightbox */
+#image-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: zoom-out;
+    padding: 1.5rem;
+}
+
+#image-lightbox.open {
+    display: flex;
+}
+
+#image-lightbox img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+}
+
+#image-lightbox .lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    font-size: 1.4rem;
+    line-height: 1;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#image-lightbox .lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 /* Print-friendly: clean article reading on paper / PDF export */
 @media print {
     /* Drop chrome that's irrelevant to a printed article */
