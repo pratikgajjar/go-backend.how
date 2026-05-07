@@ -238,11 +238,39 @@ md_heading_skip, no_h1, multiple_h1, external_link_broken (cached, opt-in).
 All tested pages: **a11y 100**, bp 100, seo 100 (except 404 which is
 intentionally noindex'd → seo 69).
 
-Perf scores held or improved across the board. Notable post bumps:
-- tiger-style: 91 → **93** (LCP 1801 → 1651 ms)
+| Page                                              | perf | a11y | bp | seo |
+|---|---:|---:|---:|---:|
+| `/` (home)                                        | **95** | 100 | 100 | 100 |
+| `/about/`                                         | 94 | 100 | 100 | 100 |
+| `/posts/` list                                    | 94 | 100 | 100 | 100 |
+| `/tags/` cloud                                    | 94 | 100 | 100 | 100 |
+| `/archive/`                                       | 93 | 100 | 100 | 100 |
+| `/404.html`                                       | 94 | 100 | 100 | 69 (noindex, intentional) |
+| `/posts/post-query-optimise/`                     | 92 | 100 | 100 | 100 |
+| `/posts/the-tiger-style/`                         | 91 | 100 | 100 | 100 |
+| `/posts/the-best-way-to-learn-backend-web-…/`     | 91 | 100 | 100 | 100 |
+| `/posts/lost-ssh-access-to-ec2/`                  | 91 | 100 | 100 | 100 |
+| `/posts/the-psychology-of-seeking-help/`          | 91 | 100 | 100 | 100 |
+| `/posts/creating-content/`                        | 91 | 100 | 100 | 100 |
+| `/posts/building-…-valkey-part-1/`                | 91 | 100 | 100 | 100 |
+| `/posts/running-101/`                             | 90 | 100 | 100 | 100 |
+| `/posts/system-design-tinder/`                    | 89 | 100 | 100 | 100 |
+| `/posts/cat-stereogram-dark-mode/`                | 89 | 100 | 100 | 100 |
+| `/posts/pre-owned-…-valkey-part-2/`               | 87 | 100 | 100 | 100 |
+| `/posts/1b-payments-per-day/`                     | 85 | 100 | 100 | 100 |
+| `/posts/temporal-under-the-hood/`                 | 81 | 100 | 100 | 100 |
+
+Notable post bumps from this cycle:
+- tiger-style: 91 → **93** (LCP 1801 → 1651 ms) — held since iter 11
 - /about/: 92 → **94**
 - valkey-part-1: 91 → 93
 - post-query-optimise: 91 → 92
+- home: 94 → **95** (cumulative effect of h1 cleanup + scrollbar CSS bug fix)
+
+Lowest-perf posts (1b at 85, temporal at 81) are bound by KaTeX's
+third-party CDN load and large article HTML — the deferred ideas in
+autoresearch.ideas.md (self-host KaTeX, per-page critical CSS) would
+help them.
 
 ### Final scores across all tested pages
 
