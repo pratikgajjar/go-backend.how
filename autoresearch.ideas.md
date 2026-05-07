@@ -92,6 +92,7 @@ backlog were all already implemented in the theme:
 - **Add FAQ structured data** — for posts like "Lost SSH Access" that answer specific questions
 - **Optimize font loading** — subset JetBrains Mono to latin-only, convert TTF → WOFF2 (would need `pyftsubset` or similar; ~7-8× payload reduction expected)
 - **`fetchpriority="high"`** on hero/above-fold images
+- **Resize fallback OG image** — `static/og-image.png` is 512×512 (square). Facebook/LinkedIn/Twitter `summary_large_image` cards expect 1200×630 (1.91:1). The square gets cropped/shown smaller in social previews. Needs a graphics tool to regenerate; ideally with the site's theme color (`#100f0f`) and "Backend.how" branding.
 
 ### Pruned (verified already adequate)
 
