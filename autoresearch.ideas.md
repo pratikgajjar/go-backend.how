@@ -2,7 +2,7 @@
 
 Living backlog. Items get crossed off as they're done; stale claims get pruned.
 
-Last reviewed: **2026-05-06** (autoresearch session, 12 iterations: bug-fixes + perf + UX).
+Last reviewed: **2026-05-06** (autoresearch session, 14 iterations: bug-fixes + perf + UX).
 
 ---
 
@@ -18,6 +18,7 @@ Last reviewed: **2026-05-06** (autoresearch session, 12 iterations: bug-fixes + 
 - **JetBrains Mono preload** — added to head.html for faster initial paint
 - **Series prev/next navigation** — single.html renders an ordered list of all posts in a series with the current one marked as "(you are here)"; verified on Valkey Part 1 + Part 2
 - **Print-friendly CSS** — `@media print` stylesheet hides chrome, resets to white-on-black, shows external link URLs inline, keeps headings/tables/code blocks together across page breaks
+- **Image lightbox** — vanilla-JS click-to-zoom for any `.article-content img`. ESC, ×, or click-outside to close. Body scroll locked while open
 - **Build is clean** — 0 warnings/deprecations from `hugo --logLevel debug` (was 11)
 
 ## ✅ Already in the theme (verified — were stale claims)
@@ -34,17 +35,19 @@ Last reviewed: **2026-05-06** (autoresearch session, 12 iterations: bug-fixes + 
 
 ---
 
-## 🔧 Medium Effort (1–3 hours each)
+## 🔧 Medium Effort — All done
 
-- **Active TOC highlighting** — IntersectionObserver to highlight current section
-- **Image lightbox/zoom** — click to enlarge images in articles
-- **Post descriptions on list page** — show `.Description` under each post title in `/posts/`
+The medium-effort tier is now empty. The remaining items in the original
+backlog were all already implemented in the theme:
 
-### ✅ Verified already-done in theme (no work needed)
-
-- ~~Related posts section~~ — `single.html` uses `.Site.RegularPages.Related` with first 3
-- ~~Social sharing buttons~~ — `single.html` already has X, LinkedIn, copy-link
+- ~~Active TOC highlighting~~ — IntersectionObserver in `main.js` (`initTOCHighlight`); CSS class `.toc-active` styled
+- ~~Image lightbox/zoom~~ — added in iter 14 of this session
+- ~~Post descriptions on list page~~ — `list.html` already uses `{{ with .Description }}<p class="post-description">...</p>{{ end }}`; verified 13 render on `/posts/`
+- ~~Related posts section~~ — `single.html` uses `.Site.RegularPages.Related | first 3`
+- ~~Social sharing buttons~~ — `single.html` has X, LinkedIn, copy-link
 - ~~Footnote back-links~~ — Goldmark default emits `class="footnote-backref"` with bidirectional refs (multi-reference support too)
+- ~~Series linking~~ — added in iter 11 of this session
+- ~~Print-friendly CSS~~ — added in iter 12 of this session
 
 ---
 
