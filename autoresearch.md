@@ -1,3 +1,44 @@
+# Autoresearch — Latest sessions
+
+## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 16 iterations)
+
+**Metric**: `hugo_warnings` (lower is better). 11 → 0.
+
+Fixed 4 critical SEO/correctness bugs (OG image absolute URLs, JSON-LD
+valid + absolute, dishonest SearchAction removed, raw-HTML warning),
+1 missing tag, Hugo 0.148+ deprecations, and stale public/ artifacts.
+Added JetBrains Mono preload, series prev/next nav (Valkey), print
+stylesheet, and image lightbox. Pruned 9+ stale items from
+`autoresearch.ideas.md` that were already implemented in the theme.
+Site at 0 warnings, all medium-effort backlog items closed.
+
+**Stop condition**: metric at floor (cannot go below 0), all listed
+quick-wins and medium-effort items either done or verified-already-done.
+Remaining backlog is larger-feature work (search, comments, OG image
+generation, dark/light toggle) — half-day+ each.
+
+---
+
+## Session 2026-05-06: fdyno blog draft (PAUSED at iter 13)
+
+**Artifact**: `content/posts/fdyno-dynamodb-on-foundationdb/index.md`
+(`draft: true`, 6,477 words, 995 lines, builds in 73 ms).
+
+Drafted a TigerBeetle/Temporal-style post on building a DynamoDB-compatible
+service on FoundationDB. Includes thesis pull-quote, FDB primer with
+4-process diagram + MVCC timeline, fdyno layered architecture, keyspace
+design, hot-path PutItem trace, ACID-across-everything write path, napkin
+math, conformance story, performance numbers with CGO bottleneck, balanced
+"What DynamoDB still does better" section, lessons, limitations, when to
+use, closing tied to thesis, further reading, self-deprecating colophon.
+
+13 iterations of tone calibration to user voice (humble, balanced, no
+digs, "tradeoffs not flaws", positive energy). Saved
+`feedback_writing_positive_no_digs.md` and `user_blog_voice_humble_balanced.md`
+to memory.
+
+---
+
 # Autoresearch: TigerBeetle Bottleneck — CONCLUDED
 
 ## The answer
