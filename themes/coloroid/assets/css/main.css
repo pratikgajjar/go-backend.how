@@ -254,6 +254,17 @@ blockquote p {
     margin: 0;
 }
 
+/* Links inside blockquote sit on a slightly darker bg; darken further
+   to hit WCAG AA contrast on light themes. */
+blockquote a {
+    color: oklch(from var(--color-link) calc(l - 0.15) c h);
+}
+@supports not (color: oklch(from white l c h)) {
+    blockquote a {
+        color: var(--article-text);
+    }
+}
+
 .inline-image {
     height: 1em;
     width: auto;
@@ -430,12 +441,23 @@ body:not([class*="theme-"]) .table-of-content {
     background: oklch(16.96% 0.0017 17.32); /* Light grey background for the track */
 }
 
-/* For Firefox */
-scrollbar-width: thin; /* Make the scrollbar thin */
-scrollbar-color: oklch(62.68% 0 0) oklch(95.81% 0 0); /* Thumb color and track color */
+/* For Firefox — these declarations must be on an element selector. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(62.68% 0 0) oklch(95.81% 0 0);
+}
 
-summary {
-    padding: 5px;
+summary,
+details > summary,
+.article-content details > summary {
+    /* Touch-target minimum (WCAG 2.5.5): 24x24 CSS px.
+       Selectors are progressively more specific so user-agent / Hugo
+       defaults can't shrink the height below 24px. */
+    display: block;
+    padding: 0.5rem 0.75rem;
+    min-height: 1.6em;
+    cursor: pointer;
+    line-height: 1.4;
 }
 
 li {
@@ -473,6 +495,17 @@ ul ul {
     padding: 1.5rem;
     border-radius: 8px;
     margin: 1.5em 0;
+}
+
+/* Mermaid renders edge/node labels via <foreignObject><div><span><p>;
+   force a high-contrast backdrop and text color against the dark
+   .mermaid container (axe-core flags low contrast on the auto-styled
+   span.edgeLabel labels). */
+.mermaid foreignObject .labelBkg,
+.mermaid foreignObject .edgeLabel,
+.mermaid foreignObject .edgeLabel p {
+    color: oklch(95% 0 0);
+    background-color: oklch(18% 0.01 250);
 }
 
 .highlight pre code {
@@ -1450,7 +1483,7 @@ html[data-force-dark] body[class*="theme-"] {
 .series-nav .series-current {
     margin-left: 0.5rem;
     font-size: 0.78rem;
-    opacity: 0.6;
+    opacity: 0.85;
 }
 
 .series-nav a {
