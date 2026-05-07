@@ -1722,7 +1722,7 @@ html[data-force-dark] body[class*="theme-"] {
 .page-404 .error-code {
     font-size: 6rem;
     margin: 0;
-    opacity: 0.2;
+    opacity: 0.85;
     line-height: 1;
     font-family: var(--font-display);
     font-weight: 400;
