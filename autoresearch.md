@@ -1,6 +1,6 @@
 # Autoresearch — Latest sessions
 
-## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 45 iterations across 6 cycles)
+## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 49 iterations across 7 cycles)
 
 **Metric**: `hugo_warnings` (lower is better). 11 → 0.
 
@@ -106,10 +106,32 @@ in RSS, sitemap, and config that no metric was watching:
 - Iter 45: extended deployment cache-control matcher to include WOFF
   and WOFF2 fonts (was matching only js/css/svg/ttf).
 
-The cumulative effect of cycles A–F: 11 → 0 warnings (cycle A), real
+**Cycle G (iter 47–49)** — security headers + JS audit, found 3 more issues:
+
+- Iter 47: `themes/coloroid/static/_headers` emitted **two** Content-Security-
+  Policy headers. The first had `frame-ancestors 'none'` (no embedding
+  at all); the second had `frame-ancestors 'self'`. Browsers take the
+  intersection, so 'none' won — but `X-Frame-Options: SAMEORIGIN` on
+  the same response said the opposite. Resolved: one CSP with
+  `frame-ancestors 'self'` matching X-Frame-Options.
+- Iter 48: tightened CSP by removing dead third-party permissions.
+  Verified via grep that templates/content reference NONE of:
+  `static.cloudflareinsights.com`, `cloudflareinsights.com`,
+  `mirrors.creativecommons.org`. Site uses Plausible at
+  `stats.backend.how` (covered by `*.backend.how`) and HN comments hit
+  `hn.algolia.com`. CSP went from 7 third-party hosts to 4.
+- Iter 49: `themes/coloroid/assets/js/hn-comments.js` emitted a
+  `<a href=... target="_blank">` HN user-profile link with no
+  `rel="noopener noreferrer"` (same tabnabbing concern as iter 43,
+  but in the JS-emitted HTML rather than templates). Also wrapped
+  `comment.author` in `encodeURIComponent` for the URL — defense in
+  depth against any malformed username (HN usernames are restricted
+  in practice but the safety has no cost).
+
+The cumulative effect of cycles A–G: 11 → 0 warnings (cycle A), real
 SEO/social-preview/security/perf correctness verified via reading
-templates + parsing emitted HTML/XML (cycles D–F). At no point did the
-primary metric shift, yet **18 distinct semantic-correctness bugs were
+templates + parsing emitted HTML/XML (cycles D–G). At no point did the
+primary metric shift, yet **21 distinct semantic-correctness bugs were
 fixed**. The floor-then-audit pattern keeps producing value because
 `hugo_warnings` is too narrow.
 
