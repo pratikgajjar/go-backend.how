@@ -1,6 +1,6 @@
 # Pre-push review note — backend.how
 
-**Status**: 127 local commits ahead of `origin/main`, NOT pushed.
+**Status**: 129 local commits ahead of `origin/main`, NOT pushed.
 **Working tree**: clean.
 **Build**: deterministic (verified hash `c6087a980ba5` reproduces across two
 sequential `hugo --environment production --minify --gc` runs).
