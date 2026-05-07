@@ -2,7 +2,7 @@
 
 Living backlog. Items get crossed off as they're done; stale claims get pruned.
 
-Last reviewed: **2026-05-06** (autoresearch session, 14 iterations: bug-fixes + perf + UX).
+Last reviewed: **2026-05-06** (autoresearch session, 20 iterations: bug-fixes + perf + UX).
 
 ---
 
@@ -20,6 +20,9 @@ Last reviewed: **2026-05-06** (autoresearch session, 14 iterations: bug-fixes + 
 - **Print-friendly CSS** — `@media print` stylesheet hides chrome, resets to white-on-black, shows external link URLs inline, keeps headings/tables/code blocks together across page breaks
 - **Image lightbox** — vanilla-JS click-to-zoom for any `.article-content img`. ESC, ×, or click-outside to close. Body scroll locked while open
 - **Build is clean** — 0 warnings/deprecations from `hugo --logLevel debug` (was 11)
+- **Homepage featured cards** — now show description + tags + read-time + date; was bare title + date
+- **Tag cloud with post counts** — `/tags/` is now a real tag cloud sized by post frequency in 4 tiers (xl/lg/md/sm), not a list of tag-summary headings
+- **View Transitions API** — smooth same-origin page fades on Chromium browsers, respects `prefers-reduced-motion`
 
 ## ✅ Already in the theme (verified — were stale claims)
 
@@ -54,33 +57,45 @@ backlog were all already implemented in the theme:
 ## 🏗️ Larger Features (Half day+)
 
 - **Client-side search** — Pagefind (~15 KB) or Fuse.js
-- **Dark/light mode toggle** — themes are there, just need a button + localStorage
 - **Comments via Giscus** — GitHub Discussions-backed
-- **Auto-generated OG images** — per-post via Hugo `images.Text`
-- **RSS per-tag feeds** — `/tags/system-design/index.xml`
-- **Keyboard navigation** — `j`/`k`, `/` to focus search
+- **Auto-generated OG images** — per-post via Hugo `images.Text` (or one-shot via Playwright/Puppeteer pipeline)
 - **View counter** — pull from Plausible API
 - **Webmention support** — IndieWeb integration
+
+### ✅ Verified already in theme (were stale claims)
+
+- ~~Dark/light mode toggle~~ — `initDarkModeToggle()` + `#theme-toggle` button in header
+- ~~Keyboard navigation~~ — `initKeyboardNav()` handles `j`/`k` for next/prev post
+- ~~RSS per-tag feeds~~ — Hugo emits them by default; verified `/tags/temporal/index.xml`, etc.
 
 ---
 
 ## 🎨 Design/UX Polish
 
-- **Homepage featured posts** — current layout is bare; add post descriptions, tags, card layout
-- **Tag cloud with post counts** — show post counts per tag on `/tags/`
 - **Gradient/pattern header per theme** — subtle visual differentiation
-- **Mobile hamburger menu** — for narrow viewports
-- **Smooth page transitions** — View Transitions API for same-origin nav
-- **Code block language label** — "go", "sql", "python" in top-right of code blocks
+
+### ✅ Done in this session
+
+- ~~Homepage featured posts~~ — now show description + tags + read-time per card
+- ~~Tag cloud with post counts~~ — added in iter 19 of this session
+- ~~Smooth page transitions~~ — added in iter 20 of this session
+
+### Pruned (deliberate theme decision or already adequate)
+
+- ~~Mobile hamburger menu~~ — flexbox + flex-wrap on `.nav-menu` already handles narrow viewports gracefully (4 menu items wrap to 2 lines max)
+- ~~Code block language label~~ — `initCodeLabels` is intentionally a no-op (theme author chose copy-button-only as sufficient)
 
 ---
 
 ## 📊 SEO & Performance (most fixed; remaining items)
 
 - **Add FAQ structured data** — for posts like "Lost SSH Access" that answer specific questions
-- **Optimize font loading** — subset JetBrains Mono to latin-only, convert TTF → WOFF2
+- **Optimize font loading** — subset JetBrains Mono to latin-only, convert TTF → WOFF2 (would need `pyftsubset` or similar; ~7-8× payload reduction expected)
 - **`fetchpriority="high"`** on hero/above-fold images
-- **Lazy load below-fold images** — markdown images may not be lazy yet (figure shortcode is)
+
+### Pruned (verified already adequate)
+
+- ~~Lazy load below-fold images~~ — figure shortcode emits `loading="lazy"`; markdown content rarely uses raw `<img>`
 
 ---
 

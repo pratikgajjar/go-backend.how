@@ -1,21 +1,34 @@
 # Autoresearch — Latest sessions
 
-## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 16 iterations)
+## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 20 iterations)
 
 **Metric**: `hugo_warnings` (lower is better). 11 → 0.
 
+Across two resume cycles:
+
+**Cycle A (iter 1–17)** — bug-fix run.
 Fixed 4 critical SEO/correctness bugs (OG image absolute URLs, JSON-LD
 valid + absolute, dishonest SearchAction removed, raw-HTML warning),
 1 missing tag, Hugo 0.148+ deprecations, and stale public/ artifacts.
 Added JetBrains Mono preload, series prev/next nav (Valkey), print
-stylesheet, and image lightbox. Pruned 9+ stale items from
-`autoresearch.ideas.md` that were already implemented in the theme.
-Site at 0 warnings, all medium-effort backlog items closed.
+stylesheet, and image lightbox. Pruned 9+ stale items from ideas.md
+that were already implemented in the theme.
+
+**Cycle B (iter 18–20)** — feature polish on top of zero-warning baseline.
+Enriched homepage featured-post cards (description + tags + read-time
+per card; was bare title + date). Replaced /tags/ index with a real
+tag cloud sized by post count (4 tiers: xl ≥5, lg ≥3, md ≥2, sm 1).
+Enabled cross-document View Transitions API for smooth page fades on
+Chromium with `prefers-reduced-motion` opt-out.
 
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
-Remaining backlog is larger-feature work (search, comments, OG image
-generation, dark/light toggle) — half-day+ each.
+Remaining backlog is larger-feature work (Pagefind search, Giscus comments,
+auto-generated OG images, JetBrains Mono → WOFF2/subset) — half-day+ each.
+Also pruned a few items as deliberate theme decisions (no per-block
+language label — the theme author chose copy-button-only) or
+already-done-and-not-recognized (RSS per-tag feeds emitted by default,
+markdown images already get loading="lazy" via the figure shortcode).
 
 ---
 
