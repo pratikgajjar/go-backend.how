@@ -8,7 +8,10 @@ enableRobotsTXT = true
 enableEmoji = true
 
 [params]
-title = "Backend.how | How It Works"
+# Used as the <title> suffix on per-post pages (`{post title} | {params.title}`)
+# and as og:site_name. Keep short to stay under Google's ~60-char SERP cutoff
+# when combined with reasonable post titles.
+title = "backend.how"
 url = "https://backend.how/"
 description = "Deep dives into backend systems, databases, and infrastructure. First-principles engineering explained simply."
 titleSeparator = "|"

@@ -501,6 +501,47 @@ if os.path.exists('public/sitemap.xml'):
     for u in urls_no_lastmod:
         add('sitemap_url_no_lastmod', 'public/sitemap.xml', u)
 
+# 8p. Title length sanity (Google truncates >60 in SERPs; flag >75 as outlier)
+for root, _, files in os.walk('public'):
+    for fn in files:
+        if not fn.endswith('.html'):
+            continue
+        path = os.path.join(root, fn)
+        rel = os.path.relpath(path)
+        with open(path) as f:
+            html = f.read()
+        m = re.search(r'<title>([^<]+)</title>', html)
+        if m:
+            t = m.group(1).strip()
+            if len(t) > 75:
+                add('title_too_long', rel, f'{len(t)} chars: {t[:60]}…')
+
+# 8q. target=_blank without rel=noopener|noreferrer (security)
+for root, _, files in os.walk('public'):
+    for fn in files:
+        if not fn.endswith('.html'):
+            continue
+        path = os.path.join(root, fn)
+        rel = os.path.relpath(path)
+        with open(path) as f:
+            html = f.read()
+        for m in re.finditer(r'<a[^>]*target=["\']?_blank["\']?[^>]*>', html):
+            tag = m.group(0)
+            if 'noopener' not in tag and 'noreferrer' not in tag:
+                add('target_blank_no_noopener', rel, tag[:80])
+
+# 8r. Inline event handlers (CSP violation potential)
+for root, _, files in os.walk('public'):
+    for fn in files:
+        if not fn.endswith('.html'):
+            continue
+        path = os.path.join(root, fn)
+        rel = os.path.relpath(path)
+        with open(path) as f:
+            html = f.read()
+        for m in re.finditer(r'<\w+[^>]*\son[a-z]+\s*=', html):
+            add('inline_event_handler', rel, m.group(0)[:60])
+
 # 8. Fallback OG image dimensions
 og_path = 'themes/coloroid/static/og-image.png'
 if os.path.exists(og_path):

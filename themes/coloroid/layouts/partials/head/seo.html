@@ -10,6 +10,9 @@
   {{ end -}}
 {{ end -}}
 
+{{- /* Title strategy: post title + " | site name" suffix on per-post pages,
+       but if the combined string would exceed 60 chars (Google's SERP cutoff),
+       drop the suffix and use the post title alone. */ -}}
 {{ if .IsHome -}}
   {{ with .Site.Params.titleAddition -}}
     <title>{{ $.Site.Params.title }} {{ $.Site.Params.titleSeparator }} {{ . }}</title>
@@ -17,7 +20,14 @@
     <title>{{ .Site.Params.title }}</title>
   {{ end -}}
 {{ else -}}
-  <title>{{ .Title }} {{ .Site.Params.titleSeparator }} {{ .Site.Params.title }}</title>
+  {{- $sep := .Site.Params.titleSeparator -}}
+  {{- $suffix := .Site.Params.title -}}
+  {{- $full := printf "%s %s %s" .Title $sep $suffix -}}
+  {{- if le (len $full) 60 -}}
+    <title>{{ $full }}</title>
+  {{- else -}}
+    <title>{{ .Title }}</title>
+  {{- end -}}
 {{ end -}}
 
 {{ with .Description -}}
