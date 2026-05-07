@@ -169,19 +169,31 @@ best-practices + seo categories.
 
 ### Score trajectory across three pages
 
-|                       | Home | Tiger Style | 1B Payments |
+|                          | Home | Tiger Style | 1B Payments |
 |---|---:|---:|---:|
-| Iter 1 baseline       | 83 / 100 / 100 / 100 | 82 / 94 / 100 / 100  | 64 / 95 / 100 / 100  |
-| Iter 2 woff2          | 89 / 100 / 100 / 100 | — | — |
-| Iter 3 subset         | 91 / 100 / 100 / 100 | — | — |
-| Iter 4-7 a11y         | (no perf change)     | 82 / 100 / 100 / 100 | 76 / 100 / 100 / 100 |
-| Iter 9 italic subset  | 91 / 100 / 100 / 100 | 84 / 100 / 100 / 100 | 78 / 100 / 100 / 100 |
-| Iter 11 lean themes   | **92 / 100 / 100 / 100** | **87 / 100 / 100 / 100** | **80 / 100 / 100 / 100** |
-| Iter 12 unicode-range | (reverted — net negative) |     |     |
+| Iter 1 baseline          | 83 / 100 / 100 / 100 | 82 / 94 / 100 / 100  | 64 / 95 / 100 / 100  |
+| Iter 2 woff2             | 89 / 100 / 100 / 100 | — | — |
+| Iter 3 subset            | 91 / 100 / 100 / 100 | — | — |
+| Iter 4-7 a11y            | (no perf change)     | 82 / 100 / 100 / 100 | 76 / 100 / 100 / 100 |
+| Iter 9 italic subset     | 91 / 100 / 100 / 100 | 84 / 100 / 100 / 100 | 78 / 100 / 100 / 100 |
+| Iter 11 lean themes      | 92 / 100 / 100 / 100 | 87 / 100 / 100 / 100 | 80 / 100 / 100 / 100 |
+| Iter 12 unicode-range    | (reverted — net negative) |     |     |
+| Iter 13 chroma split     | (reverted — extra request hurt posts) |  |  |
+| Iter 14 async KaTeX CSS  | 92 / 100 / 100 / 100 | 87 / 100 / 100 / 100 | **81 / 100 / 100 / 100** |
+| Iter 15 async main CSS   | (reverted — CLS=1, critical CSS too thin) | | |
+| Iter 16 inline home CSS  | **92 / 100 / 100 / 100** (FCP -122 ms) | — | — |
+| Iter 17 inline non-page  | **92** (FCP 779) | 87 | 81 |
+| /posts/ list iter 17     | **93 / 100 / 100 / 100** (FCP 776) | | |
+| /tags/ iter 17           | **93 / 100 / 100 / 100** (FCP 771) | | |
+| Iter 18 inline ALL pages | (reverted — post HTML parse overhead) | | |
 
 (scores: perf / a11y / best-practices / seo)
 
-**LCP progression on home**: 2927ms → 2026ms (woff2) → 1802ms (subset) → 1727ms (lean themes). 41% improvement.
+**LCP progression on home**: 2927 ms → 2026 ms (woff2) → 1802 ms (subset)
+→ 1727 ms (lean themes). 41% improvement on LCP.
+
+**FCP progression on navigation pages**: 906 ms → 779 ms (inline CSS on
+non-page kinds). 14% improvement on FCP.
 
 ### Real fixes from this cycle
 
@@ -213,39 +225,72 @@ best-practices + seo categories.
    `data/themes.yaml`; baseof.html inlines only the active theme's vars.
    main.css 34 KB → 25 KB minified; home perf 91 → 92, LCP -150 ms;
    tiger 84 → 87; 1b 78 → 80.
+9. **Async KaTeX stylesheet** (iter 14). KaTeX CSS was render-blocking
+   on math posts. Set `media="print"`, then `katex-init.js` flips it to
+   `"all"` on DOMContentLoaded right before `renderMathInElement` runs.
+   The CSS is applied in time for math paint without blocking FCP.
+   `<noscript>` fallback ensures a JS-less viewer still gets math
+   styled. 1b-payments perf 80 → 81, FCP 1652 → 1501 ms (-150 ms),
+   LCP 2552 → 2401 ms (-150 ms).
+10. **Inline main.css on non-page kinds** (iter 16-17). Home, /about/,
+    /posts/, /tags/, /archive/, taxonomy pages — all have small HTML
+    (8-20 KB) and benefit from removing the render-blocking external
+    CSS request. Inline ~25 KB of minified CSS in `<head>`; total HTML
+    stays 30-45 KB (compresses to ~10-15 KB on Cloudflare). Individual
+    posts (Kind=page) keep `<link rel="stylesheet">` because their HTML
+    is already big and adding 25 KB inline hurts parse time. Result:
+    home perf 91 → 92, FCP 906 → 784 ms; /posts/ list and /tags/
+    reached 93. Verified on iter 18 that pushing this to all pages
+    regresses post LCP (HTML parse overhead exceeds saved request).
 
 ### Probes that didn't move the metric
 
 - **font-display: optional** (iter 6). No score change because the font
   is preloaded. Reverted to `swap`.
-- **Inline all CSS in head** (untracked probe between iter 10 and 11).
-  +0 / +1 / +0 across pages while inflating each HTML by ~30 KB.
-  Reverted as not worth the bandwidth cost.
 - **Unicode-range JBM split into common + extended subsets** (iter 12,
   discarded). Two woff2 files (49 + 33 KB) outweighed monolithic 76 KB
   on pages that legitimately need both ranges (any page with µs, ↻,
   box-drawing, etc.). Home gained +1 but tiger lost 3 and 1b lost 4.
   Reverted.
+- **Per-route CSS split — extract Chroma to chroma.css** (iter 13,
+  discarded). Saved 5 KB on home but added ~150 ms FCP to posts via
+  the extra round-trip. On Cloudflare HTTP/2 the extra request would
+  be cheaper, but on the localhost test harness the split was net
+  negative. Reverted.
+- **Async-load main.css with media swap** (iter 15, discarded). FCP
+  dropped 285 ms on home — proof the pattern works — but CLS=1
+  catastrophically broke perf because the hand-written 2 KB critical
+  CSS missed `.featured-post`/`.article-content`/`.toc` etc., causing
+  full-page reflow when main.css applied. Pattern is sound but
+  requires automated critical-CSS extraction (`critters`/`critical`).
+- **Inline main.css on ALL pages including posts** (iter 18, discarded).
+  Home/list pages stayed at 92-93 but tiger 87→85 and 1b 81→80
+  because the 25 KB inline CSS added enough HTML parse time on the
+  already-large post bodies (38 KB and 100 KB) to push LCP back 150 ms.
+  Reverted to the iter-17 split.
 
 ### Key insight
 
-Lighthouse penalties come almost entirely from **font load time gating
-LCP**. With `font-display: swap` the page paints with system mono first
-(FCP ~900 ms), then re-paints when JBM arrives (LCP at swap). Lighthouse
-measures LCP as the moment the largest text element settles. Cutting
-font bytes cuts LCP.
+Lighthouse penalties on this site come from two stacked sources:
+1. **Render-blocking CSS** (~25 KB main.css fetch) — addressed by
+   inlining on small pages (iter 16-17).
+2. **Font load gating LCP** — `font-display: swap` paints with system
+   mono first (FCP ~900 ms), then re-paints when JBM arrives. Cutting
+   font bytes (woff2 + subset, iter 2-3, 9) directly cuts LCP.
 
-The home page reached **perf=92, LCP 1727 ms** with all a11y/bp/seo at
-100. The next likely big lever is **per-route CSS split** (extract
-Chroma syntax-highlight ~7 KB and post-only rules) so home doesn't ship
-post-only styles. Estimated home perf 93-94 if it lands. Other deferred
-levers (inline-critical-CSS pipeline, async-load main.css with media
-swap) are recorded in autoresearch.ideas.md.
+The home page reached **perf=92, FCP 779 ms, LCP 1727 ms**, all
+a11y/bp/seo at 100. /posts/, /tags/, and other navigation pages reached
+perf=93. Individual post pages are at 87 (tiger) and 81 (1b-payments).
+
+The next likely big lever is **automated critical-CSS extraction** so
+post pages can also use the async-CSS pattern without CLS. Recorded in
+autoresearch.ideas.md as a future tooling-required experiment.
 
 **Cumulative gains across this Lighthouse cycle**:
-- Home: 78 (dev) → 83 (prod baseline) → 92 (current). LCP 2927 → 1727 ms.
-- Tiger: 82 → 87. LCP 2401 → 2102 ms.
-- 1B-payments: 64 → 80. LCP 3879 → 2552 ms.
+- Home: 78 (dev) → 83 (prod baseline) → 92 (current). LCP 2927 → 1727 ms (-41%). FCP 906 → 779 ms.
+- /posts/ list, /tags/: 93.
+- Tiger Style: 82 → 87. LCP 2401 → 2102 ms.
+- 1B-payments: 64 → 81. LCP 3879 → 2401 ms.
 - a11y: 95-100 across all pages → 100 across all pages.
 
 **Stop condition**: metric at floor (cannot go below 0), all listed
