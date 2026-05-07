@@ -1,0 +1,1547 @@
+html {
+    scroll-behavior: smooth;
+    font-size: 0.875rem;
+    font-feature-settings: normal;
+    font-variation-settings: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-synthesis: none;
+}
+
+:root {
+    --color-link: oklch(84.14% 0.1134 63.98);
+    --selection: oklch(83.08% 0.126316 68.2133);
+    --selection-fg: oklch(0% 0 0);
+    --font-mono: "JetBrains Mono", monospace;
+    --font-display: "Departure Mono", monospace;
+    --font-heading: var(--font-display);
+    
+    /* Article theme colors - can be overridden per-page */
+    --article-bg: oklch(16.96% 0.0017 17.32);
+    --article-text: oklch(100% 0 0);
+    --header-bg: oklch(16.96% 0.0017 17.32);
+    
+    /* 
+     * 50 Global Theme Palette
+     * Each theme: unique pastel/muted background
+     * Usage: theme = "name" in frontmatter
+     */
+}
+
+body {
+    background-color: var(--article-bg);
+    color: var(--article-text);
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+    flex-direction: column;
+    line-height: 1.6em;
+}
+
+/*
+ * ============================================
+ * 50 GLOBAL THEMES
+ * Add `theme = "name"` to post frontmatter
+ * ============================================
+ */
+
+@media (pointer: fine) and (min-width: 821px) {
+    body {
+        padding: 20px;
+    }
+}
+
+/* Article title - elegant display typography */
+.article-title {
+    font-weight: 400;
+    font-size: 2.8rem;
+    line-height: 1.15;
+    letter-spacing: -0.07em;
+    margin-bottom: 0.5em;
+}
+
+@media (max-width: 600px) {
+    .article-title {
+        font-size: 2rem;
+    }
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-heading);
+    font-optical-sizing: auto;
+    font-style: normal;
+    line-height: 1.3em;
+    letter-spacing: -0.05em;
+    color: var(--article-text);
+}
+
+/* Section headings in articles */
+.article-content h2 {
+    font-weight: 600;
+    font-size: 1.6rem;
+    margin-top: 1.5em;
+    margin-bottom: 0.6em;
+    letter-spacing: -0.06em;
+}
+
+.article-content h3 {
+    font-weight: 500;
+    font-size: 1.25rem;
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+    letter-spacing: -0.05em;
+}
+
+h1 a,
+h2 a,
+h3 a,
+h4 a,
+h5 a,
+h6 a {
+    text-decoration: none;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 10px auto;
+}
+
+.nav-menu {
+    list-style-type: none; /* Remove bullets */
+    padding: 0; /* Remove padding */
+    margin: 0; /* Remove margin */
+    display: flex; /* Use flexbox to arrange items horizontally */
+    flex-wrap: wrap;
+    justify-content: center; /* Center the items horizontally */
+}
+
+.nav-menu li {
+    margin-right: 20px; /* Add some space between items */
+    position: relative; /* Ensure relative positioning for the ::before pseudo-element */
+}
+
+.nav-menu li:last-child {
+    margin-right: 0; /* Remove margin from the last item */
+}
+
+.nav-menu li a {
+    text-decoration: none; /* Remove underline from links */
+    padding: 10px; /* Add some padding */
+}
+
+.meta-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Featured post links on homepage - larger and title case */
+.meta-info > a {
+    text-transform: none;
+    font-size: 1rem;
+    font-weight: 400;
+    opacity: 1;
+    letter-spacing: 0;
+}
+
+.read-time {
+    margin-left: auto;
+    font-style: normal;
+}
+
+/* Author byline like Figma */
+.author-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.author-info img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin: 0;
+}
+
+.author-info span {
+    font-size: 0.9rem;
+}
+
+.post-navigation {
+    height: 100%; /* Full height of the container */
+}
+
+.prev-post,
+.next-post {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-decoration: none;
+    color: var(--color-link);
+    transition:
+        background-color 0.3s,
+        color 0.3s; /* Smooth transition */
+    padding: 5px;
+    box-sizing: border-box; /* Include padding and border in total width and height */
+    border: 1px dashed var(--color-link);
+}
+
+.prev-post {
+    margin-bottom: 1rem; /* Add 1rem space to the right */
+}
+
+.post-navigation a:hover {
+    background-color: var(--color-link); /* Optional: Add hover effect */
+    color: oklch(0% 0 0);
+}
+
+.header-divider {
+    background-color: var(--color-link);
+    height: 0.2rem;
+    border: none;
+}
+
+code {
+    color: var(--mocha-text);
+    background-color: var(--mocha-base);
+    font-family: var(--font-mono);
+    border-radius: 2px;
+    white-space: pre-wrap;
+}
+
+blockquote {
+    background: oklch(from var(--article-bg) calc(l - 0.08) c h);
+    border-left: 3px solid var(--color-link);
+    margin: 1.5em 0;
+    padding: 1em 1.5em;
+    font-style: italic;
+}
+
+/* Fallback for browsers without relative color syntax */
+@supports not (background: oklch(from white l c h)) {
+    blockquote {
+        background: rgba(128, 128, 128, 0.1);
+    }
+}
+
+body:not([class*="theme-"]) blockquote {
+    background: oklch(24.78% 0 0);
+}
+
+blockquote p {
+    display: inline-block;
+    margin: 0;
+}
+
+.inline-image {
+    height: 1em;
+    width: auto;
+    vertical-align: middle;
+}
+
+.container {
+    max-width: 800px;
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+main.container {
+    flex-grow: 1;
+}
+
+@media (min-width: 600px) {
+    .container {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+
+.container * {
+    overflow-wrap: break-word; /* Breaks words to fit within container */
+    word-wrap: break-word; /* For cross-browser compatibility */
+    box-sizing: inherit; /* Ensures box-sizing rules are applied to all child elements */
+}
+
+header {
+    width: 100%;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+}
+
+footer {
+    text-align: center;
+    padding: 20px 0;
+}
+
+a {
+    color: var(--color-link);
+    text-underline-offset: 0.35em;
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
+}
+
+a:hover {
+    color: oklch(from var(--color-link) calc(l - 0.15) calc(c + 0.05) h);
+    font-weight: 600;
+}
+
+/* Don't apply bold hover to heading anchor links - just show # */
+h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover, h5 a:hover, h6 a:hover {
+    font-weight: inherit;
+    color: inherit;
+}
+
+/* Fallback for browsers without relative color syntax */
+@supports not (color: oklch(from white l c h)) {
+    a:hover {
+        opacity: 0.8;
+        font-weight: 600;
+    }
+}
+
+/* Dark themes: brighten on hover instead of darken */
+body:not([class*="theme-"]) a:hover,
+body.theme-tiger a:hover {
+    color: oklch(from var(--color-link) calc(l + 0.12) c h);
+}
+
+.anchor {
+    color: var(--article-text);
+    display: inline;
+    text-decoration: none;
+}
+
+.anchor:hover {
+    color: var(--article-text);
+    display: inline;
+}
+
+.anchor .pound {
+    display: none;
+    user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .anchor:hover .pound {
+        display: inline;
+        color: var(--color-link);
+    }
+}
+
+.table-of-content {
+    background-color: oklch(from var(--article-bg) calc(l - 0.06) c h);
+    padding: 1rem 1.25rem;
+    border-radius: 4px;
+    margin-bottom: 2rem;
+}
+
+/* Fallback for browsers without relative color syntax */
+@supports not (background: oklch(from white l c h)) {
+    .table-of-content {
+        background: rgba(128, 128, 128, 0.1);
+    }
+}
+
+body:not([class*="theme-"]) .table-of-content {
+    background-color: oklch(24.78% 0 0);
+}
+
+.table-of-content > h2 {
+    margin: 0 0 0.75rem 0;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.table-of-content ol {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.table-of-content ol li {
+    margin-bottom: 0.5rem;
+}
+
+.table-of-content ol li a {
+    transition: color 0.2s ease;
+    text-decoration: none;
+}
+
+.table-of-content ol li a:hover {
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
+}
+
+/* For Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    width: 5px; /* Adjust width as needed */
+    height: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--mocha-overlay0); /* Grey background color */
+}
+
+::-webkit-scrollbar-track {
+    background: oklch(16.96% 0.0017 17.32); /* Light grey background for the track */
+}
+
+/* For Firefox */
+scrollbar-width: thin; /* Make the scrollbar thin */
+scrollbar-color: oklch(62.68% 0 0) oklch(95.81% 0 0); /* Thumb color and track color */
+
+summary {
+    padding: 5px;
+}
+
+li {
+    margin: 5px;
+}
+
+li li {
+    margin: 5px;
+}
+
+ul ul {
+    margin: 5px; /* Adjust the value as needed */
+}
+
+.highlight {
+    max-width: 100%;
+    border-radius: 4px;
+}
+
+.highlight pre {
+    margin: 0;
+    padding: 1em;
+    overflow-x: auto;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* Code block mobile styles handled in the 820px media query below */
+
+.mermaid {
+    max-width: 100%;
+    overflow-x: auto;
+    box-sizing: border-box;
+    background-color: oklch(18% 0.01 250);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1.5em 0;
+}
+
+.highlight pre code {
+    display: block;
+    white-space: pre; /* horizontal scroll on overflow, don't break ASCII diagrams */
+    width: max-content;
+    padding-right: 1.5em; /* breathing room when scrolled to the end */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+/* KaTeX display math: scroll on mobile instead of overflowing */
+.katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.5em 0;
+}
+
+.katex-display > .katex {
+    white-space: nowrap;
+}
+
+.rss-feed {
+    display: inline-block;
+}
+
+.rss-feed img {
+    width: 2rem; /* Adjust the size as needed */
+    height: 2rem; /* Adjust the size as needed */
+    border-radius: 2px;
+    margin: 0;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    word-wrap: break-word;
+    table-layout: fixed;
+}
+
+.table-scroll-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 1em 0;
+}
+
+@media screen and (max-width: 600px) {
+    table {
+        font-size: 0.7rem;
+    }
+}
+
+table,
+th,
+td {
+    border: 1px solid var(--article-text);
+}
+
+th,
+td {
+    padding: 8px; /* Adds padding to table cells */
+    text-align: left; /* Aligns text to the left in table cells */
+}
+
+table thead tr {
+    background-color: var(--mocha-lavender); /* White background for the first row */
+    color: oklch(0% 0 0); /* Black text for the first row */
+}
+
+::selection {
+    background: var(--selection);
+    color: var(--selection-fg);
+}
+
+figure {
+    margin: 1em 0;
+}
+
+figcaption {
+    font-style: italic;
+    color: var(--article-text);
+    opacity: 0.75;
+    text-align: left;
+    margin-top: 0.5em;
+}
+
+figure div a {
+    display: block;
+    text-align: left;
+}
+
+/* For webkit browsers (e.g., Chrome, Safari) */
+::-webkit-selection {
+    background: var(--selection);
+    color: var(--selection-fg);
+}
+
+/* For Firefox */
+::-moz-selection {
+    background: var(--selection);
+    color: var(--selection-fg);
+}
+
+sup a[href^="#fn"]::before {
+    content: "[";
+}
+
+sup a[href^="#fn"]::after {
+    content: "]";
+}
+
+#hn-comments {
+    padding: 5px;
+    margin-top: 10px;
+}
+
+#hn-comments h2 {
+    color: var(--article-text);
+}
+
+.hn-comment {
+    margin-bottom: 10px;
+    padding: 5px;
+    background-color: oklch(24.78% 0 0);
+    border-radius: 5px;
+    color: oklch(90.67% 0 0);
+}
+
+.hn-comment p {
+    margin: 0;
+}
+
+.hn-comment strong a {
+    color: oklch(72% 0.1723 303.07);
+}
+
+.footnotes {
+    max-width: 100%;
+    margin: 0 auto;
+    word-wrap: break-word;
+}
+
+hr {
+    border: 0;
+    border-top: 1px dashed;
+}
+
+.section-tags {
+    margin-top: 2rem;
+    padding: 1rem 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.section-tags span {
+    display: inline-block;
+    margin: 0;
+}
+
+.section-tags a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border: 1px dashed var(--color-link);
+    border-radius: 0;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-link);
+    background-color: transparent;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.section-tags a:hover,
+.section-tags a:active,
+.section-tags a.active {
+    background-color: var(--color-link);
+    color: var(--article-bg);
+    border-color: var(--color-link);
+}
+
+/* Ensure mobile tap shows filled state */
+@media (hover: none) {
+    .section-tags a:active {
+        background-color: var(--color-link);
+        color: var(--article-bg);
+        border-color: var(--color-link);
+    }
+}
+
+/* Syntax highlight base theme colors */
+:root {
+    --mocha-rosewater: oklch(67.68% 0.1615 25.42);
+    --mocha-flamingo: oklch(67.68% 0.1615 25.42);
+    --mocha-red: oklch(67.68% 0.1615 25.42);
+    --mocha-maroon: oklch(67.68% 0.1615 25.42);
+    --mocha-pink: oklch(70.54% 0.0976 2.19);
+    --mocha-mauve: oklch(70.54% 0.0976 2.19);
+    --mocha-peach: oklch(72.08% 0.1362 51.78);
+    --mocha-yellow: oklch(75.58% 0.1133 77.04);
+    --mocha-green: oklch(74.78% 0.1066 116.53);
+    --mocha-teal: oklch(72.56% 0.0846 141.09);
+    --mocha-sky: oklch(72.56% 0.0846 141.09);
+    --mocha-sapphire: oklch(72.56% 0.0846 141.09);
+    --mocha-blue: oklch(71.28% 0.0546 179.19);
+    --mocha-lavender: oklch(71.28% 0.0546 179.19);
+    --mocha-text: oklch(89.41% 0.0566 89.24);
+    --mocha-subtext1: oklch(82.55% 0.0507 85.12);
+    --mocha-subtext0: oklch(75.64% 0.041 82.28);
+    --mocha-overlay2: oklch(69.03% 0.0346 76.31);
+    --mocha-overlay1: oklch(61.92% 0.0286 67.26);
+    --mocha-overlay0: oklch(46.4% 0 0);
+    --mocha-surface2: oklch(42.02% 0 0);
+    --mocha-surface1: oklch(37.15% 0 0);
+    --mocha-surface0: oklch(28.09% 0 0);
+    --mocha-base: oklch(24.08% 0.0049 219.67);
+    --mocha-mantle: oklch(22.04% 0.0036 228.97);
+    --mocha-crust: oklch(19.84% 0.0037 229.01);
+}
+
+code {
+}
+
+/* Chroma theme moved to chroma.css; loaded on post pages only */
+
+/* Inline code for all themes */
+body[class*="theme-"] code {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: var(--article-text);
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+}
+
+/* Table styling for all themes */
+body[class*="theme-"] table {
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+body[class*="theme-"] th,
+body[class*="theme-"] td {
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+body[class*="theme-"] table thead tr {
+    background-color: oklch(25% 0.02 250);
+    color: oklch(95% 0 0);
+}
+
+/* HR and divider for all themed pages */
+body[class*="theme-"] hr {
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+body[class*="theme-"] .header-divider {
+    background-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Tiger is the only genuinely dark theme (bg=18% lightness).
+   All other "medium" themes have dark text on light-ish backgrounds
+   and already get correct dark-on-light treatment from the defaults above. */
+body.theme-tiger .header-divider {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+body.theme-tiger code {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: var(--article-text);
+}
+
+body.theme-tiger hr {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Variable font: JetBrains Mono — restricted to weights 400-700 (the
+   only weights this design system uses). woff2 is universally supported
+   by all browsers >=2018; the TTF fallback was dead bytes. */
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("/fonts/jetbrains/JetBrainsMono[wght].woff2") format("woff2-variations");
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: italic;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("/fonts/jetbrains/JetBrainsMono-Italic[wght].woff2") format("woff2-variations");
+}
+
+/* Departure Mono for display typography */
+@font-face {
+    font-family: "Departure Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    font-feature-settings: "locl";
+    src: url("/fonts/departuremono/DepartureMono-Regular.woff2") format("woff2");
+}
+
+/* Mobile-specific overrides - must be at end for specificity */
+@media screen and (max-width: 820px) {
+    html {
+        font-size: 14px;
+    }
+    
+    body {
+        overflow-x: hidden;
+    }
+    
+    .container {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Code blocks - full width with internal padding */
+    .highlight-wrapper {
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+        width: calc(100% + 32px) !important;
+    }
+
+    .highlight,
+    .chroma,
+    div.highlight,
+    div.chroma {
+        border-radius: 0 !important;
+        max-width: none !important;
+    }
+
+    /* Only apply negative margins when NOT inside a wrapper */
+    .article-content > .highlight,
+    .article-content > div.highlight,
+    .article-content > .chroma,
+    .article-content > div.chroma {
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+        width: calc(100% + 32px) !important;
+    }
+
+    /* Inside wrapper, take full width of wrapper */
+    .highlight-wrapper > .highlight,
+    .highlight-wrapper > .chroma {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100% !important;
+    }
+    
+    .highlight pre,
+    .chroma pre,
+    div.highlight pre,
+    div.chroma pre {
+        font-size: 0.82rem !important;
+        line-height: 1.5 !important;
+        padding: 16px 20px !important;
+        margin: 0 !important;
+        overflow-x: auto !important;
+    }
+    
+    .highlight pre code,
+    .chroma pre code,
+    .highlight code,
+    .chroma code,
+    pre code {
+        font-size: 0.82rem !important;
+        width: max-content !important;
+        padding-right: 20px !important;
+        background: transparent !important;
+    }
+    
+    /* Inline code in text */
+    p code, li code, td code, span code {
+        font-size: 1rem !important;
+        padding: 2px 6px !important;
+    }
+    
+    .article-title {
+        font-size: 1.6rem !important;
+    }
+    
+    .article-content h2,
+    article h2,
+    main h2 {
+        font-size: 1.25rem !important;
+    }
+    
+    .article-content h3,
+    article h3,
+    main h3 {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Mermaid diagrams */
+    .mermaid {
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+        padding: 16px !important;
+        width: calc(100% + 32px) !important;
+        border-radius: 0 !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Tables — horizontal scroll instead of cramming */
+    table {
+        font-size: 0.85rem !important;
+        table-layout: auto !important;
+        width: max-content !important;
+        min-width: 100%;
+    }
+
+    .table-scroll-wrapper {
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+        padding: 0 16px;
+        width: calc(100% + 32px) !important;
+        box-sizing: border-box !important;
+    }
+    
+    th, td {
+        padding: 6px 10px !important;
+        white-space: normal;
+    }
+
+    /* TOC */
+    .table-of-content {
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+        border-radius: 0 !important;
+        padding: 12px 16px !important;
+    }
+}
+
+/* ============================================
+ * FEATURES — 2025
+ * ============================================ */
+
+/* Smooth theme toggle transition */
+body {
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Dark mode force override — prevents FOUC with inline script in <head> */
+html[data-force-dark] body[class*="theme-"] {
+    --article-bg: oklch(16.96% 0.0017 17.32);
+    --article-text: oklch(100% 0 0);
+    --color-link: oklch(84.14% 0.1134 63.98);
+    --header-bg: oklch(16.96% 0.0017 17.32);
+    --selection: oklch(83.08% 0.126316 68.2133);
+    --selection-fg: oklch(0% 0 0);
+}
+
+/* Reading Progress Bar */
+#reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: var(--color-link);
+    z-index: 9999;
+    transition: width 0.08s linear;
+    pointer-events: none;
+}
+
+/* Back to Top Button */
+#back-to-top {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--article-bg);
+    color: var(--color-link);
+    border: 1px dashed var(--color-link);
+    padding: 0.35rem 0.7rem;
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease, background 0.15s ease;
+    z-index: 100;
+    line-height: 1;
+}
+
+#back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+#back-to-top:hover {
+    background: var(--color-link);
+    color: var(--article-bg);
+}
+
+/* Code Block — copy button + language label */
+.highlight-wrapper {
+    position: relative;
+    margin: 1em 0;
+}
+
+.highlight-wrapper > .highlight {
+    margin: 0;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: transparent;
+    color: var(--mocha-subtext0);
+    border: 1px solid var(--mocha-overlay2);
+    padding: 0.15rem 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    cursor: pointer;
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    z-index: 10;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.highlight-wrapper:hover .copy-btn {
+    opacity: 1;
+}
+
+.copy-btn:hover {
+    background: var(--mocha-subtext0);
+    color: var(--mocha-base);
+}
+
+.code-lang-label {
+    position: absolute;
+    top: 0.45rem;
+    left: 1rem;
+    font-size: 0.6rem;
+    font-family: var(--font-mono);
+    color: var(--mocha-overlay0);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    pointer-events: none;
+    opacity: 0.65;
+    z-index: 10;
+}
+
+/* Active TOC link */
+.table-of-content a.toc-active {
+    color: var(--color-link);
+    font-weight: 600;
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
+}
+
+/* Last Updated Badge */
+.last-updated {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    opacity: 0.8;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px dashed currentColor;
+    border-radius: 2px;
+}
+
+/* Social Sharing */
+.share-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.share-links > span {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    opacity: 0.75;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+}
+
+.share-links > div {
+    flex: 1; /* empty spacer — pushes buttons to half the row */
+}
+
+.share-links a,
+.share-copy-btn {
+    /* equal share of remaining space — works for any number of buttons */
+    flex: 1;
+    /* hard reset browser defaults */
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    margin: 0;
+    /* visual */
+    text-align: center;
+    padding: 0.3rem 0.25rem;
+    border: 1px dashed var(--color-link);
+    color: var(--color-link);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: inherit;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.share-links a:hover,
+.share-copy-btn:hover {
+    background: var(--color-link);
+    color: var(--article-bg);
+    font-weight: 400;
+}
+
+/* Related Posts */
+.related-posts,
+.series-nav {
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+    border-top: 1px dashed;
+}
+
+.related-posts > h2,
+.series-nav > h2 {
+    margin: 0 0 0.85rem 0;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.8;
+    font-weight: 600;
+}
+
+.series-nav ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.series-nav li {
+    margin-bottom: 0.45rem;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.series-nav li.current {
+    opacity: 0.85;
+}
+
+.series-nav .series-current {
+    margin-left: 0.5rem;
+    font-size: 0.78rem;
+    opacity: 0.6;
+}
+
+.series-nav a {
+    text-decoration: none;
+}
+
+.series-nav a:hover {
+    text-decoration: underline dashed;
+}
+
+.related-post {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.55rem;
+    font-size: 0.92rem;
+}
+
+.related-post a {
+    text-decoration: none;
+}
+
+.related-post a:hover {
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
+}
+
+.related-post .read-time {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    opacity: 0.75;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    background: transparent;
+    border: none;
+    color: var(--article-text);
+    cursor: pointer;
+    font-size: 1.05rem;
+    padding: 0.2rem 0.35rem;
+    opacity: 0.55;
+    transition: opacity 0.15s;
+    font-family: var(--font-mono);
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+    opacity: 1;
+}
+
+/* Header nav layout — menu + toggle side-by-side */
+.header-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+/* Cross-document View Transitions — smooth fade between pages */
+@view-transition {
+    navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 180ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Respect reduced-motion preference — no transition for users who opt out */
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none !important;
+    }
+}
+
+/* Tag cloud — taxonomy index page (/tags/) */
+.tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.6rem;
+    margin: 1.5rem 0 2rem;
+    line-height: 1.6;
+}
+
+.tag-cloud-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    padding: 0.25rem 0.55rem;
+    border: 1px dashed var(--color-link);
+    color: var(--color-link);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.tag-cloud-item:hover {
+    background: var(--color-link);
+    color: var(--article-bg);
+    transform: translateY(-1px);
+}
+
+.tag-cloud-item .tag-count {
+    font-size: 0.7em;
+    opacity: 0.65;
+    font-weight: 400;
+}
+
+.tag-cloud-item:hover .tag-count {
+    opacity: 0.9;
+}
+
+/* Tag size by post count */
+.tag-cloud .tag-sm { font-size: 0.7rem; }
+.tag-cloud .tag-md { font-size: 0.82rem; }
+.tag-cloud .tag-lg { font-size: 0.96rem; }
+.tag-cloud .tag-xl { font-size: 1.1rem; font-weight: 600; }
+
+/* Homepage featured cards */
+.featured-post {
+    margin: 1.4rem 0 0.8rem;
+}
+
+.featured-post h2 {
+    margin: 0 0 0.3rem 0;
+    line-height: 1.25;
+}
+
+.featured-post h2 a {
+    text-decoration: none;
+}
+
+.featured-post h2 a:hover {
+    text-decoration: underline dashed;
+    text-underline-offset: 0.25em;
+}
+
+.featured-post .meta-info {
+    margin-bottom: 0.45rem;
+}
+
+/* Post list — tags inline */
+.post-description {
+    margin: 0.2rem 0 0.4rem;
+    font-size: 0.88rem;
+    opacity: 0.8;
+    line-height: 1.5;
+}
+
+.post-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.6rem;
+}
+
+.post-tag {
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.4rem;
+    border: 1px dashed var(--color-link);
+    color: var(--color-link);
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+}
+
+.post-tag:hover {
+    background: var(--color-link);
+    color: var(--article-bg);
+    font-weight: 400;
+}
+
+/* Archive page */
+.archive-year {
+    margin-bottom: 2.5rem;
+}
+
+.archive-year h2 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    opacity: 0.75;
+    margin-bottom: 0.6rem;
+    font-weight: 400;
+    border-bottom: 1px dashed;
+    padding-bottom: 0.4rem;
+}
+
+.archive-entry {
+    display: grid;
+    grid-template-columns: 4rem 1fr;
+    gap: 0.75rem;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+    font-size: 0.92rem;
+}
+
+.archive-entry time {
+    opacity: 0.75;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.archive-entry a {
+    text-decoration: none;
+}
+
+.archive-entry a:hover {
+    text-decoration: underline dashed;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
+}
+
+/* 404 page */
+.page-404 {
+    text-align: center;
+    padding: 4rem 1rem;
+}
+
+.page-404 .error-code {
+    font-size: 6rem;
+    margin: 0;
+    opacity: 0.2;
+    line-height: 1;
+    font-family: var(--font-display);
+    font-weight: 400;
+}
+
+.page-404 p {
+    font-size: 1rem;
+    margin: 1rem 0 2rem;
+    opacity: 0.75;
+}
+
+.page-404 .links-404 {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Keyboard nav hint (desktop hover only) */
+.keyboard-hint {
+    display: none;
+    font-size: 0.65rem;
+    opacity: 0.85;
+    font-family: var(--font-mono);
+    text-align: center;
+    margin-top: 0.4rem;
+    letter-spacing: 0.06em;
+    user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .keyboard-hint {
+        display: block;
+    }
+}
+
+/* Mobile adjustments for new features */
+@media screen and (max-width: 820px) {
+    .copy-btn {
+        opacity: 1; /* Always visible on touch */
+    }
+
+    #back-to-top {
+        bottom: 1rem;
+        right: 1rem;
+        font-size: 1rem;
+        padding: 0.3rem 0.6rem;
+    }
+
+    .archive-entry {
+        grid-template-columns: 3rem 1fr;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .share-links {
+        gap: 0.4rem;
+    }
+}
+
+/* Image Lightbox */
+#image-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: zoom-out;
+    padding: 1.5rem;
+}
+
+#image-lightbox.open {
+    display: flex;
+}
+
+#image-lightbox img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+}
+
+#image-lightbox .lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    font-size: 1.4rem;
+    line-height: 1;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#image-lightbox .lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Print-friendly: clean article reading on paper / PDF export */
+@media print {
+    /* Drop chrome that's irrelevant to a printed article */
+    .left-pane, .menu-button, .expand-button, .collapse-button,
+    .copy-btn, #back-to-top, #reading-progress,
+    .share-links, .keyboard-hint, .hacker-news-comments,
+    nav.menu, .resizer {
+        display: none !important;
+    }
+
+    /* Reset to a sensible paper-friendly base */
+    html, body, main, article {
+        background: white !important;
+        color: black !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 11pt;
+        line-height: 1.45;
+    }
+
+    a {
+        color: black !important;
+        text-decoration: underline;
+    }
+
+    /* Show full URL after each external link so paper readers can find them */
+    a[href^="http"]:not([href*="backend.how"])::after {
+        content: " <" attr(href) ">";
+        font-size: 0.85em;
+        word-break: break-all;
+    }
+
+    /* Code blocks: hairline border, no scrollbars, allow page breaks */
+    pre, .highlight {
+        background: #f5f5f5 !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+        page-break-inside: avoid;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    code {
+        background: #f5f5f5 !important;
+        color: black !important;
+    }
+
+    /* Don't split headings off from their following paragraph */
+    h1, h2, h3, h4 {
+        page-break-after: avoid;
+    }
+
+    /* Tables: keep rows together where possible */
+    table {
+        page-break-inside: avoid;
+    }
+
+    img {
+        max-width: 100% !important;
+        page-break-inside: avoid;
+    }
+
+    /* Footnotes show inline-ish in print */
+    .footnotes {
+        font-size: 0.85em;
+        border-top: 1px solid #ccc;
+        margin-top: 2rem;
+        padding-top: 1rem;
+    }
+}

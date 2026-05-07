@@ -10,7 +10,11 @@
 {{- $isInlineableKind := ne .Kind "page" -}}
 {{- $isArchive := eq .Layout "archive" -}}
 {{- if or $isInlineableKind $isArchive -}}
-  {{- with resources.Get "css/main.css" }}
+  {{- /* Non-post pages don't render code blocks, so use a CSS variant
+         that omits the Chroma syntax-highlight rules (~5 KB saved on
+         every list/home/about/archive/term page). The full main.css
+         is still used by individual posts. */ -}}
+  {{- with resources.Get "css/main-nochroma.css" }}
     {{- if eq hugo.Environment "development" }}
     <link rel="stylesheet" href="{{ .RelPermalink }}" crossorigin>
     {{- else }}
