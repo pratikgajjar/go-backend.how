@@ -402,7 +402,7 @@ The rest of the post — the ACID property, the conformance story, the
 performance numbers — all sit on top of this profile. Knowing the shape
 of the hot path makes everything else easier to interpret.
 
-# The win that's worth the post: ACID across base + index + CDC
+# What changes when ACID covers everything
 
 In DynamoDB, an `UpdateItem` that touches a GSI does this:
 
@@ -718,9 +718,9 @@ CPU is `runtime.cgocall` and friends.
 
 What does this tell us?
 
-1. **The Go code itself is over-engineered for the throughput we
-   currently get.** Optimizing JSON or the expression parser before
-   reducing CGO crossings is wasted effort.
+1. **Optimizing the Go side ahead of the CGO crossings is premature.**
+   JSON parsing, expression evaluation, validation — those numbers will
+   matter, but only after the CGO bill comes down.
 2. **Batching ops per transaction is the obvious lever.** Two PutItems
    in one transaction = one CGO commit instead of two. We already do
    this for `BatchWriteItem` and `TransactWriteItems`; doing it for the
@@ -749,7 +749,7 @@ I learned that wasn't obvious before I started:
   DynamoDB Local and compares responses byte-for-byte. It found bugs in
   number normalization, validation ordering, and ReturnValues semantics
   that I'd never have caught from the AWS docs alone. **If you're
-  cloning a black-box API, the only honest measure is differential
+  cloning a black-box API, the most honest measure is differential
   parity with a reference implementation.**
 
 - **Strong consistency falls out of FDB's transaction model.**
@@ -758,11 +758,11 @@ I learned that wasn't obvious before I started:
   CDC records that arrive in commit order with no gaps. It's a property
   the DynamoDB API doesn't promise on AWS, but it's free here.
 
-- **CGO is the silent tax on Go-on-FDB.** Every hot-path optimization in
-  Go is wasted effort until the CGO crossings are reduced. Batching is
-  the lever, but DynamoDB's API contract pins single-item operations to
-  single FDB transactions. Future work: a Go client that pipelines
-  multiple in-flight transactions to amortize the CGO cost.
+- **CGO is the silent tax on Go-on-FDB.** Hot-path Go optimizations
+  plateau until the CGO crossings come down. Batching is the lever, but
+  DynamoDB's API contract pins single-item operations to single FDB
+  transactions. Future work: a Go client that pipelines multiple
+  in-flight transactions to amortize the CGO cost.
 
 - **FDB's 5-s / 10-MB transaction limits are wide enough for everything
   DynamoDB can express.** TransactWriteItems caps at 100 items;
@@ -771,11 +771,12 @@ I learned that wasn't obvious before I started:
   hundreds of multiples of headroom.
 
 - **The "Tiger Style" coding discipline transfers.** Onion architecture
-  (transport-agnostic ops, thin HTTP adapters, no shared mutable state),
-  static-ish allocation, no global state — all the practices I picked
-  up from reading TigerBeetle's source apply cleanly to a Go codebase.
-  9,000 lines, no file over 1,740 LOC, every operation looks the same
-  shape.
+  (transport-agnostic ops, thin HTTP adapters, no shared mutable state)
+  and treating limits as forcing functions — the practices I picked up
+  from reading TigerBeetle's source apply cleanly to Go. The codebase
+  stays consistent in shape across the 23 DynamoDB operations, which
+  was probably the single biggest factor in the conformance loop
+  staying tractable.
 
 # What DynamoDB the service buys you that fdyno doesn't
 
