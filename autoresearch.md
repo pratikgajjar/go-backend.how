@@ -157,6 +157,78 @@ productive work needs browser tooling (Lighthouse/axe-core/visual
 regression) or larger features (Pagefind, Giscus comments, OG image
 generation) — both are substantial new initiatives, not audit work.
 
+---
+
+## Session 2026-05-07: Lighthouse-driven perf + a11y (10 iterations)
+
+**Metric**: `lh_perf` (higher better). Lighthouse run via `npx lighthouse`
+against the production-built static site served by `python3 -m http.server :1313`.
+Chrome path: `/Applications/Chromium.app/Contents/MacOS/Chromium`.
+Headless desktop, screenEmulation disabled, performance + a11y +
+best-practices + seo categories.
+
+### Score trajectory across three pages
+
+|                   | Home | Tiger Style | 1B Payments |
+|---|---:|---:|---:|
+| Iter 1 baseline   | 83 / 100 / 100 / 100 | 82 / 94 / 100 / 100  | — |
+| Iter 2 woff2      | 89 / 100 / 100 / 100 | — | — |
+| Iter 3 subset     | 91 / 100 / 100 / 100 | — | — |
+| Iter 4-7 a11y     | (no perf change)     | 82 / 100 / 100 / 100 | 76 / 100 / 100 / 100 |
+| Iter 9 italic     | 91 / 100 / 100 / 100 | 84 / 100 / 100 / 100 | 78 / 100 / 100 / 100 |
+
+(scores: perf / a11y / best-practices / seo)
+
+### Real fixes from this cycle
+
+1. **JBM TTF → WOFF2** (iter 2). 303 KB → 113 KB. Lighthouse perf 83 → 89.
+2. **JBM subset to Latin + box-drawing + arrows + math** (iter 3).
+   113 KB → 76 KB. perf 89 → 91.
+3. **Heading order on post pages** (iter 4). The TOC, Series, and Related
+   used `<h4>` inside an article that started with `<h1>`, skipping h2/h3.
+   Changed to `<nav aria-labelledby="...">` + `<h2>` with CSS adjusted to
+   keep the small visual size. a11y 94 → 96 → 100.
+4. **Color contrast a11y wins** (iter 4 + 7). `.copy-btn` was using a
+   46%-lightness color on a dark code-block bg. `.share-links span` was
+   opacity 0.5. `.related-post .read-time` was 0.5. `.keyboard-hint` was
+   0.35. `.last-updated` was 0.6. All bumped to ≥0.75/0.85 for WCAG AA.
+5. **Heading-skip fix** (iter 7). `1b-payments` had `### The archival
+   pipeline` directly under `# Hot/Warm/Cold Tiering`. Changed h3 → h2.
+6. **Table headers** (iter 7). `<table>` elements had `<thead>` + `<th>`
+   but axe-core `td-headers-attr` audit wants explicit `scope="col"` on
+   each `<th>` in large tables. Added a postprocessor in `ext_link.html`
+   that rewrites `<th>` → `<th scope="col">` (carefully not matching
+   `<thead>`).
+7. **Italic font subset** (iter 9). Italic only ever wraps `<em>` text
+   which is ASCII + 3 non-ASCII chars across all posts. Was using the
+   wide subset (82 KB); cut down to ASCII + Latin-1 + Latin-Ext-A +
+   smart quotes (52 KB). Tiger-style perf 81 → 84.
+
+### Probes that didn't move the metric
+
+- **font-display: optional** (iter 6). No score change because the font
+  is preloaded with high priority anyway. Reverted to `swap` to keep
+  better UX (first-time visitors actually see JBM).
+
+### Key insight
+
+Lighthouse penalties on this site come almost entirely from **font load
+time gating LCP**. With `font-display: swap` the page paints with system
+mono first, then re-paints when JBM arrives — and Lighthouse measures
+LCP as the moment the largest text element settles, which is the swap.
+Cutting font bytes cuts LCP.
+
+The home page reached perf=91 with LCP ~1.8 s. To push higher would
+require either dropping JBM entirely (UX regression), inlining critical
+CSS, or further per-route font subsets (e.g., a regular-only build for
+home, italic-included for posts). The next-most-likely big win is
+inline critical CSS — currently 39 KB of CSS is unused on home; an
+inline-critical-CSS pipeline would let CSS load async without blocking.
+
+**Backlog adds**: inline critical CSS pipeline (`critters`/`critical`
+npm tools or hand-curated above-fold rules); regenerate `og-image.png`
+at 1200×630.
+
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
 Remaining backlog is larger-feature work (Pagefind search, Giscus comments,

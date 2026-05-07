@@ -15,6 +15,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {{- if $theme }}
     <script>if(localStorage.getItem('backend-theme')==='dark')document.documentElement.setAttribute('data-force-dark','');</script>
+    {{- /* Inline only the active theme's CSS variables. The full 51-theme
+           palette would be ~10 KB of dead bytes for any page that uses
+           a single theme; loading them on demand keeps main.css lean. */ -}}
+    {{- with index site.Data.themes $theme -}}
+      {{- $css := "" -}}
+      {{- range $k, $v := . -}}
+        {{- $css = printf "%s%s:%s;" $css $k $v -}}
+      {{- end }}
+    <style>body{ {{ $css | safeCSS }} }</style>
+    {{- end }}
     {{- end }}
     {{ partial "head.html" . }}
   </head>
