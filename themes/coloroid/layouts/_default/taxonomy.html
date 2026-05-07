@@ -1,0 +1,19 @@
+{{ define "main" }}
+  <h1>{{ .Title }}</h1>
+  {{ .Content }}
+
+  {{ $taxonomies := index .Site.Taxonomies (.Data.Plural) }}
+  {{ if $taxonomies }}
+    {{ $sorted := $taxonomies.ByCount }}
+    <div class="tag-cloud" aria-label="All {{ .Data.Plural }} sorted by post count">
+      {{ range $sorted }}
+        {{ $count := len .Pages }}
+        {{ $weight := cond (ge $count 5) "xl" (cond (ge $count 3) "lg" (cond (ge $count 2) "md" "sm")) }}
+        <a href="{{ .Page.RelPermalink }}" class="tag-cloud-item tag-{{ $weight }}">
+          <span class="tag-name">#{{ .Page.Title }}</span>
+          <span class="tag-count">{{ $count }}</span>
+        </a>
+      {{ end }}
+    </div>
+  {{ end }}
+{{ end }}

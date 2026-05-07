@@ -1563,6 +1563,51 @@ html[data-force-dark] body[class*="theme-"] {
     flex-wrap: wrap;
 }
 
+/* Tag cloud — taxonomy index page (/tags/) */
+.tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.6rem;
+    margin: 1.5rem 0 2rem;
+    line-height: 1.6;
+}
+
+.tag-cloud-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    padding: 0.25rem 0.55rem;
+    border: 1px dashed var(--color-link);
+    color: var(--color-link);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.tag-cloud-item:hover {
+    background: var(--color-link);
+    color: var(--article-bg);
+    transform: translateY(-1px);
+}
+
+.tag-cloud-item .tag-count {
+    font-size: 0.7em;
+    opacity: 0.65;
+    font-weight: 400;
+}
+
+.tag-cloud-item:hover .tag-count {
+    opacity: 0.9;
+}
+
+/* Tag size by post count */
+.tag-cloud .tag-sm { font-size: 0.7rem; }
+.tag-cloud .tag-md { font-size: 0.82rem; }
+.tag-cloud .tag-lg { font-size: 0.96rem; }
+.tag-cloud .tag-xl { font-size: 1.1rem; font-weight: 600; }
+
 /* Homepage featured cards */
 .featured-post {
     margin: 1.4rem 0 0.8rem;
