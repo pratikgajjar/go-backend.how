@@ -301,6 +301,35 @@ Total: **~9,000 lines of Go**. The HTTP layer doesn't know about FDB.
 The operations don't know about HTTP. The store doesn't know about
 expressions or PartiQL. Each layer can be tested in isolation.
 
+In code, the onion looks like this — same shape across all 23 DynamoDB
+operations:
+
+```go
+// item_ops.go — transport-agnostic, returns typed result/error
+func (s *Service) PutItem(in putItemInput) (*putItemResult, error) {
+    if err := validatePutItemInput(in); err != nil {
+        return nil, err
+    }
+    return s.fdbPutItem(in)            // → FDB transaction
+}
+
+// http.go — thin HTTP adapter, no business logic
+func (s *Service) httpPutItem(w http.ResponseWriter, r *http.Request) {
+    var in putItemInput
+    if !decodeJSON(w, r, &in) { return }
+    res, err := s.PutItem(in)
+    if err != nil { writeServiceError(s, w, err); return }
+    writeJSON(w, http.StatusOK, res)
+}
+```
+
+The HTTP adapter is decode → call → encode, three lines of real work.
+All the *behavior* lives one layer down, where it can be exercised
+without spinning up an HTTP server. This is the
+[Tiger Style](https://backend.how/posts/the-tiger-style/) reflex
+applied to Go: keep boundaries thin, push state down, give every layer
+exactly one job.
+
 There is **no in-memory state** between requests. Every operation opens
 an FDB transaction, reads what it needs, writes what it must, and commits.
 Multiple fdyno instances behind a load balancer work without coordination
