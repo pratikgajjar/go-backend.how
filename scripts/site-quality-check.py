@@ -542,6 +542,27 @@ for root, _, files in os.walk('public'):
         for m in re.finditer(r'<\w+[^>]*\son[a-z]+\s*=', html):
             add('inline_event_handler', rel, m.group(0)[:60])
 
+# 8s. Browser-runtime checks (viewport overflow + JS console errors).
+#     Opt-in via --check-runtime since they require puppeteer-core +
+#     a running local server. Scripts in scripts/runtime-checks/.
+if '--check-runtime' in sys.argv:
+    for script, defect_label in [
+        ('scripts/runtime-checks/viewport-check.mjs', 'viewport_overflow'),
+        ('scripts/runtime-checks/js-errors.mjs', 'js_console_error_or_404'),
+    ]:
+        if not os.path.exists(script):
+            continue
+        result = subprocess.run(
+            ['node', script],
+            capture_output=True, text=True,
+            env={**os.environ, 'NODE_PATH': '/tmp/node_modules'},
+        )
+        # Both scripts print "<n> issues" on first line
+        m = re.search(r'(\d+)', result.stdout.split('\n')[0])
+        n = int(m.group(1)) if m else 0
+        for _ in range(n):
+            add(defect_label, '<runtime>', f'see {script} output')
+
 # 8. Fallback OG image dimensions
 og_path = 'themes/coloroid/static/og-image.png'
 if os.path.exists(og_path):
