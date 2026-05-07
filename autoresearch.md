@@ -199,15 +199,15 @@ best-practices + seo categories.
 
 | Page | perf | a11y | bp | seo | LCP (ms) | FCP (ms) |
 |---|---:|---:|---:|---:|---:|---:|
-| `/` (home, theme-vanilla)   | **94** | 100 | 100 | 100 | 1576 | 776 |
-| `/about/`                   | **94** | 100 | 100 | 100 | 1576 | 781 |
-| `/posts/` (list)            | **94** | 100 | 100 | 100 | 1576 | 777 |
-| `/tags/` (cloud)            | **94** | 100 | 100 | 100 | 1576 | 769 |
-| `/tags/postgres/`           | **94** | 100 | 100 | 100 | 1576 | 769 |
-| `/tags/tigerbeetle/`        | **94** | 100 | 100 | 100 | 1576 | 769 |
-| `/archive/`                 | **92-93** | 100 | 100 | 100 | 1576-1726 | 906 |
-| `/posts/the-tiger-style/`   | **91** | 100 | 100 | 100 | 1801 | 902 |
-| `/posts/1b-payments-per-day/` | **86** | 100 | 100 | 100 | 2101 | 1212 |
+| `/` (home)                    | **94** | 100 | 100 | 100 | 1576 | 777 |
+| `/about/`                     | **94** | 100 | 100 | 100 | 1576 | 774 |
+| `/posts/` (list)              | **94** | 100 | 100 | 100 | 1576 | 776 |
+| `/tags/` (cloud)              | **94** | 100 | 100 | 100 | 1576 | 770 |
+| `/archive/`                   | **93** | 100 | 100 | 100 | 1651 | 773 |
+| `/posts/the-tiger-style/`     | **91** | 100 | 100 | 100 | 1801 | 908 |
+| `/posts/1b-payments-per-day/` | **85** | 100 | 100 | 100 | 2251 | 1212 |
+
+(scores are run-to-run noisy by ±1; LCP is mostly reproducible to ±75ms)
 
 (scores: perf / a11y / best-practices / seo)
 
