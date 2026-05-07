@@ -199,15 +199,23 @@ best-practices + seo categories.
 
 | Page | perf | a11y | bp | seo | LCP (ms) | FCP (ms) |
 |---|---:|---:|---:|---:|---:|---:|
-| `/` (home)                    | **94** | 100 | 100 | 100 | 1576 | 777 |
-| `/about/`                     | **94** | 100 | 100 | 100 | 1576 | 774 |
-| `/posts/` (list)              | **94** | 100 | 100 | 100 | 1576 | 776 |
-| `/tags/` (cloud)              | **94** | 100 | 100 | 100 | 1576 | 770 |
-| `/archive/`                   | **93** | 100 | 100 | 100 | 1651 | 773 |
-| `/posts/the-tiger-style/`     | **91** | 100 | 100 | 100 | 1801 | 908 |
-| `/posts/1b-payments-per-day/` | **85** | 100 | 100 | 100 | 2251 | 1212 |
+| `/` (home)                                    | **94** | 100 | 100 | 100 | 1576 | 777 |
+| `/about/`                                     | **94** | 100 | 100 | 100 | 1576 | 774 |
+| `/posts/` (list)                              | **94** | 100 | 100 | 100 | 1576 | 776 |
+| `/tags/` (cloud)                              | **94** | 100 | 100 | 100 | 1576 | 770 |
+| `/archive/`                                   | **93** | 100 | 100 | 100 | 1651 | 773 |
+| `/posts/the-tiger-style/`                     | **91** | 100 | 100 | 100 | 1801 | 907 |
+| `/posts/1b-payments-per-day/`                 | **85** | 100 | 100 | 100 | 2251 | 1212 |
+| `/posts/post-query-optimise/`                 | **92** | 100 | 100 | 100 | 1727 | 902 |
+| `/posts/lost-ssh-access-to-ec2/`              | **91** | 100 | 100 | 100 | 1801 | 906 |
+| `/posts/temporal-under-the-hood/`             | **81** | 100 | 100 | 100 | 2401 | 1513 |
+| `/posts/cat-stereogram-dark-mode/`            | **89** | 98  | 100 | 100 | 2026 | 906 |
 
-(scores are run-to-run noisy by ±1; LCP is mostly reproducible to ±75ms)
+(scores are run-to-run noisy by ±1; LCP is mostly reproducible to ±75ms.
+Stereogram a11y is at 98 because the post has a `# H1 → ### H3` jump
+that, when fixed, regressed perf by 8 points (image LCP candidate
+rebalance) — the original heading structure preserves the better
+trade-off.)
 
 (scores: perf / a11y / best-practices / seo)
 
