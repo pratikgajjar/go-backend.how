@@ -25,7 +25,7 @@ siteLinksSearchBox = false  # no real search endpoint; tags/{q}/ in the SearchAc
 
 # OpenGraph and Twitter Card settings
 ogLocale = "en_US"
-twitterSite = "https://x.com/pratikgajjar_in"
+twitterSite = "pratikgajjar_in"
 twitterCreator = "pratikgajjar_in"
 
 # Images for social media sharing
