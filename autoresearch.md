@@ -1,6 +1,6 @@
 # Autoresearch — Latest sessions
 
-## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 49 iterations across 7 cycles)
+## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 52 iterations across 8 cycles)
 
 **Metric**: `hugo_warnings` (lower is better). 11 → 0.
 
@@ -128,12 +128,34 @@ in RSS, sitemap, and config that no metric was watching:
   depth against any malformed username (HN usernames are restricted
   in practice but the safety has no cost).
 
-The cumulative effect of cycles A–G: 11 → 0 warnings (cycle A), real
+**Cycle H (iter 51–52)** — final tail-end finds:
+
+- Iter 51: `article:author` OG meta wasn't being emitted because the
+  template only fired when `Site.Params.facebookAuthor` was set (Facebook
+  profile URL). Site has no Facebook config. Now: falls back to
+  `Site.Params.author.name` (Pratik) when facebook is unset, so article
+  posts properly attribute their author. Verified: `article:author=Pratik`
+  on every post page now.
+- Iter 52: removed contradictory `defer async` on the dev-mode script
+  tag in `js.html` (per HTML spec, `async` overrides `defer` when both
+  are set, so the tag was effectively just `async`). Production was
+  already `defer` only; now both modes match.
+
+Also flagged as backlog (not fixed in this session because it needs a
+graphics tool): the fallback `static/og-image.png` is 512×512, but
+Facebook/Twitter `summary_large_image` cards expect 1200×630.
+
+The cumulative effect of cycles A–H: 11 → 0 warnings (cycle A), real
 SEO/social-preview/security/perf correctness verified via reading
-templates + parsing emitted HTML/XML (cycles D–G). At no point did the
-primary metric shift, yet **21 distinct semantic-correctness bugs were
+templates + parsing emitted HTML/XML (cycles D–H). At no point did the
+primary metric shift, yet **23 distinct semantic-correctness bugs were
 fixed**. The floor-then-audit pattern keeps producing value because
 `hugo_warnings` is too narrow.
+
+**At iter 52, audit-friendly bug surface is genuinely depleted.** Further
+productive work needs browser tooling (Lighthouse/axe-core/visual
+regression) or larger features (Pagefind, Giscus comments, OG image
+generation) — both are substantial new initiatives, not audit work.
 
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
