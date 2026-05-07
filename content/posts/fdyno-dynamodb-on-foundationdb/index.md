@@ -1,5 +1,5 @@
 ---
-title: "🦎 fdyno — DynamoDB on FoundationDB in 9,000 Lines of Go"
+title: "🦎 fdyno — DynamoDB on FoundationDB"
 date: 2026-05-06
 lastmod: 2026-05-06
 description: "Building a drop-in DynamoDB-compatible service on FoundationDB. 526/526 conformance tests, strongly-consistent secondary indexes, ACID transactions across base + index — all in ~9k lines of Go. We trace every FDB transaction, count where the CGO calls go, and compare against DynamoDB Local on the same hardware."
