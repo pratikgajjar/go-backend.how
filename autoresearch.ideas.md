@@ -73,10 +73,22 @@ Opt-in checks:
   measurable in localhost test. Should help LCP when fonts can be
   pushed alongside HTML.
 - **103 Early Hints** — Cloudflare Workers feature; deployment-side.
-- **Self-host KaTeX** — eliminate cdn.jsdelivr.net cross-origin
-  handshake. Self-hosting also lets us add `font-display: swap` to
-  KaTeX @font-face declarations (currently `font-display: block` per
-  Lighthouse `font-display-insight`). Would help 1b's LCP.
+- ~~**Self-host KaTeX**~~ — **TRIED + REVERTED 2026-05-07** (iter 20).
+  Vendored KaTeX 0.16.11 (woff2-only fonts, ~600 KB) under
+  `/vendor/katex/`, removed `cdn.jsdelivr.net` from `font-src` and
+  `style-src` CSP. Baseline localhost perf 85→77, LCP 2251→3751 ms
+  (consistent across 3 runs). Cause: same-origin connection pool
+  contention on HTTP/1.1 — 272 KB `katex.min.js` (Low priority defer)
+  serializes against high-priority HTML/CSS/font fetches; KaTeX fonts
+  (re-elected as LCP element after math renders) wait for the JS to
+  finish, blocking the page's LCP. Adding `<link rel=preload as=script>`
+  hints made it dramatically worse (FCP 1212→3153 ms) because the high-
+  priority preload preempted critical-path assets. Reverted entirely.
+  Production HTTP/2 multiplexing would likely flip this — but the test
+  setup we have (Python `http.server` HTTP/1.1) cannot validate that
+  hypothesis. Keep this on the backlog only when an HTTP/2 test rig
+  exists. Lesson: same-origin self-hosting is *not* a free win on
+  HTTP/1.1; CDN cross-origin parallelism is real.
 - **Per-page font subset** — currently the JBM woff2 covers chars used
   across the whole site. Per-page subsets (only chars used on that
   specific HTML) would shrink the font further but require running the
