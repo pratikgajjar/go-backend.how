@@ -4,8 +4,12 @@
        produces tiny documents (~10-15 KB after compression on
        Cloudflare) while removing the render-blocking external
        round-trip. Individual posts (Kind=page) keep main.css as an
-       external stylesheet so it's cached across post navigations. */ -}}
-{{- if ne .Kind "page" -}}
+       external stylesheet so it's cached across post navigations.
+       The archive page is technically Kind=page but its template is
+       a list view and its HTML stays small, so inline it too. */ -}}
+{{- $isInlineableKind := ne .Kind "page" -}}
+{{- $isArchive := eq .Layout "archive" -}}
+{{- if or $isInlineableKind $isArchive -}}
   {{- with resources.Get "css/main.css" }}
     {{- if eq hugo.Environment "development" }}
     <link rel="stylesheet" href="{{ .RelPermalink }}" crossorigin>
