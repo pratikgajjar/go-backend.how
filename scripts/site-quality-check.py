@@ -586,12 +586,44 @@ for content_path, url in [('content/uses.md', '/uses/'), ('content/now.md', '/no
         # Skipping to avoid false-positive defect inflation
         pass
 
+# 10. Soft warnings — informational, not counted in METRIC.
+#     Author-judgment items where flagging without auto-fixing is the
+#     right move. Surfaces issues for the author's next polish pass
+#     without distorting the experiment metric.
+warnings = []  # (category, location, detail)
+
+def warn(category, location, detail=''):
+    warnings.append((category, location, detail))
+
+# 10a. description_too_long: meta description >200 chars likely truncated
+#      in Google SERP (~160 is the safer target; 200 is the "very likely
+#      truncated" threshold). Author rewrites would be prose churn so
+#      this is a soft signal, not a defect.
+for root, _, files in os.walk('public'):
+    if 'index.html' not in files:
+        continue
+    path = os.path.join(root, 'index.html')
+    rel = os.path.relpath(path)
+    with open(path) as f:
+        html = f.read()
+    m = re.search(r'<meta name=description content="([^"]*)"', html)
+    if m and len(m.group(1)) > 200:
+        warn('description_too_long', rel, f'{len(m.group(1))} chars')
+
 # Print summary
 counts = Counter(d[0] for d in defects)
 print(f'TOTAL DEFECTS: {len(defects)}')
 print()
 for cat, n in counts.most_common():
     print(f'  {n:3d}  {cat}')
+
+# Soft warnings — printed but not counted in METRIC
+if warnings:
+    warn_counts = Counter(w[0] for w in warnings)
+    print()
+    print(f'SOFT WARNINGS (informational, not counted): {len(warnings)}')
+    for cat, n in warn_counts.most_common():
+        print(f'  {n:3d}  {cat}')
 
 if '--verbose' in sys.argv:
     print()
@@ -601,8 +633,18 @@ if '--verbose' in sys.argv:
         print(f'\n{cat} ({len(items)}):')
         for c, loc, det in items[:10]:
             print(f'  {loc}: {det}')
+    if warnings:
+        print()
+        print('=== Soft warning details ===')
+        warn_cats = Counter(w[0] for w in warnings)
+        for cat in sorted(warn_cats):
+            items = [w for w in warnings if w[0] == cat]
+            print(f'\n{cat} ({len(items)}):')
+            for c, loc, det in items[:20]:
+                print(f'  {loc}: {det}')
 
-# Output final number for tooling
+# Output final number for tooling — METRIC is hard defects only.
+# Soft warnings are visible above but don't affect the experiment metric.
 print()
 print(f'METRIC: {len(defects)}')
 sys.exit(0)

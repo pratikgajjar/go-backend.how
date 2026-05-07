@@ -387,10 +387,40 @@ standard), and the Lighthouse SEO check penalizes that.
 ## What's NOT in this batch (deferred)
 
 These are listed in `autoresearch.ideas.md`:
-- Self-host KaTeX (would help 1b@85 and temporal@81 — bottlenecked by
-  cdn.jsdelivr.net handshake)
+- ~~Self-host KaTeX~~ — **TRIED + REVERTED** (Iter 20). Vendored 0.16.11
+  woff2 fonts and tightened CSP, but localhost HTTP/1.1 benchmark
+  regressed (perf 85→77, LCP 2251→3752 ms) due to same-origin
+  connection-pool contention. Production HTTP/2 multiplexing might
+  flip it but we have no rig to validate. Requires HTTP/2 test
+  infrastructure to revisit.
 - Per-post auto-generated OG images (Pillow + JBM TTF, similar to
   Phase 6 Iter 3)
 - Visual regression baseline (screenshot diff)
 - Author-driven content gaps (`/uses/`, `/now/` pages, about page
   enrichment)
+
+## Soft warnings flagged for author polish (Iter 21)
+
+`scripts/site-quality-check.py` now emits an additional `SOFT WARNINGS`
+section that's informational (does NOT count toward METRIC). These
+surface issues that need author judgment to fix:
+
+- **description_too_long** (11 posts) — meta description >200 chars,
+  likely truncated in Google SERP (~160 char visible region). Posts
+  affected (chars):
+    - valkey-part-1: 376 (longest)
+    - running-101: 298
+    - system-design-tinder: 296
+    - lost-ssh-access-to-ec2: 286
+    - cat-stereogram-dark-mode: 278
+    - temporal-under-the-hood: 254
+    - pre-owned-car-platform-with-valkey-part-2: 243
+    - the-tiger-style: 236
+    - the-best-way-to-learn-backend-web-development: 222
+    - the-psychology-of-seeking-help: 221
+    - post-query-optimise: 210
+
+These are author-voice content; rewriting would be prose churn.
+Recommended action: author trims each on next polish pass to ≤200 chars
+where the lead-in fluff is removable, or accepts SERP truncation as
+intentional.
