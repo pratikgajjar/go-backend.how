@@ -185,21 +185,21 @@ concurrently land at higher versions and are invisible until you start a
 new transaction.
 
 ```txt
-       ┌─────── ordered timeline of commit versions ───────▶
-       │
-   V=100 ┃ Tx_A commits {x=1, y=2}                        │ versions are
-   V=101 ┃ Tx_B commits {x=3}                             │ globally
-   V=102 ┃ Tx_C commits {z=9}                             │ assigned
-   V=103 ┃ Tx_D commits {y=5, z=10}                       │
-       …  ┃                                                │
+       ──── ordered timeline of commit versions ────▶
 
-   Reader picks V=102:  sees {x=3, y=2, z=9}    ◀── snapshot at V=102
-   Reader picks V=103:  sees {x=3, y=5, z=10}   ◀── snapshot at V=103
+   V=100  │  Tx_A commits {x=1, y=2}
+   V=101  │  Tx_B commits {x=3}
+   V=102  │  Tx_C commits {z=9}
+   V=103  │  Tx_D commits {y=5, z=10}
+    …     │
 
-   Concurrent writer Tx_E reads at V=102, writes y':
-       commit time → resolver checks: did anyone write to y in (102, V')?
-                     yes (Tx_D at 103) → ABORT, retry
-                     no                → COMMIT at V'>103
+   Reader picks V=102 → sees {x=3, y=2, z=9}     snapshot at V=102
+   Reader picks V=103 → sees {x=3, y=5, z=10}    snapshot at V=103
+
+   Concurrent writer Tx_E reads at V=102, writes y' at V':
+     commit time → resolver checks: did anyone write to y in (102, V')?
+                   yes (Tx_D at 103)  → ABORT, retry
+                   no                 → COMMIT at V'>103
 ```
 
 This is *optimistic concurrency control*: writers don't block readers,
