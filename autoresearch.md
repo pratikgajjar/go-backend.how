@@ -186,6 +186,9 @@ best-practices + seo categories.
 | /posts/ list iter 17     | **93 / 100 / 100 / 100** (FCP 776) | | |
 | /tags/ iter 17           | **93 / 100 / 100 / 100** (FCP 771) | | |
 | Iter 18 inline ALL pages | (reverted — post HTML parse overhead) | | |
+| Iter 19 fetchpriority    | (reverted — no measurable change) | | |
+| Iter 20 narrower weight  | **93** (LCP 1651) | **88** (LCP 1951) | **81** (LCP 2402) |
+| Iter 21 @font-face match | 93 (correctness fix, no perf delta) | 88 | 81 |
 
 (scores: perf / a11y / best-practices / seo)
 
@@ -242,6 +245,15 @@ non-page kinds). 14% improvement on FCP.
     home perf 91 → 92, FCP 906 → 784 ms; /posts/ list and /tags/
     reached 93. Verified on iter 18 that pushing this to all pages
     regresses post LCP (HTML parse overhead exceeds saved request).
+11. **Narrow JBM weight axis to 400-700** (iter 20-21). The JBM
+    variable font supported weights 100-900 but the design system
+    only uses 400/500/600/700. Used `fontTools.varLib.instancer.
+    instantiateVariableFont` to drop the 100-300 and 800-900 ranges.
+    Regular: 76 → 57 KB (-25%); Italic: 52 → 38 KB (-27%). LCP gains
+    across the board: home 1727 → 1651 ms; tiger 2102 → 1951 ms; 1b
+    2552 → 2402 ms. Updated `@font-face font-weight` to match the new
+    range (correctness — was advertising weights the file no longer
+    contains).
 
 ### Probes that didn't move the metric
 
@@ -287,11 +299,17 @@ post pages can also use the async-CSS pattern without CLS. Recorded in
 autoresearch.ideas.md as a future tooling-required experiment.
 
 **Cumulative gains across this Lighthouse cycle**:
-- Home: 78 (dev) → 83 (prod baseline) → 92 (current). LCP 2927 → 1727 ms (-41%). FCP 906 → 779 ms.
-- /posts/ list, /tags/: 93.
-- Tiger Style: 82 → 87. LCP 2401 → 2102 ms.
-- 1B-payments: 64 → 81. LCP 3879 → 2401 ms.
-- a11y: 95-100 across all pages → 100 across all pages.
+- Home: 78 (dev) → 83 (prod baseline) → **93** (current). LCP 2927 → 1651 ms (-44%). FCP 906 → 778 ms.
+- /posts/ list, /tags/: **93**.
+- Tiger Style: 82 → **88**. LCP 2401 → 1951 ms.
+- 1B-payments: 64 → **81**. LCP 3879 → 2402 ms.
+- a11y: 95-100 across pages → **100** across all pages.
+
+**Total wire savings on the home page** (vs initial baseline):
+- JBM regular: 303 KB TTF → 57 KB woff2 (-81%)
+- JBM italic: 309 KB TTF → 38 KB woff2 (-88%)
+- main.css: 34 KB external → inlined in HTML (-1 round-trip)
+- Theme palettes: 10 KB CSS dead-code removed
 
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
