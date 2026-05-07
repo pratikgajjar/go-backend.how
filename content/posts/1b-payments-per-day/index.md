@@ -21,7 +21,7 @@ India moves money like no other country. By February 2026, UPI was clearing **20
 | Dec-24 | 641          | 16,730.01   | 23,24,699.91  |
 | Nov-24 | 637          | 15,482.02   | 21,55,187.40  |
 
-Source: [NPCI product-statistics](https://www.npci.org.in/what-we-do/upi/product-statistics)
+Source: [NPCI product-statistics](https://www.npci.org.in/product/upi/product-statistics)
 
 Put those numbers side-by-side: Jan 2025 to Jan 2026, volume jumped from 17B to 21.7B in a single year — **28% YoY growth, month after month**. Bank count grew from 647 → 691. Rupee value from ₹23.48L Cr → ₹28.33L Cr.
 

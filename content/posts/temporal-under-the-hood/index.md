@@ -1115,7 +1115,7 @@ _Temporal® is a trademark of Temporal Technologies, Inc. PostgreSQL® is a trad
 ## Colophon — who did what
 
 This post was researched, benchmarked, and drafted by **Claude Opus 4.6**
-(via the [pi](https://github.com/mariozechner/pi) coding agent) while I
+(via the [pi](https://github.com/badlogic/pi-mono) coding agent) while I
 sat in an adjacent terminal saying things like "no, re-run that,"
 "use underscores for italics, not asterisks," and "that number doesn't
 match the table you wrote four sections ago." My contribution was
