@@ -2,7 +2,34 @@
 
 Living backlog. Items get crossed off as they're done; stale claims get pruned.
 
-Last reviewed: **2026-05-07** (autoresearch session, ~12 iterations: lh_perf optimization).
+Last reviewed: **2026-05-07** (two cycles: 34-iter lh_perf optimization, then 8-iter site-quality optimization).
+
+## ✅ Site quality fixes from cycle 2 (defect count 10 → 5)
+
+- ✅ **Orphan footnote defs in published posts** — removed 4 dead `[^N]:` defs from 1b-payments and temporal that were silently dropped by Goldmark
+- ✅ **OG image regenerated at 1200×630** — was a generic 512×512 DNA-helix; now branded for backend.how with the site's typography and theme color
+- ✅ **External link rot fixes** — github.com/coilhq/tigerbeetle (×2, org migrated), npci.org.in/what-we-do/upi (URL restructure), github.com/mariozechner/pi (was github.com/badlogic/pi-mono)
+- ✅ **RSS icon dimensions** — added width=32 height=32 to /rss.svg img in footer (CLS prevention)
+- ✅ **Term pages were broken** — /tags/postgres/ etc. were showing the full tag cloud instead of posts under the term, because Hugo's lookup was using taxonomy.html for both Kind=taxonomy and Kind=term. Extended taxonomy.html with a Kind branch.
+- ✅ **Tag case collision** — tiger-style used 'TigerBeetle'/'System Design'/'Repost' (Title Case) while 1b-payments used lowercase kebab-case; both slugified to same URLs but rendered differently per post. Normalized to lowercase kebab-case.
+- ✅ **Heading skip in stereogram post** — `# How to View` → `### Relax` was an h1→h3 skip. Earlier perf-cycle attempt fixed via h1 demote (regressed perf -8). This iter promoted h3s to h2s instead — same a11y win, no perf regression.
+
+## Site-quality detector dimensions (currently checking)
+Stored at /tmp/site-quality-check.py. Categories scanned:
+
+- orphan_footnote_def, orphan_footnote_ref
+- broken_anchor (in-page #fragment)
+- img_no_alt, img_no_dimensions
+- duplicate_id (same id="" on multiple elements)
+- json_ld_invalid, json_ld_missing_field (Article/Person/BreadcrumbList required fields)
+- missing_og_field, missing_twitter_field
+- broken_internal_href, dangling_local_file
+- duplicate_title, empty_title, missing_canonical
+- og_image_missing, og_image_aspect_ratio
+- sitemap_dead_url, robots_disallow_all
+- term_page_no_posts, tag_case_collision
+- md_heading_skip
+- external_link_broken (cached, opt-in via --check-external)
 
 ## ⚡ Perf optimizations attempted in this cycle
 
@@ -125,13 +152,14 @@ backlog were all already implemented in the theme:
 
 ## 📊 SEO & Performance (most fixed; remaining items)
 
-- **Add FAQ structured data** — for posts like "Lost SSH Access" that answer specific questions
-- **Optimize font loading** — subset JetBrains Mono to latin-only, convert TTF → WOFF2 (would need `pyftsubset` or similar; ~7-8× payload reduction expected)
-- **`fetchpriority="high"`** on hero/above-fold images
-- **Resize fallback OG image** — `static/og-image.png` is 512×512 (square). Facebook/LinkedIn/Twitter `summary_large_image` cards expect 1200×630 (1.91:1). The square gets cropped/shown smaller in social previews. Needs a graphics tool to regenerate; ideally with the site's theme color (`#100f0f`) and "Backend.how" branding.
+- **Add HowTo structured data** to step-by-step tutorial posts (e.g., Lost SSH Access). Article schema is already present; HowTo would unlock Google's "How To" rich result.
+- **`fetchpriority="high"`** on hero/above-fold images — currently a no-op for fonts (browser already prioritizes font preloads); per-post hero images would benefit but most posts have no hero image.
 
-### Pruned (verified already adequate)
+### Pruned (done or verified already adequate)
 
+- ~~Resize fallback OG image~~ — done in iter 3 of site-quality cycle
+- ~~Optimize font loading~~ — done in iter 2/3/9/20/23 of perf cycle
+- ~~Add FAQ structured data~~ — most "Q&A" posts on this site are tutorials, not strict FAQs. HowTo schema is a better fit (see below).
 - ~~Lazy load below-fold images~~ — figure shortcode emits `loading="lazy"`; markdown content rarely uses raw `<img>`
 
 ---
