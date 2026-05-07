@@ -2,7 +2,7 @@
 title: "🦎 fdyno — DynamoDB on FoundationDB"
 date: 2026-05-06
 lastmod: 2026-05-06
-description: "Building a drop-in DynamoDB-compatible service on FoundationDB. 526/526 conformance tests, strongly-consistent secondary indexes, ACID transactions across base + index — all in ~9k lines of Go. We trace every FDB transaction, count where the CGO calls go, and compare against DynamoDB Local on the same hardware."
+description: "An experiment in putting DynamoDB's API on top of FoundationDB. We walk through what FDB's transaction model lets you simplify (strongly-consistent GSIs, ACID across base + indexes + CDC), what it costs you (CGO crossings, fsync at commit), and what DynamoDB the service still does better. With napkin math, eBPF-style traces, and 526/526 conformance tests."
 tags: ["foundationdb", "dynamodb", "golang", "system-design", "ebpf", "first-principles"]
 draft: true
 theme: "honey"
