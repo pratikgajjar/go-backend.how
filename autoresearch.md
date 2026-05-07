@@ -1,6 +1,6 @@
 # Autoresearch — Latest sessions
 
-## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 29 iterations across 4 cycles)
+## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 38 iterations across 5 cycles)
 
 **Metric**: `hugo_warnings` (lower is better). 11 → 0.
 
@@ -49,6 +49,39 @@ correctness, only template syntax). Each fix was committed locally:
 **Validation**: every JSON-LD block on every page parses as valid JSON
 (verified with `python3 -c json.loads(...)`); every `og:image`,
 `twitter:image`, and canonical URL is now absolute.
+
+**Cycle E (iter 33–38)** — auxiliary outputs audit. Found 6 more issues
+in RSS, sitemap, and config that no metric was watching:
+
+- Iter 33: home was emitting `/amp/index.html` with regular HTML at it
+  (zero `ampproject` script refs) — fake AMP that Google would reject.
+  Removed `amp` from outputs. Also removed per-post RSS feeds (rarely
+  consumed; section + home feeds remain).
+- Iter 34: rewrote `layouts/_default/rss.xml` so feed channel titles
+  read "Backend.how | How It Works" instead of Hugo's default
+  "Home on How It Works". Per-item description uses front-matter
+  `.Description` when set; falls back to `.Summary`.
+- Iter 35: **major SEO bug** — `public/sitemap.xml` started with literal
+  `&lt;?xml version=...?&gt;` (HTML-escaped XML declaration). Every
+  XML parser rejects this — search engines could not parse the sitemap.
+  Fix: wrap declaration in `printf | safeHTML` to bypass Go template
+  escaping. Verified with Python ElementTree.
+- Iter 36: my RSS template rewrite in iter 34 forgot the `<?xml ?>`
+  declaration. Added with the same safeHTML pattern. All four XML
+  endpoints (home, posts, per-tag, sitemap) now parse cleanly.
+- Iter 37: `content/posts/_index.md` was missing a `description` —
+  `/posts/` was falling back to site description. Added a section-
+  specific one.
+- Iter 38: normalized `hugo.toml` — was using capital `Description`
+  inside `[params]`. Moved to lowercase at top level (so `site.Description`
+  works) plus `[params]` (back-compat for templates that reference
+  `site.Params.description` explicitly).
+
+The cumulative effect of cycles A–E: 11 → 0 warnings (cycle A), real
+SEO/social-preview correctness verified via reading templates + parsing
+emitted HTML/XML (cycles D–E). At no point did the primary metric
+shift, yet 13 distinct semantic-correctness bugs were fixed. The
+floor-then-audit pattern keeps producing value.
 
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
