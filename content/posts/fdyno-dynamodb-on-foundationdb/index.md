@@ -859,8 +859,32 @@ aws dynamodb create-table \
 ```
 
 Three commands, three minutes, and you have a DynamoDB endpoint backed
-by ACID transactions on infrastructure you control. That's the whole
-point.
+by ACID transactions on infrastructure you control.
+
+# Closing
+
+The thesis I opened with was one line:
+
+> *FoundationDB is a great database with a bad API. DynamoDB is a great
+> API hidden behind a proprietary service. Put one on top of the other.*
+
+After 1,152 autoresearch iterations, 526/526 conformance tests, and
+~9,000 lines of Go, the thesis holds. The combination is the interesting
+part. Neither half is novel; the layer in between is.
+
+If you take one thing from this post: **a great API and a great engine
+are decoupleable.** The API is what users build against; the engine is
+what you operate. When the right one is open and the right one is
+proprietary, the gap is a project waiting to be written.
+
+# Further reading
+
+- [TigerBeetle: 1B Payments/Day](https://backend.how/posts/1b-payments-per-day) — the napkin-math + eBPF post this one borrows its structure from.
+- [Temporal — Under the Hood](https://backend.how/posts/temporal-under-the-hood) — same dissection technique applied to durable execution.
+- [The Tiger Style](https://backend.how/posts/the-tiger-style/) — the coding discipline that shaped fdyno's structure.
+- [FoundationDB Architecture](https://apple.github.io/foundationdb/architecture.html) — Apple's official primer on FDB internals.
+- [FoundationDB SOSP paper](https://www.foundationdb.org/files/fdb-paper.pdf) — the formal description of the deterministic simulation testing approach.
+- [DynamoDB Paper (2007)](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf) — Werner Vogels et al. on the original design that the public DynamoDB API descends from.
 
 ---
 
@@ -875,3 +899,25 @@ point.
 [^5]: _Benchmarks were performed on an Apple M2 Pro Mac mini (10-core, 24 GB RAM) with FoundationDB 7.x running single-node with the in-memory storage engine. Production workloads should use the SSD engine on a multi-node cluster._
 
 _DynamoDB® is a trademark of Amazon Web Services. FoundationDB® is a trademark of Apple Inc. This post is an independent engineering project — it is not affiliated with, endorsed by, or sponsored by either project. All trademarks belong to their respective owners._
+
+## Colophon
+
+fdyno was built end-to-end via an autoresearch loop: an LLM-driven
+agent run that proposes one experiment at a time, runs it, logs the
+result against the conformance + differential test suites, and either
+keeps or discards the change. **1,152 iterations. From `0/6` CRUD ops
+on day 1 to `526/526` conformance + `780/780` differential + `1,331/1,357`
+Alternator on day N.** The ledger is in
+[`autoresearch.jsonl`](https://github.com/pratikgajjar/txn-store/blob/main/autoresearch.jsonl)
+and every commit it produced is on `main`.
+
+The blog post you just read is iteration 5 of the same loop applied to
+prose. Sonnet drafted the first version from the README + ARCHITECTURE
+doc; subsequent iterations added the napkin math, the FDB primer, the
+hot-path trace, and the lessons section. Hugo build was the
+correctness check — every iteration had to keep the site building.
+
+As with every microbenchmark post: take the numbers with a pinch of
+salt. They're from one Mac mini, single-node FDB on the memory engine,
+one workload shape. The shape of the bottleneck (CGO + commit) is what
+transfers across environments; the absolute throughput won't.
