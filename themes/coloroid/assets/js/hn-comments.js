@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
     commentDiv.className = 'hn-comment';
     commentDiv.style.marginLeft = `${depth * 10}px`; // Indent nested comments
     commentDiv.innerHTML = `
-      <p><strong><a href="https://news.ycombinator.com/user?id=${comment.author}" target="_blank">${comment.author}</a></strong> | ${new Date(comment.created_at).toLocaleString()}</p>
+      <p><strong><a href="https://news.ycombinator.com/user?id=${encodeURIComponent(comment.author)}" target="_blank" rel="noopener noreferrer">${comment.author}</a></strong> | ${new Date(comment.created_at).toLocaleString()}</p>
       <p>${comment.comment_text}</p>
     `;
 
