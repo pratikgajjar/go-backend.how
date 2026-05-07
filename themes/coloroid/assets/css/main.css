@@ -1563,6 +1563,29 @@ html[data-force-dark] body[class*="theme-"] {
     flex-wrap: wrap;
 }
 
+/* Homepage featured cards */
+.featured-post {
+    margin: 1.4rem 0 0.8rem;
+}
+
+.featured-post h2 {
+    margin: 0 0 0.3rem 0;
+    line-height: 1.25;
+}
+
+.featured-post h2 a {
+    text-decoration: none;
+}
+
+.featured-post h2 a:hover {
+    text-decoration: underline dashed;
+    text-underline-offset: 0.25em;
+}
+
+.featured-post .meta-info {
+    margin-bottom: 0.45rem;
+}
+
 /* Post list — tags inline */
 .post-description {
     margin: 0.2rem 0 0.4rem;
