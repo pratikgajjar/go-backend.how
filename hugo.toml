@@ -20,7 +20,7 @@ schemaTwitter = "https://x.com/pratikgajjar_in"
 schemaLinkedIn = "https://www.linkedin.com/in/pratik-gajjar"
 schemaGitHub = "https://github.com/pratikgajjar"
 schemaSection = "posts"
-siteLinksSearchBox = true
+siteLinksSearchBox = false  # no real search endpoint; tags/{q}/ in the SearchAction was a fake
 
 # OpenGraph and Twitter Card settings
 ogLocale = "en_US"
