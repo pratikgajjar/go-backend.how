@@ -2,7 +2,7 @@
 
 Living backlog. Items get crossed off as they're done; stale claims get pruned.
 
-Last reviewed: **2026-05-06** (autoresearch session, 9 iterations: bug-fixes + perf hint).
+Last reviewed: **2026-05-06** (autoresearch session, 12 iterations: bug-fixes + perf + UX).
 
 ---
 
@@ -16,6 +16,8 @@ Last reviewed: **2026-05-06** (autoresearch session, 9 iterations: bug-fixes + p
 - **Stale public/ assets** — `hugo --gc` cleans orphans now
 - **Raw HTML omitted warning** — replaced inline `<p>` caption with markdown italics in 1b-payments post
 - **JetBrains Mono preload** — added to head.html for faster initial paint
+- **Series prev/next navigation** — single.html renders an ordered list of all posts in a series with the current one marked as "(you are here)"; verified on Valkey Part 1 + Part 2
+- **Print-friendly CSS** — `@media print` stylesheet hides chrome, resets to white-on-black, shows external link URLs inline, keeps headings/tables/code blocks together across page breaks
 - **Build is clean** — 0 warnings/deprecations from `hugo --logLevel debug` (was 11)
 
 ## ✅ Already in the theme (verified — were stale claims)
@@ -34,14 +36,15 @@ Last reviewed: **2026-05-06** (autoresearch session, 9 iterations: bug-fixes + p
 
 ## 🔧 Medium Effort (1–3 hours each)
 
-- **Related posts section** — 2–3 related posts at article bottom based on shared tags
-- **Series linking** — Valkey Part 1 & 2 should auto-link via prev/next series navigation
 - **Active TOC highlighting** — IntersectionObserver to highlight current section
 - **Image lightbox/zoom** — click to enlarge images in articles
-- **Social sharing buttons** — X, LinkedIn, copy-link
-- **Print-friendly CSS** — `@media print` stylesheet
-- **Footnote back-links** — bidirectional linking
 - **Post descriptions on list page** — show `.Description` under each post title in `/posts/`
+
+### ✅ Verified already-done in theme (no work needed)
+
+- ~~Related posts section~~ — `single.html` uses `.Site.RegularPages.Related` with first 3
+- ~~Social sharing buttons~~ — `single.html` already has X, LinkedIn, copy-link
+- ~~Footnote back-links~~ — Goldmark default emits `class="footnote-backref"` with bidirectional refs (multi-reference support too)
 
 ---
 
