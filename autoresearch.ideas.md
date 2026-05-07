@@ -2,34 +2,51 @@
 
 Living backlog. Items get crossed off as they're done; stale claims get pruned.
 
-Last reviewed: **2026-05-07** (two cycles: 34-iter lh_perf optimization, then 8-iter site-quality optimization).
+Last reviewed: **2026-05-07** (three cycles: 34-iter lh_perf, 12-iter site-quality cycle 2, 17-iter site-quality cycle 3).
 
-## ✅ Site quality fixes from cycle 2 (defect count 10 → 5)
+## ✅ Site quality fixes from cycles 2-3 (defect count 10 → 5)
 
-- ✅ **Orphan footnote defs in published posts** — removed 4 dead `[^N]:` defs from 1b-payments and temporal that were silently dropped by Goldmark
-- ✅ **OG image regenerated at 1200×630** — was a generic 512×512 DNA-helix; now branded for backend.how with the site's typography and theme color
-- ✅ **External link rot fixes** — github.com/coilhq/tigerbeetle (×2, org migrated), npci.org.in/what-we-do/upi (URL restructure), github.com/mariozechner/pi (was github.com/badlogic/pi-mono)
-- ✅ **RSS icon dimensions** — added width=32 height=32 to /rss.svg img in footer (CLS prevention)
-- ✅ **Term pages were broken** — /tags/postgres/ etc. were showing the full tag cloud instead of posts under the term, because Hugo's lookup was using taxonomy.html for both Kind=taxonomy and Kind=term. Extended taxonomy.html with a Kind branch.
-- ✅ **Tag case collision** — tiger-style used 'TigerBeetle'/'System Design'/'Repost' (Title Case) while 1b-payments used lowercase kebab-case; both slugified to same URLs but rendered differently per post. Normalized to lowercase kebab-case.
-- ✅ **Heading skip in stereogram post** — `# How to View` → `### Relax` was an h1→h3 skip. Earlier perf-cycle attempt fixed via h1 demote (regressed perf -8). This iter promoted h3s to h2s instead — same a11y win, no perf regression.
+### Cycle 2 (initial site-quality, 12 iters)
+- ✅ Orphan footnote defs in published posts (1b, temporal) — Goldmark silently dropped them
+- ✅ OG image regenerated 1200×630 with site branding
+- ✅ External link rot fixes (4 URLs across tiger, 1b, temporal)
+- ✅ RSS icon dimensions (CLS prevention)
+- ✅ Term page bug (every tag page rendered full tag cloud instead of posts)
+- ✅ Tag case collision (TigerBeetle/tigerbeetle)
+- ✅ Stereogram heading skip — h3→h2 promote (avoiding the perf regression that h1→h2 demote caused)
+- ✅ Article schema empty `image: []` — fallback to OG image
+- ✅ h1 hierarchy site-wide — every page now has exactly 1 h1 (was 2-14 per post)
+- ✅ Floating CSS bug: `scrollbar-width` was outside any selector, polluted `summary` rule
+- ✅ Multi-page a11y sweep — blockquote link contrast, mermaid edge labels, summary touch target, 404 contrast
 
-## Site-quality detector dimensions (currently checking)
-Stored at /tmp/site-quality-check.py. Categories scanned:
+### Cycle 3 (extended site-quality, 5 iters)
+- ✅ Frontmatter metadata sanity — added missing lastmod to 2 posts + content/archive.md
+- ✅ Disabled empty taxonomy parent RSS feeds (`/tags/index.xml`, `/series/index.xml`)
+- ✅ Title length sanity — shortened params.title from "Backend.how | How It Works" to "backend.how"; seo.html drops suffix when combined title would exceed 60 chars (Google SERP cutoff)
+- ✅ Browser-runtime checks — verified 0 viewport overflow at 4 widths × 20 pages, 0 JS console errors / 404s
+- ✅ CSP audit — removed unused `www.youtube.com` from frame-src; switched hn-comments script from absolute to relative URL
+- ✅ Security headers — added X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy denying camera/mic/geolocation/etc + interest-cohort opt-out
 
+## Site-quality detector dimensions (committed at scripts/site-quality-check.py)
+
+Static checks (default):
 - orphan_footnote_def, orphan_footnote_ref
-- broken_anchor (in-page #fragment)
-- img_no_alt, img_no_dimensions
-- duplicate_id (same id="" on multiple elements)
-- json_ld_invalid, json_ld_missing_field (Article/Person/BreadcrumbList required fields)
+- broken_anchor (in-page #fragment), img_no_alt, img_no_dimensions
+- duplicate_id, no_h1, multiple_h1, md_heading_skip
+- json_ld_invalid, json_ld_missing_field
 - missing_og_field, missing_twitter_field
 - broken_internal_href, dangling_local_file
-- duplicate_title, empty_title, missing_canonical
+- duplicate_title, empty_title, missing_canonical, title_too_long (>75)
 - og_image_missing, og_image_aspect_ratio
-- sitemap_dead_url, robots_disallow_all
+- sitemap_dead_url, sitemap_url_no_lastmod, robots_disallow_all
 - term_page_no_posts, tag_case_collision
-- md_heading_skip
-- external_link_broken (cached, opt-in via --check-external)
+- missing_required_fm_field, missing_lastmod, date_in_future, lastmod_in_future, lastmod_before_date
+- rss_parse_error, rss_item_missing_field, rss_item_no_description
+- target_blank_no_noopener, inline_event_handler
+
+Opt-in checks:
+- `--check-external` → external_link_broken (HEAD/GET via httpx, cached)
+- `--check-runtime` → viewport_overflow (4 widths × 20 pages), js_console_error_or_404 (puppeteer-core)
 
 ## ⚡ Perf optimizations attempted in this cycle
 

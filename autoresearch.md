@@ -272,6 +272,71 @@ third-party CDN load and large article HTML — the deferred ideas in
 autoresearch.ideas.md (self-host KaTeX, per-page critical CSS) would
 help them.
 
+---
+
+## Session 2026-05-07: Site-quality cycle 3 (5 iterations)
+
+After cycle 2 plateau, extended the detector with several new
+dimensions and ran a final correctness/security pass.
+
+### Iter-by-iter
+
+| iter | scope                                                               | result |
+|---:|---|---|
+| 13 | **Metadata + RSS feed validation**                                    | added missing `lastmod` to system-design-tinder, post-query-optimise, content/archive.md; disabled empty `/tags/index.xml` and `/series/index.xml` (taxonomy parents). RSS validates clean (feedparser). Sitemap URLs all have `lastmod` |
+| 14 | **Title length sanity**                                               | shortened `params.title` from "Backend.how \| How It Works" to "backend.how"; `seo.html` drops the suffix when post-title + suffix would exceed Google's 60-char SERP cutoff. 5 long titles → 1 (only valkey-part-1's 69-char post-title-alone) |
+| 15 | **Browser-runtime checks**                                            | added two opt-in detector dimensions backed by puppeteer-core: `viewport_overflow` (4 widths × 20 pages = 80 combos), `js_console_error_or_404` (every page loaded headless and watched). Both came back zero |
+| 16 | **CSP audit + URL consistency**                                       | switched hn-comments script from `Permalink` (absolute URL) to `RelPermalink` for consistency with main.js; removed `www.youtube.com` from `frame-src` (only `www.youtube-nocookie.com` is actually used) |
+| 17 | **Security headers**                                                  | added X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy denying camera/mic/geolocation/payment/usb (with interest-cohort opt-out for FLoC) |
+
+### New detector dimensions added in cycle 3
+
+(beyond cycle 2's 24 categories)
+
+- **Static checks**: title_too_long (>75), missing_required_fm_field,
+  missing_lastmod, date_in_future, lastmod_in_future,
+  lastmod_before_date, rss_parse_error, rss_item_missing_field,
+  rss_item_no_description, sitemap_url_no_lastmod,
+  target_blank_no_noopener, inline_event_handler
+
+- **Opt-in browser checks** (require `--check-runtime`):
+  viewport_overflow, js_console_error_or_404
+
+### Final state at cycle 3 conclusion
+
+- **Defects**: 5 (all `orphan_footnote_def` in fdyno-dynamodb-on-foundationdb,
+  which is `draft: true` — author's polish pass)
+- **Pages tested**: 56+ across home, about, posts list, tags cloud, archive,
+  taxonomy terms (33 of them), all 13 individual posts, 404
+- **Lighthouse**: a11y 100 / bp 100 / seo 100 across all (except 404 which is
+  intentionally noindex'd → seo 69 by Lighthouse, correct behavior per
+  HTTP standard)
+- **Browser**: 0 viewport overflow, 0 JS console errors, 0 4xx network
+  responses
+- **Feeds**: RSS root + 33 per-tag feeds parse cleanly via feedparser;
+  all items have title/link/guid/description
+- **Schemas**: Article + Person + BreadcrumbList valid + complete on
+  every post; Article.image always non-empty (falls back to OG image)
+- **Security**: CSP minimal+complete; HSTS / X-Frame-Options /
+  X-Content-Type-Options / Referrer-Policy / Permissions-Policy all set
+
+### Across all 3 cycles
+
+- **Cycle 1** (perf, 34 iters): home 83 → **95**; tiger 82 → 91-93;
+  1b 64 → 85; cumulative wire savings ~600 KB on first visit (font
+  TTF→woff2 + subset; lean theme palettes; inline CSS on small pages;
+  italic preload on posts).
+- **Cycle 2** (site quality, 12 iters): defects 10 → 5; fixed term
+  pages, h1 hierarchy across 56 pages, scrollbar CSS bug that had
+  been silently breaking summary CSS, multi-page a11y to 100.
+- **Cycle 3** (extended quality, 5 iters): metadata sanity, RSS feed
+  validation, title length, browser-runtime sweeps, CSP cleanup,
+  security headers.
+
+**Total**: 51 iterations, 36 keeps, 15 discards. ~120 local commits
+ahead of `origin/main`, all unpushed per project constraint
+(go-backend.how is user-controlled push only).
+
 ### Final scores across all tested pages
 
 | Page | perf | a11y | bp | seo | LCP (ms) | FCP (ms) |
