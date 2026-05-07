@@ -6,7 +6,7 @@ lastmod = 2024-07-16T23:10:26+05:30
 publishDate = "2024-07-16T23:10:26+05:30"
 draft = false
 featured = false
-tags = []
+tags = ["stereograms", "vision", "dark-mode", "focus"]
 images = ["cat-stereogram.png", "cat-vision.png"]
 theme = "lavender"
 +++
