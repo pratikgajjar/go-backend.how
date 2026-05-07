@@ -1,10 +1,27 @@
-{{- with resources.Get "css/main.css" }}
-  {{- if eq hugo.Environment "development" }}
+{{- /* On the home page, inline the minified main.css directly in
+       <head>. Home content is simple (~9 KB HTML) so the inlined CSS
+       (~25 KB) keeps the document tiny while removing the render-block
+       round-trip. Other pages keep main.css as an external stylesheet
+       so it's cached across page navigations. */ -}}
+{{- if eq .Kind "home" -}}
+  {{- with resources.Get "css/main.css" }}
+    {{- if eq hugo.Environment "development" }}
     <link rel="stylesheet" href="{{ .RelPermalink }}" crossorigin>
-  {{- else }}
-    {{- with . | minify | fingerprint }}
-      <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin>
+    {{- else }}
+      {{- with . | minify }}
+    <style>{{ .Content | safeCSS }}</style>
+      {{- end }}
     {{- end }}
   {{- end }}
-{{- end }}
+{{- else -}}
+  {{- with resources.Get "css/main.css" }}
+    {{- if eq hugo.Environment "development" }}
+    <link rel="stylesheet" href="{{ .RelPermalink }}" crossorigin>
+    {{- else }}
+      {{- with . | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin>
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
 

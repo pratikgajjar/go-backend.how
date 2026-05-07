@@ -28,7 +28,7 @@
 <!-- SEO Components -->
 {{ partial "head/seo.html" . }}
 <!-- CSS & JS -->
-{{ partialCached "head/css.html" . }} {{ partialCached "head/js.html" . }}
+{{ partialCached "head/css.html" . .Kind }} {{ partialCached "head/js.html" . }}
 {{- /* RSS alternate link is already emitted by head/seo.html via .AlternativeOutputFormats. */ -}}
 
 <script
