@@ -38,6 +38,11 @@ name = 'Pratik'
 [outputs]
 home = ['html', 'rss']
 page = ['html']
+# Per-term RSS (e.g., /tags/postgres/index.xml) is useful — readers can
+# follow specific topics. The taxonomy parent RSS (/tags/index.xml,
+# /series/index.xml) was empty (channel-only, no items) and added noise
+# to the build output. Disable it.
+taxonomy = ['html']
 
 [markup]
 [markup.highlight]

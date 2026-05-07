@@ -406,6 +406,101 @@ for root, _, files in os.walk('public'):
         elif n_h1 > 1:
             add('multiple_h1', rel, f'{n_h1} h1 elements')
 
+# 8m. Frontmatter metadata sanity (lastmod, future-dated, etc.)
+def parse_fm(content: str):
+    """Light TOML/YAML frontmatter parser. Returns dict of string keys."""
+    if content.startswith('+++'):
+        try:
+            fm_end = content.index('+++', 3)
+        except ValueError:
+            return {}
+        fm = content[3:fm_end]
+        data = {}
+        for m in re.finditer(r'^(\w+)\s*=\s*(.+?)$', fm, re.MULTILINE):
+            k, v = m.group(1), m.group(2).strip()
+            if v.startswith('"') and v.endswith('"'):
+                v = v[1:-1]
+            elif v.startswith("'") and v.endswith("'"):
+                v = v[1:-1]
+            data[k] = v
+        return data
+    if content.startswith('---'):
+        try:
+            fm_end = content.index('---', 3)
+        except ValueError:
+            return {}
+        try:
+            import yaml as _y
+            return _y.safe_load(content[3:fm_end]) or {}
+        except Exception:
+            return {}
+    return {}
+
+from datetime import datetime as _dt
+TODAY = _dt.now().strftime('%Y-%m-%d')
+
+for root_path, _, files in os.walk('content/posts'):
+    for fn in files:
+        if not fn.endswith('.md') or fn == '_index.md':
+            continue
+        path = os.path.join(root_path, fn)
+        rel = os.path.relpath(path)
+        with open(path) as f:
+            content = f.read()
+        data = parse_fm(content)
+        # Skip drafts — author still iterating
+        if str(data.get('draft', 'false')).lower() == 'true':
+            continue
+        # Required fields
+        for required in ('title', 'date', 'description'):
+            if not str(data.get(required, '')).strip():
+                add('missing_required_fm_field', rel, required)
+        # lastmod present
+        if 'lastmod' not in data and 'date' in data:
+            add('missing_lastmod', rel, 'has date but no lastmod')
+        # Date sanity
+        date_str = str(data.get('date', ''))[:10]
+        lastmod_str = str(data.get('lastmod', ''))[:10]
+        if date_str and date_str > TODAY:
+            add('date_in_future', rel, date_str)
+        if lastmod_str and lastmod_str > TODAY:
+            add('lastmod_in_future', rel, lastmod_str)
+        if lastmod_str and date_str and lastmod_str < date_str:
+            add('lastmod_before_date', rel, f'lastmod={lastmod_str} < date={date_str}')
+
+# 8n. RSS feed validation (parse with feedparser)
+try:
+    import feedparser as _fp
+    for feed_path in ('public/index.xml', 'public/posts/index.xml'):
+        if not os.path.exists(feed_path):
+            continue
+        d = _fp.parse(feed_path)
+        if d.bozo:
+            add('rss_parse_error', feed_path, str(d.bozo_exception)[:80])
+        for entry in d.entries:
+            for f in ('title', 'link', 'id'):
+                if not entry.get(f):
+                    add('rss_item_missing_field', feed_path, f"{entry.get('title', '?')[:30]}: {f}")
+            if not entry.get('description', '').strip():
+                add('rss_item_no_description', feed_path, entry.get('title', '?')[:30])
+except ImportError:
+    pass
+
+# 8o. Sitemap freshness (every URL has lastmod)
+if os.path.exists('public/sitemap.xml'):
+    with open('public/sitemap.xml') as f:
+        sitemap = f.read()
+    # Each <url> should have at least <loc>; <lastmod> recommended
+    urls_no_lastmod = []
+    for m in re.finditer(r'<url>(.*?)</url>', sitemap, re.DOTALL):
+        url_block = m.group(1)
+        if '<lastmod>' not in url_block:
+            loc_m = re.search(r'<loc>([^<]+)</loc>', url_block)
+            if loc_m:
+                urls_no_lastmod.append(loc_m.group(1))
+    for u in urls_no_lastmod:
+        add('sitemap_url_no_lastmod', 'public/sitemap.xml', u)
+
 # 8. Fallback OG image dimensions
 og_path = 'themes/coloroid/static/og-image.png'
 if os.path.exists(og_path):
