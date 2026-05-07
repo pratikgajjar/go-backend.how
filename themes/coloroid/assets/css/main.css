@@ -1619,7 +1619,7 @@ html[data-force-dark] body[class*="theme-"] {
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    opacity: 0.4;
+    opacity: 0.75;
     margin-bottom: 0.6rem;
     font-weight: 400;
     border-bottom: 1px dashed;
