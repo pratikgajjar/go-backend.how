@@ -29,13 +29,7 @@
 {{ partial "head/seo.html" . }}
 <!-- CSS & JS -->
 {{ partialCached "head/css.html" . }} {{ partialCached "head/js.html" . }}
-<!-- RSS Feed -->
-{{ with .OutputFormats.Get "rss" -}} {{ printf `<link
-    rel="%q"
-    type="%q"
-    href="%q"
-    title="%q"
-/>` .Rel .MediaType.Type .Permalink site.Title | safeHTML }} {{ end }}
+{{- /* RSS alternate link is already emitted by head/seo.html via .AlternativeOutputFormats. */ -}}
 
 <script
     defer
