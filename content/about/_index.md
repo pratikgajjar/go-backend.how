@@ -1,16 +1,13 @@
 ---
 title: "🧙 About Me"
 slug: about
-description: About Me
+description: "About Pratik Gajjar — software engineer interested in databases, distributed systems, and finding the simple thing under the complex one."
 lead: About Me - Pratik Gajjar
 date: 2020-11-04T08:19:42.000Z
-lastmod: 2020-11-04T08:19:42.000Z
+lastmod: 2026-05-06T00:00:00.000Z
 draft: false
 weight: 0
 theme: lilac
-images:
-  - >-
-    https://images.unsplash.com/photo-1618035881605-dfe8d7eb387b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxMTc3M3wwfDF8YWxsfDV8fHx8fHwyfHwxNjE4MTYyNjIy&ixlib=rb-1.2.1&q=80&w=2000
 contributors:
   - Pratik Gajjar
 ---
