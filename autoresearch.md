@@ -189,6 +189,8 @@ best-practices + seo categories.
 | Iter 19 fetchpriority    | (reverted — no measurable change) | | |
 | Iter 20 narrower weight  | **93** (LCP 1651) | **88** (LCP 1951) | **81** (LCP 2402) |
 | Iter 21 @font-face match | 93 (correctness fix, no perf delta) | 88 | 81 |
+| Iter 22 drop TTF fallback | 93 (lean code, no perf delta) | 88 | 81 |
+| Iter 23 tight font subset | **94** (LCP 1576) | **89** (LCP 1801) | 81 |
 
 (scores: perf / a11y / best-practices / seo)
 
@@ -254,6 +256,22 @@ non-page kinds). 14% improvement on FCP.
     2552 → 2402 ms. Updated `@font-face font-weight` to match the new
     range (correctness — was advertising weights the file no longer
     contains).
+12. **Drop TTF fallback** (iter 22). woff2 has been universally
+    supported since Chrome 36 / Firefox 39 / Safari 12. Removed the
+    `format("truetype-variations")` fallback and deleted the 600 KB
+    of TTF source files from `static/`. Same scores, leaner repo.
+13. **Content-driven tight font subset** (iter 23). Site uses 164
+    unique non-emoji chars across all rendered HTML/XML — vastly less
+    than the 3500-codepoint subset I had been baking. Built a
+    content-driven subset (full Basic Latin + Latin-1 + dashes/quotes
+    + box-drawing + curated UI glyphs). Regular: 57 → 35 KB (-39%);
+    Italic: 38 → 34 KB. Result: home 93 → 94 (LCP 1651 → 1576 ms);
+    tiger 88 → 89 (LCP 1951 → 1801 ms). Added `scripts/regen-fonts.py`
+    to re-run the subset when new content adds chars; the script
+    restores TTF source from git history, scans `public/` for char
+    usage, and writes new woff2 files. Future content with chars
+    outside the subset will fall back to system mono on those specific
+    glyphs (graceful degradation, not a build error).
 
 ### Probes that didn't move the metric
 
@@ -299,17 +317,18 @@ post pages can also use the async-CSS pattern without CLS. Recorded in
 autoresearch.ideas.md as a future tooling-required experiment.
 
 **Cumulative gains across this Lighthouse cycle**:
-- Home: 78 (dev) → 83 (prod baseline) → **93** (current). LCP 2927 → 1651 ms (-44%). FCP 906 → 778 ms.
-- /posts/ list, /tags/: **93**.
-- Tiger Style: 82 → **88**. LCP 2401 → 1951 ms.
-- 1B-payments: 64 → **81**. LCP 3879 → 2402 ms.
+- Home: 78 (dev) → 83 (prod baseline) → **94** (current). LCP 2927 → 1576 ms (-46%). FCP 906 → 777 ms.
+- /posts/ list, /tags/, /archive/: **93-94**.
+- Tiger Style: 82 → **89**. LCP 2401 → 1801 ms (-25%).
+- 1B-payments: 64 → **81**. LCP 3879 → 2402 ms (-38%).
 - a11y: 95-100 across pages → **100** across all pages.
 
 **Total wire savings on the home page** (vs initial baseline):
-- JBM regular: 303 KB TTF → 57 KB woff2 (-81%)
-- JBM italic: 309 KB TTF → 38 KB woff2 (-88%)
+- JBM regular: 303 KB TTF → 35 KB woff2 (-88%)
+- JBM italic: 309 KB TTF → 34 KB woff2 (-89%)
 - main.css: 34 KB external → inlined in HTML (-1 round-trip)
 - Theme palettes: 10 KB CSS dead-code removed
+- TTF fallback fonts: 600 KB total deleted from repo
 
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
