@@ -1563,6 +1563,25 @@ html[data-force-dark] body[class*="theme-"] {
     flex-wrap: wrap;
 }
 
+/* Cross-document View Transitions — smooth fade between pages */
+@view-transition {
+    navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 180ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Respect reduced-motion preference — no transition for users who opt out */
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none !important;
+    }
+}
+
 /* Tag cloud — taxonomy index page (/tags/) */
 .tag-cloud {
     display: flex;
