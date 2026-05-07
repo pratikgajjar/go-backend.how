@@ -1,6 +1,6 @@
 # Autoresearch — Latest sessions
 
-## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 20 iterations)
+## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 22 iterations across 3 cycles)
 
 **Metric**: `hugo_warnings` (lower is better). 11 → 0.
 
@@ -21,14 +21,24 @@ tag cloud sized by post count (4 tiers: xl ≥5, lg ≥3, md ≥2, sm 1).
 Enabled cross-document View Transitions API for smooth page fades on
 Chromium with `prefers-reduced-motion` opt-out.
 
+**Cycle C (iter 21–22)** — housekeeping. Updated checkpoints in
+`autoresearch.md` and `autoresearch.ideas.md`. Cleaned 7 stale CSS
+fingerprint files + 3 stale JS files from `public/` via `hugo --gc`.
+
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
 Remaining backlog is larger-feature work (Pagefind search, Giscus comments,
 auto-generated OG images, JetBrains Mono → WOFF2/subset) — half-day+ each.
-Also pruned a few items as deliberate theme decisions (no per-block
-language label — the theme author chose copy-button-only) or
+Also pruned items as deliberate theme decisions (no per-block language
+label — the theme author chose copy-button-only) or
 already-done-and-not-recognized (RSS per-tag feeds emitted by default,
-markdown images already get loading="lazy" via the figure shortcode).
+markdown images get loading="lazy" via figure shortcode, dark/light
+toggle via `initDarkModeToggle`, keyboard nav via `initKeyboardNav`).
+
+**Local commits not pushed**: 35+ commits ahead of `origin/main` per
+the user's "do not push for go-backend.how" rule. Includes the fdyno
+draft session and these 22 site-fix iterations. User reviews and pushes
+on their own schedule.
 
 ---
 
