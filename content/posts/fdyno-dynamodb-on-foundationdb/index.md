@@ -166,6 +166,39 @@ For an OLTP workload — small $K$, small $b_w$ — latency is dominated by
 the **log fsync** (the commit boundary), typically 2–8 ms on a
 well-tuned cluster. Reads parallelise; writes serialise at the logs.
 
+## MVCC in one diagram
+
+The single property that makes FDB pleasant to layer on is that every
+read happens at a specific **version** — a 64-bit number monotonically
+assigned by the proxies. A transaction picks one read version $V$ and
+sees the entire keyspace as it was at $V$. Other writes happening
+concurrently land at higher versions and are invisible until you start a
+new transaction.
+
+```txt
+       ┌─────── ordered timeline of commit versions ───────▶
+       │
+   V=100 ┃ Tx_A commits {x=1, y=2}                        │ versions are
+   V=101 ┃ Tx_B commits {x=3}                             │ globally
+   V=102 ┃ Tx_C commits {z=9}                             │ assigned
+   V=103 ┃ Tx_D commits {y=5, z=10}                       │
+       …  ┃                                                │
+
+   Reader picks V=102:  sees {x=3, y=2, z=9}    ◀── snapshot at V=102
+   Reader picks V=103:  sees {x=3, y=5, z=10}   ◀── snapshot at V=103
+
+   Concurrent writer Tx_E reads at V=102, writes y':
+       commit time → resolver checks: did anyone write to y in (102, V')?
+                     yes (Tx_D at 103) → ABORT, retry
+                     no                → COMMIT at V'>103
+```
+
+This is *optimistic concurrency control*: writers don't block readers,
+readers don't block writers, and conflicts are detected at commit time
+by the resolver scanning recent committed write-ranges against your
+read range. fdyno never has to think about locks; we just retry on
+`commit_unknown_result` or `not_committed` errors.
+
 ## The contract for a layer
 
 FDB's layer model is the part that matters for fdyno. The core gives you
@@ -475,6 +508,45 @@ $$
 
 CDC retention is therefore cheap until you forget to run the GC sweeper.
 On the roadmap; not in the bench numbers.
+
+## How much disk does this actually use?
+
+A small SaaS workload — say, **10K writes/day** to a 200-byte item,
+2 secondary indexes, NEW_AND_OLD_IMAGES streams, 90 days retained.
+Storage cost on FDB (which uses double-replica by default in most
+production configs):
+
+$$
+\begin{aligned}
+\text{base item} &= 200\text{ B} \\
+\text{index entries} &= 2 \times 16\text{ B} = 32\text{ B} \\
+\text{CDC record} &= 410\text{ B} \\
+\hline
+\text{per write, raw} &\approx 642\text{ B}
+\end{aligned}
+$$
+
+$$
+\text{daily} = 10^4 \times 642 \approx 6.4 \text{ MB/day}
+$$
+
+$$
+\text{90-day retained} \times \underbrace{2}_{\text{FDB replicas}}
+\times \underbrace{1.3}_{\text{LSM amp}}
+\approx 1.5 \text{ GB}
+$$
+
+A pathological 1B-write/day workload (UPI-scale, like the one I
+[modelled for TigerBeetle](https://backend.how/posts/1b-payments-per-day))
+would land at:
+
+$$
+10^9 \times 642\text{ B} \times 90 \times 2 \times 1.3
+\approx 150 \text{ TB hot tier}
+$$
+
+Same order of magnitude as the TigerBeetle ledger calculation — same
+underlying physics, just a different access pattern.
 
 ## What's the actual bottleneck going to be?
 
