@@ -191,6 +191,21 @@ best-practices + seo categories.
 | Iter 21 @font-face match | 93 (correctness fix, no perf delta) | 88 | 81 |
 | Iter 22 drop TTF fallback | 93 (lean code, no perf delta) | 88 | 81 |
 | Iter 23 tight font subset | **94** (LCP 1576) | **89** (LCP 1801) | 81 |
+| Iter 24 archive a11y     | (perf unchanged) — /archive/ a11y 95 → **100** | | |
+
+### Final scores across all tested pages
+
+| Page | perf | a11y | bp | seo | LCP (ms) | FCP (ms) |
+|---|---:|---:|---:|---:|---:|---:|
+| `/` (home, theme-vanilla) | **94** | 100 | 100 | 100 | 1576 | 777 |
+| `/about/` | **94** | 100 | 100 | 100 | ~1576 | ~775 |
+| `/posts/` (list) | **94** | 100 | 100 | 100 | 1576 | 779 |
+| `/tags/` (cloud) | **94** | 100 | 100 | 100 | 1576 | 772 |
+| `/tags/postgres/` (term) | **94** | 100 | 100 | 100 | 1576 | 769 |
+| `/tags/tigerbeetle/` (term) | **94** | 100 | 100 | 100 | 1576 | 769 |
+| `/archive/` | **93** | 100 | 100 | 100 | 1576 | 906 |
+| `/posts/the-tiger-style/` | **89** | 100 | 100 | 100 | 1801 | 1201 |
+| `/posts/1b-payments-per-day/` | **81** | 100 | 100 | 100 | 2402 | 1502 |
 
 (scores: perf / a11y / best-practices / seo)
 
