@@ -1,6 +1,6 @@
 # Autoresearch — Latest sessions
 
-## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 22 iterations across 3 cycles)
+## Session 2026-05-06: Site bug-fixes & UX (CONCLUDED, 29 iterations across 4 cycles)
 
 **Metric**: `hugo_warnings` (lower is better). 11 → 0.
 
@@ -24,6 +24,31 @@ Chromium with `prefers-reduced-motion` opt-out.
 **Cycle C (iter 21–22)** — housekeeping. Updated checkpoints in
 `autoresearch.md` and `autoresearch.ideas.md`. Cleaned 7 stale CSS
 fingerprint files + 3 stale JS files from `public/` via `hugo --gc`.
+
+**Cycle D (iter 24–29)** — second SEO audit pass found 5 more real bugs
+the metric didn't surface (because hugo_warnings doesn't check semantic
+correctness, only template syntax). Each fix was committed locally:
+- Iter 24: about page `og:image` was concatenating the unsplash URL
+  onto Permalink (`https://backend.how/about/https://images.unsplash.com/…`).
+  Removed the unsplash URL; site now uses fallback `og-image.png`.
+  Also rewrote the bare "About Me" description into a real meta sentence.
+- Iter 25: hardened `opengraph.html` to detect absolute URLs in
+  `Params.images` and emit them as-is (defense in depth for iter 24).
+- Iter 26: `twitter_cards.html` was using `RelPermalink` for `twitter:image`
+  (Twitter wants absolute) and didn't handle absolute URLs in front matter.
+  Same hardening applied. Also fixed `structured-data.html` image array.
+- Iter 27: `<link rel="canonical">` and `AlternativeOutputFormats` (RSS)
+  were emitting relative URLs. Google strongly prefers absolute canonical
+  URLs to deduplicate properly. Switched to Permalink/absURL.
+- Iter 28: Person schema was using site title ("Backend.how | How It Works")
+  as the person's name. Now falls back to `author.name` ("Pratik") when
+  schemaType=Person. Affects rich-result eligibility in Google.
+- Iter 29: BreadcrumbList JSON-LD was using `http://schema.org` while
+  Article used `https://schema.org` — normalized to https everywhere.
+
+**Validation**: every JSON-LD block on every page parses as valid JSON
+(verified with `python3 -c json.loads(...)`); every `og:image`,
+`twitter:image`, and canonical URL is now absolute.
 
 **Stop condition**: metric at floor (cannot go below 0), all listed
 quick-wins and medium-effort items either done or verified-already-done.
