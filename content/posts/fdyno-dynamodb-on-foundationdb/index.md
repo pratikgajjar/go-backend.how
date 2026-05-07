@@ -25,7 +25,7 @@ consistent GSIs, partition limits, AWS-only) are real, and they're
 consequences of how the service was built for the scale it serves. Not
 wrong, just specific.
 
-FoundationDB is the engine I keep coming back to. Apple runs iCloud on it,
+FoundationDB[^2] is the engine I keep coming back to. Apple runs iCloud on it,
 Snowflake runs metadata on it, and a number of payment teams trust it with
 their ledgers. It ships full ACID transactions across an ordered keyspace
 and has [deterministic simulation testing](https://www.youtube.com/watch?v=OJb8A6h9jQQ)
@@ -60,15 +60,15 @@ This post is what fell out. By the end you'll know:
 The numbers that anchor the rest of the post:
 
 > A fresh fdyno install passes **526/526** of the
-> [nubo-db conformance suite](https://github.com/nubo-db/dynamodb-conformance),
+> [nubo-db conformance suite](https://github.com/nubo-db/dynamodb-conformance)[^3],
 > **780/780** of a differential benchmark vs DynamoDB Local, and currently
-> **1,331/1,357** of [ScyllaDB Alternator's](https://github.com/scylladb/scylladb)
+> **1,331/1,357** of [ScyllaDB Alternator's](https://github.com/scylladb/scylladb)[^4]
 > upstream test suite — the same tests Scylla uses to validate its own
 > DynamoDB API. The whole implementation is **~9,000 lines of Go**, no file
-> over 1,740 lines, single binary.
+> over 1,740 lines, single binary.[^1]
 >
 > On a Mac mini (M2 Pro, single-node FDB, memory engine) it sustains
-> **3,660 PutItem/s**, **13,533 GetItem/s** at 32 workers. The bottleneck
+> **3,660 PutItem/s**, **13,533 GetItem/s** at 32 workers.[^5] The bottleneck
 > isn't FDB or Go logic — it's the **CGO boundary** burning ~48% of CPU.
 
 # Where the API and the service part ways
@@ -830,7 +830,7 @@ layer on a self-hosted engine simply doesn't offer:
 
 If any of these matter for your workload, DynamoDB the service is the
 right answer. fdyno is interesting in the niches where the API matters
-to you but the hosted service doesn't fit \u2014 not as a replacement.
+to you but the hosted service doesn't fit — not as a replacement.
 
 # Limitations — things that aren't done
 
