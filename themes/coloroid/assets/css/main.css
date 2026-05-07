@@ -445,7 +445,7 @@ body:not([class*="theme-"]) .table-of-content {
     background-color: oklch(24.78% 0 0);
 }
 
-.table-of-content h4 {
+.table-of-content > h2 {
     margin: 0 0 0.75rem 0;
     font-weight: 600;
     font-size: 0.9rem;
@@ -1348,8 +1348,8 @@ html[data-force-dark] body[class*="theme-"] {
     top: 0.4rem;
     right: 0.4rem;
     background: transparent;
-    color: var(--mocha-overlay0);
-    border: 1px solid var(--mocha-overlay0);
+    color: var(--mocha-subtext0);
+    border: 1px solid var(--mocha-overlay2);
     padding: 0.15rem 0.45rem;
     font-family: var(--font-mono);
     font-size: 0.62rem;
@@ -1367,7 +1367,7 @@ html[data-force-dark] body[class*="theme-"] {
 }
 
 .copy-btn:hover {
-    background: var(--mocha-overlay0);
+    background: var(--mocha-subtext0);
     color: var(--mocha-base);
 }
 
@@ -1420,7 +1420,7 @@ html[data-force-dark] body[class*="theme-"] {
 .share-links > span {
     font-family: var(--font-mono);
     font-size: 0.72rem;
-    opacity: 0.5;
+    opacity: 0.75;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     white-space: nowrap;
@@ -1471,8 +1471,8 @@ html[data-force-dark] body[class*="theme-"] {
     border-top: 1px dashed;
 }
 
-.related-posts h4,
-.series-nav h4 {
+.related-posts > h2,
+.series-nav > h2 {
     margin: 0 0 0.85rem 0;
     font-size: 0.78rem;
     text-transform: uppercase;
@@ -1533,7 +1533,7 @@ html[data-force-dark] body[class*="theme-"] {
 .related-post .read-time {
     flex-shrink: 0;
     font-size: 0.72rem;
-    opacity: 0.5;
+    opacity: 0.75;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -1762,7 +1762,7 @@ html[data-force-dark] body[class*="theme-"] {
 .keyboard-hint {
     display: none;
     font-size: 0.65rem;
-    opacity: 0.35;
+    opacity: 0.65;
     font-family: var(--font-mono);
     text-align: center;
     margin-top: 0.4rem;
