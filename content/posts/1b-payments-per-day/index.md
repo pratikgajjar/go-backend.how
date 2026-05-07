@@ -567,7 +567,7 @@ The solution: **checkpoint and archive**. TigerBeetle's accounts already represe
 | 90 days–1 year | **Warm** — ClickHouse / Parquet on NVMe | ~45 TB (compressed 2–3×) | seconds |
 | 1–10 years | **Cold** — S3 / GCS Parquet, partitioned by day | ~150 TB (compressed 3–5×) | minutes |
 
-### The archival pipeline
+## The archival pipeline
 
 1. **Scheduled rollover job** (nightly): query TigerBeetle for transfers with `timestamp < NOW() - 90d`, stream to Parquet files partitioned by day. The account balances at the cutoff date are the checkpoint — save those alongside the archived transfers.
 2. **Columnar compression** on the way out: zstd gets ~4.7× on this schema (we measured it — 27 B/row with dictionary encoding on the low-cardinality fields).

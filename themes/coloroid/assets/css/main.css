@@ -1399,7 +1399,7 @@ html[data-force-dark] body[class*="theme-"] {
     display: inline-block;
     font-size: 0.72rem;
     font-family: var(--font-mono);
-    opacity: 0.6;
+    opacity: 0.8;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     margin-bottom: 0.75rem;
@@ -1477,7 +1477,7 @@ html[data-force-dark] body[class*="theme-"] {
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    opacity: 0.55;
+    opacity: 0.8;
     font-weight: 600;
 }
 
@@ -1762,7 +1762,7 @@ html[data-force-dark] body[class*="theme-"] {
 .keyboard-hint {
     display: none;
     font-size: 0.65rem;
-    opacity: 0.65;
+    opacity: 0.85;
     font-family: var(--font-mono);
     text-align: center;
     margin-top: 0.4rem;
