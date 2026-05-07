@@ -16,13 +16,29 @@ Last reviewed: **2026-05-07** (autoresearch session, ~12 iterations: lh_perf opt
 
 ## ⚡ Perf optimizations not yet tried
 
-- **Async-load main.css with media swap** — `<link media="print" data-async-css>` flipped to `media="all"` by main.js. Requires careful inline critical CSS to avoid CLS. CSP-safe via external defer'd script. Could drop home FCP from 906 → ~400 ms.
-- **Per-route CSS split** — extract `.chroma` syntax-highlight block (~7 KB minified) and other post-only rules into chroma.css; load only when Kind=="page". Saves ~10-15 KB on home/list/term pages.
-- **font-display: fallback** — 100 ms swap window then fallback locks in. Could eliminate LCP swap on slow networks but penalize first-time visitors.
-- **Critical CSS extraction tool** — use `critters` or `critical` npm package to auto-extract above-fold rules at build time.
-- **HTTP/2 server push from Cloudflare** — deployment-side; not measurable in localhost test.
+- **Per-page critical CSS** — auto-extract above-fold rules per
+  individual post URL (use `critters` or `critical`). The hand-written
+  5 KB critical bundle in iter 28 was a wash because 1b's huge HTML
+  (100 KB) made any extra inlined CSS hurt parse time more than it
+  saved on the round-trip. A per-page critical CSS limited to ONLY the
+  rules that page actually uses would tip the balance back positive.
+- **font-display: fallback** — 100 ms swap window then fallback locks
+  in. Could eliminate LCP swap on slow networks but penalize first-time
+  visitors.
+- **HTTP/2 server push from Cloudflare** — deployment-side; not
+  measurable in localhost test. Should help LCP when fonts can be
+  pushed alongside HTML.
 - **103 Early Hints** — Cloudflare Workers feature; deployment-side.
-- **Regenerate `og-image.png` at 1200×630** — current is 512×512 (graphics-tool work).
+- **Self-host KaTeX** — eliminate cdn.jsdelivr.net cross-origin
+  handshake. Self-hosting also lets us add `font-display: swap` to
+  KaTeX @font-face declarations (currently `font-display: block` per
+  Lighthouse `font-display-insight`). Would help 1b's LCP.
+- **Per-page font subset** — currently the JBM woff2 covers chars used
+  across the whole site. Per-page subsets (only chars used on that
+  specific HTML) would shrink the font further but require running the
+  subsetter as part of the build and emitting per-page font URLs.
+- **Regenerate `og-image.png` at 1200×630** — current is 512×512
+  (graphics-tool work).
 
 ---
 
