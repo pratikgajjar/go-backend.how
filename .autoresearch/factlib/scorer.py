@@ -618,6 +618,32 @@ def heading_skip_defects(repo_root: Path) -> int:
     return n
 
 
+GITHUB_LINE_RE = re.compile(
+    r"https://github\.com/fampay-inc/factlib/blob/main/([\w./-]+)#L(\d+)(?:-L(\d+))?"
+)
+
+
+def github_line_ref_defects(body: str, cached_repo: Path) -> int:
+    """Verify https://github.com/.../file.go#L123-L150 anchors point at real lines."""
+    n = 0
+    for m in GITHUB_LINE_RE.finditer(body):
+        path_str, start, end = m.group(1), int(m.group(2)), int(m.group(3) or m.group(2))
+        f = cached_repo / path_str
+        if not f.exists():
+            print(f"DEBUG bad_github_line_ref (no file): {path_str}", file=sys.stderr)
+            n += 1
+            continue
+        try:
+            line_count = sum(1 for _ in f.open())
+        except Exception:
+            continue
+        if start < 1 or end > line_count or start > end:
+            print(f"DEBUG bad_github_line_ref ({path_str}): #L{start}-L{end} but file has {line_count} lines",
+                  file=sys.stderr)
+            n += 1
+    return n
+
+
 def numbered_list_gap_defects(body: str) -> int:
     """A markdown numbered list that goes 1, 2, 4 (skip) is a copy-paste regression.
     Walks each adjacent run of `^\\d+\\. ` lines and verifies the numbers are 1..N."""
@@ -828,6 +854,7 @@ def main() -> int:
     cats["fence_balance"] = fence_balance_defects(body)
     cats["duplicate_paragraph"] = duplicate_paragraph_defects(body)
     cats["numbered_list_gap"] = numbered_list_gap_defects(body)
+    cats["github_line_ref"] = github_line_ref_defects(body, cached_repo)
 
     weights = {
         "build_warnings": 1,
@@ -856,6 +883,7 @@ def main() -> int:
         "fence_balance": 5,
         "duplicate_paragraph": 3,
         "numbered_list_gap": 2,
+        "github_line_ref": 3,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 

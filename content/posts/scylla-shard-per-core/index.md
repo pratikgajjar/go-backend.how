@@ -600,11 +600,15 @@ it calls `metrics.WithLabelValues(...).Inc()` in a hot handler — the
 labels-map lookup grabs an internal `sync.RWMutex`.
 
 The channel-hop benchmark is the most direct analog to Scylla's
-`submit_to`. Each goroutine sends to its neighbour and receives from
-itself via small buffered channels. ~68 ns per round-trip. That's not
-bad — that's roughly the floor for cross-core coordination on this
-hardware — but it's also why Scylla goes to such lengths to keep the
-work on one shard in the first place.
+`submit_to`. Each goroutine does an atomic increment plus one
+non-blocking send to its neighbour and one non-blocking receive from
+itself via single-slot buffered channels — `select { case ch <- v:
+default: }`, so any handoff that would block is dropped instead.
+That measures the *attempted* cross-core handoff cost, including the
+per-iteration atomic. ~68 ns per iteration on this hardware. That's
+not bad — it's roughly the floor for opportunistic cross-core
+coordination — but it's also why Scylla goes to such lengths to keep
+the work on one shard to begin with.
 
 For an apples-to-apples cross-system reading, ScyllaDB's own
 [published benchmarks](https://www.scylladb.com/product/benchmarks/)
