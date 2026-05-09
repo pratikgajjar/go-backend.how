@@ -817,9 +817,11 @@ removed the coordination.
 - [The Tiger Style](/posts/the-tiger-style/) — adjacent design
   discipline (TigerBeetle's), same philosophy: take the constraint
   seriously, and the performance follows.
-- [1B Payments/Day](/posts/1b-payments-per-day/) — what the same
-  share-nothing thinking buys at the application layer for a payments
-  ledger.
+- [1B Payments/Day](/posts/1b-payments-per-day/) — what the
+  no-shared-state thinking looks like at the *application* layer:
+  TigerBeetle's single-writer ledger sustaining ~48K transfers/sec on a
+  Mac mini. Different design (single thread, not shard-per-core), same
+  underlying constraint (don't share mutable state across cores).
 
 ## Colophon
 

@@ -110,7 +110,7 @@ send" outputs.
             └───────────────────────────────────────────────────┘
 ```
 
-`Tick()`, `Step()`, `Propose()` are pure functions of the input plus
+`Tick`, `Step`, `Propose` are pure functions of the input plus
 local state. The library is intentionally deterministic so the
 [interaction-driven tests](https://github.com/etcd-io/raft/blob/main/interaction_test.go)
 can replay sequences and the [TLA+ trace
@@ -490,8 +490,8 @@ the hook.
 ## How long the wait actually is
 
 `HeartbeatTick: 1, ElectionTick: 10` plus a 100 ms tick interval gives a
-randomised election timeout `T_election` uniformly distributed in
-`[1.0 s, 1.999 s]`. The expected election timeout is therefore
+randomised election timeout uniformly distributed in
+`[1.0 s, 1.999 s]`. The expected value is therefore
 `(1.0 + 1.999) / 2 ≈ 1.5 s`.
 
 A leader has just died. Every follower started its election timer at the
@@ -505,7 +505,7 @@ waiting and ≈ 2 ms on protocol work**.
 
 That's the headline of this whole post: the protocol *work* is
 microseconds; the protocol *waiting* is a half to two seconds, dictated
-by `ElectionTick × tickInterval`. If you want faster failover, you make
+by `ElectionTick × tick interval`. If you want faster failover, you make
 ticks faster — and we'll get to why etcd doesn't do that aggressively in
 the tradeoffs section.
 
@@ -565,7 +565,7 @@ case m.GetTerm() > r.Term:
 `inLease` is the runtime cost of `CheckQuorum`: the leader has to ping
 every follower at least once per `electionTimeout`, otherwise followers
 will start trusting MsgVotes from rejoining nodes. That's `n − 1`
-heartbeats per `ElectionTick × tickInterval`, or about
+heartbeats per `ElectionTick × tick interval`, or about
 `(n − 1) / electionTimeout` extra messages per second. With `n = 5` and
 a 1 s election timeout: 4 heartbeats/s — negligible.
 
@@ -612,13 +612,14 @@ clock.
 A 3-node cluster with all three followers in the same datacentre and
 synchronised tick clocks will sometimes still split. The randomisation
 window is `[T, 2T)`, which gives any pair of followers a `1 / 4`
-probability of firing within one tick of each other if `T_election` is
-much larger than `tickInterval`. With `ElectionTick = 10` that pair
+probability of firing within one tick of each other if the election
+timeout is much larger than the tick interval. With `ElectionTick = 10`
+that pair
 collision happens roughly once per ten elections in the worst case.
 
 The protocol survives this — split votes lead to nothing changing and
-all candidates re-roll — but it costs another whole `T_election` of
-unavailability. Production tunes `ElectionTick` down (some teams use
+all candidates re-roll — but it costs another whole election timeout
+of unavailability. Production tunes `ElectionTick` down (some teams use
 `ElectionTick = 5`, some go higher to mask longer GC pauses) and
 accepts the split-vote tail latency.
 
@@ -637,7 +638,7 @@ default:
 
 That `default` branch in `node.Tick()` is the only signal the
 application gets that its consensus loop is starving. The cost of
-ignoring it is a spurious leader election. This is the kind of bug that
+ignoring it is a spurious leader election. This is the type of bug that
 shows up only under sustained pressure — exactly when a leader change
 is most damaging.
 
@@ -659,7 +660,7 @@ all three are options other Raft implementations have made.
 
 ## 1. Adaptive ticks
 
-The current design uses a fixed `tickInterval`. A leader with a quiet
+The current design uses a fixed tick interval. A leader with a quiet
 cluster can afford to slow its heartbeat down (saves CPU and wakeups);
 a leader carrying load benefits from faster ticks (faster failover for
 its followers). [etcd
@@ -670,8 +671,8 @@ already coalesces heartbeats across thousands of ranges to amortise the
 wakeup cost.
 
 For a single-Raft-group library, the equivalent would be: tick every
-`HeartbeatTick × tickInterval` while followers are responsive, fall back
-to wall-clock timers if a follower hasn't replied in
+`HeartbeatTick × tick interval` while followers are responsive, fall
+back to wall-clock timers if a follower hasn't replied within
 `2 × HeartbeatTick`. Cost: ~30 lines around `tickHeartbeat`. Benefit:
 sub-100 ms failover for hot ranges, longer election timeouts elsewhere.
 
@@ -687,7 +688,8 @@ But it's only used for explicit transfer.
 The improvement: have a leader that's about to fail (hit a fatal
 internal error, lose its disk, etc.) emit `MsgTimeoutNow` to the
 healthiest follower as part of its shutdown sequence. Cost: ~50 lines.
-Benefit: bounded failover instead of `~T_election` wait. There's a
+Benefit: bounded failover instead of waiting one full election timeout.
+There's a
 correctness footgun — if the "failing" leader is just slow, it could
 double-elect — but `MsgTimeoutNow` already encodes the candidate type,
 and the receiving follower can drop it unless it's still in the
@@ -712,7 +714,7 @@ test harness (`newNetwork`, `stateMachine`) so there's no real
 network or disk:
 
 ```go
-// raft_election_demo_test.go (place inside the etcd-io/raft tree)
+// drop this as election_demo_test in the etcd-io/raft tree
 package raft
 
 import (

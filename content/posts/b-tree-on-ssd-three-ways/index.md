@@ -1,5 +1,5 @@
 +++
-title = "🐳 LMDB vs Pebble vs BoltDB — B-Tree on SSD, Three Ways"
+title = "🐳 LMDB vs Pebble vs BoltDB - B-Tree on SSD, Three Ways"
 description = "Three embedded KV stores, one workload, one machine. LMDB does 1.9M writes/sec in 11K LOC of C. Pebble's 160K LOC of Go shrinks the file 4×. BoltDB lands in between and stays simple."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
@@ -14,22 +14,22 @@ math = false
 
 > Three engines, one workload, one laptop. LMDB measured 26× faster
 > writes than BoltDB and 13× faster reads than Pebble (see
-> [section 5](#5-real-numbers--same-machine-same-workload)) — but
+> [section 5](#5-real-numbers-same-machine-same-workload)) — but
 > Pebble's file is 4.8× smaller. None of the three dominates all three
 > axes. The shape of the tradeoff is the post.
 
 # 1. The hook
 
-I ran the same workload — 200,000 records, 8-byte keys, 200-byte
-values, random read after sequential write — through three embedded
+I ran the same workload - 200,000 records, 8-byte keys, 200-byte
+values, random read after sequential write - through three embedded
 key-value stores on the same M2 MacBook, same APFS filesystem, same Go
 1.26 (where applicable). The numbers (full reproducer below):
 
 | engine | LOC[^loc] | write ops/s | read p50 | read p99 | on-disk |
 |---|---:|---:|---:|---:|---:|
 | **LMDB**   | 13,754 (C)  | 1,932,276 | 430 ns | 970 ns | 42 MB |
-| **BoltDB** | 11,477 (Go) |    72,702 | 459 ns | 1.4 µs | 96 MB |
-| **Pebble** | 159,642 (Go)|   635,351 | 5.4 µs | 8.7 µs | 20 MB |
+| **BoltDB** | 11,477 (Go) |    72,702 | 459 ns | 1.4 μs | 96 MB |
+| **Pebble** | 159,642 (Go)|   635,351 | 5.4 μs | 8.7 μs | 20 MB |
 
 [^loc]: `wc -l` on each repo, excluding tests. LMDB is `libraries/liblmdb/{mdb,midl}.{c,h}`; BoltDB is `find . -name "*.go" -not -name "*_test.go"`; Pebble is the same with `metamorphic/` and `replay/` excluded.
 
@@ -37,15 +37,15 @@ Three things should bother you:
 
 1. **LMDB**, written by [Howard Chu](https://www.openldap.org/lists/openldap-devel/202012/msg00004.html)
    in [11,477 lines](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c)
-   of C, beats Pebble — [159,642 lines](https://github.com/cockroachdb/pebble)
-   of Go with a CockroachDB-funded engineering org behind it — at
+   of C, beats Pebble - [159,642 lines](https://github.com/cockroachdb/pebble)
+   of Go with a CockroachDB-funded engineering org behind it - at
    single-threaded random reads by ~13×.
 2. **BoltDB**'s on-disk file (96 MB) is **2.3×** larger than LMDB's
    (42 MB) for byte-identical data, and both are B+trees on mmap with
    the same default fill factor. The cost of being written in Go shows
    up in the page allocator, not just the binary.
-3. **Pebble**'s file is 20 MB — 2.1× smaller than LMDB and 4.8× smaller
-   than BoltDB — because it gzips/snappies blocks before writing them,
+3. **Pebble**'s file is 20 MB - 2.1× smaller than LMDB and 4.8× smaller
+   than BoltDB - because it gzips/snappies blocks before writing them,
    and that's the headline LSM win. Read latency p99 is 9× LMDB's,
    which is the headline LSM cost.
 
@@ -61,7 +61,7 @@ section 5. Before that, three architectural sketches.
 Three constraints define the design space:
 
 1. **Persist on a single SSD**, not a cluster. The unit of I/O is a
-   page (typically 4 KiB on Linux/macOS — `os.Getpagesize()` in
+   page (typically 4 KiB on Linux/macOS - `os.Getpagesize()` in
    [bbolt's `internal/common/types.go:34`](https://github.com/etcd-io/bbolt/blob/main/internal/common/types.go#L34)
    sets `DefaultPageSize` to that). Random reads cost a 4 KiB I/O even
    for an 8-byte key.
@@ -80,7 +80,7 @@ the API surface.
 
 BoltDB's [`doc.go`](https://github.com/etcd-io/bbolt/blob/main/doc.go)
 reduces it further: "Bolt is a single-level, zero-copy, B+tree data
-store" — *the database is the file is the mmap*.
+store" - *the database is the file is the mmap*.
 
 Pebble takes the opposite stance. From its [README](https://github.com/cockroachdb/pebble/blob/master/README.md#L9):
 "Pebble is a LevelDB/RocksDB inspired key-value store focused on
@@ -90,7 +90,7 @@ compression, and range deletions. The brief is different.
 
 # 3. The architecture in 200 words each
 
-## 3.1 LMDB — mmap'd COW B+tree, two meta pages
+## 3.1 LMDB - mmap'd COW B+tree, two meta pages
 
 ```
 ┌──────────── data.mdb (single file) ────────────┐
@@ -108,13 +108,13 @@ The whole file is `mmap()`ed into the address space. A read transaction
 takes the newer of the two meta pages and walks pointers. A write
 transaction copies any page it modifies to a free location, rewires
 the parent, fsyncs the new pages, and *only then* overwrites the older
-meta page. The atomic unit of commit is the meta page write — 4 KiB,
+meta page. The atomic unit of commit is the meta page write - 4 KiB,
 power-fail safe, two pages alternating like double-buffered video.
 [`mdb.c:1290`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L1290)
 keeps the union: each meta lives at a *fixed* page id, but the txnid
 bit picks which.
 
-## 3.2 BoltDB — Bolt's Go reimplementation, same shape
+## 3.2 BoltDB - Bolt's Go reimplementation, same shape
 
 ```
 ┌──────────── data.db (single file) ──────────┐
@@ -130,7 +130,7 @@ readers: pin meta → mmap pointer chase, zero copy
 
 BoltDB is LMDB's design ported to Go: same two-meta-page COW, same
 mmap, same single-writer rule. The Go port adds a `Bucket` type
-(nested namespaces — [bucket.go:31](https://github.com/etcd-io/bbolt/blob/main/bucket.go#L31)),
+(nested namespaces - [bucket.go:31](https://github.com/etcd-io/bbolt/blob/main/bucket.go#L31)),
 a `node` cache for the in-flight transaction's dirty pages, and a
 `spill` step that splits oversized nodes into multiple pages
 ([node.go:295](https://github.com/etcd-io/bbolt/blob/main/node.go#L295)).
@@ -139,7 +139,7 @@ runs your closure in a single writer-tx, fsyncs once, returns.
 `MaxKeySize = 32768`, `MaxValueSize = (1 << 31) - 2` are hard limits
 ([bucket.go:14-17](https://github.com/etcd-io/bbolt/blob/main/bucket.go#L14-L17)).
 
-## 3.3 Pebble — LSM with a Clock-Pro sharded block cache
+## 3.3 Pebble - LSM with a Clock-Pro sharded block cache
 
 ```
 ┌─ memtable (4 MiB)                                 in RAM, skiplist
@@ -154,12 +154,12 @@ runs your closure in a single writer-tx, fsyncs once, returns.
           block cache: 4 × NumCPU shards, Clock-Pro
 ```
 
-Writes go to the WAL + memtable (4 MiB by default —
+Writes go to the WAL + memtable (4 MiB by default -
 [options.go:1715](https://github.com/cockroachdb/pebble/blob/master/options.go#L1715)).
 When a memtable fills it freezes and a flush thread writes it as an
 sstable into L0. When L0 has 4 files
 ([options.go:1655](https://github.com/cockroachdb/pebble/blob/master/options.go#L1655))
-a compaction merges them into Lbase (default 64 MiB —
+a compaction merges them into Lbase (default 64 MiB -
 [options.go:1687](https://github.com/cockroachdb/pebble/blob/master/options.go#L1687)).
 Each level is ~10× the previous; reads consult memtable, then each
 level's bloom filter, then the sstable block.
@@ -171,13 +171,13 @@ is from the cached source and is grep-able.
 
 ## 4.1 LMDB: meta-page flip
 
-A write transaction touches a page. LMDB does not modify in place —
+A write transaction touches a page. LMDB does not modify in place -
 it allocates a new page id and copies. From
 [`mdb.c:2785`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L2785)
 (`mdb_page_touch`):
 
 ```c
-// lmdb/libraries/liblmdb/mdb.c — mdb_page_touch (line 2785)
+// lmdb/libraries/liblmdb/mdb.c - mdb_page_touch (line 2785)
 static int
 mdb_page_touch(MDB_cursor *mc)
 {
@@ -215,7 +215,7 @@ When commit comes, the writer calls
 [`mdb_env_write_meta`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L4358):
 
 ```c
-// lmdb/libraries/liblmdb/mdb.c — mdb_env_write_meta (line 4358)
+// lmdb/libraries/liblmdb/mdb.c - mdb_env_write_meta (line 4358)
 toggle = txn->mt_txnid & 1;
 mp = env->me_metas[toggle];
 mapsize = env->me_metas[toggle ^ 1]->mm_mapsize;
@@ -254,13 +254,13 @@ m.checksum = m.Sum64()
 
 `txid % 2` for the page id is the literal LMDB trick. The fnv-64
 checksum at [meta.go:62](https://github.com/etcd-io/bbolt/blob/main/internal/common/meta.go#L62)
-catches torn writes — bbolt validates the checksum before trusting a
+catches torn writes - bbolt validates the checksum before trusting a
 meta page on open
 ([meta.go:24](https://github.com/etcd-io/bbolt/blob/main/internal/common/meta.go#L24-L33)).
 The other half of bbolt's commit is the [node.go spill](https://github.com/etcd-io/bbolt/blob/main/node.go#L295):
 
 ```go
-// bbolt/node.go — spill (line 295)
+// bbolt/node.go - spill (line 295)
 // Spill child nodes first.
 sort.Sort(n.children)
 for i := 0; i < len(n.children); i++ {
@@ -294,7 +294,7 @@ The single-writer constraint is encoded at
 [`db.go:1143`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1143):
 
 ```go
-// bbolt/db.go — DB struct + meta panic comment (around line 1143)
+// bbolt/db.go - DB struct + meta panic comment (around line 1143)
 rwlock   sync.Mutex   // Allows only one writer at a time.
 
 // This should never be reached, because both meta1 and meta0 were validated
@@ -304,7 +304,7 @@ panic("bolt.DB.meta(): invalid meta pages")
 
 Writers serialize through `db.rwlock`. A long writer pauses *all*
 readers' tx-begin (because remap might happen), but does not block
-already-begun read transactions — those keep walking the previous
+already-begun read transactions - those keep walking the previous
 mmap until they Commit or Rollback.
 
 ## 4.3 Pebble: WAL → memtable → flush → compact
@@ -331,7 +331,7 @@ A read consults the cache *first*. From
 [`internal/cache/clockpro.go:142`](https://github.com/cockroachdb/pebble/blob/master/internal/cache/clockpro.go#L142):
 
 ```go
-// pebble/internal/cache/clockpro.go — shard.get (line 142)
+// pebble/internal/cache/clockpro.go - shard.get (line 142)
 func (c *shard) get(k key, level base.Level, category Category, peekOnly bool) *Value {
 	c.mu.RLock()
 	if e, _ := c.blocks.Get(k); e != nil {
@@ -347,7 +347,7 @@ A hit: RLock, blockMap lookup, atomic-load the referenced bit, RUnlock.
 A miss: an [acquireReadEntry](https://github.com/cockroachdb/pebble/blob/master/internal/cache/clockpro.go#L182)
 slot lets one goroutine fetch the block from the sstable while every
 other goroutine that wants the same block parks on the same readEntry
-— see `getWithReadEntry` at [clockpro.go:170](https://github.com/cockroachdb/pebble/blob/master/internal/cache/clockpro.go#L170).
+- see `getWithReadEntry` at [clockpro.go:170](https://github.com/cockroachdb/pebble/blob/master/internal/cache/clockpro.go#L170).
 Pebble's read-side lock fanout is the inverse of LMDB's: LMDB has *no*
 lock inside a read because there's nothing to lock against.
 
@@ -366,11 +366,11 @@ roughly:
 ```
 Get(k)
   → ingestedShared check (skip)
-  → memtable.Get (skiplist)        — RAM
+  → memtable.Get (skiplist)        - RAM
   → for each level L0..Ln:
       bloom_filter[level].MayContain(k)?  no → skip
-      yes:  index_block.lookup(k)  — block cache
-            data_block.lookup(k)   — block cache, decompress on miss
+      yes:  index_block.lookup(k)  - block cache
+            data_block.lookup(k)   - block cache, decompress on miss
   → return value
 ```
 
@@ -378,12 +378,12 @@ That's 1 skiplist probe + N bloom probes + at most M block decompresses
 where M is the number of levels the key actually lives in. With
 [10 bits/key bloom defaults](https://github.com/cockroachdb/pebble/blob/master/sstable/tablefilters/bloom/bloom.go),
 false-positive rate ≈ 1%, so for a 5-level LSM you decompress ~1.05
-blocks per Get on average — but you *visit* every level. Each visit is
+blocks per Get on average - but you *visit* every level. Each visit is
 a hash, a cache-line fetch, and a few atomics on the shard mutex.
 
-That's where my measured[^bench] 5.4 µs p50 comes from. Section 5 derives it.
+That's where my measured[^bench] 5.4 μs p50 comes from. Section 5 derives it.
 
-# 5. Real numbers — same machine, same workload
+# 5. Real numbers - same machine, same workload
 
 The benchmark code is in
 [`/tmp/btree-bench/`](#) (M2 MacBook, 8-core, 16 GB RAM, APFS, Go 1.26.3,
@@ -392,7 +392,7 @@ The benchmark code is in
 sync, batching 1,000 ops per `db.Update`; LMDB uses `MDB_NOSYNC` plus
 one final `mdb_env_sync` to mirror bbolt's per-tx fsync.
 
-The reproducer (excerpt — full Go file at the end of the post):
+The reproducer (excerpt - full Go file at the end of the post):
 
 ```go
 // /tmp/btree-bench/bench.go (Pebble path)
@@ -414,8 +414,8 @@ Output:
 
 ```
 N=200000 value=200B key=8B
-PEBBLE  write=314.7865ms  (635351 ops/s)  read p50=5.4µs   p99=8.7µs   size=20MB
-BBOLT   write=2.750962s   (72702  ops/s)  read p50=459 ns  p99=1.4µs   size=96MB
+PEBBLE  write=314.7865ms  (635351 ops/s)  read p50=5.4μs   p99=8.7μs   size=20MB
+BBOLT   write=2.750962s   (72702  ops/s)  read p50=459 ns  p99=1.4μs   size=96MB
 LMDB    write=0.104 s     (1932276 ops/s) read p50=430 ns  p99=970 ns  size=42MB
 ```
 
@@ -427,7 +427,7 @@ The B+tree path (LMDB, BoltDB) is the same arithmetic. The page is
 A leaf element header is `unsafe.Sizeof(leafPageElement{}) = 16 bytes`
 ([page.go:15](https://github.com/etcd-io/bbolt/blob/main/internal/common/page.go#L15)).
 With `FillPercent = 0.5`, a leaf holds about
-`(4096 × 0.5 - 16) / (16 + 8 + 200) ≈ 9` records — so 200,000 records
+`(4096 × 0.5 - 16) / (16 + 8 + 200) ≈ 9` records - so 200,000 records
 spread across ≈ 22,000 leaves. Branch pages have a 16-byte
 `branchPageElement` ([page.go:14](https://github.com/etcd-io/bbolt/blob/main/internal/common/page.go#L14))
 + 8-byte key ≈ 24 bytes per entry → fanout ≈ `4080 / 24 = 170`. Tree
@@ -437,19 +437,19 @@ matching the measured 430 ns / 459 ns. This is napkin-math:
 `2 × ~150 ns/L3-pageref + ~100 ns binary-search ≈ 400 ns ≈ measured`.
 
 LMDB and BoltDB diverge on writes because BoltDB pays Go-runtime
-overhead per page — every dirty `node` is a Go heap allocation,
+overhead per page - every dirty `node` is a Go heap allocation,
 GC-tracked. LMDB allocates `MDB_page` on the C heap with `malloc` and
 hands it to `pwrite`. The 26× write gap (1.93 M vs 73 K ops/s)
 collapses to under 4× when bbolt is loaded under
 [`db.Batch`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)
-(several goroutines coalesce their work into one tx) — but the
+(several goroutines coalesce their work into one tx) - but the
 single-writer ceiling is real either way. Run more cores at LMDB and
 you don't get more writes; LMDB only allows one in-flight writer.
 
 The Pebble read path is dominated by 1 memtable probe + ~5 bloom
 checks (`L0` plus L1..L4 active given a 20 MB on-disk size means most
 data ended up at L0/L1 after the single Flush) + ~1 block fetch.
-Napkin: `5 × ~200 ns/bloom + 1 × ~3 µs/decompress ≈ 4 µs ≈ measured[^bench]`
+Napkin: `5 × ~200 ns/bloom + 1 × ~3 μs/decompress ≈ 4 μs ≈ measured[^bench]`
 for the p50. Once the workload spans more levels, the p99 grows
 linearly with `L`. That is the shape of LSM read amp.
 
@@ -458,7 +458,7 @@ linearly with `L`. That is the shape of LSM read amp.
 For LMDB: `200,000 records × (8-byte key + 200-byte value + ~24-byte
 overhead) = 46.4 MiB`. With 4-KiB pages and `FillPercent ≈ 0.95` (LMDB
 default for sequential inserts) you'd expect `46.4 MiB / 0.95 ≈ 49 MiB`
-— close to the measured 42 MiB (the freelist hasn't allocated tail
+- close to the measured 42 MiB (the freelist hasn't allocated tail
 slack yet at this scale). The math is in
 [`mdb_page_alloc`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L2501).
 
@@ -467,12 +467,12 @@ For BoltDB: the **same** payload at `FillPercent = 0.5`
 gives `46.4 MiB / 0.5 = 92.8 MiB ≈ measured 96 MiB`. The 4-MiB
 slack is the `mmapSize` doubling at
 [`db.go:mmapSize`](https://github.com/etcd-io/bbolt/blob/main/db.go#L519)
-that grows in 1×, 2×, 4×, … powers of two until 1 GiB, then 1 GiB
+that grows in 1×, 2×, 4×, ... powers of two until 1 GiB, then 1 GiB
 chunks. **Set `tx.Bucket("kv").FillPercent = 0.95` for sequential
 inserts and the file is ~49 MiB**, matching LMDB.
 
 For Pebble: `46.4 MiB` of payload, but values are constant `0xAB` ×
-200 bytes. snappy/zstd compresses that to a few percent — Pebble's
+200 bytes. snappy/zstd compresses that to a few percent - Pebble's
 default block size is 32 KiB
 ([sstable/options.go:147](https://github.com/cockroachdb/pebble/blob/master/sstable/options.go#L147))
 and these blocks compress catastrophically well. With genuinely random
@@ -501,9 +501,9 @@ power-of-two ladder. Pebble's syscall profile is dominated by
 single big tx fires one `pwrite` per dirty page (the new pages) plus
 one `pwrite` for the meta, plus one `fsync`.
 
-# 6. Tradeoffs — what each is bad at
+# 6. Tradeoffs - what each is bad at
 
-## 6.1 LMDB — single writer is real, mmap size is fixed at open
+## 6.1 LMDB - single writer is real, mmap size is fixed at open
 
 > The single-writer constraint isn't a "design choice." It's the
 > reason the rest of the design works. There is no free lunch where
@@ -522,7 +522,7 @@ You cannot relax this without giving up at least:
 LMDB's `mdb_env_set_mapsize` must be called before `mdb_env_open` and
 fixes an upper bound. If your data grows past it, you hit
 `MDB_MAP_FULL` and have to close + reopen with a bigger size. The
-napkin-math heuristic is `mapsize ≈ 20× expected on-disk` — a
+napkin-math heuristic is `mapsize ≈ 20× expected on-disk` - a
 50 GiB workload runs at 1 TiB mapsize, sparse-file allocated, no
 physical cost, because remap-on-grow is the sharp edge you want to
 amortize over the lifetime of the process.
@@ -534,14 +534,14 @@ file *grows*. The
 [`mt_spill_pgs`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L1336)
 mechanism gives some spill-to-disk relief inside long writers, but
 it doesn't help long readers. Etcd's storage team [migrated to bbolt](https://github.com/etcd-io/etcd/issues/10523)
-in part for tooling reasons — same constraint shape, easier ops in
+in part for tooling reasons - same constraint shape, easier ops in
 the Go ecosystem.
 
-## 6.2 BoltDB — write throughput, file size, no compression
+## 6.2 BoltDB - write throughput, file size, no compression
 
 The 73 K ops/s write number is at *bulk-load* speed (batched, no
 contention). Single-record `db.Update`s with sync hit ~5 K ops/s on
-the same machine — one fsync per tx. BoltDB has [`db.Batch`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)
+the same machine - one fsync per tx. BoltDB has [`db.Batch`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)
 to merge concurrent writers, but you've still got
 one fsync per batch.
 
@@ -559,9 +559,9 @@ open; bbolt's [`db_whitebox_test.go`](https://github.com/etcd-io/bbolt/blob/main
 covers single-page tears, but cosmic-ray bit flips at rest are not in
 scope.
 
-## 6.3 Pebble — read tail latency, operational complexity
+## 6.3 Pebble - read tail latency, operational complexity
 
-Pebble's read p99 is 8.7 µs in my benchmark, vs 1.4 µs for bbolt.
+Pebble's read p99 is 8.7 μs in my benchmark, vs 1.4 μs for bbolt.
 That's 6×. At higher data volume (multi-TB, 6+ levels), the gap
 widens because bloom-filter false positives on more levels add real
 disk reads. CockroachDB pages are bigger and they pay this every read.
@@ -598,7 +598,7 @@ puts Pebble through more real-world abuse than LMDB or bbolt see.
 I'd build none of these from scratch. The interesting question is
 *which one to pick when*, plus a few nits I'd change in each:
 
-| if you have… | use | because |
+| if you have... | use | because |
 |---|---|---|
 | `< 100 GB`, read-heavy, single writer, no compression need | **LMDB** | smallest cognitive footprint; reads at memory speed |
 | Go-only stack, ops simplicity matters more than perf | **BoltDB** | one binary, one file, no LSM tuning |
@@ -606,7 +606,7 @@ I'd build none of these from scratch. The interesting question is
 
 Three concrete things I'd change:
 
-**LMDB** — let me query and resize `mapsize` while live, like Linux
+**LMDB** - let me query and resize `mapsize` while live, like Linux
 [`mremap(MREMAP_MAYMOVE)`](https://man7.org/linux/man-pages/man2/mremap.2.html)
 permits. The current "set it once at open" rule is a relic of how
 `mmap` worked on the platforms LMDB targeted in 2011. Modern Linux
@@ -615,7 +615,7 @@ if LMDB used a free-list-of-mmap-segments instead of a single
 contiguous map. Cost: maybe 200 lines in `mdb_env_open` + careful
 testing against the reader-pinning code.
 
-**BoltDB** — add a write-ahead log for the page allocator so writes
+**BoltDB** - add a write-ahead log for the page allocator so writes
 don't have to be synchronous-fsync per tx. Today, every `db.Update`
 fsyncs (db.go:1143's "fsync() on every write"). A 4-MiB WAL would
 let you batch up to N pages before fsyncing the data file, the same
@@ -624,7 +624,7 @@ replays the WAL into the page allocator on open. Material change to
 the file format. But it would close the 26× write gap with LMDB
 without breaking the API.
 
-**Pebble** — make the block cache shard count a per-process tunable
+**Pebble** - make the block cache shard count a per-process tunable
 rather than `4 × NumCPUs`
 ([cache.go:105](https://github.com/cockroachdb/pebble/blob/master/internal/cache/cache.go#L105)).
 On a 64-core box you get 256 shards × 4 MiB minimum = 1 GiB of cache
@@ -726,7 +726,7 @@ is the answer when your workload is too big for either.
 The thing nobody puts in the README: **all three are correct.** Power-
 fail any of them and they come back. Run any of them on a single
 SSD for 5 years and they'll still be there. The differences are at
-the second-derivative — tail latency, operational ergonomics, file-
+the second-derivative - tail latency, operational ergonomics, file-
 size at scale. Pick the one whose second-derivative bothers you least.
 
-[^bench]: Numbers were gathered on May 9, 2026 — M2 MacBook (8 perf+E cores), 16 GB RAM, APFS on internal SSD, Go 1.26.3. `cc` is Apple Clang 17 (`-O2`). The Pebble write count uses `pebble.NoSync` to be apples-to-apples with bbolt's per-tx (not per-op) fsync; LMDB uses `MDB_NOSYNC` plus one `mdb_env_sync(env, 1)` at end.
+[^bench]: Numbers were gathered on May 9, 2026 - M2 MacBook (8 perf+E cores), 16 GB RAM, APFS on internal SSD, Go 1.26.3. `cc` is Apple Clang 17 (`-O2`). The Pebble write count uses `pebble.NoSync` to be apples-to-apples with bbolt's per-tx (not per-op) fsync; LMDB uses `MDB_NOSYNC` plus one `mdb_env_sync(env, 1)` at end.

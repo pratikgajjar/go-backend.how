@@ -923,10 +923,12 @@ func (u *s3Uploader) UploadBytes(ctx context.Context, key string, data []byte) e
 
 **One PUT per batch**, no multipart. The reasoning is small. A typical
 wal-cake batch is `batchSize=1000` events × ~200 B/event uncompressed
-JSON = 200 KB pre-Parquet, ~30–50 KB post-Parquet+ZSTD. The S3
-multipart threshold is 5 MB; nothing we write hits it. Multipart
-would add three round trips (init, parts, complete) for negligible
-parallelism gain on a sub-MB upload.
+JSON = 200 KB pre-Parquet, ~30–50 KB post-Parquet+ZSTD. S3 multipart's
+[minimum part size is 5 MB](https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html)
+(except the last) — sub-MB objects can't usefully be split. A single
+PUT also avoids the three multipart round trips (`CreateMultipartUpload`,
+N × `UploadPart`, `CompleteMultipartUpload`) for no parallelism gain
+at this size.
 
 Idempotency comes from the key. The `Timestamp.UnixMicro()` of the
 last event in the batch is monotonic — by contiguous-LSN ordering,

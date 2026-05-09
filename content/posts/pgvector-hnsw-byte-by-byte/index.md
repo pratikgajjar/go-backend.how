@@ -117,7 +117,7 @@ is local roads. You spend most of your time at the bottom but
 parachute into roughly the right region first. In practice on real
 embedding distributions you can hit recall ≥ 95 % at `ef_search = 40`
 with `K = 10`, which is what the
-[default GUC](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L48)
+[default GUC](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L52)
 ships at.
 
 # 3. The architecture in 200 words
@@ -201,7 +201,7 @@ On the first call, all of HNSW happens. `GetScanItems` returns a
 `List *` of search candidates already sorted by distance. Subsequent
 calls just `llast()` the next one. The `HNSW_SCAN_LOCK` is a Postgres
 [heavyweight page-level
-lock](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L41-L42)
+lock](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L41-L43)
 (via `LockPage`, not the lighter `LWLockAcquire` used for the
 allocator and per-element locks); held in shared mode by readers,
 exclusive by vacuum's repair phase. So the index doesn't block reads
@@ -668,7 +668,7 @@ fit, pgvector falls back to "build the rest of the graph by inserting
 one tuple at a time on disk", which is dramatically slower because
 every insert has to do a full graph traversal under exclusive page
 locks. The
-[NOTICE message](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnswbuild.c#L540-L550)
+[NOTICE message](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnswbuild.c#L539-L542)
 is friendly but the cost is real:
 
 ```text
