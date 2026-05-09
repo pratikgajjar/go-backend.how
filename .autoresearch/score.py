@@ -678,6 +678,10 @@ def defaults_consistency_defects(body: str, cached_repo: Path) -> int:
     for var, val in pairs:
         val = val.strip().rstrip(",.")
         val_norm = val.replace(",", "").replace("_", "")
+        # Skip values that look like math-expression operands (e.g.
+        # `flushInterval = 1,000 / 30` is an equation, not an assignment).
+        # Heuristic: pure integer val for an int_default, or duration-like
+        # val (Xs/Xms/Xms) for a string default. Otherwise ignore.
         # Try int defaults
         if var.lower() in int_defaults:
             expected = int_defaults[var.lower()]
@@ -693,6 +697,10 @@ def defaults_consistency_defects(body: str, cached_repo: Path) -> int:
         kebab = re.sub(r"(?<!^)(?=[A-Z])", "-", var).lower()
         if kebab in str_explicit:
             expected = str_explicit[kebab]
+            # Only consider duration-shaped values (e.g. 30s, 100ms).
+            # Skip math-expression operands like "1,000".
+            if not re.fullmatch(r"\d+(?:\.\d+)?(?:ns|us|µs|ms|s|m|h)", val):
+                continue
             if expected != val:
                 n += 1
                 print(

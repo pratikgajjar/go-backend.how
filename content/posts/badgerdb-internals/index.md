@@ -81,7 +81,7 @@ The skiplist is custom, lock-free, written by the Dgraph team and lives at [`skl
 
 Compaction-stall avoidance is a *scheduling* problem more than a writing problem. The mechanics — read N tables, merge-sort, write M tables — are obvious. The hard part is *deciding which level to drain right now*, and how aggressively, so L0 never fills past the stall threshold. This is where Badger spent the most engineering iteration. It's also where it diverges most visibly from RocksDB.
 
-The whole decision lives in `pickCompactLevels` in [`levels.go`][levels]. The level-target calculation borrows from RocksDB's [Dynamic Level Sizes blog post][dls] (2015): instead of fixed level targets, the bottom level's actual size sets the targets above it, and the "base level" floats up or down based on the deepest level whose target ≤ `BaseLevelSize`. Default options put `BaseLevelSize = 10 MiB` and `LevelSizeMultiplier = 10`, so for a 1 GB dataset the base level is ~L4 and L5/L6 carry most of the bytes [(`options.go:128-138`)][opts].
+The whole decision lives in [`pickCompactLevels` (levels.go)][levels]. The level-target calculation borrows from RocksDB's [Dynamic Level Sizes blog post][dls] (2015): instead of fixed level targets, the bottom level's actual size sets the targets above it, and the "base level" floats up or down based on the deepest level whose target ≤ `BaseLevelSize`. Default options put `BaseLevelSize = 10 MiB` and `LevelSizeMultiplier = 10`, so for a 1 GB dataset the base level is ~L4 and L5/L6 carry most of the bytes [(`options.go:128-138`)][opts].
 
 [levels]: https://github.com/dgraph-io/badger/blob/main/levels.go
 [opts]: https://github.com/dgraph-io/badger/blob/main/options.go
@@ -238,7 +238,7 @@ The WiscKey decision creates a specific shape of system. It's worth being explic
 
 [txn]: https://github.com/dgraph-io/badger/blob/main/txn.go
 
-**Single-writer goroutine.** All `db.Update` calls funnel through one `doWrites` goroutine that batches up to `3 × kvWriteChCapacity` requests per loop [(`db.go:915`)][dbgo]. Concurrent writers fan in via the unbuffered `writeCh`. This is *good* — it avoids cross-goroutine memtable contention — but means Badger doesn't scale write throughput past one core's worth of memtable insertion. On the M3 Max benchmarks above, the peak run of `1,047,920` ops/s on 10M × 128 B corresponds to `1 / 1,047,920 ≈ 0.95 µs` per memtable insert + per-WAL append — close to a single-core ceiling for this hardware. There is no multi-writer mode; a workload that needs 4× this on a single Badger instance has to look elsewhere.
+**Single-writer goroutine.** All `db.Update` calls funnel through one `doWrites` goroutine that batches up to `3 × kvWriteChCapacity` requests per loop [(`db.go:915`)][dbgo]. Concurrent writers fan in via the unbuffered `writeCh`. This is *good* — it avoids cross-goroutine memtable contention — but means Badger doesn't scale write throughput past one core's worth of memtable insertion. On the M3 Max benchmarks above, the peak run of 1,047,920 ops/s on 10M × 128 B implies `10^9 / 1047920 = 954` ns per memtable insert + per-WAL append — close to a single-core ceiling for this hardware. There is no multi-writer mode; a workload that needs 4× this on a single Badger instance has to look elsewhere.
 
 # What I'd build differently
 
@@ -308,9 +308,9 @@ func main() {
 }
 ```
 
-`go run wb.go -n 10000000 -v 128` reproduces the headline ops/s row (we saw `821 K`, `891 K`, `1048 K` across three runs on a freshly-removed data dir). Bump `-v` to `1024` to watch the same code drop into the L0 stalls.
+`go run wb.go -n 10000000 -v 128` reproduces the headline ops/s row (we saw `821 K`, `891 K`, `1048 K` across three runs on a freshly-removed data dir). Re-run with `-v 1024` and the same code drops into the L0 stalls.
 
-For an in-process view of the stall, there's no need for `bpftrace`; Badger's own logger prints `L0 was stalled for X` at the end of every stall window > 1 s. Pipe a run through `grep stalled` and you get the per-window timing without any kernel tooling. If you want a syscall-level view, the relevant calls are `pwrite` / `pwrite_nocancel` (SST flush) and `madvise` (block-cache eviction); a simple `sudo dtruss -e -t pwrite -p $BADGER_PID` on macOS gives you the per-flush byte count without instrumentation overhead. On Linux substitute `pwrite64` and `bpftrace -e 'tracepoint:syscalls:sys_enter_pwrite64 /comm == "badger"/ { @[args->count] = count(); }'`.
+For an in-process view of the stall, there's no need for `bpftrace`; Badger's own logger prints `L0 was stalled for X` at the end of every stall window > 1 s. Pipe a run through `grep stalled` and you get the per-window timing without any kernel tooling. If you want a syscall-level view, the relevant calls are `pwrite` (SST flush) and `madvise` (block-cache eviction); a simple `sudo dtruss -e -t pwrite -p $BADGER_PID` on macOS gives you the per-flush byte count without instrumentation overhead. On Linux substitute `pwrite64` and `bpftrace -e 'tracepoint:syscalls:sys_enter_pwrite64 /comm == "badger"/ { @[args->count] = count(); }'`.
 
 # Closing
 

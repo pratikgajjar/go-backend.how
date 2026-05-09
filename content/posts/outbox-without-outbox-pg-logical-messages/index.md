@@ -977,10 +977,12 @@ second transaction blocks event delivery for 30 seconds. Same
 problem the outbox-table pattern has. The advice is the same: keep
 transactions short, hoist long-running work outside the transaction.
 
-Newer pgoutput (`proto_version '2'`, added in PG 14) can stream
-in-progress transactions and would unblock long-runners; v4 (PG 16)
-adds two-phase commit. Switching factlib is on the deferred list
-— it needs care around rolled-back streamed messages.
+Newer pgoutput protocols help: v2 (PG 14) streams in-progress
+transactions; v3 (PG 15) adds two-phase commit; v4 (PG 16) adds
+parallel apply. (Verified against
+[`logicalproto.h`](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/logicalproto.h)
+constants.) Switching factlib past v1 is deferred — it needs care
+around rolled-back streamed messages on the consumer.
 
 # 10. The Python client (and polyglot fan-in)
 
