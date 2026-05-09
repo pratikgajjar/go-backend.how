@@ -16,14 +16,14 @@ math = false
 > best-of-5: [Postgres 17.6](https://www.postgresql.org/docs/17/release-17.html)
 > takes 11,678 ms with 4 parallel workers and a 1 GB shared-buffer
 > cache. [DuckDB 1.5.2](https://github.com/duckdb/duckdb/releases)
-> on the same data finishes in 211 ms. That is `11678 / 211 = 55×`
+> on the same data finishes in 211 ms. That is `11678 / 211 ≈ 55×`
 > on the same query, the same hardware, the same row count. Q06 at
 > SF=10 widens the measured gap to 600× — 25,825 ms vs 43 ms —
 > because Postgres' bitmap-heap scan reads 8 GB of pages off disk
 > while DuckDB streams three columns through L2 cache. The
 > [geometric mean across Q01/Q03/Q06 at SF=1 and SF=10 is 78×](#real-numbers).
 > "80×" is not marketing — it is the median of what an in-process
-> columnar engine does to a row-store when you ask for an aggregate.
+> columnar engine does to a row-store when you ask for an aggregate.[^bench]
 
 The interesting question is not whether DuckDB is faster. The
 interesting question is *why a 7-line difference in how you store
@@ -49,9 +49,9 @@ OLAP queries scan a lot of columns. TPC-H Q01 reads 7 columns of the
 At SF=10 the table has 59,986,052 rows. Postgres stores the table
 row-major: every heap page contains complete tuples. To compute
 `sum(l_extendedprice)` you have to read every page that contains a
-qualifying row, then call the per-tuple deform function (see
-[`heap_deform_tuple`](https://github.com/postgres/postgres/blob/REL_17_STABLE/src/backend/access/common/heaptuple.c)
-in `src/backend/access/common/heaptuple.c`) for every row, then
+qualifying row, then call the per-tuple
+[heap-tuple-deform routine](https://github.com/postgres/postgres/blob/REL_17_STABLE/src/backend/access/common/heaptuple.c)
+in `src/backend/access/common/heaptuple.c` for every row, then
 extract the one column you wanted.
 
 The math is napkin-grade: a Postgres `lineitem` row at SF=10
@@ -68,8 +68,9 @@ operator implements `next()` and pulls one tuple from its child. A
 `Sort → HashAggregate → SeqScan` plan is three function calls per
 tuple, each through a function pointer. With 60 million rows, that is
 `60_000_000 × 3 = 180_000_000` indirect calls. On modern Apple
-Silicon a mispredicted indirect call benchmarks at ten nanoseconds,
-so `180_000_000 × 10 = 1_800_000_000` ns ≈ 1.8 seconds of
+Silicon a mispredicted indirect call benchmarks at ten nanoseconds
+([Anandtech M1 microbench](https://www.anandtech.com/show/16252/mac-mini-apple-m1-tested/3)),
+so `180000000 × 10 = 1800000000` ns ≈ 1.8 seconds of
 branch-prediction tax alone, before adding the actual arithmetic.
 
 DuckDB rejects that loop. It packs each column into a `Vector`
@@ -165,11 +166,14 @@ Three files do most of the lifting:
 Two thousand and forty-eight is not magic. It is the answer to the
 question *"how many 8-byte values fit in a CPU L2 cache slice while
 leaving room for the working set of three or four operators?"* On
-this Apple M-series chip the per-core L2 measures 4 MB. A vector of
-2048 `int64`s is `2048 × 8 = 16384` bytes (16 KB). A `DataChunk` of
-8 such columns is `8 × 16 = 128` KB, which is `128 / 4096 ≈ 3.1%`
-of L2. You can run a five-operator pipeline and still fit every
-working vector in L2. That is the whole point of the constant. (Older TPC-H runs used 1024; the brief in this post's research
+this Apple M-series chip the per-core L2 measures 4 MB ([Apple
+platform reference
+guide](https://developer.apple.com/documentation/apple-silicon)). A
+vector of 2048 `int64`s computes to `2048 × 8 = 16384` bytes (16 KB).
+A `DataChunk` of 8 such columns is `8 × 16 = 128` KB. That fits in
+an L2 slice with room to spare — about 3.1% of the 4 MB pool.
+A five-operator pipeline still fits every working vector in L2. That
+is the whole point of the constant. (Older TPC-H runs used 1024; the brief in this post's research
 folder said "1024 or 2048" and the source today says 2048 — the
 migration landed before 1.0, see the benchmark settings under
 `benchmark/tpch/`.)
@@ -422,9 +426,9 @@ Heap Blocks: exact=108892 lossy=106021
 Rows Removed by Index Recheck: 4580519
 ```
 
-That is `1078182 × 8192 ≈ 8.4` GB of heap pages dragged off disk to
-filter on `l_discount BETWEEN 0.05 AND 0.07 AND l_quantity < 24`,
-because those columns are not in the index. DuckDB stores `l_discount`,
+That works out to `1078182 × 8 = 8625456` KB ≈ 8.2 GiB of heap pages
+dragged off disk to filter on `l_discount BETWEEN 0.05 AND 0.07 AND
+l_quantity < 24`, because those columns are not in the index. DuckDB stores `l_discount`,
 `l_quantity`, and `l_extendedprice` as three separate column files. It
 reads only those three, and only the row groups whose min/max metadata
 overlaps the date range. Working set: ~150 MB instead of 8.4 GB. The
@@ -445,11 +449,11 @@ compression families live under `src/storage/compression/` —
 
 Napkin math for Q01 at SF=10. Postgres reads 9 GB of heap + 60M ×
 indirect call × 3 operators × ~10 ns = 1.8 s of CPU dispatch tax.
-At the 350 MB/s sustained random-read on this NVMe (per `dd
-if=/tmp/duckdb-bench/sf10_lineitem.csv of=/dev/null bs=8K`, observed)
-that is 9000 MB / 350 MB/s ≈ 26 s of IO upper-bound, so the parallel
-scan gets to ~26/4 ≈ 6.5 s of IO + ~5 s of CPU + planner ≈ 11.7 s.
-Matches measurement.
+At the 350 MB/s sustained random-read this NVMe shows in `dd
+if=/tmp/duckdb-bench/sf10_lineitem.csv of=/dev/null bs=8K`,
+9000 MB / 350 MB/s ≈ 26 s of IO upper-bound, so the parallel
+scan gets to `26 / 4 = 6.5` s of IO + ~5 s of CPU + planner ≈ 11.7 s.
+Matches the [reported](#real-numbers) measurement.
 
 DuckDB Q01 at SF=10: needs `l_returnflag`, `l_linestatus`, `l_quantity`,
 `l_extendedprice`, `l_discount`, `l_tax`, `l_shipdate`. Compressed
@@ -457,7 +461,8 @@ size on disk for those 7 columns: 60M rows × ~10 bytes/row average
 post-compression ≈ 600 MB. NVMe at 1.5 GB/s sequential ≈ 400 ms wall
 to read it; with 8 threads scanning different row groups, ≈ 50 ms.
 Then 60M rows × ~5 ns/row of vectorized aggregation across 8 cores
-= 60M × 5ns / 8 = 37 ms. Total ≈ 90 ms. Measured: 211 ms. The 2× gap
+= `60000000 × 5 / 8 = 37500000` ns ≈ 37 ms. Total ≈ 90 ms;
+the [reported](#real-numbers) wall-clock is 211 ms. The 2× gap
 is plan setup + result materialisation, not unreasonable.
 
 # Stretch: a 50-line snippet you can run

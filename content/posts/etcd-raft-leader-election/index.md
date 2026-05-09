@@ -22,17 +22,24 @@ Both are right, depending on what you measure (and the
 itself spells out which is which, once you read it line by line).
 
 Here's the contradiction the [etcd-io/raft](https://github.com/etcd-io/raft)
-source code actually shows you, once you read it carefully:
+source code actually shows you, once you read it carefully. Three
+numbers describe the same election, in three different regimes:
 
-> One full leader-election state-machine round — `MsgHup`, become
-> candidate, tally votes, become leader, append empty entry —
-> finishes in **≈ 1.8 µs of CPU** (napkin math against
-> `BenchmarkOneNode` at 1,360 ns/op, breakdown below). The same
-> election in production takes **1 to 2 seconds of wall-clock**.
-> Roughly six orders of magnitude (`≈ 1.5 s / 1.8 µs ≈ 833,000×`) of
-> the time that is missing isn't computation — it's deliberate waiting,
-> randomised, so that a quorum can't dead-lock on simultaneous
-> candidates.
+> | Regime | What it measures | Order of magnitude |
+> |---|---|---:|
+> | CPU only | The state-machine transitions: `MsgHup → becomeCandidate → poll → becomeLeader`. | **≈ 1.8 µs** |
+> | Localhost wall-clock | Same path, plus channel sends, goroutine wakeups, in-memory `Storage.Append`. | **≈ 200 µs** |
+> | Production wall-clock | Same path, plus the randomised election timer that has to fire first. | **≈ 1 to 2 s** |
+>
+> The two big jumps (`200 µs / 1.8 µs ≈ 100×` and
+> `1.5 s / 200 µs ≈ 7,500×`) aren't computation. They're scheduling
+> and deliberate waiting, in that order.
+
+The 200 µs in the title is the middle row: the wall-clock that the
+*protocol itself* spends, on a localhost cluster, doing one full
+election round once the campaign decision has been taken. It's the
+number you'd see if you `bpftrace`d the `MsgHup → becomeLeader`
+transition on a single-machine 3-node test.
 
 This post is a walk through why that is. We'll trace the exact path the
 state machine takes from `tickElection()` firing on a follower to
