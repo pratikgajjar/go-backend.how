@@ -252,11 +252,11 @@ Three guards, each a real bug fixed long after Raft's first publication:
    node that's been silent for a while, which is why the check is gated
    behind the elapsed-timeout test in the first place.
 
-## Step 3: campaign() does the math, sends the votes
+## Step 3: campaign() sends the votes
 
-`campaign` is where all the state-machine work happens. It transitions
-state, increments the term, votes for itself, and fans MsgVote out to
-every other voter:
+`campaign` is the orchestrator. It calls `becomeCandidate` (or
+`becomePreCandidate`) for the actual state transition + term bump,
+then fans `MsgVote` out to every other voter:
 
 ```go
 // raft.go

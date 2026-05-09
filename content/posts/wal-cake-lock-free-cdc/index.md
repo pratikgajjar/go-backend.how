@@ -357,16 +357,17 @@ Every `5 s` and on every downstream ack, wal-cake sends a
 `StandbyStatusUpdate` with `lastAckedLSN`:
 
 ```go
-// internal/replication/pg_replicator.go
+// internal/replication/pg_replicator.go (err handling + log elided)
 func (r *pgReplicator) SendStandbyStatusUpdate(ctx context.Context, replyRequested bool) error {
-    status := pglogrepl.StandbyStatusUpdate{
-        WALWritePosition: r.lastAckedLSN,
-        WALFlushPosition: r.lastAckedLSN,
-        WALApplyPosition: r.lastAckedLSN,
-        ClientTime:       time.Now(),
-        ReplyRequested:   replyRequested,
-    }
-    return pglogrepl.SendStandbyStatusUpdate(ctx, r.repConn, status)
+	status := pglogrepl.StandbyStatusUpdate{
+		WALWritePosition: r.lastAckedLSN,
+		WALFlushPosition: r.lastAckedLSN,
+		WALApplyPosition: r.lastAckedLSN,
+		ClientTime:       time.Now(),
+		ReplyRequested:   replyRequested,
+	}
+	err := pglogrepl.SendStandbyStatusUpdate(ctx, r.repConn, status)
+	return err
 }
 ```
 
@@ -818,12 +819,13 @@ Schema construction is `JSONLogicalType`-aware:
 
 ```go
 // internal/transform/parquet_writer.go
-beforeNode, _ := schema.NewPrimitiveNodeLogical(
-    "before",
-    parquet.Repetitions.Required,
-    schema.JSONLogicalType{},
-    parquet.Types.ByteArray,
-    -1, -1,
+beforeNode, err := schema.NewPrimitiveNodeLogical(
+	"before",
+	parquet.Repetitions.Required,
+	schema.JSONLogicalType{},
+	parquet.Types.ByteArray,
+	-1,
+	-1,
 )
 ```
 
