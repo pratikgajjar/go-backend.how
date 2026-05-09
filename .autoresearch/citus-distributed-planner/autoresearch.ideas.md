@@ -91,20 +91,36 @@ issues the regex scorer cannot see.
       to "cited from the repo's own README" + "useful complements
       to reading the C source".
 
-## Resume-cycle iters 27-33 added these final audit catches
+## Resume-cycle iters 27-45 — the long tail
 
-- [x] Iter 27: §1 "result is discarded" was overclaim; FinalizeRouterPlan
-      keeps the targetlist (column metadata) from standard_planner.
-      Reworded to "mostly thrown away ... keeps the targetlist".
-- [x] Iter 28: §5 closing said "Co-located joins stay in path 1 or 2"
-      but path 1 (fast-path) is single-table only (`numFromRels != 1`).
-      Reworded.
-- [x] Iter 30: §6 "every write touches pg_dist_transaction" was too
-      broad — only multi-shard 2PC writes. Cited LogTransactionRecord
-      precisely.
-- [x] Iter 31: §4 prose paragraph break (cosmetic readability).
-- [x] Iter 33: §6 fragile-fast-path number was inconsistent with §5
-      napkin envelope. Stitched together with explicit cross-reference.
+- [x] Iter 27: §1 "result is discarded" → "mostly thrown away ...
+      keeps the targetlist".
+- [x] Iter 28: §5 closing — co-located joins stay in path 2, not
+      "path 1 or 2".
+- [x] Iter 30: §6 cross-shard tx scope tightened to multi-shard 2PC.
+- [x] Iter 31: §4 prose paragraph break.
+- [x] Iter 33: §6 fragile-fast-path range stitched to §5 envelope.
+- [x] Iter 35-36: §1 array_position example replaced (was a poor
+      specific that only appears in unrelated UDFs).
+- [x] Iter 37: §6 tdigest framing — Citus integrates with the
+      standalone tdigest extension; the 250-line file is helper code,
+      not a bundled tdigest implementation.
+- [x] Iter 38: §3 four-paths labels reworked to mirror §5's Path 1-4
+      naming. Was inconsistent before.
+- [x] Iter 39: §5 closing summary reframed to use function names
+      (CreateSingleTaskRouterSelectPlan, etc.) instead of path
+      numbers. More precise, more navigable.
+- [x] Iter 41: §6 "shard count stays fixed" overclaim —
+      alter_distributed_table accepts shard_count parameter.
+- [x] Iter 42: §2 citus_extradata_container — added "original
+      table ID" half of the encoded parameter (per planner README).
+- [x] Iter 43: §1 hook example consistency — was using `lineitem_360000`
+      shard name in an `orders` example. Updated to cover both real
+      regression-test naming patterns.
+- [x] Iter 45: §3 architecture diagram — "MapMergeJob nodes" was
+      overgeneralized; only the repartition path uses MapMergeJob.
+      Common case uses plain Job. Both verified in
+      `multi_physical_planner.c`.
 
 ## Audit pattern that found the most real bugs in this resume cycle
 
