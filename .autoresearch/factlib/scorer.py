@@ -500,6 +500,27 @@ def section_xref_defects(body: str) -> int:
 RENDERED_HTML_REL = "public/posts/outbox-without-outbox-pg-logical-messages/index.html"
 
 
+ANCHOR_LINK_RE = re.compile(r"\]\(#([a-zA-Z0-9_-]+)\)")
+
+
+def anchor_resolution_defects(body: str, repo_root: Path) -> int:
+    """Every `](#id)` in the post must resolve to an actual id="..." in the
+    rendered HTML."""
+    p = repo_root / RENDERED_HTML_REL
+    if not p.exists():
+        return 0
+    html = p.read_text(encoding="utf-8")
+    available = set(re.findall(r'id="([^"]+)"', html))
+    n = 0
+    for m in ANCHOR_LINK_RE.finditer(body):
+        target = m.group(1)
+        if target not in available:
+            print(f"DEBUG anchor_resolution: #{target} not in rendered HTML",
+                  file=sys.stderr)
+            n += 1
+    return n
+
+
 def heading_skip_defects(repo_root: Path) -> int:
     """Render the post and verify h-tags don't skip levels.
     coloroid theme bumps `# h1` to <h2> inside posts, so authors who write
@@ -610,6 +631,7 @@ def main() -> int:
     cats["bad_section_xref"] = section_xref_defects(body)
     cats["long_code_lines"] = long_line_defects(body)
     cats["heading_skip"] = heading_skip_defects(repo_root)
+    cats["bad_anchor_link"] = anchor_resolution_defects(body, repo_root)
 
     weights = {
         "build_warnings": 1,
@@ -632,6 +654,7 @@ def main() -> int:
         "bad_section_xref": 3,
         "long_code_lines": 1,
         "heading_skip": 4,
+        "bad_anchor_link": 3,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
