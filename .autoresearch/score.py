@@ -98,10 +98,16 @@ PATH_COMMENT_RE = re.compile(
 )
 
 
-def codeblock_path_defects(body: str, cached_repo: Path) -> tuple[int, int]:
-    """Return (missing_path_count, unverified_snippet_count)."""
+def codeblock_path_defects(body: str, cached_repo: Path) -> tuple[int, int, int]:
+    """Return (missing_path_count, unverified_snippet_count, weak_snippet_count).
+
+    `weak_snippet` (NEW): snippets where no 25-char body line substring-
+    matches the source file. Catches paraphrased code that hides behind
+    a real path comment.
+    """
     missing = 0
     unverified = 0
+    weak = 0
     for m in CODEBLOCK_RE.finditer(body):
         lang, code = m.group(1).strip().lower(), m.group(2)
         if lang in ("", "txt", "text", "diff", "ascii", "bash", "sh", "shell"):
@@ -122,6 +128,31 @@ def codeblock_path_defects(body: str, cached_repo: Path) -> tuple[int, int]:
                         file=sys.stderr,
                     )
                     continue
+                full = hit[0]
+            # NEW: line-level substring check. At least one trimmed body
+            # line of length >=25 must appear verbatim in the source file.
+            try:
+                src = full.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                src = ""
+            line_hit = False
+            for raw in code.splitlines():
+                line = raw.strip()
+                if len(line) < 25:
+                    continue
+                # strip trailing comments after `//` for Go
+                stripped = re.sub(r"\s*//.*$", "", line).strip()
+                if len(stripped) < 25:
+                    continue
+                if stripped in src:
+                    line_hit = True
+                    break
+            if not line_hit:
+                weak += 1
+                print(
+                    f"DEBUG weak_snippet (path={path_str}): no 25+ char line matches source",
+                    file=sys.stderr,
+                )
             # verify any distinctive identifier (CamelCase or snake_case 8+ chars)
             idents = set(re.findall(r"\b[A-Z][a-zA-Z0-9_]{6,}\b", code))
             idents |= set(re.findall(r"\b[a-z_]{8,}\b", code))
@@ -184,7 +215,7 @@ def codeblock_path_defects(body: str, cached_repo: Path) -> tuple[int, int]:
                     f"DEBUG unverified_snippet (path={path_str}, idents={sampled}): no match",
                     file=sys.stderr,
                 )
-    return missing, unverified
+    return missing, unverified, weak
 
 
 # Numbers with units that lack near-by derivation
@@ -264,6 +295,89 @@ def frontmatter_defects(fm: str) -> int:
     return n
 
 
+# Hedge words that hide imprecision
+HEDGE_RE = re.compile(
+    r"\b(essentially|basically|fairly|pretty much|more or less|kind of|sort of|obviously|clearly|of course|trivially|practically speaking|in essence|in practice(?:,|\s\w+ is)|simply put|needless to say)\b",
+    re.IGNORECASE,
+)
+
+
+def hedge_defects(body: str) -> int:
+    return len(HEDGE_RE.findall(body))
+
+
+# `~N <unit>` without derivation in same paragraph
+TILDE_NUM_RE = re.compile(
+    r"~\s?\d+(?:[.,]\d+)?\s?(µs|us|ms|ns|s\b|MB|GB|KB|TB|MiB|GiB|KiB|%|×|x\b|/sec)",
+)
+
+
+def tilde_no_math_defects(body: str) -> int:
+    paragraphs = re.split(r"\n\s*\n", body)
+    n = 0
+    for p in paragraphs:
+        if p.strip().startswith("```") or "|" in p[:5]:
+            continue
+        hits = TILDE_NUM_RE.findall(p)
+        if not hits:
+            continue
+        if not DERIV_HINTS.search(p):
+            n += len(hits)
+    return n
+
+
+# Ratio claims like "3× faster", "20× the throughput" need a citation
+RATIO_RE = re.compile(
+    r"\b(\d+(?:[.,]\d+)?)\s?[×x]\s+(faster|slower|smaller|bigger|larger|cheaper|the\s+\w+|throughput|latency|memory)",
+    re.IGNORECASE,
+)
+
+
+def ratio_no_citation_defects(body: str) -> int:
+    paragraphs = re.split(r"\n\s*\n", body)
+    n = 0
+    for p in paragraphs:
+        if "|" in p[:5]:  # tables exempted
+            continue
+        hits = RATIO_RE.findall(p)
+        if not hits:
+            continue
+        # accept if there's a hyperlink or measured/benchmark/per repo
+        if re.search(r"\[[^\]]+\]\([^)]+\)|https?://|\bmeasur|\bbenchmark|\bcommit\s+`[\dA-Fa-f]{6,}`|\bcommit\s+[\dA-Fa-f]{6,}", p):
+            continue
+        n += len(hits)
+    return n
+
+
+# Percent claims need derivation in same paragraph
+PERCENT_RE = re.compile(r"(?<![\w\d])(\d{1,3}(?:\.\d+)?)\s?%")
+
+
+def percent_no_math_defects(body: str) -> int:
+    paragraphs = re.split(r"\n\s*\n", body)
+    n = 0
+    for p in paragraphs:
+        if p.strip().startswith("```") or "|" in p[:5]:
+            continue
+        hits = PERCENT_RE.findall(p)
+        if not hits:
+            continue
+        if not DERIV_HINTS.search(p):
+            n += len(hits)
+    return n
+
+
+# Placeholder URLs that shouldn't ship in a published post
+PLACEHOLDER_URL_RE = re.compile(
+    r"https?://(?:example\.com|foo\.com|bar\.com|test\.com|localhost(?:[:/\b]|$)|todo\b)",
+    re.IGNORECASE,
+)
+
+
+def placeholder_url_defects(body: str) -> int:
+    return len(PLACEHOLDER_URL_RE.findall(body))
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print("usage: score.py <post_path> <cached_repo_path>", file=sys.stderr)
@@ -282,12 +396,18 @@ def main() -> int:
     cats["build_warnings"] = hugo_build_defects(repo_root)
     cats["wordcount_off"] = wordcount_defects(word_count(body))
     cats["vague_claims"] = vague_qualifier_defects(body)
-    missing, unverified = codeblock_path_defects(body, cached_repo)
+    missing, unverified, weak = codeblock_path_defects(body, cached_repo)
     cats["missing_code_paths"] = missing
     cats["unverified_snippets"] = unverified
+    cats["weak_snippets"] = weak
     cats["numbers_no_math"] = numbers_without_math_defects(body)
+    cats["tilde_no_math"] = tilde_no_math_defects(body)
+    cats["percent_no_math"] = percent_no_math_defects(body)
+    cats["ratio_no_citation"] = ratio_no_citation_defects(body)
     cats["missing_citations"] = missing_citation_defects(body)
     cats["marketing_words"] = marketing_defects(body)
+    cats["hedge_words"] = hedge_defects(body)
+    cats["placeholder_urls"] = placeholder_url_defects(body)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
@@ -295,10 +415,16 @@ def main() -> int:
         "build_warnings": 1,
         "missing_code_paths": 5,
         "unverified_snippets": 3,
+        "weak_snippets": 4,
         "missing_citations": 2,
         "numbers_no_math": 1,
+        "tilde_no_math": 1,
+        "percent_no_math": 1,
+        "ratio_no_citation": 2,
         "vague_claims": 1,
         "marketing_words": 2,
+        "hedge_words": 1,
+        "placeholder_urls": 5,
         "wordcount_off": 1,
         "frontmatter": 2,
     }

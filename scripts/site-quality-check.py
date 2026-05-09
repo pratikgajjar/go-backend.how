@@ -41,6 +41,9 @@ for root, _, files in os.walk('content/posts'):
         rel = os.path.relpath(path)
         with open(path) as f:
             md = f.read()
+        # Skip drafts — author still iterating, defects are intentional WIP
+        if re.search(r'^\s*draft\s*[:=]\s*[\'"]?true', md, re.MULTILINE | re.IGNORECASE):
+            continue
         md_clean = re.sub(r'```[\s\S]*?```', '', md)
         md_clean = re.sub(r'`[^`]*`', '', md_clean)
         defs = set(re.findall(r'(?m)^\[\^([^\]]+)\]:', md_clean))
@@ -69,6 +72,24 @@ for root, _, files in os.walk('public'):
             continue
         rel = os.path.relpath(os.path.join(root, fn), 'public')
         valid_urls.add('/' + rel)
+
+# Pre-scan: collect HTML pages flagged with `robots noindex`. These are
+# internal-only pages (e.g. /og-preview/) that intentionally lack OG /
+# Twitter / canonical / sitemap metadata. Skip them in all subsequent
+# defect dimensions to avoid metric noise on intentionally-hidden pages.
+NOINDEX_HTML = set()
+for root, _, files in os.walk('public'):
+    for fn in files:
+        if not fn.endswith('.html'):
+            continue
+        path = os.path.join(root, fn)
+        with open(path) as f:
+            head = f.read(8192)  # robots tag is in <head>
+        if re.search(r'<meta\s+name=["\']?robots["\']?\s+content=["\']?[^"\']*\bnoindex\b', head, re.IGNORECASE):
+            NOINDEX_HTML.add(path)
+
+def skip_html(path: str) -> bool:
+    return path in NOINDEX_HTML
 
 required_og = {'og:title', 'og:type', 'og:url', 'og:image', 'og:description'}
 required_twitter = {'twitter:card', 'twitter:title', 'twitter:description', 'twitter:image'}
@@ -315,6 +336,9 @@ for root, _, files in os.walk('content/posts'):
         rel = os.path.relpath(path)
         with open(path) as f:
             md = f.read()
+        # Skip drafts
+        if re.search(r'^\s*draft\s*[:=]\s*[\'"]?true', md, re.MULTILINE | re.IGNORECASE):
+            continue
         if md.startswith('+++'):
             md = md.split('+++', 2)[2] if md.count('+++') >= 2 else md
         elif md.startswith('---'):
