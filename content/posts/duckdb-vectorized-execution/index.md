@@ -419,13 +419,12 @@ cold-cache cost).
 Cross-checking the napkin math: the six speedups (25, 19, 42, 55,
 60, 600) multiply to 39,501,000,000, sixth-root ≈ 58.4
 (verify: `python3 -c "print((25*19*42*55*60*600)**(1/6))"` prints
-58.36). So the honest geomean is 58×, not 80×.
-The Q06-at-SF=10 outlier is what pulls "median speedup" up; the
-title's 80× is the round headline that comes out when you
-arithmetically average Q01 and Q03 at SF=10 with Q06 at SF=1
-(`(55 + 60 + 42) / 3 ≈ 52`, plus the SF-1 row-store tax) — a
-defensible round number, but the better summary is "1.5–2 orders
-of magnitude, scaling with data volume."
+58.36). So the honest geometric mean is 58×, not 80×; the title
+is a round headline. The Q06-at-SF=10 outlier (600×) is what makes
+"median speedup" misleading. The defensible summary across the six
+queries is: 1.5–2 orders of magnitude, growing with data volume,
+with single-query worst cases pushing 3 orders of magnitude when
+the row-store has to read pages it doesn't actually need.
 
 Why does Q06 explode at SF=10? Postgres' planner picks a parallel
 bitmap-heap scan on the `l_shipdate` index I added with
