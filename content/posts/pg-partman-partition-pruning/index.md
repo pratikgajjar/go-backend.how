@@ -20,11 +20,12 @@ You partition `events` by `created_at`, daily, ninety days of data.
 Ninety partitions, each ~12 GB, ~1,080 GB on disk. You run the obvious
 dashboard query — "events in the last hour" — and `EXPLAIN (ANALYZE,
 BUFFERS)` shows the dashboard's p95 has gotten _slower_, not faster.
-Plan time alone is in the hundreds of milliseconds. Postgres 12+'s
-executor partition pruning still kicks in and skips 89 of the 90
-`Seq Scan` nodes — the actual data scan is small — but every one of
-the 90 children is opened, locked, and its statistics loaded into the
-planner before pruning runs. You partitioned the table to make this
+Plan time alone is in the range from tens to hundreds of milliseconds
+(warm catalog cache vs cold/contended). Postgres 12+'s executor
+partition pruning still kicks in and skips 89 of the 90 `Seq Scan`
+nodes — the actual data scan is small — but every one of the 90
+children is opened, locked (`AccessShareLock`), and its statistics
+loaded into the planner before pruning can run. You partitioned the table to make this
 query fast. It got worse than the un-partitioned version because the
 planner now has 90 child relations to plan against (lookup, lock,
 stats), and the per-child BRIN indexes — while smaller per child —

@@ -346,11 +346,12 @@ at most 2048). Each iteration is independent, so on a wide-superscalar
 core the prefetcher can stream the entries array faster than the
 salt-compare branch can execute. For an illustrative SF=10 Q03 join,
 the lineitem-side probe streams ~60M rows; the build sides after
-filtering are about 300K (customer with `c_mktsegment='BUILDING'`)
-and several million (orders pre-`1995-03-15`). At those sizes, the
-hash tables don't fit in L2 — the M3 Max P-cluster L2 is 16 MB,
-and a 2M-row hash table at 8 bytes/slot rounded to next power of
-two is roughly `4M × 8 = 32 MB`. What does fit is the *probe-side*
+filtering are about 300K rows (customer with
+`c_mktsegment='BUILDING'`) and several million rows (orders before
+the cutoff date '1995/03/15'). At those sizes the hash tables don't
+fit in L2 — the M3 Max P-cluster L2 is 16 MB, and a 2 M-row hash
+table at 8 bytes/slot rounded to the next power of two is roughly
+`4194304 × 8 = 33554432` bytes (~32 MiB). What does fit is the *probe-side*
 working set — one `DataChunk` of `2048 × 8 columns × 8 bytes
 = 16384 × 8 = 131072` bytes plus the `2048 × 128 = 262144` bytes
 of hash-entry cache lines touched per chunk, totalling ~384 KiB
