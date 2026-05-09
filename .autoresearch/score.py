@@ -783,6 +783,9 @@ def rendered_html_link_defects(repo_root: Path, post_slug: str) -> int:
         seen.add(href)
         if href.startswith(("http://", "https://", "mailto:", "tel:", "javascript:", "data:")):
             continue
+        # Protocol-relative URLs like //stats.example.com — external, skip
+        if href.startswith("//"):
+            continue
         if href.startswith("#"):
             # already covered by bad_anchors on markdown
             continue

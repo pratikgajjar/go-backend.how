@@ -538,19 +538,21 @@ partitioned by day for 365 days:
   guarantee).
 * Manifests intersecting the day: assuming evenly distributed,
   `150 / 365 ≈ 0.41`, so 1 manifest with high probability.
-* Manifest GET — 1 round-trip, again ~30 ms. 8 MB of compressed
-  Avro decompresses to ~30 MB on numeric/binary-heavy manifests
-  (rough rule for snappy: 3–4× expansion; observed locally and
-  consistent with snappy benchmarks). `fastavro` on a single core
-  parses on the order of ~40 MB/s for these schemas — the parse
-  cost is `30 / 40 = 0.75` s = 750 ms on Python with no code-gen.
-  JVM clients with code-gen are typically faster: Iceberg's
-  `ManifestReader` reuses Avro records and projects only the
-  column-bound fields — see
+* Manifest GET — 1 round-trip, again ~30 ms. 8 MiB of compressed
+  Avro decompresses to roughly 30 MiB for numeric/binary-heavy
+  manifests (snappy on 32-bit-int-heavy data is in the 3–4×
+  expansion range; the
+  [snappy benchmarks](https://github.com/google/snappy)
+  reports ~3.5× on enwik9, which is mixed text+binary). The parse
+  cost on Python with `fastavro` is roughly the disk-decode of
+  that 30 MiB, which dominates over the network round-trip on
+  small (single-day) queries. JVM clients are typically faster
+  per byte: Iceberg's `ManifestReader` reuses Avro records and
+  projects only the column-bound fields — see
   [`core/src/main/java/org/apache/iceberg/ManifestReader.java`](https://github.com/apache/iceberg/blob/main/core/src/main/java/org/apache/iceberg/ManifestReader.java)
   and the `STATS_COLUMNS` set for the projection.
 
-Total planning latency before any data-file GET, on a 1 PB table:
+Total planning latency before any data-file GET, on a 1 PiB table:
 `60 ms = 30 + 30` for the network legs (parse overlaps the second
 GET on streaming Avro readers). That is the *good* case Iceberg
 was designed to make typical, achieved by reading two small Avro
