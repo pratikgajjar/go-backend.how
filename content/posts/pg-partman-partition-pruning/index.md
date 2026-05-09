@@ -451,12 +451,15 @@ The fourth row is the case `apply_constraints` exists for. Without
 the constraint, a query like `WHERE created_at >= 'D' AND created_at < 'D+1' AND user_id = 42`
 prunes by `created_at` (fine, one child) but then has to seq-scan all
 11M rows in that day's child for `user_id = 42` because there's no
-per-child index on the user-ID column. With `apply_constraints` adding a CHECK
-constraint of (e.g.) `user_id >= 17 AND user_id <= 14823` to old
-children, the planner can skip an estimated 80% of the older
-children at plan time when querying `user_id = 42` without a time
-bound (range estimated from 60 to 95% depending on how clumped
-recent user-IDs are vs the historical range[^bench]). From `sql/functions/apply_constraints.sql`:
+per-child index on the user-ID column. The fifth row is the
+no-time-bound version of the same query, e.g.
+`SELECT * FROM events WHERE user_id = 42`, which without
+`apply_constraints` would open every child. With `apply_constraints`
+adding a CHECK constraint of (e.g.) `user_id >= 17 AND user_id <= 14823`
+to each non-recent child, the planner can skip an estimated 80% of
+the older children at plan time (range estimated from 60 to 95%
+depending on how clumped recent user-IDs are vs the historical
+range[^bench]). From `sql/functions/apply_constraints.sql`:
 
 ```sql
 -- sql/functions/apply_constraints.sql

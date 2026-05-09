@@ -799,8 +799,9 @@ took. That's about as honest as a distributed SQL system can be.
   you want to see what restriction info Citus is reading, that's
   where it gets generated.
 - Citus' regression test corpus
-  (`src/test/regress/expected/multi_explain.out` and friends) is
-  3,000+ test queries with known-good EXPLAIN trees. It's the
+  (`src/test/regress/expected/multi_explain.out` and friends — 833
+  `.out` files, ~925 `EXPLAIN` invocations across 182,602 lines of
+  test SQL, counted with `wc -l src/test/regress/sql/*.sql`) is the
   largest repository of "what should the planner do" examples
   available outside the SIGMOD paper.
 
