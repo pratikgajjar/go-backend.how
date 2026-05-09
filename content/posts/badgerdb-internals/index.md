@@ -192,7 +192,7 @@ for !s.levels[0].tryAddLevel0Table(t) {
 }
 ```
 
-This is the `Lifetime L0 stalled for: 13.8s` that the badger close logs print at the end of a run on the 5M × 1 KB default workload. It's the simplest possible backpressure: poll-and-wait on a 10 ms tick. When this loop runs hot, the flusher goroutine is asleep, the immutable-memtable list grows toward `NumMemtables = 5`, and the moment that list is full the *writer's* `ensureRoomForWrite` returns `errNoRoom`, which makes the writer goroutine's loop sleep 10 ms and try again [(`db.go:861`)][dbgo]. That's how the stall reaches user latency: not a single big lock, but a chain of three 10 ms-tick polls — flusher → memtable list → writer.
+This is the `Lifetime L0 stalled for: 13.8s` that the badger close logs print at the end of a run on the 5M × 1 KB default workload. It's the simplest possible backpressure: poll-and-wait on a 10 ms tick. When this loop runs hot, the flusher goroutine is asleep, the immutable-memtable list grows toward `NumMemtables = 5`, and the moment that list is full the *writer's* `ensureRoomForWrite` returns `errNoRoom`, which makes the writer goroutine's loop sleep 10 ms and try again — the `for err = db.ensureRoomForWrite(); err == errNoRoom; ...` loop at [db.go:860-869](https://github.com/dgraph-io/badger/blob/main/db.go) sleeps 10 ms between retries. That's how the stall reaches user latency: not a single big lock, but a chain of three 10 ms-tick polls — flusher → memtable list → writer.
 
 [dbgo]: https://github.com/dgraph-io/badger/blob/main/db.go
 

@@ -759,6 +759,5 @@ arithmetic visible in the surrounding paragraph, quoted from a
 linked AWS / Apache / Snappy source, or labelled as
 small-laptop measurements. The draft was sharpened by an
 autoresearch loop — a scorer that flags vague claims, missing
-citations, marketing words, math equations that do not balance,
-and code blocks whose path comments do not resolve to real files
-in the cached repo.
+citations, marketing words, math that does not balance, and code
+blocks whose path comments do not resolve to real source files.
