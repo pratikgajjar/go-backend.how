@@ -576,8 +576,7 @@ round-trips and nothing else, the easiest probe is `strace` on the
 PyIceberg / Trino driver process:
 
 ```bash
-strace -f -e trace=openat,read,connect -e signal=none \
-  -- uv run iceberg_tour.py 2>&1 \
+strace -f -e trace=openat,connect -- uv run iceberg_tour.py 2>&1 \
   | rg 'metadata|\.avro|\.parquet'
 ```
 

@@ -811,8 +811,9 @@ took. That's about as honest as a distributed SQL system can be.
 
 - The Citus SIGMOD '21 paper, [Citus: Distributed PostgreSQL for
   Data-Intensive Applications](https://doi.org/10.1145/3448016.3457551).
-  Section 4.1 covers the planner; the figures are clearer than the
-  source.
+  Cited from `README.md` of the repo itself — the paper covers the
+  planner architecture with figures that are useful complements to
+  reading the C source.
 - `src/backend/distributed/planner/README.md` in the repo is the
   most up-to-date design doc and is checked in alongside the code.
 - The PostgreSQL planner source — `src/backend/optimizer/plan/planner.c`
