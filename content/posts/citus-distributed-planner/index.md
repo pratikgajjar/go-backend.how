@@ -211,11 +211,15 @@ early; expensive paths fall through.
                        wrapping a list of per-shard SQL strings
 ```
 
-The four "transforms" the title alludes to are the four planner paths
-that produce a PlannedStmt: **fast-path router**, **router**,
-**multi-shard router** (modify), and **logical / repartition** (the
-catch-all for joins that need re-partitioning or aggregates that need
-splitting). Each path produces SQL strings that go to workers, plus a
+The four "transforms" the title alludes to are the four planner
+paths that produce a PlannedStmt and that I'll demo in §5 with real
+EXPLAIN output: **fast-path router** (single-table dist-key
+equality, fastest), **router for multi-shard modify** (UPDATE /
+DELETE that prunes to multiple shards but with a trivial merge),
+**multi-shard SELECT with aggregate split** (the logical-planner
+path with `pg_catalog.sum`-style decomposition), and
+**repartition** (the catch-all for joins that need re-partitioning).
+Each path produces SQL strings that go to workers, plus a
 coordinator-side combine query. The deparser is what stitches them
 together.
 

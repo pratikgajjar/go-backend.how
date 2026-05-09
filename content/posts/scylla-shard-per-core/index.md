@@ -503,9 +503,10 @@ coordination is needed.
 
 The benchmark below ran on a MacBook Pro M3 Max with GOMAXPROCS=4,
 Go 1.26.3. The two key variants are inlined here; the full program
-(five variants, ~145 lines) lives in scylla-post-bench. Each variant
-runs four goroutines, each does 5,000,000 increments, and we measure
-wall time:
+(five variants, ~145 lines) is the same in shape — each variant
+spawns four goroutines, each does 5,000,000 iterations of a single
+inner loop, and the wall-clock is the median of three runs. The full
+50-line cut-down is below in [Stretch](#stretch-see-it-for-yourself).
 
 ```go
 // Save and run with: go run .   (single-file benchmark, no module)

@@ -31,7 +31,7 @@ key-value stores on the same M2 MacBook, same APFS filesystem, same Go
 | **BoltDB** | 11,477 (Go) |    72,702 | 459 ns | 1.4 μs | 96 MiB |
 | **Pebble** | 159,642 (Go)|   635,351 | 5.4 μs | 8.7 μs | 20 MiB |
 
-[^loc]: `wc -l` on each repo, excluding tests. LMDB is `libraries/liblmdb/{mdb,midl}.{c,h}`; BoltDB is `find . -name "*.go" -not -name "*_test.go"`; Pebble is the same with `metamorphic/` and `replay/` excluded.
+[^loc]: `wc -l` on each repo, excluding tests. LMDB is `libraries/liblmdb/{mdb.c,midl.c,lmdb.h,midl.h}` (the four source files in liblmdb); BoltDB is `find . -name "*.go" -not -name "*_test.go"`; Pebble is the same with `metamorphic/` and `replay/` excluded.
 
 Three things should bother you:
 
