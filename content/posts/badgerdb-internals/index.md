@@ -40,7 +40,7 @@ Badger is the production-grade WiscKey implementation. The whole design — valu
 
 # The architecture in 200 words
 
-Five components. None of them are fancy on their own; the engineering is in how they pipeline.
+A handful of components — memtable, value log, level files, manifest, discard tracker, block cache. None of them are fancy on their own; the engineering is in how they pipeline.
 
 ```
               user.Set(key, value)

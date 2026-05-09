@@ -22,9 +22,10 @@ cluster, the SQL string never crosses a network until after the
 planner has already decided which one of 32 shards holds customer 42.
 Pruning happens on the coordinator, in C, against in-memory metadata.
 The shard query that lands on the worker is the same SQL - with
-`orders` rewritten to a per-shard table name (e.g. `lineitem_360000`
-in the regression test fixtures, where 360000 is a globally-unique
-shard ID) and a planner-private function call holding the shard ID.
+`orders` rewritten to a per-shard table name (Citus' regression-test
+fixtures use names like `orders_360002` and `lineitem_360000`, where
+the suffix is a globally-unique shard ID drawn from a sequence) and
+a planner-private function call holding the shard ID.
 
 That's the easy case. The interesting cases are the four-table joins
 where two tables are co-located on the distribution key, one is a
