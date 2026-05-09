@@ -85,15 +85,13 @@ when someone introduces a "fast path" for one specific endpoint.
 
 **Failure 2: vacuum cannot keep up at 1B/day.** The outbox is the
 busiest table on the database. Every row is `INSERT`ed once,
-`UPDATE`d once (the `processed = true` flip), and then never read
-again. That's a churn rate that the visibility map cannot absorb —
-HOT update or no HOT update — and the partial index on `processed = false`
-gets bloated. By the time you've ingested half a billion outbox rows in
-a day, `pg_stat_user_indexes.idx_scan` on the unprocessed index is
-collapsing because the planner is increasingly choosing seq scans on a
-multi-GB partial index that's mostly dead tuples. You write a cron job
-that does `DELETE FROM outbox WHERE processed AND created_at < now() - '1 hour'`
-and it generates more WAL than the original inserts.
+`UPDATE`d once (the `processed = true` flip), and never read again.
+That churn outpaces the visibility map — HOT update or no — and the
+partial index on `processed = false` bloats with dead tuples. The
+unprocessed-index `idx_scan` collapses as the planner falls back to
+seq scans. You write a cleanup `DELETE FROM outbox WHERE processed
+AND created_at < now() - '1 hour'` cron and it generates more WAL
+than the original inserts.
 
 **Failure 3: JSON-on-S3 is unqueryable.** You finally get the rows to
 S3 and the warehouse team queries them through Athena. Athena
