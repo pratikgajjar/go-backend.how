@@ -1,6 +1,6 @@
 +++
 title = "⚡ Scylla Shard-per-Core — A Benchmark of Why Pinning Beats Your Go Server"
-description = "A code-archaeology dive into Seastar's reactor: shard-per-core, lock-free SPSC queues, io_uring. Then a Go benchmark on a 4-core box that quantifies the cost of crossing a cache line and explains why even a cpuset-pinned Go HTTP server cannot match the same model."
+description = "A code dive into Seastar's reactor: shard-per-core, lock-free SPSC queues, io_uring. Then a Go benchmark on a 4-core box that quantifies the cost of crossing a cache line — and why a cpuset-pinned Go server can't match the model."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
 publishDate = "2026-05-09T12:00:00+05:30"
@@ -73,7 +73,7 @@ inter-core latency measurements, the working set is:
 | Cache-line bounce between cores      | ~30-200 ns     |
 | Uncontended `lock add`               | ~5-10 ns       |
 | Contended `cmpxchg` under 4-core CAS | **~12 ns**     |
-| Mutex acquire (`pthread_mutex`)      | ~30 ns uncont. |
+| Mutex acquire (POSIX mutex)          | ~30 ns uncont. |
 | Mutex acquire under contention       | hundreds of ns |
 
 A function call is ~1 ns. A cache-line bounce is *two orders of
@@ -325,8 +325,8 @@ smp_message_queue::lf_queue::maybe_wakeup() {
 ```
 
 The optimisation hidden in that comment is a beautiful piece of systems
-work. A naive design would issue an `MFENCE` (full memory barrier) on
-every push to make sure the receiver sees the new tail. `MFENCE` on
+work. A naive design would issue an MFENCE (full memory barrier) on
+every push to make sure the receiver sees the new tail. MFENCE on
 modern x86 takes ~30 cycles in the best case, more under contention. So
 instead, Seastar issues a *zero-cost* compiler-only fence on every
 push, and once per reactor poll it issues a single
@@ -432,7 +432,7 @@ Go 1.26.3. Each variant runs four goroutines, each does 5,000,000
 increments, and we measure wall time:
 
 ```go
-// scylla-post-bench/main.go
+// bench/main.go - run with: go run main.go
 package main
 
 import (
@@ -494,11 +494,11 @@ Best-of-three results on the same 4 cores, same 20M total ops:
 
 | Variant                              | ops/sec     | ns/op | Notes                                 |
 | ------------------------------------ | ----------- | ----- | ------------------------------------- |
-| `shared_atomic` (CAS on one int64)   | **88 M**    | 11.3  | What naive multi-threaded code does   |
-| `shared_mutex` (`sync.Mutex`)        | **18 M**    | 55.3  | What naive idiomatic Go code does     |
-| `channel_hop` (cross-core handoff)   | **15 M**    | 67.8  | Closest analog to `submit_to` cost    |
-| `sharded_falseshare` (4 ints/line)   | **2 037 M** | 0.5   | No sync, but lines still bouncing     |
-| `sharded_padded` (1 line per shard)  | **2 832 M** | 0.4   | Scylla-style: zero coherence traffic  |
+| Variant — shared atomic (CAS on one int64)   | **88 M**    | 11.3  | What naive multi-threaded code does   |
+| Variant — shared mutex (sync.Mutex)          | **18 M**    | 55.3  | What naive idiomatic Go code does     |
+| Variant — channel hop (cross-core handoff)   | **15 M**    | 67.8  | Closest analog to submit_to cost      |
+| Variant — sharded false-share (4 ints/line)  | **2 037 M** | 0.5   | No sync, but lines still bouncing     |
+| Variant — sharded padded (1 line per shard)  | **2 832 M** | 0.4   | Scylla-style: zero coherence traffic  |
 
 Compute it: `2832 M / 88 M ≈ 32×`. That is the structural ceiling
 between the two architectures, on the same hardware, in the same
@@ -513,7 +513,7 @@ balloons further because the OS futex path eventually kicks in. This
 is what your idiomatic Go service is doing every time it calls
 `metrics.WithLabelValues(...).Inc()` in a hot handler.
 
-The `channel_hop` benchmark is the most direct analog to Scylla's
+The channel-hop benchmark is the most direct analog to Scylla's
 `submit_to`. Each goroutine sends to its neighbour and receives from
 itself via small buffered channels. ~68 ns per round-trip. That's not
 bad — that's roughly the floor for cross-core coordination on this
@@ -591,10 +591,14 @@ Three buckets. The cost estimates assume an experienced Go team.
 ## a) Don't fight the runtime — give Go a sharded runtime layer
 
 Keep using Go. Don't try to pin OS threads (Go's runtime fights you;
-`runtime.LockOSThread` works but Go's GC and scheduler still preempt
-across P's, so the pinning leaks). Instead, build per-`GOMAXPROCS`
+runtime.LockOSThread works but Go's GC and scheduler still preempt
+across P's, so the pinning leaks). Instead, build per-shard
 *owned* state and route requests to the goroutine that owns the right
-shard via a small `chan request`.
+shard via a small request channel.
+
+A per-shard owner means there is one goroutine per element of the GOMAXPROCS
+set (P, in Go's runtime terminology), and that goroutine alone holds the
+mutable state for its shard.
 
 The honest cost: per-shard ownership eliminates the 12 ns atomic. It
 *does not* eliminate the 68 ns channel-hop tax for misrouted requests.
@@ -606,7 +610,7 @@ of work.
 A small group of Go projects ([cilium/ebpf-go](https://github.com/cilium/ebpf),
 [ronaksoft/uring-go](https://github.com/ronaksoft/uring-go)) call into
 io_uring directly. You can build a per-goroutine SQ + CQ pair, pin the
-goroutine via `LockOSThread` + `pthread_setaffinity_np` via `cgo`, and
+goroutine via runtime.LockOSThread + pthread_setaffinity_np via cgo, and
 have a Scylla-shaped event loop in Go.
 
 The honest cost: 2-3 weeks of senior engineering, plus you fight the GC
@@ -628,7 +632,7 @@ is the team you have to hire.
 ## What I would actually do
 
 In a Go shop with a small team, I would skip (b) and (c) entirely. I
-would do **(a) plus a benchmark suite**. Build per-`GOMAXPROCS` owned
+would do **(a) plus a benchmark suite**. Build per-shard owned
 state and a token-aware HTTP server (just hash the path → shard →
 `chan request`). Measure how often requests are misrouted and tune the
 client. You won't get to Scylla's numbers — you'll get to maybe 4-6×
@@ -667,11 +671,12 @@ paying the full cross-core tax.
 
 ## 50-line reproducer
 
-Save as `bench.go`, run with `go run bench.go`. Times out in <2s on any
+Save the snippet as bench.go, run with `go run bench.go`. Should
+finish in under 2 seconds on any
 modern laptop:
 
 ```go
-// scylla-post-bench/bench.go
+// bench/main.go - reproducer; same package, smaller
 package main
 
 import (
@@ -723,7 +728,7 @@ Expected output on an M3 / Zen 4 / Ice Lake laptop: a ratio between 25
 and 40. If you see ≤ 5×, your machine has fewer than 4 physical cores
 and the contention path collapses to in-core which is genuinely
 cheaper. If you see ≥ 50×, you're on a NUMA box with cross-socket cores
-in the same `GOMAXPROCS` set and the bouncing line is crossing a socket
+in the same GOMAXPROCS set and the bouncing line is crossing a socket
 boundary — try `taskset -c 0-3` to keep them on one socket and the gap
 will normalise.
 

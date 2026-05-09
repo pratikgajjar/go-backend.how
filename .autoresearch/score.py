@@ -625,14 +625,7 @@ def defaults_consistency_defects(body: str, cached_repo: Path) -> int:
             r'flag\.IntVar\(&cfg\.(\w+),\s*"[^"]*",\s*(\d+)', src
         )
     }
-    str_defaults = {
-        k.lower(): v
-        for k, v in re.findall(
-            r'flag\.StringVar\(&\w+,\s*"([^"]+)",\s*(?:os\.Getenv\([^)]+\),\s*"[^"]*",\s*"[^"]*")?\)?',
-            src,
-        )
-    }
-    # Also pick up "flush-interval" -> "30s" via `flag.StringVar(&flush, "flush-interval", "30s", ...)`
+    # Pick up "flush-interval" -> "30s" via flag.StringVar(&flush, "flush-interval", "30s", ...)
     str_explicit = {
         k.lower(): v
         for k, v in re.findall(
@@ -765,6 +758,8 @@ def main() -> int:
         "math_off": 5,
         "dollar_no_math": 1,
         "bad_anchors": 3,
+        "defaults_mismatch": 5,
+        "range_inverted": 3,
         "wordcount_off": 1,
         "frontmatter": 2,
     }
