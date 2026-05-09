@@ -37,7 +37,7 @@ part of the tree that does the real work of pruning a query down from
 "all data files in this table" to "the four files that may contain
 rows where `country = 'IN' AND ts >= '2026/05/01'`." We will read the
 schema fields, walk the on-disk Avro, count bytes, and run the
-arithmetic that determines scan-planning latency on a 1 PB Iceberg
+arithmetic that determines scan-planning latency on a 1 PiB Iceberg
 table — and whether it lands at the 80 ms end of the curve or the 8 s
 end.
 
@@ -302,7 +302,7 @@ IDs 500–520 belong to the manifest-list record. Within each row the
 511 upper_bound    : optional bytes  (single-value-encoded)
 ```
 
-This summary is the difference between a 1 PB table that plans a
+This summary is the difference between a 1 PiB table that plans a
 query in 100 ms and one that takes 100 s. Suppose the table is partitioned by
 `day(ts)` and a query asks for one day. The planner reads the
 manifest list — one Avro file, tens-of-KB to single-digit MB by §1's
@@ -517,7 +517,7 @@ length prefix). This is what the planner reads and runs the
 predicate against, before it issues any S3 GET for the data file
 itself.
 
-## 5.1 Napkin math: scan-planning latency on a 1 PB table
+## 5.1 Napkin math: scan-planning latency on a 1 PiB table
 
 Hold the planner in your head. From §1 we already have the file
 and manifest counts; restating for the planner:
