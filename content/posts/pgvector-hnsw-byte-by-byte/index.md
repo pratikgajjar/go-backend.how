@@ -90,9 +90,9 @@ the time you hit `d = 128` (small for sentence embeddings, tiny for
 image embeddings) every node in a tree partitions almost no
 candidates and you might as well scan everything.
 
-The pre-2016 industry-standard answer was IVFFlat: cluster the
-vectors into `√N` clusters, store the centroid of each, at query time
-score against the centroids and only scan the `probes` nearest. Recall
+A common pre-HNSW answer was IVFFlat: cluster the vectors into
+`√N` clusters, store the centroid of each, at query time score
+against the centroids and only scan the `probes` nearest. Recall
 depends on `probes / lists`. It works. pgvector ships it as
 `USING ivfflat` and it lives in `src/ivf*.c`. But it has an
 unforgiving cliff: tune `probes` too low and recall craters; tune it

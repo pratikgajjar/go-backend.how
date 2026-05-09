@@ -593,8 +593,11 @@ scope.
 
 Pebble's read p99 is 8.7 μs in my benchmark, vs 1.4 μs for bbolt.
 That's 6×. At higher data volume (multi-TB, 6+ levels), the gap
-widens because bloom-filter false positives on more levels add real
-disk reads. CockroachDB pages are bigger and they pay this every read.
+widens because each extra level is another sstable to consult per
+Get — even with bloom filters enabled, the residual ~1% false
+positives multiply across levels, and decompression dominates each
+miss. Production users like CockroachDB run with the bloom enabled
+*and* still measure this read amp every Get.
 
 Pebble's operational surface is the other cost. It's an LSM, so:
 

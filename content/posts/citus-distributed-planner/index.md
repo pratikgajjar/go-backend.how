@@ -87,10 +87,12 @@ that 200μs of planning becomes overhead the cluster pays for nothing.
 The fast-path code path was added precisely to avoid it.
 
 The contradiction is intentional. Citus needs Postgres' planner to
-constant-fold expressions, resolve `now()` to a value, evaluate
-`array_position(...)` on the literals - all of which feed shard
-pruning. But the _plan tree_ Postgres returns assumes the table is
-local. So Citus runs the planner for its side effects.
+constant-fold expressions (so that `WHERE id = 100 + 5` becomes
+`WHERE id = 105` before pruning), resolve stable functions like
+`now()` to a single value for the duration of the query, and pull
+vars out of complex quals — all of which feed shard pruning. But
+the _plan tree_ Postgres returns assumes the table is local. So
+Citus runs the planner for its side effects.
 
 # 2. The problem - sharded SQL is two languages awkwardly stapled together
 
@@ -672,9 +674,9 @@ eligibility. The check, in `FastPathRouterQuery` lines 246-251:
 	}
 ```
 
-A query that lives in the 250–1100 µs fast-path envelope (§5
+A query that lives in the 250-1100 μs fast-path envelope (§5
 napkin: rack-local RTT + worker exec + binary search) can balloon
-into the 1–2 ms range after a sleepy engineer adds a subquery — a
+into the 1-2 ms range after a sleepy engineer adds a subquery - a
 full standard_planner pass replaces the binary search through 32
 shard intervals. That's not a critique of Citus - it's the
 nature of cliff-edge optimisations - but it's something monitoring
