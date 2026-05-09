@@ -497,6 +497,32 @@ def section_xref_defects(body: str) -> int:
     return n
 
 
+RENDERED_HTML_REL = "public/posts/outbox-without-outbox-pg-logical-messages/index.html"
+
+
+def heading_skip_defects(repo_root: Path) -> int:
+    """Render the post and verify h-tags don't skip levels.
+    coloroid theme bumps `# h1` to <h2> inside posts, so authors who write
+    `# Section` then `### Subsection` produce h2→h4 (skip). The scorer
+    catches that by looking at the actually-rendered HTML."""
+    p = repo_root / RENDERED_HTML_REL
+    if not p.exists():
+        return 0  # build will be re-run by hugo_build_defects
+    html = p.read_text(encoding="utf-8")
+    # Take only the article body to avoid TOC/Related h2s confusing us
+    body_match = re.search(r"<article[^>]*>(.*?)</article>", html, re.DOTALL)
+    target = body_match.group(1) if body_match else html
+    levels = [int(m.group(1)) for m in re.finditer(r"<h([1-6])\b", target)]
+    n = 0
+    prev = None
+    for lv in levels:
+        if prev is not None and lv > prev + 1:
+            print(f"DEBUG heading_skip: h{prev} → h{lv}", file=sys.stderr)
+            n += 1
+        prev = lv
+    return n
+
+
 def long_line_defects(body: str) -> int:
     """Code-block lines wider than 100 chars overflow on mobile."""
     n = 0
@@ -583,6 +609,7 @@ def main() -> int:
     cats["orders_of_magnitude"] = orders_of_magnitude_defects(body)
     cats["bad_section_xref"] = section_xref_defects(body)
     cats["long_code_lines"] = long_line_defects(body)
+    cats["heading_skip"] = heading_skip_defects(repo_root)
 
     weights = {
         "build_warnings": 1,
@@ -604,6 +631,7 @@ def main() -> int:
         "orders_of_magnitude": 3,
         "bad_section_xref": 3,
         "long_code_lines": 1,
+        "heading_skip": 4,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
