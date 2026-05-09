@@ -506,7 +506,10 @@ def identifier_consistency_defects(body: str, cached_repo: Path) -> int:
 
 
 _NUM_PAT = r"\d[\d,_]*(?:\.\d+)?"
-_SUF_PAT = r"(?:K|M|G|B|Mi|Gi|Ki)?"  # SI/binary multipliers on result
+# SI/binary multipliers on a bare number. Lowercase `k` is universal for
+# thousand in casual prose; uppercase K|M|G|B are accepted; `Mi`/`Gi`/`Ki`
+# are binary IEC.
+_SUF_PAT = r"(?:Mi|Gi|Ki|K|M|G|B|k)?"
 
 # A <op> B [= ≈] C, where each side may be wrapped in backticks and may have
 # trailing units. Captures the *bare numbers* and verifies they balance.
@@ -521,7 +524,10 @@ MATH_EQ_RE = re.compile(
     r"(?![\d,.])"                                # right boundary
 )
 
-_SCALE = {"": 1, "K": 1e3, "M": 1e6, "G": 1e9, "B": 1e9, "Ki": 1024, "Mi": 1024**2, "Gi": 1024**3}
+_SCALE = {
+    "": 1, "k": 1e3, "K": 1e3, "M": 1e6, "G": 1e9, "B": 1e9,
+    "Ki": 1024, "Mi": 1024**2, "Gi": 1024**3,
+}
 
 
 def _parse_num(s: str) -> float:

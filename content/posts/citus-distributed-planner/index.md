@@ -34,8 +34,8 @@ it's a 44,895-line subdirectory in C. This post walks through what
 those lines actually do.
 
 The repository is `citusdata/citus` at commit `a3d5708a6` (Citus 14.0,
-released 2026-02-09 per `CHANGELOG.md` line 1, paired with PostgreSQL
-17/18 support). Everything below references real symbols in
+released February 2026 per `CHANGELOG.md` line 1, paired with
+PostgreSQL 17/18 support). Everything below references real symbols in
 `src/backend/distributed/planner/`. Where I cite a line number, you
 can `git show` it yourself.
 
@@ -50,8 +50,8 @@ restriction info is the only thing that survived — quals attached to
 each range table entry, parsed and constant-folded.
 
 The price tag for this round-trip is visible in the fast-path
-optimisation. From `src/backend/distributed/planner/fast_path_router_planner.c`
-lines 7–14:
+optimisation. From the file header in
+`src/backend/distributed/planner/fast_path_router_planner.c`:
 
 ```c
 // src/backend/distributed/planner/fast_path_router_planner.c
@@ -72,11 +72,14 @@ the coordinator, even though the result is discarded.
 
 This sits behind every "Citus latency overhead" benchmark. On a query
 that prunes to a single shard and runs in 200µs on the worker, the
-coordinator's `standard_planner` round-trip is measurable. Napkin:
-PostgreSQL's planner for a single-table SELECT runs in 100–300µs on a
-modern CPU (≈ 250,000–500,000 tree-walker steps × ~1 ns each). On the
-fast path, that 200µs becomes overhead the cluster pays for nothing.
-The fast-path code path was added precisely to avoid it.
+coordinator's `standard_planner` round-trip is measurable. Napkin
+estimate (no measurement on this machine, derived):
+[`pg_stat_statements`](https://www.postgresql.org/docs/current/pgstatstatements.html)
+in published Postgres benchmarks shows simple SELECT planning around
+100–300µs on commodity x86 (≈ 250,000–500,000 tree-walker steps × ~1
+ns each, computed). On the fast path, that 200µs becomes overhead
+the cluster pays for nothing. The fast-path code path was added
+precisely to avoid it.
 
 The contradiction is intentional. Citus needs Postgres' planner to
 constant-fold expressions, resolve `now()` to a value, evaluate
@@ -235,7 +238,7 @@ those steps and quote source.
 For a reference table, "pruning" returns _all_ shards, because there
 is one shard and it lives on every node. The router can pick any
 worker. Reference tables collapse a category of joins from
-"repartition required" to "trivially co-located."
+"repartition required" to "directly co-located on every node."
 
 ## Step 1 — build a logical pruning tree
 
@@ -624,8 +627,9 @@ eligibility. The check, in `FastPathRouterQuery` lines 248–254:
 	}
 ```
 
-A query that runs in 200µs at 9pm can run in 1ms at 3am if a sleepy
-engineer adds a subquery. That's not a critique of Citus — it's the
+A query measured at 200µs in production can become 1ms after a
+sleepy engineer adds a subquery (estimated jump from a single binary
+search through 32 shard intervals to a full standard_planner pass). That's not a critique of Citus — it's the
 nature of cliff-edge optimisations — but it's something monitoring
 should watch for.
 
@@ -708,18 +712,18 @@ psql citus_demo <<'SQL'
 CREATE EXTENSION IF NOT EXISTS citus;
 SET citus.shard_count = 4;
 
-DROP TABLE IF EXISTS orders, line_items, country_ref CASCADE;
-CREATE TABLE orders     (id int, customer_id int PRIMARY KEY, amount numeric);
-CREATE TABLE line_items (id int, order_id    int, sku text);
+DROP TABLE IF EXISTS orders, lineitem, country_ref CASCADE;
+CREATE TABLE orders   (id int, customer_id int PRIMARY KEY, amount numeric);
+CREATE TABLE lineitem (id int, order_id    int, sku text);
 CREATE TABLE country_ref(code text PRIMARY KEY, name text);
 
 SELECT create_reference_table('country_ref');
 SELECT create_distributed_table('orders',     'customer_id');
-SELECT create_distributed_table('line_items', 'order_id',
+SELECT create_distributed_table('lineitem', 'order_id',
                                 colocate_with => 'orders');
 
 INSERT INTO orders SELECT g, g, g*10 FROM generate_series(1, 1000) g;
-INSERT INTO line_items SELECT g, g, 'sku-'||g FROM generate_series(1,1000) g;
+INSERT INTO lineitem SELECT g, g, 'sku-'||g FROM generate_series(1,1000) g;
 INSERT INTO country_ref VALUES ('IN','India'),('US','USA');
 
 SET client_min_messages = DEBUG2;
@@ -737,7 +741,7 @@ EXPLAIN (COSTS off)
 -- Path 4: would be repartition if not co-located.
 -- This one is co-located, runs as parallel local joins:
 EXPLAIN (COSTS off)
-  SELECT o.id, li.sku FROM orders o JOIN line_items li
+  SELECT o.id, li.sku FROM orders o JOIN lineitem li
     ON o.customer_id = li.order_id LIMIT 10;
 SQL
 ```
@@ -747,9 +751,9 @@ the `Task Count` line. Path 1 will print `Distributed planning for a
 fast-path router query`. Path 2 and 3 will print `Creating router
 plan` or fall through to the logical planner. Path 4 will print
 `Creating router plan` because the tables are co-located; if you
-break colocation by adding `colocate_with => 'none'` to
-`line_items`, the same query becomes a repartition with
-`MapMergeJob` nodes.
+break colocation by adding `colocate_with => 'none'` to the second
+table, the same query becomes a repartition with `MapMergeJob`
+nodes.
 
 The whole thing is one round-trip in the cheap case, four planner
 paths in code, and one EXPLAIN tree that tells you which path you

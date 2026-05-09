@@ -25,8 +25,8 @@ same four cores deliver **~3.0 _billion_ ops/sec**. Wall time per op:
 ~0.4 ns.
 
 > Same hardware. Same number of threads. Same total work. **~30× faster**
-> just by deleting the contention. (Measured: 88 M ops/sec vs 2 832 M ops/sec
-> over three runs; ratio = 2832 / 88 ≈ 32.)
+> just by deleting the contention. (measured: 88 M ops/sec vs 2 832 M
+> ops/sec over three runs; ratio = 2832 / 88 ≈ 32.)
 
 That ratio is the entire thesis of Scylla's architecture. The
 single-thread CAS isn't slow — it's coherence traffic. Four cores
@@ -260,7 +260,7 @@ sender's writes never invalidate a line the receiver is reading:
 ```
 
 That comment — "hw prefetcher will not accidentally prefetch cache line
-used by another cpu" — is the sort of comment you only write after
+used by another cpu" — is the type of comment you only write after
 having profiled it. The hardware prefetcher pulls neighbouring lines
 into L1 speculatively. If sender stats and receiver stats lived in
 adjacent lines, the prefetch would drag a "remote" line into the wrong
@@ -545,8 +545,9 @@ celebrity Twitter user's followers list, or your most-traded
 instrument), Cassandra slices it across worker threads and the rest of
 the cluster absorbs the heat. Scylla pins one partition to one shard.
 Napkin math: that shard runs flat-out at 100% CPU; the other 15 shards
-sit near-idle (`5%` measured on a hot-key benchmark = `1 / 16` of total
-box capacity wasted = `15 / 16 ≈ 94%` of the box). The fix is on the
+sit near-idle (`5%` measured on a hot-key benchmark, so `1 / 16` of total
+box capacity is doing the work and `15 / 16 ≈ 0.94` of the box is
+wasted). The fix is on the
 application side — model your data so no single partition is a hot
 spot — but the constraint is hard.
 

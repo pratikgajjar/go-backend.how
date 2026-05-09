@@ -15,8 +15,8 @@ math = false
 > A 1.4 MB shared object turns Postgres — a system that has spent
 > twenty-five years optimising B-trees over rows — into a vector
 > database that beats brute force by an order of magnitude. The
-> algorithm fits in roughly 800 lines of the kind of C that mostly
-> manipulates 8 KB pages.
+> algorithmic core fits in 800 lines of the kind of C that mostly
+> manipulates 8 KB pages — measured below.
 
 I keep meeting teams who treat [pgvector](https://github.com/pgvector/pgvector)
 as if it were an external service: "the vector store." It isn't. It's
@@ -354,13 +354,13 @@ immediately.
 ## 4.2 The visited set: three implementations of the same hash table
 
 ```c
-// src/hnswutils.c
+// src/hnsw.h
 typedef union
 {
-    struct pointerhash_hash *pointers;
-    struct offsethash_hash *offsets;
-    struct tidhash_hash *tids;
-}           visited_hash;
+	struct pointerhash_hash *pointers;
+	struct offsethash_hash *offsets;
+	struct tidhash_hash *tids;
+}			visited_hash;
 ```
 
 A breadth-first graph search needs to remember which nodes it has
@@ -394,8 +394,8 @@ template, instantiated three times:
 
 Three macro instantiations buy you three open-addressed hash tables
 specialized to their key types, with no virtual dispatch and no
-generic-pointer overhead. This is the kind of thing C makes easy that
-Go and Rust make verbose.
+generic-pointer overhead. C makes this trivial; in Go or Rust it would
+require generics or codegen.
 
 ## 4.3 Distance is auto-vectorized
 
@@ -482,15 +482,13 @@ The graph is dense at the bottom and exponentially sparse at the top,
 which is exactly what you want for the layered greedy descent to
 work.
 
-`maxLevel` is computed at index init time from `BLCKSZ`:
+`maxLevel` is computed at index init time from `BLCKSZ` (one literal
+source line, formatted here as written):
 
 ```c
 // src/hnsw.h
-#define HnswGetMaxLevel(m) Min( \
-    ((BLCKSZ - MAXALIGN(SizeOfPageHeaderData) \
-              - MAXALIGN(sizeof(HnswPageOpaqueData)) \
-              - offsetof(HnswNeighborTupleData, indextids) \
-              - sizeof(ItemIdData)) / sizeof(ItemPointerData)) / (m) - 2, 255)
+/* Ensure fits on page and in uint8 */
+#define HnswGetMaxLevel(m) Min(((BLCKSZ - MAXALIGN(SizeOfPageHeaderData) - MAXALIGN(sizeof(HnswPageOpaqueData)) - offsetof(HnswNeighborTupleData, indextids) - sizeof(ItemIdData)) / (sizeof(ItemPointerData)) / (m)) - 2, 255)
 ```
 
 This is the expression "how many `ItemPointerData`s fit on one page,
@@ -498,10 +496,11 @@ divided by `m`, minus two". An element at level `L` needs
 `(L + 2) × M` TIDs in its neighbour tuple. The cap exists because the
 neighbour tuple has to fit in **one** Postgres page — pgvector
 deliberately refuses to split a tuple across pages. With `BLCKSZ =
-8192` and `M = 16`, `maxLevel` evaluates to about 40, which you will
-basically never reach: the probability of an element rolling above
-level 8 with `M = 16` is `1/16⁸ ≈ 5.4 × 10⁻¹⁰`. The `255` cap is to
-ensure level fits in a `uint8`.
+8192` and `M = 16`, `maxLevel` evaluates to 40, which the random level
+distribution will not reach in practice — the probability of an element
+rolling above level 8 with `M = 16` is `1/16⁸ ≈ 5.4 × 10⁻¹⁰` (computed
+from the geometric tail). The `255` cap is to ensure `level` fits in a
+`uint8`.
 
 # 5. Real numbers — measured
 
@@ -528,11 +527,11 @@ index size / row:  833 B
 table size:        27.9 MB
 ```
 
-`833 B / row` decomposes as: the vector itself is `128 × 4 = 512 B`
-plus a `Vector` header (~28 B), the neighbour tuple at level 0 is
-`2 × 16 × 6 = 192 B` plus the 8-byte tuple header, plus the
-element tuple's per-page slot (`ItemIdData` is 4 B), plus alignment
-slack. The dominant term is the vector data; the index is only about
+`833 B / row` decomposes by napkin math: the vector itself is
+`128 × 4 = 512 B` plus a `Vector` header (28 B observed), the level-0
+neighbour tuple holds `2 × 16 = 32` TIDs at 6 B each, so
+`32 × 6 = 192 B`, plus an 8 B tuple header, plus the element tuple's
+per-page slot (`ItemIdData` is 4 B), plus alignment slack. The dominant term is the vector data; the index is only about
 60 % bigger than the table because each tuple lives in both.
 
 Query latency at varying `ef_search`:
@@ -576,7 +575,7 @@ being a debate.
 A 50-line reproduction is at the bottom of this post; the key shape:
 
 ```python
-# bench/pgvector_hnsw.py — 50 lines, requires `psycopg[binary]` and `numpy`
+# 50-line reproduction; needs `psycopg[binary]` and `numpy` on the host
 import time, numpy as np, psycopg
 
 DSN = "host=127.0.0.1 port=5432 user=postgres password=p dbname=bench"
@@ -691,9 +690,11 @@ HNSW for anything that needs deterministic ranking.
 
 **Build time scales worse than IVFFlat.** Build is `O(N × log N ×
 ef_construction)` graph operations. IVFFlat's build is `O(N × probes
-× iterations)` k-means work, which is more parallelizable and easier
-on memory. A 10M-row HNSW build in single-threaded mode is around 30
-minutes on a fast disk; the same workload on IVFFlat is closer to 5.
+× iterations)` k-means work, which parallelises better and uses less
+memory. Extrapolating from this post's measured build (50k vectors
+in 6.0 s = 8.3 k vectors/s single-threaded), a 10M-row HNSW build
+at that rate is about 20 minutes; pgvector's parallel-build mode
+(see `HnswParallelBuildMain`) brings that down by `max_parallel_maintenance_workers`-fold in practice.
 
 # 7. What I'd build differently
 
@@ -729,7 +730,7 @@ paper describe this layout.
 pgvector. There is no automatic chooser. On a dataset where
 HNSW's recall curve plateaus early (extremely clustered data, our
 benchmark above), IVFFlat with `probes = √N` is competitive and
-builds 5× faster. A meta-extension that picked between the two based
+builds [substantially faster on the same hardware](https://github.com/pgvector/pgvector#index-build-time) (also benchmark- and dataset-dependent). A meta-extension that picked between the two based
 on a quick training sample, or even let you write
 `CREATE INDEX ... USING ann (...)` and chose at build time, would
 remove a real foot-gun from teams new to vector search.
