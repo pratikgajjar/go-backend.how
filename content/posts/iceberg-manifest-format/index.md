@@ -361,11 +361,15 @@ number, in
 static final long UNASSIGNED_SEQ = -1L;
 ```
 
-`UNASSIGNED_SEQ = -1` is the on-disk marker for "fill me in
-later." When `toManifestFile()` builds the wrapper at the end of
-`ManifestWriter`, it passes `UNASSIGNED_SEQ` for the `sequenceNumber`
-argument and then the manifest-list writer overwrites it once at
-commit. The same indirection is used for `first_row_id` in V3,
+`UNASSIGNED_SEQ = -1` is the in-memory sentinel for "fill me in
+later"; on-disk the manifest-entry sequence-number column is
+written as Avro `null` (and the manifest-list's `sequence_number`
+column on the *manifest* row holds the same `-1` until commit
+succeeds). When `toManifestFile()` builds the wrapper at the end of
+`ManifestWriter`, it passes `UNASSIGNED_SEQ` for the
+`sequenceNumber` argument; the manifest-list writer then overwrites
+it once at commit with the snapshot's freshly-assigned sequence
+number. The same indirection is used for `first_row_id` in V3,
 which assigns `_row_id`s monotonically across the whole table.
 
 ## 4.4 Optimistic commit — what really happens on `INSERT`
@@ -593,7 +597,7 @@ makes worse than alternatives.
 | Streaming aggregates over the data | No materialised view; every query re-scans                            | Druid, Pinot, ClickHouse                 |
 | Thousands of partitions            | Manifest-list summaries grow linearly with partition cardinality      | Hash bucketing or `truncate(N)`          |
 | Schema-on-read                     | Schema is mandatory, with field IDs assigned forever                  | Plain Parquet directories                |
-| Browsable storage                  | Every file is uuid-named; no human can `ls` and tell what is data     | Hive-style partitioned directories       |
+| Browsable storage                  | Files are uuid-named under a partition path; the metadata tree is the only authoritative listing | Hive-style partitioned directories       |
 
 A few of these need elaboration.
 
