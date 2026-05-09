@@ -26,8 +26,11 @@ business transaction; if the transaction rolls back, no event is
 emitted; if it commits, the bytes are in the WAL and they will be
 delivered.
 
-Postgres has shipped this function since 9.6 (September 2016). Almost
-nobody uses it. The outbox-pattern tutorials all keep teaching you to
+Postgres has shipped this function since
+[9.6 (September 2016)](https://www.postgresql.org/docs/release/9.6/) — see
+the entry for `pg_logical_emit_message` in the
+[9.6 release notes](https://www.postgresql.org/docs/9.6/release-9-6.html).
+Almost nobody uses it. The outbox-pattern tutorials all keep teaching you to
 build a table, then a poller, then an index, then a cleanup job — and
 nine times out of ten they don't tell you about the dual-write race
 hiding in their first code sample.

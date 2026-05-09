@@ -232,7 +232,9 @@ def numbers_without_math_defects(body: str) -> int:
 
 
 CITATION_NEEDED_RE = re.compile(
-    r"\b(Postgres|PostgreSQL|Kafka|S3|Parquet|Iceberg|TigerBeetle|FoundationDB)\b[^.]{0,80}\b(since|in|version|added|released|shipped|introduced)\b\s*[\d.]+",
+    # tighter than starter: version-keyword must be followed by an actual digit,
+    # not a stray period, and the digit can have an optional dotted suffix.
+    r"\b(Postgres|PostgreSQL|Kafka|S3|Parquet|Iceberg|TigerBeetle|FoundationDB)\b[^.]{0,80}\b(since|in|version|added|released|shipped|introduced)\b\s*\d+(?:\.\d+)*",
     re.IGNORECASE,
 )
 
