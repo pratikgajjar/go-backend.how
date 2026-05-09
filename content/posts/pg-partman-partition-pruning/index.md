@@ -195,14 +195,26 @@ has a chance.
         └─────────────────────────────────┘
 ```
 
-Two tables, one procedure, one C bgworker. `part_config` holds the
-configuration per partitioned parent: control column, interval,
-premake count, retention, optional `constraint_cols` for the
-constraint-exclusion trick we'll come back to. `run_maintenance_proc`
-is the loop. The bgworker is a `BackgroundWorker` that wakes on
-`pg_partman_bgw.interval` and calls the procedure once per database
-listed in `pg_partman_bgw.dbname`. That's the entire system from a
-distance.
+Two tables, four functions, one C bgworker. `part_config` holds one
+row per partitioned parent: control column, interval, premake count,
+retention, optional `constraint_cols` for the constraint-exclusion
+trick from §6.b, and `optimize_constraint` (default 30) — the
+threshold for when those constraints actually get applied.
+`part_config_sub` holds the same shape for sub-partitioned children
+and is empty in the common case. The PL/pgSQL functions split into
+three groups: setup (`create_partition`, `create_sub_partition`),
+maintenance (`run_maintenance`, `drop_partition_time`,
+`drop_partition_id`, `apply_constraints`), and undo
+(`undo_partition`, `config_cleanup`). `run_maintenance_proc` is the
+outer loop the bgworker calls; for each row in `part_config` it calls
+`run_maintenance(parent_table)` which premakes the next N children
+and (if retention is set) drops the old ones, committing between
+parents to avoid long lock chains. The bgworker (`pg_partman_bgw`,
+loaded via `shared_preload_libraries`) wakes every
+`pg_partman_bgw.interval` seconds (default 3600), spawns a dynamic
+worker per database in `pg_partman_bgw.dbname`, and waits for each
+to complete before moving to the next. That's the entire system
+from a distance.
 
 # 4. Source dive — `run_maintenance`, line by line
 

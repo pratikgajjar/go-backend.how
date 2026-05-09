@@ -270,7 +270,7 @@ That's *not a typo*. Wolfi (2.5× scratch's wire bytes) pulled the **fastest** i
 
 2. **Single-layer images can't parallelise.** Containerd's default `max_concurrent_downloads = 3` (see [`pkg/cri/config`][cricfg]) means scratch's lone layer fetches on one TCP connection, gzip-decompresses on one CPU. Distroless's 13-and-Wolfi's-11 spread across 3 parallel connections, so the binary layer (~3.98 MB compressed across all three) overlaps with the smaller base layers.
 
-[cricfg]: https://github.com/containerd/containerd/blob/main/pkg/cri/config/config.go
+[cricfg]: https://github.com/containerd/containerd/blob/main/internal/cri/config/config.go
 
 3. **Gzip decompression is the long pole, and it's single-threaded per blob.** I measured `gunzip` on the 3.74 MB binary blob → 10.16 MB tar at 20–30 ms across five runs on an M3 P-core; the gunzip-vs-CPU envelope is roughly 200 MB/s on this hardware. With one-layer-per-CPU, scratch eats those 20–30 ms serially; Wolfi eats them overlapped with apk-DB layer decompression on a sibling core.
 
