@@ -460,13 +460,11 @@ case event := <-eventsCh:
 
 A `100 ms` sleep loop. Looks dumb. It's correct.
 
-The number is the obvious knob. Too short and you spin a busy loop on
-a full ring (a `1 µs` spin at, say, `100,000` saturating events/sec is
-`1 µs × 100,000 = 0.1 s/sec` of CPU bleed for nothing). Too long and
-the ring stays stuck after a worker drained it, adding latency to the
-LSN ack walker. `100 ms` is the order of magnitude where it produces
-a clear backpressure signal in `pg_stat_replication.replay_lag` but
-does not waste a CPU.
+Too short and a `1 µs` spin at, say, `100,000` saturating events/sec
+is `1 µs × 100,000 = 0.1 s/sec` of pointless CPU bleed. Too long and
+the ring stays stuck after a worker drained it, adding LSN-ack
+latency. `100 ms` produces a clear `pg_stat_replication.replay_lag`
+signal without burning a core.
 
 The dumber alternative — drop on full — is not on the table. CDC's
 contract is "every committed row gets to S3, exactly once." Dropping
