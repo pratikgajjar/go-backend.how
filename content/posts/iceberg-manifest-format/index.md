@@ -184,11 +184,10 @@ query plan starts at the pointer, downloads at most a handful of
 files, and prunes its way to a small set of Parquet paths to read.
 
 Concurrency is handled by the catalog. The writer asks the catalog
-for the current pointer, fetches that metadata.json from object
-storage, builds a new tree by *adding* files (manifest list, new
-manifests, new data files), and asks the catalog to swap the
-pointer from version `V` to `V+1` only if the current pointer is
-still `V`. This is a single conditional update — a metastore
+for the current pointer, fetches metadata.json, builds a new tree
+by *adding* files (manifest list, new manifests, new data files),
+and asks the catalog to swap the pointer from version `V` to `V+1`
+only if the current pointer is still `V`. This is a single conditional update — a metastore
 check-and-set, an HDFS atomic rename, or, since [S3 added
 `If-None-Match: *` to PutObject in November
 2024](https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-functionality-conditional-writes/),

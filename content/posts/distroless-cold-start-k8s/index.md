@@ -487,7 +487,7 @@ Three changes I'd make to a real platform team's container baseline.
 | SBOM shipped in image                 | ❌      | ❌      | ✅         |
 | Attack surface (rough)                | min     | min++   | min × 8    |
 
-¹ unless you import `crypto/tls` with embedded certs or set `SSL_CERT_FILE`.
+¹ unless you `go:embed` a CA bundle and load it via `x509.NewCertPool().AppendCertsFromPEM`, or set `SSL_CERT_FILE` at runtime.
 ² unless you `import _ "time/tzdata"` (+448 KB measured on Go 1.26 arm64-linux: 1,638,562 → 2,097,314 B).
 ³ Google rebuilds distroless on its own [release cadence][grcadence], driven by upstream Debian package updates rather than a fixed weekly clock.
 

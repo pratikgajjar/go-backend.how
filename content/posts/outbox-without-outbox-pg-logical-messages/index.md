@@ -616,11 +616,8 @@ short strings) + payload, so a 32-hex `trace_id` costs 34 B, a
 16-hex `span_id` 18 B, the two metadata map entries `parent_op`
 ("http.request") and `is_sampled` ("1") add 27 + 17, plus 2 B for
 the `trace_info` wrapper — 98 B for a typical http.request span.
-Vary `parent_op` and you land in the **80–120 B** envelope: roughly
-**16–24 % overhead** on a 500 B payload (98 B / 500 B = 19.6 %),
-which is the cost of carrying tracer context through the WAL instead
-of dropping it. For larger payloads (5 KB) the overhead drops to
-~2 %, and most production events are bigger than 500 B.
+Vary `parent_op` and you land in the **80–120 B** envelope —
+**~20 %** of a 500 B payload, dropping to ~2 % for 5 KB payloads.
 
 # 7. Reliability proof — the LSN dance
 

@@ -71,3 +71,31 @@ is read-only; if a "real" answer requires changing it, defer to
 - If a class of defect needs scorer changes (false-positive), record
   the change in the commit message AND update `autoresearch.md`.
 - Do not git push (pre-push hook will block).
+
+## Progress log
+
+- Iter 1: baseline = 20 defects (inconsistent_idents=3, unbacked_claims=2,
+  numbers_no_math=3, hedge_words=2, frontmatter=1).
+- Iter 2: sweep all baseline defects in one pass + math_off pop-up. 0.
+- Iter 3-21 (audit at floor): each iteration found 1-4 real correctness
+  issues the syntactic scorer didn't catch, ranging from arithmetic
+  errors (706 vs 673 MB/s, 4.9 KiB vs 32 KB bloom math), to misleading
+  technical claims (writeCh buffered not unbuffered; MVCC discardTs
+  semantics; "size-tiered" comparison missing), to honesty caveats
+  (identical-vs-varied values: 245K → 98K ops/s; 13.8s → 37.7s stalls
+  for the 5M × 1 KB workload), to fabricated identifiers (`BatchPut`,
+  `y.NumXxxAdd`, an `issue #1543` I almost cited).
+- Defects floor held at 0 for 19 iterations; wordcount grew from
+  3375 (baseline) to ~4100 (steady).
+
+## Where to find more issues if resuming
+
+Likely remaining audit dimensions:
+- `compaction.go` is mostly key-range helpers and untouched.
+- `manifest.go` and crash recovery are unaddressed.
+- The `txn.go` SSI commit-with-conflict path could get more depth.
+- Re-running the tuned + ValueThreshold rows with VARIED values would
+  produce more honest tuning numbers (currently those rows are still
+  identical-values).
+- Adding `--race` benchmark or `-cpuprofile` numbers would back the
+  "one core's worth of memtable insertion" claim with profiler data.
