@@ -471,11 +471,11 @@ not latency.
 
 ## Step 6: leader appends an empty entry
 
-`becomeLeader` is the final state transition. The entire job of the new
-leader is to commit one entry in its term, because the Raft safety
-property "leaders only commit entries from their own term" forbids
-committing earlier-term entries until at least one current-term entry is
-committed:
+`becomeLeader` is the final state transition. The first thing a fresh
+leader has to do is commit one entry in its own term, because the Raft
+safety property "leaders only commit entries from their own term"
+forbids advancing the commit index past earlier-term entries until at
+least one current-term entry has been committed:
 
 ```go
 // raft.go
