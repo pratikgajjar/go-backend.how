@@ -720,6 +720,44 @@ def http_not_https_defects(body: str) -> int:
     return len(HTTP_RE.findall(body))
 
 
+def cross_post_link_defects(body: str, repo_root: Path) -> int:
+    """Verify https://backend.how/posts/SLUG/[#anchor] links against the actual
+    post files in content/posts/."""
+    posts_dir = repo_root / "content" / "posts"
+    n = 0
+    for m in re.finditer(
+        r"https?://backend\.how/posts/([\w-]+)/?(?:#([\w-]+))?", body
+    ):
+        slug, anchor = m.group(1), m.group(2)
+        # find the post file
+        candidates = [
+            posts_dir / slug / "index.md",
+            posts_dir / f"{slug}.md",
+        ]
+        path = next((c for c in candidates if c.exists()), None)
+        if path is None:
+            n += 1
+            print(f"DEBUG broken_post_link: /posts/{slug}/ has no file", file=sys.stderr)
+            continue
+        if anchor is None:
+            continue
+        # check anchor against headers of the target post
+        try:
+            target = path.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            continue
+        headers = re.findall(r"^#+\s+(.+?)\s*$", target, flags=re.MULTILINE)
+        slugs = {slugify(h) for h in headers}
+        if anchor not in slugs:
+            n += 1
+            print(
+                f"DEBUG broken_post_anchor: /posts/{slug}/#{anchor} "
+                f"(not among {len(slugs)} headers)",
+                file=sys.stderr,
+            )
+    return n
+
+
 def heading_hierarchy_defects(body: str) -> int:
     """h1 → h2 → h3 should not skip levels (no h1 followed directly by h3)."""
     n = 0
@@ -817,6 +855,7 @@ def main() -> int:
     cats["unbacked_claims"] = claim_audit_defects(body)
     cats["http_not_https"] = http_not_https_defects(body)
     cats["heading_skip"] = heading_hierarchy_defects(body)
+    cats["broken_post_links"] = cross_post_link_defects(body, repo_root)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
