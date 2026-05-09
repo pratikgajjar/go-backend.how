@@ -641,9 +641,10 @@ is highest - not the planner, the executor.
 
 **Anything Postgres' planner sees but Citus' planner doesn't.**
 Citus runs `standard_planner` and uses _its_ restriction info. If a
-Postgres planner version changes how it stores quals - say, the PG 16
-`permInfos` rework or the PG 18 GROUP-RTE change - Citus has to be
-patched. `git log --oneline -- src/backend/distributed/planner/distributed_planner.c`
+Postgres release reshapes the parse tree or PlannedStmt - say, the
+PG 16 `permInfos` rework (Permission Info moved off RangeTblEntry
+onto its own array) or the PG 18 GROUP-RTE change (new range-table
+entry kind for GROUP BY) - Citus has to be patched to match. `git log --oneline -- src/backend/distributed/planner/distributed_planner.c`
 on the cached repo shows two "PG16 compatibility" commits (`b36c431ab`,
 `6056cb2c2`) and three explicit `PG18:` commits (`7cc0bb27c`,
 `002046b87`, `5d71fca3b`); the broader codebase has dozens more

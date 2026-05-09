@@ -658,6 +658,32 @@ FILLER_RE = re.compile(
 )
 
 
+def paragraph_terminator_defects(body: str) -> int:
+    """A prose paragraph (>40 chars, not a list/heading/code) should end with
+    sentence punctuation, not a stray comma or word fragment."""
+    n = 0
+    in_fence = False
+    for p in re.split(r"\n\s*\n", body):
+        # detect and skip code fence start; a paragraph that contains a fence
+        # marker is partial — skip
+        if "```" in p:
+            continue
+        s = p.strip()
+        if len(s) < 40:
+            continue
+        # skip headings, table rows, list items, blockquotes
+        if s.startswith(("#", "|", "-", "*", "+", ">", "1.", "2.", "3.")):
+            continue
+        # skip lines that look like a code excerpt
+        if re.match(r"^\s*\w+\([^)]*\)\s*$", s):
+            continue
+        last_char = s.rstrip()[-1]
+        if last_char not in ".!?:)`'\")":
+            print(f"DEBUG paragraph_terminator: '...{s[-60:]}'", file=sys.stderr)
+            n += 1
+    return n
+
+
 def filler_phrase_defects(body: str) -> int:
     n = 0
     for m in FILLER_RE.finditer(body):
@@ -918,6 +944,7 @@ def main() -> int:
     cats["github_line_ref"] = github_line_ref_defects(body, cached_repo)
     cats["digit_claim"] = digit_claim_consistency_defects(body)
     cats["filler_phrases"] = filler_phrase_defects(body)
+    cats["para_terminator"] = paragraph_terminator_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -949,6 +976,7 @@ def main() -> int:
         "github_line_ref": 3,
         "digit_claim": 3,
         "filler_phrases": 2,
+        "para_terminator": 1,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
