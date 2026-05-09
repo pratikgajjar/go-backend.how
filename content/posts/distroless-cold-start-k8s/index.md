@@ -275,7 +275,7 @@ That's *not a typo*. Wolfi (2.5× scratch's wire bytes) pulled the **fastest** i
 
 [cricfg]: https://github.com/containerd/containerd/blob/main/internal/cri/config/config_unix.go
 
-3. **Gzip decompression is the long pole, and it's single-threaded per blob.** I measured `gunzip` on the 3.74 MB binary blob → 10.16 MB tar at 20–30 ms across five runs on an M3 P-core; the gunzip-vs-CPU envelope is roughly 200 MB/s on this hardware. With one-layer-per-CPU, scratch eats those 20–30 ms serially; Wolfi eats them overlapped with apk-DB layer decompression on a sibling core.
+3. **Gzip decompression is the long pole, and it's single-threaded per blob.** I measured `gunzip` on the 3.74 MB binary blob → 10.16 MB tar at 20–30 ms across five runs on an M3 P-core (`3.74 MB / 0.025 s ≈ 150 MB/s` of compressed input, or `10.16 / 0.025 ≈ 400 MB/s` of decompressed output). With one-layer-per-CPU, scratch eats those 20–30 ms serially; Wolfi eats them overlapped with apk-DB layer decompression on a sibling core.
 
 If you wanted to *prove* this on Linux and are not on macOS, the one-liner is:
 
