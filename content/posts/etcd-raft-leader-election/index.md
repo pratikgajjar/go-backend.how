@@ -442,7 +442,11 @@ func (c MajorityConfig) VoteResult(votes map[uint64]bool) VoteResult {
 ```
 
 `q = n/2 + 1` for an `n`-voter cluster. For `n = 3`, `q = 2` — the
-candidate plus one peer is enough.
+candidate plus one peer is enough. The third return value
+`VotePending` is the case where we have enough still-undecided voters
+that *either* outcome is possible; the candidate stays in
+`StateCandidate` and waits for more responses or for its election
+timer to fire again.
 
 The PreCandidate branch is the small but important detail: a successful
 PreVote does *not* declare victory. It calls `r.campaign(campaignElection)`
