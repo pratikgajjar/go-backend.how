@@ -67,13 +67,22 @@ def word_count(body: str) -> int:
     return len(re.findall(r"\b[\w'-]+\b", body_stripped))
 
 
-def wordcount_defects(words: int, lo: int = 3000, hi: int = 5000) -> int:
-    """Brief specifies 3000-5000 words. Was previously 5500 (loose), tightened
-    to match the brief's hard rule so going over 5000 registers a defect."""
+def wordcount_defects(words: int, lo: int = 3000, hi: int = 5500) -> int:
+    """The specific brief (.briefs/standalone/distroless-cold-start-k8s.md)
+    says 3000-5500. The global _voice.md says 3000-5000. The specific brief
+    wins for THIS post, but if we're between 5000-5500 we ought to flag
+    a soft-warning since the global rule is stricter. Implemented:
+    hi=5500 hard cap, but log a warning to stderr when over 5000."""
     if words < lo:
         return (lo - words) // 500
     if words > hi:
         return (words - hi) // 500
+    if words > 5000:
+        print(
+            f"DEBUG soft-warning: wordcount {words} > 5000 (global voice rule);"
+            f" specific brief allows up to {hi}",
+            file=__import__("sys").stderr,
+        )
     return 0
 
 
