@@ -39,8 +39,8 @@ them in hardware (LSE LDADD on ARMv8.1+, `lock xadd` on x86). The
 faster code; it's the same code with the *coordination removed*.
 
 Cassandra runs many worker thread pools (ReadStage, MutationStage,
-etc.) across all cores, hitting shared memtables, a shared row cache,
-shared commit-log buffers. Scylla — built
+etc.) across all cores, hitting shared memtables, the shared
+commit-log, and (when enabled) a shared row cache. Scylla — built
 on the [Seastar](https://github.com/scylladb/seastar) framework — runs
 exactly **one OS thread per CPU**, pins each to its core, and gives each
 a private slice of RAM. Two threads never touch the same cache line in

@@ -862,21 +862,25 @@ Drop that file inside a checkout of `etcd-io/raft` and run
 `-v` will also surface the library's `Infof` lines, which mirror the
 trace this whole post walked.
 
-If you want to see the goroutine scheduling overhead the 200 µs
-estimate accounts for, run:
+A caveat: `TestElectionDemo` uses the in-tree `network` test harness
+(`newNetworkWithConfig`), which calls `Step` directly on `*raft`
+without going through `*node` and the readyc/recvc channels. So a
+`go tool trace` against this test will *not* show the scheduler
+crossings the 200 µs estimate accounts for. To see those, trace
+`BenchmarkOneNode` instead — it uses the real `Node` goroutine plus a
+`Storage.Append` loop, which is the closest in-tree benchmark to a
+single-node election round-trip:
 
 ```shell
-go test -trace=trace.out -run TestElectionDemo
+go test -trace=trace.out -bench=BenchmarkOneNode -run=^$ -benchtime=10x
 go tool trace trace.out
 ```
 
-The browser view will show the candidate's goroutine yielding on
-`readyc` between every state-machine step, with the followers'
-goroutines waking up on `recvc` to receive `MsgVote`. The total
-wall-clock from the first `Step(MsgHup)` to the last `becomeLeader`
-log line is the localhost-wall-clock the title's 200 µs refers to.
-On Linux you can get the same data via `bpftrace` uprobes on the
-test binary you built with `go test -c`; on macOS,
+The browser view will show the `node.run` goroutine yielding on
+`readyc` between every state-machine step, plus the test goroutine
+waking up on `Ready` and calling `Storage.Append`. On Linux you can
+get the same data via `bpftrace` uprobes on the test binary you built
+with `go test -c`; on macOS,
 `dtrace -n 'pid$target::*becomeCandidate*:entry'` works against the
 same binary.
 
