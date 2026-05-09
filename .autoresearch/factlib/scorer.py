@@ -85,10 +85,14 @@ def word_count(body: str) -> int:
 
 
 def wordcount_defects(words: int, lo: int = 3000, hi: int = 5000) -> int:
+    """Brief mandates 3000-5000. Any over-cap is a hard defect (the brief
+    explicitly says 'Don't write more than 5000 words.'); any under-cap
+    floor is graded by 100s (200 under = 2 defects)."""
     if words < lo:
-        return (lo - words) // 500
+        return max((lo - words) // 100, 1)
     if words > hi:
-        return (words - hi) // 500
+        # graded but always at least 1 if over
+        return max((words - hi) // 100, 1)
     return 0
 
 
