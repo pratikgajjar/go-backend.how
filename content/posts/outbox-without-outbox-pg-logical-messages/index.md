@@ -953,7 +953,7 @@ for "when not to use this") or a dedicated event store.
 | Producer SQL | 1 INSERT (heap tuple ~24 B header + payload + 2 index entries) | 1 SELECT (~600 B WAL, derived in [§8](#8-ordering--throughput)) |
 | Producer round-trips | 1 | 1 |
 | Consumer query rate | 10/sec polls per worker | 0 (push via WAL) |
-| Index writes per event | 2 (heap + index) | 0 |
+| Index writes per event | 2 (PK + partial-on-`processed`) | 0 |
 | Vacuum cost | proportional to event rate | none |
 | End-to-end latency | poll interval (100 ms–5 s) | WAL flush + Kafka produce (single-digit ms on a same-VPC pgx connection, derived) |
 
