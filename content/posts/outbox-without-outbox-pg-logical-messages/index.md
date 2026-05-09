@@ -370,11 +370,8 @@ is dedicated to streaming CopyData forever — no more queries.
 
 ## Setting up the slot
 
-Two one-time DDL operations. They run on every boot and are
-idempotent:
-
-The two SQL statements that `pkg/postgres/wal.go` runs (via
-`fmt.Sprintf` interpolation, hence the `%s`):
+Two one-time, idempotent operations that `pkg/postgres/wal.go` runs
+on every boot (`%s` is `fmt.Sprintf` interpolation):
 
 ```sql
 -- ensurePublication
