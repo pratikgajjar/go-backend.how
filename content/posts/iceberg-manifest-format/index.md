@@ -551,12 +551,10 @@ partitioned by day for 365 days:
   `150 / 365 ≈ 0.41`, so 1 manifest with high probability.
 * Manifest GET — 1 round-trip, again ~30 ms. 8 MiB of compressed
   Avro decompresses to roughly 20–40 MiB for numeric/binary-heavy
-  manifests (Iceberg defaults to gzip on the manifest writer; gzip
-  on Avro-encoded counts + UUIDs typically lands at 3–5× expansion
-  in my own dumps. Snappy and zstd are also supported; the
-  [snappy README](https://github.com/google/snappy) reports
-  1.5–2× on text and higher ratios on repetitive numeric data).
-  The parse
+  manifests (Iceberg defaults to gzip; gzip on Avro-encoded counts
+  + UUIDs lands at 3–5× expansion in my dumps. The
+  [snappy README](https://github.com/google/snappy) reports 1.5–2×
+  on text and higher ratios on repetitive numeric data). The parse
   cost on Python with `fastavro` is roughly the disk-decode of
   that 30 MiB, which dominates over the network round-trip on
   small (single-day) queries. JVM clients are typically faster
