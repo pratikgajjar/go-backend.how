@@ -968,19 +968,18 @@ commits batch many WAL records, so a typical OLTP cluster with
 per second on the WAL stream. Call it **10k events/sec** as a
 reasonable mid-range.
 
-**Decoding cost.** pgoutput Text-mode decoding is estimated at
-`~5 µs/column` (allocation-dominated by `make(map[string]any)` +
-`strconv.ParseInt`/`ParseFloat` per column inside
-`internal/replication/tuple_decoder.go`'s `extractTuple`; an
-allocation-heavy switch on Apple Silicon M-series sits in the
-`1–10 µs` band based on the [pgx decoder benchmarks][pgx-bench]).
-For a 5-column row, that's `5 × 5 µs ≈ 25 µs`. At
-`10,000 events/sec`, the decoder uses
-`10,000 × 25 µs = 250,000 µs/sec = 0.25 s of CPU per wall-second`
-on the replicator goroutine — one core at 25%. Headroom is fine;
-it's not the bottleneck.
-
-[pgx-bench]: https://github.com/jackc/pgx/blob/master/bench_test.go "pgx — bench_test.go (decoder microbenchmarks)"
+**Decoding cost.** pgoutput Text-mode decoding in
+`internal/replication/tuple_decoder.go`'s `extractTuple` is dominated
+by `make(map[string]any)` + a `strconv.ParseInt`/`ParseFloat` per
+column. Both are well-trodden Go allocation patterns; on Apple
+Silicon M-series the per-call cost is in the
+[low-µs band typical for reflection-free Go](https://go.dev/ref/spec#Allocation)
+allocation + small-string parsing. Take `~5 µs/column` as a
+back-of-envelope (a real benchmark would refine it). For a
+5-column row that's `5 × 5 µs ≈ 25 µs`. At `10,000 events/sec`,
+the decoder uses `10,000 × 25 µs = 250,000 µs/sec = 0.25 s of CPU
+per wall-second` on the replicator goroutine — one core at 25%.
+Headroom is fine; it's not the bottleneck.
 
 **Ring buffer admission.** `Add` is ~50 ns (one atomic load, one
 slice store, one atomic add). 10k events/sec is 500 µs/sec on the
