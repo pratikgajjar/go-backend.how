@@ -16,7 +16,7 @@ math = false
 
 A `FROM scratch` image with a 10.16 MB Go binary inside it ships **3.98 MB** on the wire after gzip. The same binary on top of `gcr.io/distroless/static:latest` ships **4.83 MB** across **fourteen** layers — almost a megabyte more bytes and thirteen extra HTTP fetches.
 
-Yet pushed to a `localhost:5005` registry and started with `podman run`, both images go from container start to a 200 OK on `/healthz` inside the same 30 ms band. Wolfi-base, which is **2.5×** scratch's wire weight (and **2×** distroless's), finishes inside the same band too.
+Yet pushed to a `localhost:5005` registry and started with `podman run`, both images take 232\u2013325 ms (distroless) and 219\u2013285 ms (scratch) end-to-end \u2014 the spread between *images* is dwarfed by the spread between *runs* of the same image. Wolfi-base (which is **2.5\u00d7** scratch's wire weight and **2\u00d7** distroless's) lands at 219\u2013259 ms, *faster* than either.
 
 The smallest image isn't the fastest. The biggest one isn't the slowest. Image size is the wrong axis to argue on, and most "distroless vs scratch" posts you've read pick the wrong fight.
 

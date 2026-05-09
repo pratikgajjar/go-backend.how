@@ -618,6 +618,17 @@ def heading_skip_defects(repo_root: Path) -> int:
     return n
 
 
+def fence_balance_defects(body: str) -> int:
+    """Code fences must be balanced (matched ``` opens and closes).
+    Odd count = unclosed fence = breaks Hugo rendering."""
+    fences = sum(1 for ln in body.splitlines() if ln.lstrip().startswith("```"))
+    if fences % 2 != 0:
+        print(f"DEBUG fence_balance: {fences} fence markers (odd, unclosed somewhere)",
+              file=sys.stderr)
+        return 1
+    return 0
+
+
 def gofmt_defects(body: str) -> int:
     """Run gofmt -l on every Go code block. Each unparsable block = 1 defect.
     Skips blocks containing '...' (intentionally elided) or top-level keywords
@@ -743,6 +754,7 @@ def main() -> int:
     cats["bad_anchor_link"] = anchor_resolution_defects(body, repo_root)
     cats["license_claim"] = license_claim_defects(body, cached_repo)
     cats["gofmt"] = gofmt_defects(body)
+    cats["fence_balance"] = fence_balance_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -768,6 +780,7 @@ def main() -> int:
         "bad_anchor_link": 3,
         "license_claim": 4,
         "gofmt": 3,
+        "fence_balance": 5,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
