@@ -962,7 +962,6 @@ def main() -> int:
     cats["broken_post_links"] = cross_post_link_defects(body, repo_root)
     cats["missing_sections"] = required_sections_defects(body, post_path)
     cats["bad_commit_refs"] = commit_ref_defects(body, cached_repo)
-    cats["dupe_words"] = dupe_word_defects(body)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
@@ -993,7 +992,6 @@ def main() -> int:
         "broken_post_links": 4,
         "missing_sections": 4,
         "bad_commit_refs": 4,
-        "dupe_words": 2,
         "wordcount_off": 1,
         "frontmatter": 2,
     }

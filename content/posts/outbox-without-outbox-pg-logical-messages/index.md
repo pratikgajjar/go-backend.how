@@ -201,15 +201,21 @@ sound. The implementation is just heavier than it needs to be.
 Function signature, paraphrased from the
 [Postgres 17 docs](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-REPLICATION):
 
-> `pg_logical_emit_message(transactional boolean, prefix text, content text [, flush boolean]) → pg_lsn`
-> `pg_logical_emit_message(transactional boolean, prefix text, content bytea [, flush boolean]) → pg_lsn`
+> `pg_logical_emit_message(transactional boolean, prefix text, content text  [, flush boolean DEFAULT false]) → pg_lsn`
+> `pg_logical_emit_message(transactional boolean, prefix text, content bytea [, flush boolean DEFAULT false]) → pg_lsn`
 
 The upstream description (lightly compressed): emit a text or binary
 logical decoding message that logical decoding plugins receive
 through WAL. With `transactional = true` the message becomes visible
 to decoders only when the surrounding transaction commits; with
 `false`, it's written immediately and decoded as soon as the decoder
-reads the WAL record.
+reads the WAL record. The optional `flush` parameter
+([added in Postgres 16](https://www.postgresql.org/docs/release/16.0/))
+forces a `XLogFlush` on the emitted record before returning, so the
+caller can be sure the bytes are durable on disk before the
+transaction commits — useful for non-transactional emits, irrelevant
+for the `transactional=true` path factlib takes (the COMMIT itself
+flushes). Pre-16 Postgres has only the 3-parameter form.
 
 Read that twice. Three properties matter:
 

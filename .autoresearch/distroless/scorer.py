@@ -438,6 +438,102 @@ def ground_truth_drift_defects(body: str) -> int:
     return n
 
 
+def heading_skip_defects(body: str) -> int:
+    """Markdown headings must increase by at most +1 level at a time."""
+    n = 0
+    last = 0
+    for m in re.finditer(r"^(#{1,6})\s+(.*)$", body, re.MULTILINE):
+        depth = len(m.group(1))
+        if last != 0 and depth - last > 1:
+            print(
+                f"DEBUG heading_skip: H{last} -> H{depth} at {m.group(2)[:60]!r}",
+                file=sys.stderr,
+            )
+            n += 1
+        last = depth
+    return n
+
+
+def footnote_balance_defects(body: str) -> int:
+    """[^N] references must have matching [^N]: definitions, and vice versa."""
+    prose = _strip_code_blocks(body)
+    refs = set(re.findall(r"\[\^([A-Za-z0-9_-]+)\](?!:)", prose))
+    defs = set(re.findall(r"^\[\^([A-Za-z0-9_-]+)\]:", prose, re.MULTILINE))
+    orphan_refs = refs - defs
+    orphan_defs = defs - refs
+    for o in orphan_refs:
+        print(f"DEBUG orphan_footnote_ref: [^{o}]", file=sys.stderr)
+    for o in orphan_defs:
+        print(f"DEBUG orphan_footnote_def: [^{o}]:", file=sys.stderr)
+    return len(orphan_refs) + len(orphan_defs)
+
+
+def fence_balance_defects(body: str) -> int:
+    """Every ``` opening must close. Odd count means a fence is missing."""
+    return 1 if body.count("```") % 2 else 0
+
+
+# Live URL verification — cached, opt-in via HTTP HEAD/GET
+URL_CACHE = Path(__file__).resolve().parent / "url_cache.json"
+
+
+def url_live_defects(body: str) -> int:
+    """HEAD-check every distinct external URL referenced from prose. Cached
+    in url_cache.json; cache hits re-use the recorded status code.
+    Codes 200/301/302/303/307/308 pass; 4xx/5xx/timeouts are defects.
+    """
+    import json
+    import urllib.error
+    import urllib.request
+
+    prose = _strip_code_blocks(body)
+    urls = set(re.findall(r"https?://[^\s<>)\"\]]+", prose))
+    # also pick up reference-style link defs at line-start
+    for m in re.finditer(r"^\[[^\]]+\]:\s*(https?://\S+)\s*$", prose, re.MULTILINE):
+        urls.add(m.group(1))
+    cache: dict = {}
+    if URL_CACHE.exists():
+        try:
+            cache = json.loads(URL_CACHE.read_text())
+        except Exception:
+            cache = {}
+    n = 0
+    changed = False
+    for url in sorted(urls):
+        # strip trailing punctuation that markdown sometimes captures
+        u = url.rstrip(".,;:")
+        if u in cache:
+            status = cache[u]
+        else:
+            try:
+                req = urllib.request.Request(u, method="HEAD")
+                req.add_header("User-Agent", "go-backend.how-scorer/0.1")
+                with urllib.request.urlopen(req, timeout=8) as r:
+                    status = r.status
+            except urllib.error.HTTPError as e:
+                # GitHub blob/main URLs sometimes 405 on HEAD; retry with GET
+                if e.code == 405:
+                    try:
+                        req2 = urllib.request.Request(u)
+                        req2.add_header("User-Agent", "go-backend.how-scorer/0.1")
+                        with urllib.request.urlopen(req2, timeout=8) as r2:
+                            status = r2.status
+                    except Exception:
+                        status = e.code
+                else:
+                    status = e.code
+            except Exception:
+                status = 0  # network/timeout
+            cache[u] = status
+            changed = True
+        if status not in (200, 301, 302, 303, 307, 308):
+            print(f"DEBUG url_live: {u} -> {status}", file=sys.stderr)
+            n += 1
+    if changed:
+        URL_CACHE.write_text(json.dumps(cache, indent=2, sort_keys=True))
+    return n
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print("usage: scorer.py <post_path> <rig_path>", file=sys.stderr)
