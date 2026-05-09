@@ -195,13 +195,13 @@ sound. The implementation is just heavier than it needs to be.
 
 # 3. The forgotten Postgres feature: `pg_logical_emit_message`
 
-Function signature, paraphrased from the
+Function signature from the
 [Postgres 17 docs](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-REPLICATION):
 
 > `pg_logical_emit_message(transactional boolean, prefix text, content text  [, flush boolean DEFAULT false]) → pg_lsn`
 > `pg_logical_emit_message(transactional boolean, prefix text, content bytea [, flush boolean DEFAULT false]) → pg_lsn`
 
-Paraphrased: emit a text or binary logical-decoding message that
+In English: emit a text or binary logical-decoding message that
 plugins receive through WAL. `transactional = true` makes it visible
 to decoders only when the surrounding txn commits; `false` writes
 immediately. The optional `flush` parameter
