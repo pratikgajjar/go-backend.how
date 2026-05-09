@@ -359,6 +359,117 @@ def factlib_size_drift_defects(body: str, cached_repo: Path) -> int:
     return 0
 
 
+FABRICATED_PROD_RE = re.compile(
+    # production-rooted claims that need a measurement source
+    r"\b(?:in production|production observed|p50 (?:of |is )|p99 (?:of |is )|measured|sustained|throughput of|achieves)\b[^.\n]{0,80}\b\d[\d,.]*\s?(?:µs|us|ms|ns|s|MB|GB|KB|TB|TPS|QPS|/sec|/s)\b",
+    re.IGNORECASE,
+)
+SOURCE_HINT_RE = re.compile(
+    r"(?:\bbenchmark\b|\bgithub\.com/[\w./-]+\b|`scripts/[\w./-]+\.(?:py|sh)`|\bpg_stat_statements\b|\bbpftrace\b|\bperf\b|\bderived\b|\bestimated\b|\benvelope\b)",
+    re.IGNORECASE,
+)
+
+
+def fabricated_production_defects(body: str) -> int:
+    n = 0
+    for m in FABRICATED_PROD_RE.finditer(body):
+        s = max(0, m.start() - 100)
+        e = min(len(body), m.end() + 200)
+        window = body[s:e]
+        if not SOURCE_HINT_RE.search(window):
+            print(f"DEBUG fabricated_prod: {body[m.start():m.end()][:80]!r}", file=sys.stderr)
+            n += 1
+    return n
+
+
+# `wc -l <file>` style claims: e.g. "is 99 lines" or "99 lines end-to-end"
+LOC_CLAIM_RE = re.compile(
+    r"\b(?:is|are|at|exactly)?\s*\*?\*?(\d{2,5})\*?\*?\s+lines?\b[^\n]{0,40}\b([\w./-]+\.(?:go|sql|py|proto|js|ts|md|yaml))\b",
+    re.IGNORECASE,
+)
+
+
+def loc_drift_defects(body: str, cached_repo: Path) -> int:
+    n = 0
+    seen: set[tuple[str, int]] = set()
+    for m in LOC_CLAIM_RE.finditer(body):
+        claimed = int(m.group(1))
+        path_str = m.group(2)
+        if (path_str, claimed) in seen:
+            continue
+        seen.add((path_str, claimed))
+        f = _file_lookup(cached_repo, path_str)
+        if f is None:
+            continue
+        try:
+            actual = sum(1 for _ in f.open())
+        except Exception:
+            continue
+        if actual == 0:
+            continue
+        # accept ±10%
+        delta = abs(actual - claimed) / actual
+        if delta > 0.10:
+            print(f"DEBUG loc_drift: {path_str} claimed={claimed} actual={actual} delta={delta:.2f}",
+                  file=sys.stderr)
+            n += 1
+    return n
+
+
+# "N orders of magnitude": if a nearby paragraph has "X → Y" or "X to Y",
+# verify ratio matches N.
+ORDERS_RE = re.compile(
+    r"\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+orders?\s+of\s+magnitude\b",
+    re.IGNORECASE,
+)
+WORD_TO_INT = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+               "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+
+
+def orders_of_magnitude_defects(body: str) -> int:
+    """If two numbers in the same paragraph form a ratio that doesn't match
+    the claimed orders of magnitude (within ±1), flag it."""
+    n = 0
+    paragraphs = re.split(r"\n\s*\n", body)
+    for p in paragraphs:
+        m = ORDERS_RE.search(p)
+        if not m:
+            continue
+        word = m.group(1).lower()
+        claimed_orders = int(word) if word.isdigit() else WORD_TO_INT.get(word, -1)
+        if claimed_orders < 0:
+            continue
+        # Find numbers in the paragraph that look like a ratio
+        nums_seen = re.findall(r"\b(\d{1,3}(?:[,_]\d{3})*)\b", p)
+        nums = []
+        for s in nums_seen:
+            try:
+                v = int(s.replace(",", "").replace("_", ""))
+                nums.append(v)
+            except ValueError:
+                pass
+        if len(nums) < 2:
+            continue
+        # find any pair (a, b) where a/b roughly == 10**claimed_orders
+        target = 10 ** claimed_orders
+        ok = False
+        for i, a in enumerate(nums):
+            for b in nums[i + 1:]:
+                if b == 0:
+                    continue
+                ratio = max(a, b) / min(a, b)
+                # allow ±0.5 of an order of magnitude
+                if 10 ** (claimed_orders - 0.5) <= ratio <= 10 ** (claimed_orders + 0.5):
+                    ok = True
+                    break
+            if ok:
+                break
+        if not ok:
+            print(f"DEBUG orders_of_magnitude: claimed={claimed_orders} nums={nums[:5]}", file=sys.stderr)
+            n += 1
+    return n
+
+
 def wal_record_overhead_defects(body: str) -> int:
     """
     Postgres XLogRecord header is 24 bytes (xlog_internal.h SizeOfXLogRecord).
@@ -425,6 +536,9 @@ def main() -> int:
     cats["bad_commit_ref"] = bad_commit_ref_defects(body, cached_repo)
     cats["factlib_size_drift"] = factlib_size_drift_defects(body, cached_repo)
     cats["wal_record_overhead_off"] = wal_record_overhead_defects(body)
+    cats["fabricated_production"] = fabricated_production_defects(body)
+    cats["loc_drift"] = loc_drift_defects(body, cached_repo)
+    cats["orders_of_magnitude"] = orders_of_magnitude_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -441,6 +555,9 @@ def main() -> int:
         "bad_commit_ref": 3,
         "factlib_size_drift": 2,
         "wal_record_overhead_off": 3,
+        "fabricated_production": 4,
+        "loc_drift": 3,
+        "orders_of_magnitude": 3,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
