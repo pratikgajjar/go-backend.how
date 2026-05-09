@@ -1083,6 +1083,7 @@ peek after:
 
 ```sql
 -- 1. Before running the Go demo:
+CREATE TABLE users (id text PRIMARY KEY, email text);
 CREATE PUBLICATION demo_pub;
 SELECT pg_create_logical_replication_slot('demo_peek', 'pgoutput');
 
@@ -1099,6 +1100,7 @@ FROM pg_logical_slot_peek_binary_changes(
 -- 4. Cleanup:
 SELECT pg_drop_replication_slot('demo_peek');
 DROP PUBLICATION demo_pub;
+DROP TABLE users;
 ```
 
 Stand up a real OwlPost (`docker-compose up owlpost` from the factlib

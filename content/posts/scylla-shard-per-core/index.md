@@ -512,7 +512,9 @@ import (
 
 type paddedCounter struct {
 	v int64
-	_ [56]byte // padding so each entry is its own cache line (64B)
+	_ [56]byte // 64B per entry — right for x86 cache lines.
+	            // (Apple Silicon uses 128B lines; bumping pad to
+	            // [120]byte gives the same ratio in this micro-bench.)
 }
 
 func benchSharedAtomic(workers, iters int) (int64, time.Duration) {
