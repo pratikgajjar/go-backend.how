@@ -498,7 +498,7 @@ those columns × 256 KiB max block size = 539 MB upper bound; actual
 is smaller because many blocks are partially filled, and column
 compression like BitPacking + DELTA_FOR brings real bytes down
 further). Best-of-5 means the file is in OS page cache, so the
-read happens at ~10 GiB/s effective; `539 / 10000 = 0.054` s of
+read happens at ~10 GiB/s effective; `539 / 10000 ≈ 0.054` s of
 "IO" wall-clock single-thread, divided across 8 threads gives a
 few ms each. Then 60M rows × ~5 ns/row of
 vectorized aggregation totals `60000000 × 5 = 300000000` ns of

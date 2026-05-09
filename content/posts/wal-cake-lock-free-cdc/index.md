@@ -861,17 +861,14 @@ if err != nil {
 synchronizes that cache. On the small `map[string]any` we marshal
 per row, the reflection overhead dominates. `goccy/go-json` uses
 `unsafe`-based type erasure plus per-type generated encoders; the
-[benchmarks][gojson-bench] in the repo show 2–4× on small heterogeneous
-maps. On a 1,000-event batch with ~1 KB JSON per event, that's the
-difference between `WriteToBuffer` taking 8 ms and 24 ms — and
-`WriteToBuffer` is on the worker hot path that the LSN walker is
-waiting for.
+[benchmarks][gojson-bench] in the repo show `2–4×` on small
+heterogeneous maps. On a `1,000`-event batch the JSON marshalling
+step is on the worker hot path the LSN walker is waiting for, so
+that 2-4× compounds across every batch.
 
 [gojson-bench]: https://github.com/goccy/go-json#benchmarks
 
-This is the entire reason wal-cake's `WriteToBuffer` doesn't show up
-on a 1-second `pprof` flame graph. Pick the JSON encoder before you
-pick the Parquet codec.
+Pick the JSON encoder before you pick the Parquet codec.
 
 ## Date-partitioned writes
 

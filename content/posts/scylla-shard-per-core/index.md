@@ -835,9 +835,9 @@ func main() {
 
 Expected output on a modern laptop (M-series Apple, Zen 4, Ice Lake):
 ratio between 30 and 80. The 50-line variant tends to score higher
-than the main benchmark — it has a cleaner cache state and the
-compiler can inline more aggressively when only two loops live in the
-binary. If you see `≤ 5×`, your machine has fewer than 4 physical cores
+than the main benchmark — both runs do the same work but the smaller
+binary starts with a colder OS scheduler and a warmer cache after the
+first variant runs (no preceding mutex/channel variants to dirty L1). If you see `≤ 5×`, your machine has fewer than 4 physical cores
 and the contention collapses to in-core (genuinely cheaper). If you see
 something extreme like `≥ 200×`, you're on a NUMA box with
 cross-socket cores in the same GOMAXPROCS set and the bouncing line

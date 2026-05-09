@@ -36,11 +36,12 @@ key-value stores on the same M2 MacBook, same APFS filesystem, same Go
 Three things should bother you:
 
 1. **LMDB**, written by [Howard Chu](https://www.symas.com/symas-embedded-database-lmdb)
-   in [13,754 lines of C](https://github.com/LMDB/lmdb/tree/mdb.master/libraries/liblmdb)
-   (the entire `liblmdb` directory), beats Pebble - [159,642 lines of Go,
-   tests excluded](https://github.com/cockroachdb/pebble) with a
-   CockroachDB-funded engineering org behind it - at single-threaded
-   random reads by ~13×.
+   in 13,754 source lines (the entire
+   [`liblmdb`](https://github.com/LMDB/lmdb/tree/mdb.master/libraries/liblmdb)
+   directory: `mdb.c`, `midl.c`, and the two headers), beats Pebble — a
+   159,642-line Go codebase with a CockroachDB-funded engineering org
+   behind it ([repo](https://github.com/cockroachdb/pebble), tests
+   excluded) — at single-threaded random reads by ~13×.
 2. **BoltDB**'s on-disk file (96 MiB) is **2.3×** larger than LMDB's
    (42 MiB) for byte-identical data, even though both are B+trees on
    mmap. The size delta is two pieces: LMDB packs new pages near full
