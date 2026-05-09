@@ -96,12 +96,15 @@ that does `DELETE FROM outbox WHERE processed AND created_at < now() - '1 hour'`
 and it generates more WAL than the original inserts.
 
 **Failure 3: JSON-on-S3 is unqueryable.** You finally get the rows to
-S3 and the warehouse team queries them through Athena. Athena charges
-per byte scanned. JSON is row-oriented and uncompressed-ish. A query
-that reads three columns from one day's worth of mutations scans
-**every byte** of every JSON file. A senior data engineer files a
-ticket titled "the lake costs us $14k/month and the dashboard takes 90
-seconds to refresh." You quietly start writing Parquet.
+S3 and the warehouse team queries them through Athena. Athena
+[charges $5 per TB scanned](https://aws.amazon.com/athena/pricing/),
+and JSON is row-oriented and barely compressed (gzipped JSON over
+CDC payloads is roughly `~3×` smaller than raw — well shy of
+columnar Parquet+ZSTD's `~30×`). A query that reads three columns
+from one day's worth of mutations scans **every byte** of every JSON
+file. A senior data engineer files a ticket: at, say, `~$14k/month`
+in estimated Athena scan, the dashboard refresh is 90 s and the
+warehouse cost line keeps growing. You quietly start writing Parquet.
 
 The fix isn't a smarter outbox. The fix is to stop dual-writing. The
 WAL is already an outbox — Postgres has been writing one durably on

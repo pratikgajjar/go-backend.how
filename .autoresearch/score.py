@@ -505,6 +505,104 @@ def identifier_consistency_defects(body: str, cached_repo: Path) -> int:
     return n
 
 
+_NUM_PAT = r"\d[\d,_]*(?:\.\d+)?"
+
+# A <op> B [= ≈] C, where each side may be wrapped in backticks and may have
+# trailing units. Captures the *bare numbers* and verifies they balance.
+MATH_EQ_RE = re.compile(
+    r"(?<![\w.])"                                # left boundary
+    rf"({_NUM_PAT})\s*"                          # A
+    r"([×x*/+\-])\s*"                            # op
+    rf"({_NUM_PAT})\s*"                          # B
+    r"(?:µs|us|ms|ns|s|MB|GB|KB|TB|GiB|MiB|KiB|×|x)?\s*"  # opt unit
+    r"(=|≈)\s*"                                  # eq / approx
+    rf"({_NUM_PAT})"                             # C
+    r"(?![\d,])"                                 # right boundary
+)
+
+
+def _parse_num(s: str) -> float:
+    return float(s.replace(",", "").replace("_", ""))
+
+
+def math_equality_defects(body: str) -> int:
+    """Verify A op B = C / ≈ C inside the post."""
+    n = 0
+    for m in MATH_EQ_RE.finditer(body):
+        a, op, b, eq, c = m.group(1), m.group(2), m.group(3), m.group(4), m.group(5)
+        try:
+            A, B, C = _parse_num(a), _parse_num(b), _parse_num(c)
+        except ValueError:
+            continue
+        if op in ("×", "x", "*"):
+            got = A * B
+        elif op == "/":
+            if B == 0:
+                continue
+            got = A / B
+        elif op == "+":
+            got = A + B
+        elif op == "-":
+            got = A - B
+        else:
+            continue
+        # tolerance: 0.1% for `=`, 10% for `≈`
+        tol = 0.001 if eq == "=" else 0.10
+        if C == 0:
+            ok = abs(got) <= tol
+        else:
+            ok = abs(got - C) / max(abs(C), 1e-9) <= tol
+        if not ok:
+            n += 1
+            print(
+                f"DEBUG math_off: {a} {op} {b} {eq} {c}  computed={got}  expected={C}",
+                file=sys.stderr,
+            )
+    return n
+
+
+# Dollar amounts with rate (e.g. "$20/month") need derivation in same paragraph
+DOLLAR_RE = re.compile(r"\$\s?\d[\d,_.]*\s?(?:/(?:month|year|day|hour|sec))?")
+
+
+def dollar_no_math_defects(body: str) -> int:
+    paragraphs = re.split(r"\n\s*\n", body)
+    n = 0
+    for p in paragraphs:
+        if p.strip().startswith("```") or "|" in p[:5]:
+            continue
+        hits = DOLLAR_RE.findall(p)
+        if not hits:
+            continue
+        if not DERIV_HINTS.search(p):
+            n += len(hits)
+    return n
+
+
+# In-doc anchors: every (#fragment) must point to an existing slug.
+def slugify(s: str) -> str:
+    s = s.lower().strip()
+    s = re.sub(r"[^\w\s-]", "", s)
+    s = re.sub(r"[\s_]+", "-", s)
+    return s.strip("-")
+
+
+def anchor_check_defects(body: str) -> int:
+    """Inline links that go to '#slug' must match an existing header slug."""
+    headers = re.findall(r"^#{1,6}\s+(.+?)\s*$", body, flags=re.MULTILINE)
+    slugs = {slugify(h) for h in headers}
+    # also allow footnote anchors like fnref:1
+    n = 0
+    for m in re.finditer(r"\]\(#([\w-]+)\)", body):
+        slug = m.group(1)
+        if slug.startswith(("fn", "fnref")):
+            continue
+        if slug not in slugs:
+            n += 1
+            print(f"DEBUG bad_anchor: #{slug} (no header matches)", file=sys.stderr)
+    return n
+
+
 def footnote_balance_defects(body: str) -> int:
     """Every [^name] reference must have a matching [^name]: definition."""
     refs = set(re.findall(r"\[\^([\w-]+)\](?!:)", body))
@@ -550,6 +648,9 @@ def main() -> int:
     cats["placeholder_urls"] = placeholder_url_defects(body)
     cats["inconsistent_idents"] = identifier_consistency_defects(body, cached_repo)
     cats["footnote_balance"] = footnote_balance_defects(body)
+    cats["math_off"] = math_equality_defects(body)
+    cats["dollar_no_math"] = dollar_no_math_defects(body)
+    cats["bad_anchors"] = anchor_check_defects(body)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
@@ -569,6 +670,9 @@ def main() -> int:
         "placeholder_urls": 5,
         "inconsistent_idents": 3,
         "footnote_balance": 4,
+        "math_off": 5,
+        "dollar_no_math": 1,
+        "bad_anchors": 3,
         "wordcount_off": 1,
         "frontmatter": 2,
     }
