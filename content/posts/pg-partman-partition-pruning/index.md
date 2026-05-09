@@ -747,16 +747,21 @@ the `LOCK TABLE ... ACCESS EXCLUSIVE` in `create_partition.sql` is
 the cost of getting started; the `pg_try_advisory_lock` in the
 procedure is the cost of being safe across schedulers.
 
-The 90% disk-read failure mode in §1 is not a `pg_partman` bug. It is
+The pruning failure mode in §1 is not a `pg_partman` bug. It is
 the gap between what you know about the planner (it prunes ranges)
 and what you assumed it would prune (everything you can prove). The
-90% number derives from §5: an unpinned `now()` predicate opens
-all 90 children and reads ~46 MB of metadata against ~12 MB of
-actual results, ratio in the rough range from 75 to 90% wasted I/O
-(napkin estimate from the table[^bench]). Pin your time. Turn on [enable_partitionwise_join](https://www.postgresql.org/docs/current/runtime-config-query.html#GUC-ENABLE-PARTITIONWISE-JOIN). Use `apply_constraints`
-on your hot non-key columns. Watch `pg_stat_user_indexes.idx_scan`
-per child to see whether your BRIN is actually helping. Do not
-subpartition for performance. Drop the default partition.
+title's "90%" framing is the pre-PG-12 reality, when planner-pruning
+failure meant a full sequential scan of every child. Modern Postgres
+12+ catches most of these via executor-time pruning (89 of 90 children
+marked `(never executed)`), so the actual disk waste is small —
+but the planning-time tail still touches every child, opens 90
+relations, and pulls 90 sets of statistics on every query. That's the
+remaining 90%, and it shows up on dashboard p95 latency, not on disk
+bandwidth. Pin your time at the client. Turn on [enable_partitionwise_join](https://www.postgresql.org/docs/current/runtime-config-query.html#GUC-ENABLE-PARTITIONWISE-JOIN).
+Use `apply_constraints` on your hot non-key columns. Watch
+`pg_stat_user_indexes.idx_scan` per child to see whether your BRIN
+is actually helping. Do not subpartition for performance. Drop the
+default partition.
 
 The DDL is in core. The cron is `pg_partman`. The gap between them is
 where the engineering happens.

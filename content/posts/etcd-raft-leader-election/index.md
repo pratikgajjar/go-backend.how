@@ -27,10 +27,10 @@ source code actually shows you, once you read it carefully:
 > One full leader-election state-machine round — `MsgHup`, become
 > candidate, tally votes, become leader, append empty entry —
 > finishes in **a few microseconds of CPU**. The same election in
-> production takes **1 to 2 seconds of wall-clock**. The 99.9999% of
-> the time that is missing isn't computation. It's deliberate
-> waiting, randomised, so that a quorum can't dead-lock on
-> simultaneous candidates.
+> production takes **1 to 2 seconds of wall-clock**. Six orders of
+> magnitude (≈ `1.5 s / 1.5 µs = 10⁶`) of the time that is missing
+> isn't computation — it's deliberate waiting, randomised, so that
+> a quorum can't dead-lock on simultaneous candidates.
 
 This post is a walk through why that is. We'll trace the exact path the
 state machine takes from `tickElection()` firing on a follower to
@@ -716,9 +716,12 @@ separate proto message. Batching votes for multiple pending
 candidate-elections at this scale is silly — there's only ever one
 election in flight at a time. But pre-bundling the candidate's last
 log term, last log index, and Pre-Vote bit into a fixed 24-byte struct
-saves the proto encode/decode on the hot path. Saves maybe 100 ns per
-message. Marginal — listed last because it's almost not worth the
-churn — but it's there.
+would skip the proto encode/decode on the hot path. Estimated savings,
+napkin math: protobuf encode for the current `Message` struct is on the
+order of `~200 ns`, decode similar — a fixed-layout binary struct with
+`encoding/binary.PutUvarint` is roughly half that, so `~100 ns` per
+message saved (`= (200 ns − 100 ns)`). Marginal at one election round
+per second; listed last because it's almost not worth the churn.
 
 # A 50-line snippet you can run
 

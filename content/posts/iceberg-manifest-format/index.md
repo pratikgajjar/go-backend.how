@@ -596,7 +596,7 @@ makes worse than alternatives.
 
 | Iceberg is bad at                  | Why                                                                   | Better alternative                       |
 |------------------------------------|-----------------------------------------------------------------------|------------------------------------------|
-| Many small commits per second      | Each commit writes ≥3 files + 1 catalog CAS                           | Stream-friendly: Hudi MOR, Delta MOR     |
+| Many small commits per second      | A non-empty commit writes ≥4 files (data + manifest + manifest list + metadata.json) + 1 catalog CAS | Stream-friendly: Hudi MOR, Delta MOR     |
 | Random row updates                 | No primary key index — equality deletes scan all manifests            | DuckDB local, OLTP                       |
 | Streaming aggregates over the data | No materialised view; every query re-scans                            | Druid, Pinot, ClickHouse                 |
 | Thousands of partitions            | Manifest-list summaries grow linearly with partition cardinality      | Hash bucketing or `truncate(N)`          |
