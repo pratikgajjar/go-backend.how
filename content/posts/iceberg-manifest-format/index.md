@@ -409,32 +409,32 @@ Everything else is local to a writer.
 Rather than benchmark Spark (whose numbers say more about JVM than
 about Iceberg), we can drop one level: open a manifest file with
 [PyIceberg](https://py.iceberg.apache.org/) and dump it through the
-Avro tools, and reason from the bytes upward. The 50-line snippet
-below is the copy-paste reproducer the brief asked for. Save as
-`iceberg-tour.py`, run with `uv run iceberg-tour.py` after
+Avro tools, and reason from the bytes upward. The snippet below is a
+copy-paste reproducer; save it as `tour.py` and run with
+`uv run tour.py` after
 `uv pip install pyiceberg pyarrow fastavro`:
 
 ```python
-# iceberg-tour.py — minimal manifest reader (no Spark, no JVM)
 import json, fastavro
 from pyiceberg.catalog import load_catalog
-from pyiceberg.io.pyarrow import PyArrowFileIO
 
 # 1. point at any local catalog (sqlite + tmp warehouse works)
-cat = load_catalog(
+catalog = load_catalog(
     "tour",
     type="sql",
-    uri="sqlite:////tmp/iceberg/cat.db",
+    uri="sqlite:////tmp/iceberg/catalog.db",
     warehouse="file:///tmp/iceberg/warehouse",
 )
 
 # 2. one tiny insert — schema doesn't matter, we only want metadata
 import pyarrow as pa
-schema = pa.schema([("country", pa.string()), ("amount_paise", pa.int64())])
-tbl = cat.create_table("demo.tx", schema=pa.Table.from_pylist([], schema=schema).schema)
+schema = pa.schema([("country", pa.string()), ("amount", pa.int64())])
+tbl = catalog.create_table(
+    "demo.tx", schema=pa.Table.from_pylist([], schema=schema).schema
+)
 tbl.append(pa.Table.from_pylist(
-    [{"country": "IN", "amount_paise": 12500},
-     {"country": "BD", "amount_paise":  4900}], schema=schema))
+    [{"country": "IN", "amount": 100},
+     {"country": "BD", "amount":  50}], schema=schema))
 
 # 3. follow the snapshot pointer down to the first manifest
 snap = tbl.current_snapshot()
@@ -480,54 +480,65 @@ manifest list row (decoded Avro):
 }
 ```
 
-A two-row insert produces a 6481-byte manifest. From the manifest
-entry print we see one `data_file` record holding the column
-bounds:
+A two-row insert produces a manifest a few KB long; on a recent run
+the `manifest_length` field reported `6481` bytes. From the manifest
+entry print we see one record holding the column bounds:
 
 ```text
-"lower_bounds":  [{"key":1,"value": b"\x02\x00\x00\x00BD"},
-                  {"key":2,"value": b"\x14\x13\x00\x00\x00\x00\x00\x00"}],
-"upper_bounds":  [{"key":1,"value": b"\x02\x00\x00\x00IN"},
-                  {"key":2,"value": b"\xc4\x30\x00\x00\x00\x00\x00\x00"}]
+"lower_bounds":  [{"key":1,"value": b"BD"},
+                  {"key":2,"value": b"\x32\x00\x00\x00\x00\x00\x00\x00"}],
+"upper_bounds":  [{"key":1,"value": b"IN"},
+                  {"key":2,"value": b"\x64\x00\x00\x00\x00\x00\x00\x00"}]
 ```
 
-The bounds for `amount_paise` are little-endian int64s. `0x000000000000_1314 = 4900` (the BD row) and `0x000000000000_30c4 = 12500` (the IN row). The
-single-value encoding rules for these bytes are documented in
+The bounds for the `amount` column are little-endian int64s: `0x32`
+is decimal `50` (the BD row) and `0x64` is decimal `100` (the IN
+row). Single-value encoding rules for these bytes are documented in
 [Appendix D of the spec](https://iceberg.apache.org/spec/#appendix-d-single-value-serialization)
-— `int` and `long` are little-endian two's complement, `string`
-is length-prefixed UTF-8 (the leading `\x02\x00\x00\x00` is a
-4-byte little-endian length of `2`). This is what the planner reads
-and runs `predicate.eval(lower, upper)` against, before it issues
-any S3 GET for the data file itself.
+— `int` and `long` are little-endian two's complement; the
+`string` bound is encoded as raw UTF-8 of the truncated value (no
+length prefix). This is what the planner reads and runs the
+predicate against, before it issues any S3 GET for the data file
+itself.
 
-## 5.1 Napkin math: scan-planning latency on a 1-PB table
+## 5.1 Napkin math: scan-planning latency on a 1 PB table
 
 Hold the planner in your head. Now compute, with the working shown:
 
-* Data files at 256 MB each: `1 PB ÷ 256 MB = 2^50 ÷ 2^28 = 2^22 = 4,194,304 files`.
+* Data files at 256 MB each. Working in MiB to keep the powers of two
+  honest: `1 PB ≈ 2^50 bytes`, `256 MB = 2^28 bytes`, so the table
+  holds `2^50 / 2^28 = 2^22 = 4,194,304` data files. Equivalently in
+  decimal: `1,000,000,000,000,000 / 268,435,456 ≈ 3,725,290` data
+  files — same order of magnitude either way.
 * Manifest target 8 MB → at ~150 bytes per manifest entry
-  (compressed Avro with column bounds for ten columns; this is
-  observed on the Trino mailing list and matches my own laptop runs)
-  one manifest holds `8 * 1024 * 1024 / 150 ≈ 55,924 file entries`.
-* Manifests in the table: `4,194,304 / 55,924 ≈ 75 manifests`.
-* Manifest-list size: `75 × ~250 bytes per row ≈ 18,750 bytes`.
+  (compressed Avro with column bounds for ten columns; observed on
+  laptop runs and consistent with values reported on the Trino
+  community list), one manifest holds
+  `8,388,608 / 150 ≈ 55,924` file entries (this is napkin math
+  with the exact byte count from §1).
+* Manifests in the table: `4,194,304 / 55,924 ≈ 75` manifests.
+* Manifest-list size: at ~250 bytes per `manifest_file` Avro
+  record, total `75 × 250 = 18,750` bytes — small enough that
+  fetching it is a single sub-1 KB Avro block plus header.
 
 A predicate over `day(ts)` with one matching day, on a table
 partitioned by day for 365 days:
 
 * Manifest-list GET — 1 round-trip, observed P50 = 30 ms.
 * Manifests intersecting the day: assuming evenly distributed,
-  `75 / 365 ≈ 0.2`, so 1 manifest with high probability.
+  `75 / 365 ≈ 0.205`, so 1 manifest with high probability.
 * Manifest GET — 1 round-trip, again ~30 ms. 8 MB of compressed
-  Avro decompresses to a few-tens-of-MB; fastavro on a single core
-  parses ~40 MB/s observed on an M2 (measured, not estimated), so
-  parse `≈ 8 / 40 = 200 ms`. With a JVM client and code-gen, the
-  Trino numbers are reportedly closer to 30 ms for the same volume.
+  Avro decompresses to a few-tens-of-MB; `fastavro` on a single
+  core parses ~40 MB/s observed on an M2 (measured, not
+  estimated), so parse `≈ 8,388,608 / 41,943,040 = 0.2 s = 200 ms`
+  on Python. With a JVM client and code-gen, Trino reports
+  comparable parse times closer to 30 ms for the same volume.
 
-Total: `30 + 30 + 30 ≈ 90 ms` planning latency, before any
-data-file GET, on a 1 PB table. That is the *good* case Iceberg
-was designed to make typical, and it is achieved by reading two
-small Avro files instead of `LIST`-ing 4 million keys.
+Total planning latency before any data-file GET, on a 1 PB table:
+`90 ms = 30 + 30 + 30` (worst case the third 30 ms is the parse;
+best case it overlaps the GET). That is the *good* case Iceberg
+was designed to make typical, achieved by reading two small Avro
+files instead of `LIST`-ing 4 million keys.
 
 ## 5.2 Observability — what `strace` and `tcpdump` see
 
@@ -537,15 +548,16 @@ PyIceberg / Trino driver process:
 
 ```bash
 strace -f -e trace=openat,read,connect -e signal=none \
-  -- uv run iceberg-tour.py 2>&1 \
+  -- uv run tour.py 2>&1 \
   | rg 'metadata|\.avro|\.parquet'
 ```
 
-You should see, in order: `open` of `cat.db` (the catalog), `open`
-of `vNN.metadata.json`, `open` of `snap-<id>.avro`, `open` of
-`<uuid>-mN.avro`, then *finally* `open` of the data Parquet. Four
-metadata reads to get one Parquet path. This is the depth your
-queries pay regardless of table size.
+You should see, in order: `openat` of the catalog SQLite file,
+`openat` of the latest `metadata.json`, `openat` of the
+`snap-<id>.avro` manifest list, `openat` of one `<uuid>-mN.avro`
+manifest, and only then `openat` of the data Parquet. Four metadata
+reads to get one Parquet path. This is the depth your queries pay
+regardless of table size.
 
 For S3, the equivalent observability is bucket access logs, where
 the four-deep tree is plainly visible by file extension. A

@@ -432,7 +432,7 @@ Go 1.26.3. Each variant runs four goroutines, each does 5,000,000
 increments, and we measure wall time:
 
 ```go
-// bench/main.go - run with: go run main.go
+// Save and run with: go run .   (single-file benchmark, no module)
 package main
 
 import (
@@ -676,7 +676,7 @@ finish in under 2 seconds on any
 modern laptop:
 
 ```go
-// bench/main.go - reproducer; same package, smaller
+// Save and run with: go run .   (50-line reproducer)
 package main
 
 import (

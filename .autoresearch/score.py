@@ -633,8 +633,12 @@ def defaults_consistency_defects(body: str, cached_repo: Path) -> int:
         )
     }
     n = 0
-    # Look for `name=value` mentions (in prose backticks)
-    for m in re.finditer(r"`(\w+)\s*=\s*([^`]+)`", body):
+    # Strip fenced code blocks; we only want prose backticks
+    prose = re.sub(r"```[^\n]*\n.*?```", "", body, flags=re.DOTALL)
+    # Look for `name=value` mentions in prose backticks; value stops at
+    # commas / spaces / closing backtick so multi-pair `a=1, b=2` doesn't
+    # get parsed as a=1, b=2-everything.
+    for m in re.finditer(r"`(\w+)\s*=\s*([^`,\s]+)", prose):
         var = m.group(1)
         val = m.group(2).strip().rstrip(",")
         # Try int defaults

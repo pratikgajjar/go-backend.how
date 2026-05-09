@@ -327,9 +327,14 @@ matters here over UUIDv4:
    approximate timeline without a separate `created_at` index. Useful
    for replay debugging.
 
-Either v7 or ULID gets you the same property. v7 wins because it is
-in the actual UUID standard and `database/sql` already knows how to
-serialise it.
+Either v7 or
+[ULID](https://github.com/ulid/spec) gets you the same property
+(both are 128-bit, both put a millisecond timestamp at the front).
+v7 wins because it's part of the actual UUID standard
+([RFC 9562](https://datatracker.ietf.org/doc/html/rfc9562), May 2024)
+so it round-trips through every Postgres / pgx / `database/sql`
+column typed as `uuid` without custom serde; ULID needs either a
+text column or a custom binary type per ORM.
 
 **One marshal, one SQL call.** No retry inside the emit. If the
 `SELECT pg_logical_emit_message(...)` fails, the surrounding

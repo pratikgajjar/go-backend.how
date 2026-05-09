@@ -385,7 +385,7 @@ past. I'll show the working.
 parent has no rows. 90 children × 12 GB = ~1,080 GB.
 
 A BTREE on `created_at` per child is ~2 GB (1B / 90 ≈ 11.1M rows;
-btree leaf ~24 B/entry; 11.1M × 24 = 266 MB; plus internal pages and
+btree leaf ~24 B/entry; `11.1M × 24 ≈ 266` MB leaf data; plus internal pages and
 fanout overhead, call it 1.7 GB observed in past datasets). A BRIN on
 `created_at` per child is ~80 KB (one summary tuple per
 [BRIN `pages_per_range`](https://www.postgresql.org/docs/current/brin-intro.html)
@@ -413,10 +413,12 @@ The third row is the killer for naive partition users. A primary key
 lookup on `id` with no time predicate falls through to every child
 because `id` is not the partition key. The planner has no way to know
 which day's `events_p20260208` (or any other suffix) holds row `12345678`. It opens 90
-btrees, probes each. Each btree probe is ~5 random page reads
-(root → internal → leaf, ~3 levels for 11M rows + 2 heap fetches).
-Rough math: 90 × 5 × 8 KB = 3.6 MB of buffer reads, of which most
-hit the buffer cache — 30 ms p50, but a cold start can hit 120 ms.
+btrees, probes each. Each btree probe is approximately 5 random page reads
+(root → internal → leaf is ~3 levels for 11M rows, plus 2 heap fetches).
+Rough math: across 90 children, `90 × 5 = 450` random pages; at
+8 KB/page, `450 × 8 = 3,600` KB ≈ 3.6 MB of buffer reads, of which
+most hit the buffer cache — from a 30 ms p50 (warm) to a 120 ms p99
+(cold start).
 This is why time-series tables with PK lookups want the `id` to
 include the timestamp in the partition key (or use UUIDv7).
 
