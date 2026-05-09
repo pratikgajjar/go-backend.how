@@ -488,23 +488,26 @@ I'd not generalize it to "Pebble is always 4× smaller."
 
 ## 5.3 strace one-liner
 
-To prove the system-call volume on each, run the same workload under
-`dtruss` (macOS) or `strace -c` (Linux). With the bbolt benchmark on
-my machine:
+To audit the system-call volume on each, run the same workload under
+`strace -c -f` (Linux) or `sudo dtruss -c -f` (macOS, needs root). The
+expected per-engine counts are arithmetic, not magic:
 
 ```
-$ dtruss -f -c ./bbolt-bench 2>&1 | grep -E "pwrite|fsync|mmap|read"
-fsync                                          200
-pwrite                                         200
-mmap                                            22
+# Linux:
+strace -c -f -e trace=fsync,pwrite,write,read,mmap ./bbolt-bench
+# macOS (root required for dtruss):
+sudo dtruss -c -f ./bbolt-bench 2>&1 | grep -E "pwrite|fsync|mmap"
 ```
 
-200 fsyncs is `N / batch = 200,000 / 1000`, exactly the per-tx fsync.
-22 mmaps are remap-on-grow as the file extended through the
-power-of-two ladder. Pebble's syscall profile is dominated by
-`write` (the WAL) plus `pread` (block-cache misses on read). LMDB's
-single big tx fires one `pwrite` per dirty page (the new pages) plus
-one `pwrite` for the meta, plus one `fsync`.
+For the bbolt benchmark with `N=200,000` and `batch=1000`, the math
+predicts: `fsync = N/batch = 200`; `pwrite ≈ 200` (one per
+db.Update commit); `mmap ≈ log2(96 MiB / 16 KiB) ≈ 13` remap-on-grow
+calls plus a few for open/close (the file grows by powers of two from
+16 KiB until 1 GiB — see [bbolt's mmapSize](https://github.com/etcd-io/bbolt/blob/main/db.go#L519)).
+Pebble's syscall profile is dominated by `write` (the WAL) plus
+`pread` (block-cache misses on read); LMDB's single big tx fires one
+`pwrite` per dirty page (the new pages) plus one `pwrite` for the
+meta, plus one `fsync`.
 
 # 6. Tradeoffs - what each is bad at
 

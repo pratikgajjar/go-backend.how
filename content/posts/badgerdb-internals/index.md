@@ -14,7 +14,7 @@ math = false
 
 # The 1M-writes/sec headline isn't a lie. It's a configuration.
 
-Run BadgerDB out of the box on a Mac M3 Max, ten million 128-byte writes through `WriteBatch`, and three runs land in `821 K`, `891 K`, `1,048 K` ops/s with **zero L0 stall time** in every run. The famous Badger headline — a million writes per second on a laptop — is real, sometimes even on the median.
+Run BadgerDB out of the box on a Mac M3 Max, ten million `(32-byte key + 128-byte value)` writes through `WriteBatch`, and three runs land in `821 K`, `891 K`, `1,048 K` ops/s with **zero L0 stall time** in every run. The famous Badger headline — a million writes per second on a laptop — is real, sometimes even on the median.
 
 Now change one thing — make the values `1 KB` instead of `128 B`.
 
@@ -209,7 +209,7 @@ All runs were on a Mac M3 Max (12-core, 36 GB), Go 1.26.3, [`badger v4.9.1`](htt
 
 Three observations the table doesn't explain on its own:
 
-**1. The default 1 MB ValueThreshold means most "small" values stay in the LSM.** Default `ValueThreshold = maxValueThreshold = 1 << 20` [(`options.go:201`)][opts]. A 128 B value? LSM. A 1 KB value? LSM. A 2 MB value? Vlog. The headline 1M ops/s comes from the LSM still being small enough to drain — not from the WiscKey separation actually firing. For the 10M × 128 B row, total entries × value ≈ 1.28 GB, the bottom level holds 192 MiB of compressed tables, and L0→L4 compaction never gets behind. The "WiscKey on Go" pitch is technically idle at this row.
+**1. The default `1 MiB` ValueThreshold means most "small" values stay in the LSM.** Default `ValueThreshold = maxValueThreshold = 1 << 20` (= `1,048,576` B) [(`options.go:201`)][opts]. A 128 B value? LSM. A 1 KB value? LSM. A 2 MiB value? Vlog. The headline 1M ops/s comes from the LSM still being small enough to drain — not from the WiscKey separation actually firing. For the 10M × 128 B row, total entries × value ≈ 1.28 GB, the bottom level holds 192 MiB of compressed tables, and L0→L4 compaction never gets behind. The "WiscKey on Go" pitch is technically idle at this row.
 
 **2. L0 stalls scale super-linearly with value bytes-in-LSM.** Doubling values from 128 B to 1 KB at the same key count quadruples the bytes that flow through every L0 → Lbase compaction. Memtables roll over more often, L0 fills faster than L0→L4 drains, the picker oscillates between L0→L0 self-merges and L0→Lbase pushes, and the per-record stall jumps from 0 to ~9 seconds for 5 M records.
 
@@ -234,7 +234,7 @@ The WiscKey decision creates a specific shape of system. It's worth being explic
 
 [bloom]: https://github.com/dgraph-io/badger/blob/main/y/bloom.go
 
-**1 MB value threshold default is wrong for most workloads.** Set in 2020 by [commit `6c35ad6`](https://github.com/dgraph-io/badger/commit/6c35ad6) from the previous default of 1 KB. The reasoning was good — most real workloads have small values that don't benefit from vlog separation — but it means a default-options Badger behaves as a pure-LSM for any workload with values up to 1 MB. The dynamic threshold (`VLogPercentile`, defaults to 0) is opt-in. The result is what the table above shows: out-of-the-box Badger gets the LSM stalls of a normal LSM and the API of WiscKey, while only the 1 MB+ users see the "no compaction stalls" benefit.
+**1 MiB value threshold default is wrong for most workloads.** Set in 2020 by [commit `6c35ad6`](https://github.com/dgraph-io/badger/commit/6c35ad6) from the previous default of 1 KB. The reasoning was good — most real workloads have small values that don't benefit from vlog separation — but it means a default-options Badger behaves as a pure-LSM for any workload with values up to 1 MiB. The dynamic threshold (`VLogPercentile`, defaults to 0) is opt-in. The result is what the table above shows: out-of-the-box Badger gets the LSM stalls of a normal LSM and the API of WiscKey, while only the 1 MiB+ users see the "no compaction stalls" benefit.
 
 **MVCC keeps every version of every key until compaction discards them.** Each key in the LSM is suffixed with an 8-byte commit timestamp; compaction's `subcompact` keeps versions where `version > discardTs`, where `discardTs = orc.readMark.DoneUntil()` [(`txn.go:121`)][txn]. A long-running iterator (or a managed-DB user who forgets to advance the discard ts) holds back compaction across the entire DB. Reasonable for a transactional engine. Surprising the first time you see it.
 

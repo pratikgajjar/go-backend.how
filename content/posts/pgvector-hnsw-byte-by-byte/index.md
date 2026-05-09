@@ -155,9 +155,10 @@ tuples, with `ItemId`s in the page header and the data growing from
 the bottom of the page upwards.
 
 An **element tuple** is one node of the graph: a vector payload, up
-to 10 heap TIDs (so duplicates can share the same graph node — see
-the `HNSW_HEAPTIDS` constant), and a single pointer to its neighbour
-tuple. A **neighbour tuple** is a flat array of `(ℓ + 2) × M` index
+to 10 heap TIDs (so byte-identical duplicate vectors share the same
+graph node — `FindDuplicateOnDisk` checks `datumIsEqual` before
+inserting; see the `HNSW_HEAPTIDS` constant), and a single pointer to
+its neighbour tuple. A **neighbour tuple** is a flat array of `(ℓ + 2) × M` index
 TIDs covering every layer the element exists on. Each TID is 6 bytes;
 on layer 0 we have `2M` of them, on each higher layer we have `M`.
 

@@ -570,11 +570,11 @@ Best-of-three results on the same 4 cores, same 20M total ops:
 | sharded false-share (4 ints/line)          | **2 037 M** | 0.5   | One per goroutine, but same line      |
 | sharded padded (1 line per shard)          | **2 832 M** | 0.4   | Scylla-style: zero coherence traffic  |
 
-Compute it: `2832 M / 88 M ≈ 32×`. That is the structural ceiling
-between the two architectures, on the same hardware, in the same
-language, at the same instruction count. The factor isn't language
-overhead. It isn't GC. It isn't allocator quality. It's **how often the
-program crosses a cache line**.
+Compute it: `2832 M / 88 M ≈ 32×`. That is the structural gap between
+shared-state and sharded-state hot paths, on the same hardware, in the
+same language, at the same instruction count. The factor isn't
+language overhead. It isn't GC. It isn't allocator quality. It's
+**how often the program crosses a cache line**.
 
 The mutex result deserves its own line: a `sync.Mutex` on Apple Silicon
 costs about 5× a single uncontended atomic — derivable from the

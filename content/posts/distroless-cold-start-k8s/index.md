@@ -307,18 +307,16 @@ After the pull, `podman run` to first 200 OK on `/healthz`. Same harness, three 
 
 > Measured: the Go runtime starts in 17–32 ms inside any of these three images. The container runtime spends 200 ms on plumbing whether you ship 4 MB or 10 MB. Optimising the binary past stripped-and-trimpath does nothing for this number.
 
-The measured 17–32 ms internal boot is itself worth tracing. A 10 MB stripped Go binary on Apple's M3 napkin-decomposes to:
+The measured 17–32 ms internal boot is itself worth decomposing. With the actual `boot=0.000523587 s` zap line as one anchor, a 10 MB stripped Go binary in this Linux VM lands in:
 
-| Phase                                | Approx. cost |
+| Phase                                                  | Order-of-magnitude  |
 |---|---:|
-| `execve` syscall + page-table setup  | ~0.5 ms      |
-| `mmap`-in of the 10 MB ELF text/data | ~3 ms (lazy) |
-| Go runtime init (`runtime.rt0_go`)   | ~5 ms        |
-| `init` of all imported packages      | ~10 ms (chi+prom+zap) |
-| `http.ListenAndServe` — `socket+bind+listen` | ~1 ms |
-| First accept + JSON encode           | ~2 ms        |
+| `execve` + ELF page-table setup + Go `rt0_go`          | ~5–10 ms       |
+| User-code init in `main()` (zap + chi + prom register) | **~0.5 ms (measured)** |
+| `http.ListenAndServe` → `socket` + dual-stack `bind` + `listen` | ~5–10 ms |
+| First `accept` + handler dispatch + JSON encode        | ~2–5 ms        |
 
-Math: `0.5 + 3 + 5 + 10 + 1 + 2 ≈ 21.5 ms`, which is in the measured 17–32 ms band. The `mmap` cost is bounded by binary size only at the page-fault tail — Linux maps an ELF demand-paged, so the kernel reads the 32-byte header plus the program-header table at exec time and faults in code pages on first reference. Go's static link of `net/http`, `crypto/tls`, prometheus and zap is what pads that 21 ms; strip those imports and you're closer to 8 ms (`runtime` + `os` + `fmt` only). Add `database/sql` + a Postgres driver and the package-init cost rises to 30–40 ms.
+Math: `5–10 + 0.5 + 5–10 + 2–5 ≈ 12–25 ms`, which brackets the measured 17–32 ms band. The big rocks are everything *before* `main()` (kernel + Go runtime init that needs `perf record` to sub-divide), and the `ListenAndServe` plumbing that has to bind both `[::]:8080` and `[::ffff:127.0.0.1]:8080` and probe `/proc/sys/net/core/somaxconn`. The user-code in `main()` is sub-millisecond — don't blame chi or zap for cold-start.
 
 ## Image-pull at scale-from-zero
 

@@ -653,12 +653,13 @@ it is correct only because S3 LIST is now strongly consistent ([as
 of December
 2020](https://aws.amazon.com/blogs/aws/amazon-s3-update-strong-read-after-write-consistency/)).
 
-**Avro is opaque.** Manifests are Avro container files. There is no
-`avrocat` in your shell unless you installed it. Debugging a real
-production manifest involves either Java tooling or `fastavro`. This
-is not a fundamental problem, but it is a daily source of friction.
-A Parquet metadata file would be `parquet-tools meta` and you would
-be done.
+**Avro is opaque to shell tools.** Manifests are Avro Object
+Container Files. There is no `avrocat` you can pipe with `head`;
+debugging a real production manifest means either
+`java -jar avro-tools.jar tojson <file>` or a Python `fastavro`
+script. This is not a fundamental problem, but it is a daily
+source of friction. A Parquet metadata file would be
+`parquet-tools meta` and you would be done.
 
 **Schema evolution by field-id is unforgiving.** Once a column gets
 a field id, that id is permanent. Drop the column? You cannot reuse
