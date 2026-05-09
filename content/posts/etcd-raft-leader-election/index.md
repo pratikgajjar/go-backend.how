@@ -32,7 +32,7 @@ numbers describe the same election, in three different regimes:
 > | Production wall-clock | Same path, plus the randomised election timer that has to fire first. | **≈ 1 to 2 s** |
 >
 > The two big jumps (`200 µs / 1.8 µs ≈ 100×` and
-> `1.5 s / 200 µs ≈ 7,500×`) aren't computation. They're scheduling
+> `1.3 s / 200 µs ≈ 6,500×`) aren't computation. They're scheduling
 > and deliberate waiting, in that order.
 
 The 200 µs in the title is the middle row: an estimated localhost
@@ -560,7 +560,7 @@ vote round-trips. The rest of a wall-clock election is **wait time**
 between these events: the disk persisting `HardState`, the network
 delivering messages, and `Tick` ticks accumulating. Multiply 1.8 µs by
 the 1+ second of waiting and you get the 6-orders-of-magnitude gap
-from the hook (`1.5 s / 1.8 µs ≈ 833,333`).
+from the hook (`1.3 s / 1.8 µs ≈ 722,000`).
 
 ## How long the wait actually is
 

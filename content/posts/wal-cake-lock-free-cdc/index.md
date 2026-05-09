@@ -1026,15 +1026,13 @@ mid-range.
 **Decoding cost.** pgoutput Text-mode decoding in
 `internal/replication/tuple_decoder.go`'s `extractTuple` is dominated
 by `make(map[string]any)` + a `strconv.ParseInt`/`ParseFloat` per
-column. Both are well-trodden Go allocation patterns; on Apple
-Silicon M-series the per-call cost is in the
-[low-µs band typical for reflection-free Go](https://go.dev/ref/spec#Allocation)
-allocation + small-string parsing. Take `~5 µs/column` as a
-back-of-envelope (a real benchmark would refine it). For a
-5-column row that's `5 × 5 µs ≈ 25 µs`. At `10,000 events/sec`,
-the decoder uses `10,000 × 25 µs = 250,000 µs/sec = 0.25 s of CPU
-per wall-second` on the replicator goroutine — one core at 25%.
-Headroom is fine; it's not the bottleneck.
+column. Both are well-trodden Go allocation patterns. Take
+`~5 µs/column` as a back-of-envelope; a real `go test -bench` on
+the decoder would refine it. For a 5-column row that's
+`5 × 5 µs ≈ 25 µs`. At `10,000 events/sec` the decoder uses
+`10,000 × 25 µs = 250,000 µs/sec = 0.25 s of CPU per wall-second`
+on the replicator goroutine — one core at 25%. Headroom is fine;
+it's not the bottleneck.
 
 **Ring buffer admission.** `Add` is ~50 ns (one atomic load, one
 slice store, one atomic add). 10k events/sec is 500 µs/sec on the

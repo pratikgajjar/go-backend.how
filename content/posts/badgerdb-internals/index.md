@@ -319,7 +319,7 @@ func main() {
 
 `go run wb.go -n 10000000 -v 128` reproduces the headline ops/s row (we saw `821 K`, `891 K`, `1048 K` across three runs on a freshly-removed data dir). Re-run with `-v 1024` and the same code drops into the L0 stalls.
 
-For an in-process view of the stall, there's no need for `bpftrace`; Badger's own logger prints `L0 was stalled for X` at the end of every stall window > 1 s. Pipe a run through `grep stalled` and you get the per-window timing without any kernel tooling. If you want a syscall-level view, the relevant calls are `pwrite` (SST flush) and `madvise` (block-cache eviction); a simple `sudo dtruss -e -t pwrite -p $BADGER_PID` on macOS gives you the per-flush byte count without instrumentation overhead. On Linux substitute `pwrite64` and `bpftrace -e 'tracepoint:syscalls:sys_enter_pwrite64 /comm == "badger"/ { @[args->count] = count(); }'`.
+For an in-process view of the stall, there's no need for `bpftrace`; Badger's own logger prints `L0 was stalled for X` at the end of every stall window > 1 s. Pipe a run through `grep stalled` and you get the per-window timing without any kernel tooling. If you want a syscall-level view, the relevant calls are `pwrite` (SST flush) and `madvise` (block-cache eviction); a simple `sudo dtruss -e -t pwrite -p $BADGER_PID` on macOS gives you the per-flush byte count without instrumentation overhead. On Linux substitute `pwrite64` and `bpftrace -e 'tracepoint:syscalls:sys_enter_pwrite64 /comm == "badger"/ { @bytes = hist(args->count); }'` — auto-bucketed histogram of pwrite sizes by power-of-two bins.
 
 # Closing
 
