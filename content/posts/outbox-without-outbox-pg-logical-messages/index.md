@@ -641,7 +641,7 @@ producer       Postgres        OwlPost            Kafka
    │                │  flush_lsn↑  │                 │
 ```
 
-The ack flows back through three hops:
+The ack flows back through four hops:
 
 1. Kafka acks the produce. `KafkaAdapter.Produce`'s callback fires.
 2. The callback finds the `LSN` header and sends it to
@@ -793,12 +793,14 @@ After ~hours, two things start to break:
   replication slot is way behind." You add it:
 
   ```sql
-  -- alert when slot is more than 1 GB behind
-  SELECT slot_name,
-         pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn))
-                 AS lag_bytes
-  FROM pg_replication_slots
-  WHERE active;
+  -- alert when ANY slot lags > 1 GiB. Don't filter by active=true:
+  -- a stuck slot whose consumer has died goes inactive, and that's
+  -- the most dangerous case (WAL still pinned, nobody draining).
+  SELECT slot_name, active,
+         pg_size_pretty(
+           pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)
+         ) AS lag_size
+  FROM pg_replication_slots;
   ```
 
   In Prometheus terms: scrape this, alert when `lag_bytes > 1 GiB`,
@@ -986,7 +988,9 @@ rolled-back streamed messages on the consumer side.
 # 10. The Python client (and polyglot fan-in)
 
 The producer side has a sibling in `python/factlib/`. The hot path
-is identical:
+is identical (the source also wraps the `cursor.execute` in
+`except Exception as e: raise RuntimeError("Failed to emit event") from e`,
+elided here):
 
 ```python
 # python/factlib/index.py
