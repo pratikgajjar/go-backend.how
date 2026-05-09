@@ -35,10 +35,13 @@ no algorithmic miracle inside DuckDB. The hash table is a linear-probe
 table. The aggregate is a sum-and-count. The scan reads bytes off an
 mmap. Every individual piece exists in Postgres too.
 
-What changes is the unit of work. Postgres processes one tuple at a
-time, dispatching virtual function calls per row. DuckDB processes
-2048 rows at a time, with the inner loop a tight `for (i = 0; i <
-2048; i++)` over a flat array. The whole post is about that delta.
+What changes is the unit of work.
+
+> Postgres processes one tuple at a time, dispatching virtual function
+> calls per row. DuckDB processes 2048 rows at a time, with the inner
+> loop a tight `for (i = 0; i < 2048; i++)` over a flat array.
+
+The whole post is about that delta.
 Source: [`duckdb/duckdb`](https://github.com/duckdb/duckdb)
 at [commit `8f11e1d`](https://github.com/duckdb/duckdb/commit/8f11e1d409)
 checked into `~/.cache/checkouts/github.com/duckdb/duckdb` for this
@@ -665,15 +668,19 @@ Three things, in increasing order of cost.
    half-day patch. **Cost: ~200 lines, mostly in `RowGroup` and
    `RowGroupCollection`.**
 
-2. **Make the salt 24 bits, not 16.** ARM64 with TBI/PAC will at some
-   point want the upper 8 bits for hardware tagging; 16-bit salt is
-   a `0.0015%` (1/65536) collision rate, which is fine, but a 24-bit
-   salt is `1/16M` and frees us from a future architectural collision
-   with pointer authentication. The trade-off: less pointer headroom.
-   On Linux/x86 we already only use 48 bits of pointer; ARM64 with
-   PAC uses fewer. Two bits of slack for the future. **Cost: a
-   2-line change in `ht_entry.hpp`, plus updating every test that
-   peeks at the struct layout — half a day.**
+2. **Audit the salt vs. pointer-bit math for 5-level paging.** Today
+   the salt is 16 bits, leaving 48 bits of pointer. That works on
+   x86-64 with 4-level paging (canonical 48-bit user-space) and
+   ARM64 without PAC. Linux's [5-level paging](https://docs.kernel.org/x86/x86_64/5level-paging.html)
+   bumps user-space to 56 bits — a server with `>128 TiB` of RAM
+   compiled with `CONFIG_X86_5LEVEL=y` could hand DuckDB a pointer
+   that doesn't fit in 48 bits, and the salt mask would silently
+   chew its top 8 bits. The mitigation `DUCKDB_DISABLE_POINTER_SALT`
+   already exists, but the runtime detection of "is the kernel
+   actually using 5-level paging?" is a footgun for anyone deploying
+   on big NUMA boxes. A clean fix would dynamically size the salt
+   based on `mmap`-reported address-space ceiling. **Cost: 1 day to
+   audit + a runtime test under TDX/large-RAM CI.**
 
 3. **Push the hash-join build side into a structurally compressed
    form.** Today every build row is materialised flat in the

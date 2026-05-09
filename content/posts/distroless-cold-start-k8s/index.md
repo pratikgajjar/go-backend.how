@@ -416,20 +416,22 @@ func main() {
 EOF
 go mod init bench >/dev/null 2>&1 || true
 GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o app main.go
-for base in scratch \
-            "gcr.io/distroless/static:latest" \
-            "cgr.dev/chainguard/wolfi-base:latest"; do
-  tag=${base##*/}; tag=${tag%%:*}
-  printf "FROM %s\nCOPY app /app\nENTRYPOINT [\"/app\"]\n" "$base" > Containerfile.$tag
+declare -A bases=(
+  [scratch]="scratch"
+  [distroless]="gcr.io/distroless/static:latest"
+  [wolfi]="cgr.dev/chainguard/wolfi-base:latest"
+)
+for tag in "${!bases[@]}"; do
+  printf "FROM %s\nCOPY app /app\nENTRYPOINT [\"/app\"]\n" "${bases[$tag]}" > Containerfile.$tag
   podman build --platform linux/arm64 -f Containerfile.$tag -t bench/$tag .
 done
-for n in scratch static wolfi-base; do
+for tag in scratch distroless wolfi; do
   for i in 1 2 3; do
-    cid=$(podman run -d --rm -p 8080:8080 bench/$n)
+    cid=$(podman run -d --rm -p 8080:8080 bench/$tag)
     t0=$(date +%s%3N)
     until curl -fs http://localhost:8080/healthz >/dev/null 2>&1; do sleep 0.005; done
     t1=$(date +%s%3N)
-    echo "$n run#$i $((t1-t0)) ms"
+    echo "$tag run#$i $((t1-t0)) ms"
     podman stop -t1 "$cid" >/dev/null
   done
 done
