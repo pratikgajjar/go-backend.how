@@ -463,9 +463,10 @@ Heap Blocks: exact=108892 lossy=106021
 Rows Removed by Index Recheck: 4580519
 ```
 
-That works out to `1078182 × 8 = 8625456` KB ≈ 8.2 GiB of heap pages
-dragged off disk to filter on `l_discount BETWEEN 0.05 AND 0.07 AND
-l_quantity < 24`, because those columns are not in the index. DuckDB stores `l_discount`,
+That works out to `1078182 × 8 = 8625456` KiB ≈ 8.22 GiB (8423 MiB)
+of heap pages dragged off disk to filter on
+`l_discount BETWEEN 0.05 AND 0.07 AND l_quantity < 24`, because those
+columns are not in the index. DuckDB stores `l_discount`,
 `l_quantity`, and `l_extendedprice` as three separate column files. It
 reads only those three, and only the row groups whose min/max metadata
 overlaps the date range. Working set: ~150 MB instead of 8.2 GiB.
@@ -477,9 +478,9 @@ DuckDB's database file at SF=10 measures `2,677,813,248` bytes
 Postgres' summed `pg_total_relation_size` for the same data totals
 `16,757,030,912` bytes (16.76 GB / 15.61 GiB), of which `lineitem`
 alone is `11,772,182,528` bytes (~11 GB by `pg_size_pretty`,
-9.02 GiB heap + a primary key + the `l_shipdate` index). That is
-`16757 / 2678 ≈ 6.3×` space win for DuckDB before any query hits
-the engine, driven by per-column compression
+which decomposes as 9023 MiB heap + a primary key + the `l_shipdate`
+index). That is `16757 / 2678 ≈ 6.3×` space win for DuckDB before
+any query hits the engine, driven by per-column compression
 (FSST for strings, RLE/bitpacking for low-cardinality ints, ALP for
 floats) and the absence of per-row 24-byte heap headers. The
 compression families live under `src/storage/compression/` —

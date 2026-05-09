@@ -1,6 +1,6 @@
 +++
 title = "🐢 etcd Raft in 200 µs — One Leader Election, Traced"
-description = "Reading etcd-io/raft to see where a leader election really spends its time: ≈ 1.8 µs of state-machine work, ≈ 1.5 s of randomised waiting. Why Pre-Vote and CheckQuorum exist, and what each one costs."
+description = "Reading etcd-io/raft to see where a leader election really spends its time: ≈ 1.8 µs of state-machine work, ≈ 1.3 s of randomised waiting. Why Pre-Vote and CheckQuorum exist, and what each one costs."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
 publishDate = "2026-05-09T12:00:00+05:30"

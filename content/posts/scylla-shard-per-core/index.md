@@ -588,9 +588,10 @@ Median-of-three results on the same 4 cores, same 20M total ops:
 
 Compute it: `2832 M / 88 M ≈ 32×`. That is the structural gap between
 shared-state and sharded-state hot paths, on the same hardware, in the
-same language, at the same instruction count. The factor isn't
-language overhead. It isn't GC. It isn't allocator quality. It's
-**how often the program crosses a cache line**.
+same language, in roughly the same number of instructions per op (one
+atomic vs one plain increment). The 32× factor isn't language
+overhead, GC, or allocator quality — it's **how often the program
+crosses a cache line**.
 
 The mutex result deserves its own line: a contended `sync.Mutex`
 costs about `5×` a contended atomic — derivable from the table as
