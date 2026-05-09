@@ -429,7 +429,9 @@ copy-paste reproducer; save it locally and run with
 `uv run` against the file:
 
 ```python
-import json, fastavro
+import json
+import fastavro
+import pyarrow as pa
 from pyiceberg.catalog import load_catalog
 
 # 1. point at any local catalog (sqlite + tmp warehouse works)
@@ -441,11 +443,8 @@ catalog = load_catalog(
 )
 
 # 2. one tiny insert — schema doesn't matter, we only want metadata
-import pyarrow as pa
 schema = pa.schema([("country", pa.string()), ("amount", pa.int64())])
-tbl = catalog.create_table(
-    "demo.tx", schema=pa.Table.from_pylist([], schema=schema).schema
-)
+tbl = catalog.create_table("demo.tx", schema=schema)
 tbl.append(pa.Table.from_pylist(
     [{"country": "IN", "amount": 100},
      {"country": "BD", "amount":  50}], schema=schema))
