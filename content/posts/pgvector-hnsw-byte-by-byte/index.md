@@ -626,7 +626,10 @@ of the ~109 ns. Linearly extrapolating: 10M rows takes ~1.1 s of
 exact scan, 100M rows takes ~11 s. That is when "approximate is
 fine" stops being a debate.
 
-A 50-line reproduction is at the bottom of this post; the key shape:
+A 50-line reproduction follows; the key shape (use the
+`maintenance_work_mem` / `max_parallel_maintenance_workers` settings
+from [^bench] to match the published timings exactly, or accept a
+small drift):
 
 ```python
 # 50-line reproduction; needs `psycopg[binary]` and `numpy` on the host
