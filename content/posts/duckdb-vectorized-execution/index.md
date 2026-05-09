@@ -490,16 +490,24 @@ upper-bound, parallelised across 4 workers gives `26 / 4 = 6.5` s
 of IO + ~5 s of CPU work + planner ≈ 11.7 s. Matches the
 [reported](#real-numbers) measurement.
 
-DuckDB Q01 at SF=10: needs `l_returnflag`, `l_linestatus`, `l_quantity`,
-`l_extendedprice`, `l_discount`, `l_tax`, `l_shipdate`. Compressed
-size on disk for those 7 columns: 60M rows × ~10 bytes/row average
-post-compression ≈ 600 MB. NVMe at 1.5 GB/s sequential ≈ 400 ms wall
-to read it; with 8 threads scanning different row groups, ≈ 50 ms.
-Then 60M rows × ~5 ns/row of vectorized aggregation totals
-`60000000 × 5 = 300000000` ns of single-thread work; spreading that
-across 8 cores gives `300000000 / 8 = 37500000` ns ≈ 37 ms. Total
-≈ 90 ms; the [reported](#real-numbers) wall-clock is 211 ms. The
-2× gap is plan setup + result materialisation, not unreasonable.
+DuckDB Q01 at SF=10: needs `l_returnflag`, `l_linestatus`,
+`l_quantity`, `l_extendedprice`, `l_discount`, `l_tax`, `l_shipdate`.
+The on-disk footprint of those seven columns measures 539 MB
+(`PRAGMA storage_info('lineitem')` reports 2,057 unique blocks for
+those columns × 256 KiB max block size = 539 MB upper bound; actual
+is smaller because many blocks are partially filled, and column
+compression like BitPacking + DELTA_FOR brings real bytes down
+further). Best-of-5 means the file is in OS page cache, so the
+read happens at ~10 GiB/s effective; `539 / 10000 ≈ 54` ms of
+"IO" with 8 threads ≈ 7 ms each. Then 60M rows × ~5 ns/row of
+vectorized aggregation totals `60000000 × 5 = 300000000` ns of
+single-thread work; spreading that across 8 cores gives
+`300000000 / 8 = 37500000` ns ≈ 37 ms. Add ~50 ms of group-by
+finalisation and result materialisation (the `PERFECT_HASH_GROUP_BY`
+operator alone shows 1.056 s aggregate-across-threads in the
+profile, ÷8 ≈ 132 ms per thread). Total ≈ 200 ms; the
+[reported](#real-numbers) wall-clock is 211 ms. The remaining ~10
+ms is plan setup and inter-pipeline coordination.
 
 # Stretch: a 50-line snippet you can run
 
