@@ -853,8 +853,10 @@ Reading list: `include/seastar/core/smp.hh` (557 lines),
 `src/core/reactor.cc` (5,485 lines total, the SMP path is roughly the
 `smp_message_queue` and `do_run` sections), `src/core/reactor_backend.cc`
 (the `reactor_backend_uring` class, ~600 lines of the file's 1,985),
-and `src/core/systemwide_memory_barrier.cc`. Source citations point at
-the public GitHub mirror at scylladb/seastar.
+`src/core/systemwide_memory_barrier.cc` (156 lines), and the
+prefetch templates in `include/seastar/core/prefetch.hh`. Total
+~8,500 lines surveyed; source citations point at the public GitHub
+mirror at scylladb/seastar.
 
 Numbers in the benchmark table are wall-clock measurements from three
 runs of the included Go program on a MacBook Pro M3 Max (14 cores, 36
