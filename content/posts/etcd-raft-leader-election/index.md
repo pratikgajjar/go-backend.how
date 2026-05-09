@@ -60,7 +60,7 @@ that anchor everything come from reading
 running `go test -bench` against the same tree.
 
 > Single-node `Propose → Ready → Append → Advance` round-trip:
-> **1,360 ns/op** on an Apple M3 Max MacBook Pro
+> **1,342 ns/op** on an Apple M3 Max MacBook Pro
 > (median of 3 runs, ±3%; `BenchmarkOneNode`,
 > [`node_bench_test.go`](https://github.com/etcd-io/raft/blob/main/node_bench_test.go)).
 >
@@ -538,7 +538,7 @@ of:
 | `becomeLeader` + `appendEntry` | ≈ 500 ns | one log append, no fsync |
 
 The numbers in that table are napkin math, anchored to
-`BenchmarkOneNode`'s 1,360 ns/op for the full `Propose → Ready → fsync →
+`BenchmarkOneNode`'s 1,342 ns/op for the full `Propose → Ready → fsync →
 Advance` round-trip — each row is a fraction of that benchmark in
 proportion to the field-write / map-walk count visible in the source.
 Sum: roughly 1.8 µs of state-machine work — the same order as the
@@ -939,8 +939,8 @@ _Numbers cited as "M3 Max" came from a single Apple M3 Max MacBook Pro
 running `go1.26.3` against [the etcd-io/raft tree at commit
 `26c2367`](https://github.com/etcd-io/raft/commit/26c2367), via
 `go test -bench=BenchmarkOneNode -run=^$ -benchtime=3s -count=3` from
-the top-level package. The three runs reported 1,333 / 1,369 /
-1,360 ns/op — within ±3% of the 1,360 ns/op median I quote in the body.
+the top-level package. The three runs reported 1,326 / 1,342 /
+1,373 ns/op — within ±3% of the 1,342 ns/op median I quote in the body.
 The per-step micro-estimates in the cost table are derived from reading
 the code, not measured individually._
 
