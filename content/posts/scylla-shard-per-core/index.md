@@ -589,14 +589,15 @@ same language, at the same instruction count. The factor isn't
 language overhead. It isn't GC. It isn't allocator quality. It's
 **how often the program crosses a cache line**.
 
-The mutex result deserves its own line: a `sync.Mutex` costs about 5×
-a single uncontended atomic on Apple Silicon — derivable from the
-table as `55.3 / 11.3 ≈ 4.9`. Under the contention of 4 cores all
-trying to take it 5M times each, the wall-clock cost climbs further
-because Go's runtime defers to the OS-level wait primitive (Apple's
-__ulock_wait on macOS, futex on Linux) once the spin budget is
-exhausted. This is what your idiomatic Go service is doing every time
-it calls `metrics.WithLabelValues(...).Inc()` in a hot handler — the
+The mutex result deserves its own line: a contended `sync.Mutex`
+costs about `5×` a contended atomic — derivable from the table as
+`55.3 / 11.3 ≈ 4.9` (both numbers are aggregate ns/op under 4-way
+contention). The mutex path is more expensive because Go's runtime
+defers to the OS-level wait primitive (Apple's __ulock_wait on macOS,
+futex on Linux) once the spin budget is exhausted; the atomic path
+keeps the entire dance in userspace. This is what your idiomatic Go
+service is doing every time it calls
+`metrics.WithLabelValues(...).Inc()` in a hot handler — the
 labels-map lookup grabs an internal `sync.RWMutex`.
 
 The channel-hop benchmark is the most direct analog to Scylla's
