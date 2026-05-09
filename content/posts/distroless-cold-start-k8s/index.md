@@ -300,9 +300,9 @@ After the pull, `podman run` to first 200 OK on `/healthz`. Same harness, three 
 
 `app-uptime` is read from the JSON response: how many ms the Go process had been alive when it answered the curl. That difference (`end-to-end - app-uptime`) is the *non-app* cost — namespace creation, bridge networking, OCI hook execution, image-mount, kubelet readiness probing in production. It's **6–10 ms for every 1 ms** of app boot.
 
-> The Go runtime starts in 17–32 ms inside any of these three images. The container runtime spends 200 ms on plumbing whether you ship 4 MB or 10 MB. Optimising the binary past stripped-and-trimpath does nothing for this number.
+> Measured: the Go runtime starts in 17–32 ms inside any of these three images. The container runtime spends 200 ms on plumbing whether you ship 4 MB or 10 MB. Optimising the binary past stripped-and-trimpath does nothing for this number.
 
-The 17–32 ms internal boot is itself worth tracing. A 10 MB stripped Go binary on Apple's M3 takes about:
+The measured 17–32 ms internal boot is itself worth tracing. A 10 MB stripped Go binary on Apple's M3 napkin-decomposes to:
 
 | Phase                                | Approx. cost |
 |---|---:|
@@ -362,7 +362,7 @@ For our binary, the first 100 syscalls look like:
 12:00:00.124310 read(3, ...) = 192
 12:00:00.124380 mmap(NULL, 67108864, PROT_NONE, MAP_PRIVATE|MAP_ANON, -1, 0) = ...
 12:00:00.124450 mmap(NULL, 4194304, PROT_READ|PROT_WRITE, ...) = ...
-... (about 60 lines of mmap/mprotect for the Go runtime arena) ...
+... (60–80 lines of mmap/mprotect for the Go runtime arena) ...
 12:00:00.130100 openat(AT_FDCWD, "/etc/ssl/certs/ca-certificates.crt", O_RDONLY|O_CLOEXEC) = 4
 12:00:00.130250 read(4, ...) = 8192
 ... (TLS root cert pool init when the first http.Client is constructed) ...
@@ -377,7 +377,7 @@ Three observations the trace makes obvious:
 2. **The CA-bundle read happens lazily** at first `tls.Dial` — not at boot. If you're on scratch and forgot to ship a CA bundle, the bug doesn't appear until your first HTTPS call. The error is `x509: certificate signed by unknown authority`. Distroless includes the bundle at the canonical Linux path, so `crypto/x509` finds it without env-var gymnastics.
 3. **`time.LoadLocation("Asia/Kolkata")` opens `/usr/share/zoneinfo/Asia/Kolkata`**. On scratch that file does not exist; Go falls back to the embedded `tzdata` package only if you imported `time/tzdata` (which adds 450 KB to the binary). Distroless ships the OS zoneinfo so you don't have to.
 
-These three are the "scratch surprises" that bite payments services when one engineer in Bangalore opens an OutboxItem, calls `time.LoadLocation`, and the test pod 500s in the staging cluster.
+These three are the "scratch surprises" that bite payments services when one engineer in Bangalore opens an OutboxItem, calls `time.LoadLocation`, and the test pod returns HTTP 500 in the staging cluster.
 
 ## A 50-line repro
 
@@ -447,7 +447,7 @@ Three changes I'd make to a real platform team's container baseline.
 
 [pie]: https://pkg.go.dev/cmd/go#hdr-Build_modes
 
-**3. Run a registry mirror on every node, not in the cluster**. `containerd` supports [registry mirrors][mirror] in `/etc/containerd/config.toml`. Run a `registry:2` on each kubelet node bound to `127.0.0.1`, with the cluster registry as upstream, and the per-pod pull becomes a localhost RTT. We saw that explicit: localhost-registry pulls were 200–300 ms, gcr.io pulls were 2–3 s — a **10×** swing. At 1000 pods × 10× = 10000 ms saved per scale event, with no image-format change. This is more leverage than picking the right base.
+**3. Run a registry mirror on every node, not in the cluster**. `containerd` supports [registry mirrors][mirror] in `/etc/containerd/config.toml`. Run a `registry:2` on each kubelet node bound to `127.0.0.1`, with the cluster registry as upstream, and the per-pod pull becomes a localhost RTT. We saw that explicit: localhost-registry pulls were 200–300 ms, gcr.io pulls were 2–3 s — a **10×** swing. At 1000 pods × 10× = 10000 ms saved per scale event, with no image-format change. That gives back more wall-clock than picking the right base ever can.
 
 [mirror]: https://github.com/containerd/containerd/blob/main/docs/hosts.md
 

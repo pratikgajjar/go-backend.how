@@ -723,8 +723,11 @@ Parquet is not one format. It's a compression and encoding _kit_ with
 two dozen knobs. "I dumped my JSON to Parquet" is, on a busy lake,
 the estimated difference between `~$400/month` and `~$4,000/month`
 in S3 scan + storage on a 100 GB/day mutation stream — roughly the
-spread between snappy-default-no-dict-no-sort vs ZSTD-3-with-dict-
-and-sorted, observed across CDC implementations I've seen. The
+spread between snappy-default-no-dict-no-sort and
+ZSTD-3-with-dict-and-sorted, per the
+[Parquet encoding spec](https://parquet.apache.org/docs/file-format/data-pages/encodings/)
+plus codec micro-benchmarks in the
+[zstd README](https://github.com/facebook/zstd#benchmarks). The
 knobs in `internal/transform/parquet_writer.go` are **deliberate**.
 
 ```go
@@ -1100,9 +1103,9 @@ Two more I'd consider but probably wouldn't ship in v1:
   decode pgoutput → `map[string]any` → `json.Marshal` → `byte[]` →
   Parquet `BYTE_ARRAY`. A more efficient pipeline decodes pgoutput
   directly into Arrow column builders. The work is real (you'd
-  re-implement most of `tuple_decoder.go` for every Arrow type) and
-  the throughput we measured (`200,000 events/sec` Parquet ceiling
-  vs `10,000 events/sec` mid-range upstream) is already
+  re-implement most of `tuple_decoder.go` for every Arrow type), and
+  the throughput estimated above (`200,000 events/sec` Parquet
+  ceiling vs `10,000 events/sec` mid-range upstream) is already
   `200,000 / 10,000 = 20×` the upstream WAL rate. File it under "if
   profiling ever shows the JSON encoding as a bottleneck."
 
