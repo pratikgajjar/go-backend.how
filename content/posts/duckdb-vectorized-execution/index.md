@@ -400,7 +400,7 @@ join-key range while it is being sunk, then pushes a Bloom-or-min/max
 filter into the probe side's scan. Verify with `EXPLAIN`: on Q03 the
 `orders` scan grows an auto-generated `c_custkey <= 1499999` filter
 that did not appear in the user's SQL — DuckDB derived it from the
-customer-side build's max-key statistic. That kind of pushdown is
+customer-side build's max-key statistic. That pushdown is
 one reason (alongside columnar storage and vectorized aggregates)
 TPC-H Q03 collapses from 7 seconds in Postgres to 119 ms in DuckDB
 at SF=10.
@@ -705,9 +705,9 @@ line general-purpose RDBMS by two orders of magnitude on this
 workload is that the smaller one decided what it would not do.
 It picked a unit of work — a vector of up to 2048 contiguous values
 of one column — and refused to let any operator see anything smaller
-than that unit. (The last chunk of a scan can hold fewer than 2048
-rows, of course; the invariant is *never one tuple at a time*, not
-*always exactly 2048*.)
+than that unit. (The last chunk of a scan can legitimately hold
+fewer than 2048 rows; the invariant is *never one tuple at a time*,
+not *always exactly 2048*.)
 
 — Pratik Gajjar, May of 2026.
 *Written during an autoresearch loop while the scorer kept yelling
