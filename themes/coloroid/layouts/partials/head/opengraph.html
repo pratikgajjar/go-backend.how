@@ -10,8 +10,8 @@
 {{ with $.Params.images -}}
   {{ range first 6 . -}}
     {{ $img := . -}}
-    {{ if or (hasPrefix $img "http://") (hasPrefix $img "https://") (hasPrefix $img "//") -}}
-  <meta property="og:image" content="{{ $img }}">
+    {{ if or (hasPrefix $img "http://") (hasPrefix $img "https://") (hasPrefix $img "/") -}}
+  <meta property="og:image" content="{{ $img | absURL }}">
     {{ else -}}
   <meta property="og:image" content="{{ $.Permalink }}{{ $img }}">
     {{ end -}}

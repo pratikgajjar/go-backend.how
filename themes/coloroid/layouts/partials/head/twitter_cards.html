@@ -1,8 +1,8 @@
 {{ with $.Params.images -}}
   <meta name="twitter:card" content="summary_large_image">
   {{ $img := index . 0 -}}
-  {{ if or (hasPrefix $img "http://") (hasPrefix $img "https://") (hasPrefix $img "//") -}}
-    <meta name="twitter:image" content="{{ $img }}">
+  {{ if or (hasPrefix $img "http://") (hasPrefix $img "https://") (hasPrefix $img "/") -}}
+    <meta name="twitter:image" content="{{ $img | absURL }}">
   {{ else -}}
     <meta name="twitter:image" content="{{ $.Permalink }}{{ $img }}">
   {{ end -}}

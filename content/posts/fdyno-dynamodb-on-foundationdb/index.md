@@ -4,6 +4,7 @@ date: 2026-05-06
 lastmod: 2026-05-06
 description: "An experiment in putting DynamoDB's API on top of FoundationDB. We walk through what FDB's transaction model lets you simplify (strongly-consistent GSIs, ACID across base + indexes + CDC), what it costs you (CGO crossings, fsync at commit), and what DynamoDB the service still does better. With napkin math, eBPF-style traces, and 526/526 conformance tests."
 tags: ["foundationdb", "dynamodb", "golang", "system-design", "ebpf", "first-principles"]
+images: ["og.png"]
 draft: true
 theme: "honey"
 featured: false

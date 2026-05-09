@@ -7,7 +7,7 @@ publishDate = 2024-06-29T18:34:30+05:30
 featured = true
 draft = false
 tags = ['tigerbeetle', 'system-design', 'repost']
-images = ["beetle.webp"]
+images = ["og.png"]
 theme = "tiger"
 +++
 

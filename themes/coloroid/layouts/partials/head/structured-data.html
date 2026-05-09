@@ -59,8 +59,8 @@
         {{- if .Params.images -}}
           {{- range $i, $e := .Params.images -}}
             {{- if $i }}, {{ end -}}
-            {{- if or (hasPrefix $e "http://") (hasPrefix $e "https://") (hasPrefix $e "//") -}}
-              "{{ $e }}"
+            {{- if or (hasPrefix $e "http://") (hasPrefix $e "https://") (hasPrefix $e "/") -}}
+              "{{ $e | absURL }}"
             {{- else -}}
               "{{ printf "%s%s" $.Permalink $e }}"
             {{- end -}}

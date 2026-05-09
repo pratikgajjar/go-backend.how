@@ -6,7 +6,7 @@ lastmod = 2024-06-16T23:27:27+05:30
 tags = ['Django', 'Redis', 'DRF', 'CDC', 'Valkey']
 series = ['valkey-car-platform']
 draft = false
-images = []
+images = ["/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1/og.png"]
 theme = "tangerine"
 +++
 
