@@ -78,8 +78,9 @@ parseable into memory in a few milliseconds. The math gets unkind
 quickly: a 1 PiB table (`2^50` bytes) at 256 MiB per Parquet file
 (`2^28` bytes) holds `2^50 / 2^28 = 2^22 = 4,194,304` data files.
 If one manifest entry averages 300 bytes — compressed Avro with
-column bounds for ten columns and a 200-char S3 URI; consistent
-with manifests I have decoded on real production tables — that is
+column bounds for ten columns and a 200-char S3 URI; the §5
+reproducer below produces a 4,285-byte manifest for a single
+two-row entry, scaling consistently — that is
 `4,194,304 × 300 = 1,258,291,200` bytes ≈ 1.17 GiB of manifest
 entries total. A single 8 MiB manifest can index
 `8,388,608 / 300 ≈ 27,962` files, so the 1 PiB table needs
