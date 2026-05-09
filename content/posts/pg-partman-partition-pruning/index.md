@@ -75,8 +75,8 @@ spent the bulk of the wall on _planning_, before reading the first
 useful row. You did not partition the table to read every partition
 more slowly than reading none of them.
 
-The cause is `now()`. Postgres marks `now()` (and `current_timestamp`,
-`statement_timestamp`, etc.) as `STABLE`, not `IMMUTABLE`.
+The cause is `now()`. [Postgres marks `now()`](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT) (and current_timestamp,
+statement_timestamp, etc.) as `STABLE`, not `IMMUTABLE`.
 [A `STABLE` function](https://www.postgresql.org/docs/current/xfunc-volatility.html) returns the same value within one query
 but the planner has to invoke it at _execution_ time, not plan time. So
 planner pruning — the kind that drops children before scans even open —

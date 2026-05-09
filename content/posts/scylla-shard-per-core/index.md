@@ -135,7 +135,7 @@ There are two source files worth reading line by line:
 [`include/seastar/core/smp.hh`](https://github.com/scylladb/seastar/blob/master/include/seastar/core/smp.hh)
 (the public API) and
 [`src/core/reactor.cc`](https://github.com/scylladb/seastar/blob/master/src/core/reactor.cc)
-(the engine). Below are the four moments that matter.
+(the engine). Below are the six moments worth reading.
 
 ## 1. The pinning
 
@@ -634,10 +634,11 @@ sprayed everywhere.
 
 ## c) Move to Rust + tokio + `tokio-uring`
 
-Rust has explicit move semantics, no GC, and `tokio-uring` already does
-a per-thread-pinned io_uring loop. You're inheriting the ecosystem
-that [Glommio](https://github.com/DataDog/glommio) (Datadog's Seastar-in-
-Rust) was built on.
+Rust has explicit move semantics, no GC, and `tokio-uring` already runs
+a per-thread-pinned io_uring loop. Or skip tokio entirely and use
+[Glommio](https://github.com/DataDog/glommio), Glauber Costa's (ex-
+ScyllaDB) Seastar-shaped runtime now developed at Datadog — the closest
+you can get to Scylla's model with idiomatic Rust.
 
 Honest cost: language switch. If your team already writes Rust,
 ~2 weeks to prototype a sharded service. If they don't, the cost
