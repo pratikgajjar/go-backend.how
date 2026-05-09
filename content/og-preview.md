@@ -8,7 +8,7 @@ layout: "og-preview"
 robots: "noindex, nofollow"
 sitemap:
   disable: true
-_build:
+build:
   list: never
 ---
 
