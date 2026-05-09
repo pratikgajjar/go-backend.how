@@ -222,7 +222,7 @@ That's glibc 2.43 + openssl 3.6 + ldconfig — full C-library userland. SBOM JSO
 │      ├─ HTTP GET /v2/<repo>/blobs/<sha>  × N layers       │
 │      │     (parallel, up to max_concurrent_downloads = 3) │
 │      ├─ ZSTD/GZIP decompress (single-threaded per blob)   │
-│      ├─ overlay snapshotter: mkdir <hash> + tar -x        │
+│      ├─ overlay snapshotter: mkdir + tar -x + atomic rename│
 │      └─ apply diff → new RW snapshot                      │
 │                                                           │
 │  runc create:                                             │
