@@ -124,8 +124,9 @@ You just need to read it.
                                                   └──────────────┘
 ```
 
-The whole binary is wired in `cmd/cake/main.go`. The wiring is twenty
-lines and worth reading verbatim:
+The whole binary is wired in `cmd/cake/main.go`. The wiring is a
+dozen lines (rest is logger setup, signal-handler context, and a
+graceful HTTP server shutdown). It's worth reading verbatim:
 
 ```go
 // cmd/cake/main.go (abridged)
