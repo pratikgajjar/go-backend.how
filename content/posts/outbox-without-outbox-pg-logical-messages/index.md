@@ -1107,8 +1107,9 @@ DROP PUBLICATION demo_pub;
 DROP TABLE users;
 ```
 
-Stand up a real OwlPost (`docker-compose up owlpost` from the factlib
-repo) and the same bytes flow into Kafka instead.
+Build and run a real OwlPost (`go run ./cmd/owlpost` from the factlib
+repo, with `KAFKA_BROKERS` etc. configured) and the same bytes flow
+into Kafka instead.
 
 # Comparison
 
