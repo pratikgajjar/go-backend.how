@@ -44,8 +44,9 @@ Build an HNSW index on 50,000 vectors of dimension 128, ask it for
 the 10 nearest neighbours of 500 query vectors, and the median query
 finishes in **382 µs at 94.6 % recall@10**. The same dataset, same
 query, same hardware, with the index turned off and Postgres falling
-back to a sequential scan with [`vector_l2_ops`](https://github.com/pgvector/pgvector/blob/v0.8.2/src/vector.c#L573)
-returns an exact answer in **5,440 µs**.
+back to a sequential scan calling
+[`l2_distance`](https://github.com/pgvector/pgvector/blob/v0.8.2/src/vector.c#L573)
+on every row returns an exact answer in **5,440 µs**.
 
 That is **14× faster** for **5.4 % less recall**, measured first-hand
 on an Apple M4 Pro inside a Linux VM[^bench]. The arithmetic is
