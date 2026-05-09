@@ -648,7 +648,8 @@ LIST to find unreferenced files. If a writer crashes after writing
 data files but before committing, those files remain in S3, are
 unreferenced from any manifest, and are only reaped by an
 orphan-file cleanup that also LISTs the bucket. On a busy bucket the
-orphan job is the most expensive operation Iceberg performs, and
+orphan job is among the more expensive housekeeping operations
+(only data-file rewrite/compaction is heavier in absolute bytes), and
 it is correct only because S3 LIST is now strongly consistent ([as
 of December
 2020](https://aws.amazon.com/blogs/aws/amazon-s3-update-strong-read-after-write-consistency/)).
