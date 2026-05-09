@@ -660,7 +660,7 @@ manifests, you could project just the `lower_bounds`/`upper_bounds`
 maps and skip the rest. Estimated win on a 1 PiB table: today the
 planner downloads `8 MiB × 150 = 1,200 MiB` of compressed manifest
 data in the worst case (every manifest must be opened). The
-column-bound maps are roughly 40% of each entry — so a column-
+column-bound maps are ≈40 % of each entry — so a column-
 projected reader pulls down ~`1,200 × 0.40 = 480` MiB compressed,
 saving ~720 MiB of network + decompress work, and the corresponding
 fastavro / `ManifestReader` CPU. The cost is a new file format on
@@ -691,7 +691,7 @@ but the planning side has not adopted it yet. The cost is real:
 indexes drift with data, must be invalidated on rewrite, and write
 amplification goes up. Concretely, on a UPI-shaped workload where
 one account generates 10⁴ rows per day and a 30-day query needs
-`30 × 10000 = 300000` rows total: assuming roughly 10⁷ rows per
+`30 × 10000 = 300000` rows total: assuming ≈ 10⁷ rows per
 256 MiB data file (typical for narrow rows in
 [Parquet](https://parquet.apache.org/)), those rows live in 1–3
 data files. The planner today must open all 150 manifests because

@@ -544,12 +544,13 @@ fine; turn it on.
 
 **g. The bgworker is a single-cluster object.** `pg_partman_bgw`
 runs once per cluster. If you have 50 partitioned databases on one
-cluster, the bgworker iterates them sequentially in
-`pg_partman_bgw.dbname`. There is no parallelism; if maintenance on
-database 1 takes 30 minutes, database 50 waits 30 minutes. The
-mitigation is to run `run_maintenance_proc()` from your application
-scheduler against the slow databases and let the bgworker pick up
-the rest.
+cluster, the master worker spawns a dynamic per-database worker, then
+calls `WaitForBackgroundWorkerShutdown` before spawning the next one
+(see `src/pg_partman_bgw.c` foreach loop) — sequential, not parallel.
+If maintenance on database 1 takes 30 minutes, database 50 waits 30
+minutes. The mitigation is to run `run_maintenance_proc()` from your
+application scheduler against the slow databases and let the bgworker
+pick up the rest.
 
 # 7. What I'd build differently
 

@@ -776,8 +776,9 @@ was lost. The 1-second-tick design means the LSN never advances past
 a Kafka write whose callback hasn't fired.
 
 > **Sharp edge worth naming.** Today
-> [`listenEventAck`](https://github.com/fampay-inc/factlib/blob/main/pkg/postgres/wal.go)
-> just does `w.xLogPos = *ackPos` on every received ack. Kafka ack
+> [`listenEventAck`](https://github.com/fampay-inc/factlib/blob/main/pkg/postgres/wal.go#L381-L398)
+> just does `w.xLogPos = *ackPos` (line 390) on every received ack.
+> Kafka ack
 > callbacks fire in per-partition order, but across partitions
 > (across aggregate IDs) they can interleave. So if event A (LSN_a)
 > goes to partition 1 and event B (LSN_b > LSN_a) goes to partition

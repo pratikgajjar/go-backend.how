@@ -73,13 +73,15 @@ the coordinator, even though the result is discarded.
 This sits behind every "Citus latency overhead" benchmark. On a query
 that prunes to a single shard and runs in 200µs on the worker, the
 coordinator's `standard_planner` round-trip is measurable. Napkin
-estimate (no measurement on this machine, derived):
-[`pg_stat_statements`](https://www.postgresql.org/docs/current/pgstatstatements.html)
-in published Postgres benchmarks shows simple SELECT planning around
-100–300µs on commodity x86 (≈ 250,000–500,000 tree-walker steps × ~1
-ns each, computed). On the fast path, that 200µs becomes overhead
-the cluster pays for nothing. The fast-path code path was added
-precisely to avoid it.
+estimate (no measurement on this machine, derived from planner-step
+complexity): a simple SELECT walks something like 250,000–500,000
+tree-walker nodes through the optimizer at ~1 ns per step, putting
+single-table planning in the 100–300µs range. To pin down the actual
+number on a real cluster, the canonical tool is
+[`pg_stat_statements`](https://www.postgresql.org/docs/current/pgstatstatements.html),
+which exposes per-query `total_plan_time` directly. On the fast path,
+that 200µs of planning becomes overhead the cluster pays for nothing.
+The fast-path code path was added precisely to avoid it.
 
 The contradiction is intentional. Citus needs Postgres' planner to
 constant-fold expressions, resolve `now()` to a value, evaluate
