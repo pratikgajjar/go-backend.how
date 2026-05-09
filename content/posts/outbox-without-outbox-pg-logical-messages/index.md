@@ -213,9 +213,10 @@ Three properties matter:
 2. **Decoded by `pgoutput` / `wal2json` like any row change.** Same
    `START_REPLICATION` connection, same `confirmed_flush_lsn`.
 3. **Zero on-disk table footprint after WAL recycling.** Bytes live
-   in WAL until every replication slot has acked past that LSN, then
-   recycle like any other WAL record. No vacuum, no bloat, no
-   cleanup job.
+   in WAL until the slowest active replication slot has flushed past
+   that LSN (the WAL is held by `min(confirmed_flush_lsn)` across
+   slots), then recycle like any other WAL record. No vacuum, no
+   bloat, no cleanup job.
 
 > The WAL **is** the outbox.
 
