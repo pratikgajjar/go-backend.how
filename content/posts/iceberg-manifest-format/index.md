@@ -41,12 +41,13 @@ arithmetic that determines scan-planning latency on a 1 PiB Iceberg
 table — and whether it lands at the 80 ms end of the curve or the 8 s
 end.
 
-The map for what follows: the *hook* (the contradiction that hides in
-plain sight), the *first-principles problem* the format was designed
-to solve, the four-level *architecture in 200 words*, the *byte-level
-walk* through `manifest_entry`, *real numbers* with the working shown,
-the *tradeoffs* Iceberg chose to live with, and *what I would build
-differently* if I were designing v5 today.
+The map for what follows: the *hook* (the contradiction that hides
+in plain sight), the *first-principles problem* the format was
+designed to solve, the four-level *architecture in 200 words*, the
+*byte-level walk* through `manifest_entry`, *real numbers* with the
+working shown, the *tradeoffs* Iceberg chose to live with, and *what
+I would build differently* if I were designing the manifest layer
+fresh.
 
 # 1. The hook
 
