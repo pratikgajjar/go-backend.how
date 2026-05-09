@@ -460,10 +460,11 @@ DuckDB Q01 at SF=10: needs `l_returnflag`, `l_linestatus`, `l_quantity`,
 size on disk for those 7 columns: 60M rows × ~10 bytes/row average
 post-compression ≈ 600 MB. NVMe at 1.5 GB/s sequential ≈ 400 ms wall
 to read it; with 8 threads scanning different row groups, ≈ 50 ms.
-Then 60M rows × ~5 ns/row of vectorized aggregation across 8 cores
-= `60000000 × 5 / 8 = 37500000` ns ≈ 37 ms. Total ≈ 90 ms;
-the [reported](#real-numbers) wall-clock is 211 ms. The 2× gap
-is plan setup + result materialisation, not unreasonable.
+Then 60M rows × ~5 ns/row of vectorized aggregation totals
+`60000000 × 5 = 300000000` ns of single-thread work; spreading that
+across 8 cores gives `300000000 / 8 = 37500000` ns ≈ 37 ms. Total
+≈ 90 ms; the [reported](#real-numbers) wall-clock is 211 ms. The
+2× gap is plan setup + result materialisation, not unreasonable.
 
 # Stretch: a 50-line snippet you can run
 
@@ -614,8 +615,10 @@ Three things, in increasing order of cost.
    change. The change is: introduce a "composite payload" mode in
    `TupleDataLayout` that resolves columns lazily on probe match.
    **Cost: 2-3 weeks. The hash-table probe path is the hottest loop
-   in the engine and any indirection has to be measured against
-   `ProbeForPointersInternal` keeping every load on the same line.**
+   in the engine and any indirection has to be quantified against
+   `ProbeForPointersInternal` keeping every load on the same line.
+   See the [join_hashtable.cpp](https://github.com/duckdb/duckdb/blob/main/src/execution/join_hashtable.cpp)
+   probe loop for the baseline.**
 
 The deeper observation: DuckDB demonstrates that *the interesting bit
 of an analytical engine is not the algorithms. It is the unit of
