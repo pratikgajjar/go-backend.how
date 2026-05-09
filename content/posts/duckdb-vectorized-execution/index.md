@@ -472,11 +472,14 @@ overlaps the date range. Working set: ~150 MB instead of 8.2 GiB.
 The 600× is mostly an IO story; the 25–60× on Q01/Q03 is the CPU
 story.
 
-DuckDB's database file at SF=10 is **2,544 MB total** for all 8 tables
-and 87 million rows. Postgres' `pg_total_relation_size` for the same
-data totals **15,775 MB**, of which `lineitem` alone is 11 GB
-(9 GB heap + 2 GB indexes). That is a 6.2× space win for DuckDB
-before any query hits the engine, driven by per-column compression
+DuckDB's database file at SF=10 measures `2,677,813,248` bytes
+(2.68 GB / 2.49 GiB) for all 8 tables and ~87 million rows.
+Postgres' summed `pg_total_relation_size` for the same data totals
+`16,757,030,912` bytes (16.76 GB / 15.61 GiB), of which `lineitem`
+alone is `11,772,182,528` bytes (~11 GB by `pg_size_pretty`,
+9.02 GiB heap + a primary key + the `l_shipdate` index). That is
+`16757 / 2678 ≈ 6.3×` space win for DuckDB before any query hits
+the engine, driven by per-column compression
 (FSST for strings, RLE/bitpacking for low-cardinality ints, ALP for
 floats) and the absence of per-row 24-byte heap headers. The
 compression families live under `src/storage/compression/` —

@@ -661,25 +661,28 @@ FILLER_RE = re.compile(
 def paragraph_terminator_defects(body: str) -> int:
     """A prose paragraph (>40 chars, not a list/heading/code) should end with
     sentence punctuation, not a stray comma or word fragment."""
-    n = 0
+    # First, strip code blocks completely (fence-aware).
+    out_lines = []
     in_fence = False
-    for p in re.split(r"\n\s*\n", body):
-        # detect and skip code fence start; a paragraph that contains a fence
-        # marker is partial — skip
-        if "```" in p:
+    for line in body.splitlines():
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
             continue
+        if in_fence:
+            continue
+        out_lines.append(line)
+    cleaned = "\n".join(out_lines)
+    n = 0
+    for p in re.split(r"\n\s*\n", cleaned):
         s = p.strip()
         if len(s) < 40:
             continue
-        # skip headings, table rows, list items, blockquotes
-        if s.startswith(("#", "|", "-", "*", "+", ">", "1.", "2.", "3.")):
-            continue
-        # skip lines that look like a code excerpt
-        if re.match(r"^\s*\w+\([^)]*\)\s*$", s):
+        # skip headings, table rows, list items, blockquotes, frontmatter
+        if s.startswith(("#", "|", "-", "*", "+", ">", "1.", "2.", "3.", "+++")):
             continue
         last_char = s.rstrip()[-1]
-        if last_char not in ".!?:)`'\")":
-            print(f"DEBUG paragraph_terminator: '...{s[-60:]}'", file=sys.stderr)
+        if last_char not in ".!?:)`'\")*":
+            print(f"DEBUG paragraph_terminator: '...{s[-60:]!r}'", file=sys.stderr)
             n += 1
     return n
 
