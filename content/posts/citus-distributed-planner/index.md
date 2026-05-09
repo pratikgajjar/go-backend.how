@@ -480,8 +480,8 @@ This is the path that hides the most work. User query:
 SELECT count(*)
 FROM lineitem, orders, customer_append, supplier_single_shard
 WHERE l_orderkey = o_orderkey
-  AND o_custkey = c_custkey
-  AND l_suppkey = s_suppkey;
+AND o_custkey = c_custkey
+AND l_suppkey = s_suppkey;
 ```
 
 EXPLAIN output:
