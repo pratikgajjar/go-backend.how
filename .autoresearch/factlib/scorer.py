@@ -618,6 +618,22 @@ def heading_skip_defects(repo_root: Path) -> int:
     return n
 
 
+def duplicate_paragraph_defects(body: str) -> int:
+    """Same paragraph appearing twice = bad copy-paste regression."""
+    n = 0
+    seen = set()
+    for p in re.split(r"\n\s*\n", body):
+        s = re.sub(r"\s+", " ", p).strip()
+        # only check substantive paragraphs (not single short lines)
+        if len(s) < 80:
+            continue
+        if s in seen:
+            print(f"DEBUG duplicate_paragraph: {s[:80]!r}", file=sys.stderr)
+            n += 1
+        seen.add(s)
+    return n
+
+
 def fence_balance_defects(body: str) -> int:
     """Code fences must be balanced (matched ``` opens and closes).
     Odd count = unclosed fence = breaks Hugo rendering."""
@@ -755,6 +771,7 @@ def main() -> int:
     cats["license_claim"] = license_claim_defects(body, cached_repo)
     cats["gofmt"] = gofmt_defects(body)
     cats["fence_balance"] = fence_balance_defects(body)
+    cats["duplicate_paragraph"] = duplicate_paragraph_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -781,6 +798,7 @@ def main() -> int:
         "license_claim": 4,
         "gofmt": 3,
         "fence_balance": 5,
+        "duplicate_paragraph": 3,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
