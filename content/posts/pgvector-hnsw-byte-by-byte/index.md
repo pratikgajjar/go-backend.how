@@ -117,9 +117,9 @@ trades a memory hit for a much friendlier curve. The construction:
 The reason this works is that the top layers are short-range express
 trains. They cover a lot of distance with few hops. The bottom layer
 is local roads. You spend most of your time at the bottom but
-parachute into roughly the right region first. In practice on real
-embedding distributions you can hit recall ≥ 95 % at `ef_search = 40`
-with `K = 10`, which is what the
+parachute into roughly the right region first. On typical embedding distributions, `ef_search = 40` with `K = 10`
+hits recall ~95 % (94.6 % on this post's synthetic-cluster
+benchmark, see §5) — which is what the
 [default GUC](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L52)
 ships at.
 
