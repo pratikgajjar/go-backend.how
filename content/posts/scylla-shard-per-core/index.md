@@ -642,11 +642,14 @@ is real for an Ops team raised on JVM dashboards.
 
 **5. Driver contract is wider.** A naive (non-token-aware) client
 driver will hit a random shard and the server will `submit_to` to the
-right one — a ~70 ns penalty per request. Modern drivers
-(`gocql`, `scylla-driver-python`, the official Java driver, the
-ScyllaDB Rust driver) all support shard-aware routing, but you have to
-*use* a recent driver and configure it right. A misconfigured client
-turns Scylla into a worse Cassandra.
+right one — a ~70 ns penalty per request, plus the latency of the
+extra cross-core hop. ScyllaDB's shard-aware drivers
+([scylladb/gocql](https://github.com/scylladb/gocql),
+[scylladb/python-driver](https://github.com/scylladb/python-driver),
+[scylladb/scylla-rust-driver](https://github.com/scylladb/scylla-rust-driver),
+the Java fork) all support routing on the client side, but you have
+to *use* a recent shard-aware driver and configure it correctly. A
+misconfigured client turns Scylla into a worse Cassandra.
 
 **6. Tail latency under spillover is worse, not better.** When a shard
 saturates, queue depth on its `smp_message_queue` rises and other

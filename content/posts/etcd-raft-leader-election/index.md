@@ -649,13 +649,13 @@ VM clock.
 
 ## Randomised timeout is a hack, not a fix
 
-A 3-node cluster with all three followers in the same datacentre and
-synchronised tick clocks will sometimes still split. The randomisation
-window is `[T, 2T)`, which gives any pair of followers a `1 / 4`
-probability of firing within one tick of each other if the election
-timeout is much larger than the tick interval. With `ElectionTick = 10`
-that pair
-collision happens roughly once per ten elections in the worst case.
+A 3-node cluster with both followers ticking in phase will sometimes
+still split. The randomisation window is uniform over a band of
+`ElectionTick` ticks. For two iid uniform draws on a band of width
+`L = 10` ticks, the probability that they land within one tick of each
+other is `≈ 2/L = 2/10 = 20 %` (`P(|X − Y| < 1) ≈ 2ε/L − ε²/L²` for
+`ε ≪ L`), so a pair-collision happens roughly **once every five
+elections** under the default `ElectionTick = 10`.
 
 The protocol survives this — split votes lead to nothing changing and
 all candidates re-roll — but it costs another whole election timeout

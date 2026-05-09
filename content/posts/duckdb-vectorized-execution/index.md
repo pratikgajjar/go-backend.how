@@ -19,8 +19,8 @@ math = false
 > on the same data finishes in 211 ms. That is `11678 / 211 ≈ 55×`
 > on the same query, the same hardware, the same row count. Q06 at
 > SF=10 widens the measured gap to 600× — 25,825 ms vs 43 ms —
-> because Postgres' bitmap-heap scan reads 8 GB of pages off disk
-> while DuckDB streams three columns through L2 cache. Across
+> because Postgres' bitmap-heap scan reads 8.2 GiB of pages off
+> disk while DuckDB streams three columns through L2 cache. Across
 > Q01/Q03/Q06 at SF=1 and SF=10 [the six speedups](#real-numbers)
 > compute to a geometric mean of ≈ 58× (sixth root of
 > `25 · 19 · 42 · 55 · 60 · 600`), with the headline 600× being a
@@ -442,8 +442,9 @@ dragged off disk to filter on `l_discount BETWEEN 0.05 AND 0.07 AND
 l_quantity < 24`, because those columns are not in the index. DuckDB stores `l_discount`,
 `l_quantity`, and `l_extendedprice` as three separate column files. It
 reads only those three, and only the row groups whose min/max metadata
-overlaps the date range. Working set: ~150 MB instead of 8.4 GB. The
-600× is mostly an IO story; the 25–60× on Q01/Q03 is the CPU story.
+overlaps the date range. Working set: ~150 MB instead of 8.2 GiB.
+The 600× is mostly an IO story; the 25–60× on Q01/Q03 is the CPU
+story.
 
 DuckDB's database file at SF=10 is **2,544 MB total** for all 8 tables
 and 87 million rows. Postgres' `pg_total_relation_size` for the same
@@ -460,12 +461,12 @@ compression families live under `src/storage/compression/` —
 
 Napkin math for Q01 at SF=10. Postgres reads 9 GB of heap + 60M ×
 indirect call × 3 operators × ~10 ns = 1.8 s of CPU dispatch tax.
-Postgres' parallel-bitmap-heap-scan effectively pushes ~350 MB/s
-end-to-end on this NVMe (derived from the 8.4 GiB read in the 25 s
-Q06 run: `8400 / 25 ≈ 336` MB/s — the bound is Postgres' per-page
+Postgres' parallel-bitmap-heap-scan effectively pushes ~340 MB/s
+end-to-end on this NVMe (derived from the 8.2 GiB read in the 25 s
+Q06 run: `8200 / 25 ≈ 328` MB/s — the bound is Postgres' per-page
 bookkeeping, not the SSD's raw read which is closer to 2 GB/s).
-Applying the same throughput to Q01: `9000 / 350 = 25.7` s of IO
-upper-bound, parallelised across 4 workers gives `25.7 / 4 ≈ 6.4` s
+Applying the same throughput to Q01: `9000 / 340 ≈ 26` s of IO
+upper-bound, parallelised across 4 workers gives `26 / 4 = 6.5` s
 of IO + ~5 s of CPU + planner ≈ 11.7 s. Matches the
 [reported](#real-numbers) measurement.
 

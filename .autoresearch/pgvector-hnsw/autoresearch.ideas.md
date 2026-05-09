@@ -13,6 +13,13 @@ Last reviewed: 2026-05-09 (iter 18, defects 0 stable).
 - Iter 15: source-line citations verified (HNSW_SCAN_LOCK L41-L43, ef_search default L52, NOTICE L539-L542).
 - Iter 16: E[level] = 1/(M-1), not ml. ml is the rate parameter, not the mean integer level.
 - Iter 17: cap-on-page-fit constraint correctly attributed to Postgres' page-layout invariant, not a pgvector design choice.
+- Iter 19: re-ran benchmark; index size deterministic to the byte; latency drift made [^bench] reproducibility note honest about host-load sensitivity.
+- Iter 20: §3 ASCII diagram corrected (entry point is `(entryBlkno, entryOffno)`; HnswNeighborTuple has `version` field).
+- Iter 21: §4.4 'mean is ml' reworded to disambiguate continuous-exp mean vs integer-level mean.
+- Iter 22: §3 deduplication mechanism is byte-identical (datumIsEqual), not just 'duplicates'.
+- Iter 23: §6 'percentage-level disagreement' magnitude un-claimed (mechanism description retained).
+- Iter 24: IVFFlat tuning is `lists ≈ rows/1000` and `probes ≈ √lists`, not √N.
+- Iter 25: §7 closing taxonomy fixed (Vespa is a search engine, not a columnar store).
 
 ## Open / deferred
 

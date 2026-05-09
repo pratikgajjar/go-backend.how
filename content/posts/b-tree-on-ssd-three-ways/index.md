@@ -130,7 +130,7 @@ readers: pin meta → mmap pointer chase, zero copy
 
 BoltDB is LMDB's design ported to Go: same two-meta-page COW, same
 mmap, same single-writer rule. The Go port adds a `Bucket` type
-(nested namespaces - [bucket.go:31](https://github.com/etcd-io/bbolt/blob/main/bucket.go#L31)),
+(nested namespaces - [bucket.go:30](https://github.com/etcd-io/bbolt/blob/main/bucket.go#L30)),
 a `node` cache for the in-flight transaction's dirty pages, and a
 `spill` step that splits oversized nodes into multiple pages
 ([node.go:295](https://github.com/etcd-io/bbolt/blob/main/node.go#L295)).
