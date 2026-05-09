@@ -31,12 +31,14 @@ same four cores deliver **~3.0 _billion_ ops/sec**. Wall time per op:
 That ratio is the entire thesis of Scylla's architecture. The
 single-thread CAS isn't slow — it's coherence traffic. Four cores
 fighting for one cache line means the line ping-pongs through the
-inter-core fabric on every atomic, and ARM's load-locked / store-
-conditional path serializes them in hardware. The "fast" version isn't
+inter-core fabric on every atomic, and the atomic-add path serializes
+them in hardware (LSE `LDADD` on ARMv8.1+, `LOCK XADD` on x86). The
+"fast" version isn't
 faster code; it's the same code with the *coordination removed*.
 
-Cassandra runs ~16 worker threads across all cores, hitting shared
-memtables, shared row-caches, shared commit-log buffers. Scylla — built
+Cassandra runs many worker thread pools (`ReadStage`, `MutationStage`,
+ etc.) across all cores, hitting shared memtables, a shared row cache,
+shared commit-log buffers. Scylla — built
 on the [Seastar](https://github.com/scylladb/seastar) framework — runs
 exactly **one OS thread per CPU**, pins each to its core, and gives each
 a private slice of RAM. Two threads never touch the same cache line in
@@ -229,11 +231,13 @@ compile down to plain MOVs because the architecture is already strongly
 ordered. On ARM they compile to STLR/LDAR.
 
 `queue_length = 128`, `batch_size = 16`, `prefetch_cnt = 2`. Those are
-not arbitrary. 128 work-item pointers fit in two 64-byte cache lines on
-a 64-bit machine (8 bytes per pointer × 128 = 1024 B = 16 lines, but the
-producer/consumer indices sit on their own line — see the explicit
-`alignas(seastar::cache_line_size)` fences below). The 16-item batch
-amortises the cross-core write to 1 STLR per 16 messages, not per
+not arbitrary. 128 work-item pointers occupy `8 × 128 = 1024 B`, which
+is `1024 / 64 = 16` cache lines on a 64-bit machine — a small enough
+footprint that the consumer can stream through an entire backlog without
+thrashing L1. The producer/consumer indices sit on their own dedicated
+lines via the explicit `alignas(seastar::cache_line_size)` fences shown
+below. The 16-item batch then amortises the *wakeup* (not every push,
+just the cross-core notification) to 1 signal per 16 messages, not per
 message.
 
 Statistics counters are explicitly placed on separate cache lines so the
@@ -658,22 +662,24 @@ real time. This counts `submit_to` invocations per (sender, receiver)
 pair using uprobes:
 
 ```bash
-# count cross-shard submit_to calls per (src,dst) pair, every 10 s
+# count cross-shard submit_to calls per (calling_cpu, target_shard),
+# every 10 seconds. bpftrace's `*` glob handles the C++ name mangling.
 sudo bpftrace -e '
-  uprobe:/usr/bin/scylla:_ZN7seastar3smp10submit_toIZN*EE7futurizeIDTclscT_EEEclEv {
-    @[cpu, arg0] = count();
+  uprobe:/usr/bin/scylla:*submit_to* {
+    @[cpu, arg1] = count();
   }
   interval:s:10 {
     print(@); clear(@);
   }'
 ```
 
-The mangled symbol is brittle across compiler versions; in practice you
-extract the right one with `nm /usr/bin/scylla | grep submit_to | head`.
-On a healthy node the histogram should be diagonal-heavy (most counts on
-`@[cpu, cpu] = ...`, meaning the work stays local). A non-diagonal
-heavy distribution means your client driver is misrouting and you're
-paying the full cross-core tax.
+The `*` glob avoids hand-mangling Itanium C++ ABI symbols (which differ
+between compiler versions). If the glob is too broad, narrow it with
+the demangled prefix you find via `nm -C /usr/bin/scylla | grep
+submit_to | head`. On a healthy node the histogram should be
+diagonal-heavy (most counts on `@[cpu_X, cpu_X] = ...`, meaning the
+work stays local). A non-diagonal-heavy distribution means your client
+driver is misrouting and you're paying the full cross-core tax.
 
 ## 50-line reproducer
 

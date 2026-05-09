@@ -11,7 +11,6 @@ theme = "denim"
 featured = false
 math = false
 +++
-
 # The trick is one SQL call
 
 ```go
@@ -121,7 +120,7 @@ DELETE FROM outbox WHERE id = ANY($1);
 This works. It is also a small operations nightmare nobody mentions
 in the blog post that taught you the pattern. Let's enumerate.
 
-### The polling-latency / scan-cost tradeoff
+## The polling-latency / scan-cost tradeoff
 
 Set the poll interval to 100 ms and your event lag is bounded by ~100
 ms. You'll also do **864,000 SELECT scans per day per worker** even
@@ -131,7 +130,7 @@ here. Most teams pick "1 second" because it sounds reasonable and then
 quietly accept a 1 s delay on every webhook, every email, every
 side-effect.
 
-### HOT update churn on `processed = true`
+## HOT update churn on `processed = true`
 
 `UPDATE outbox SET processed = true ...` is an MVCC update. Postgres
 writes a new row version. The old one becomes dead and waits for
@@ -153,7 +152,7 @@ something like 0.01 and `autovacuum_vacuum_cost_limit` up to 5000.
 Did your last outbox tutorial mention any of those settings? Mine
 didn't.
 
-### Index choice for `WHERE processed = false`
+## Index choice for `WHERE processed = false`
 
 A normal btree on `processed` is mostly useless because the column has
 two values. The textbook "fix" is a **partial index**:
@@ -169,7 +168,7 @@ index. Every update of `processed` from `false` to `true` triggers an
 index entry deletion (and re-insertion if you ever flip it back).
 Index bloat tracks table bloat in lockstep. You still need vacuum.
 
-### The cleanup job nobody writes correctly
+## The cleanup job nobody writes correctly
 
 You eventually realise the table is unbounded and write a cleanup job:
 
@@ -183,7 +182,7 @@ between batches, or — much better — partition the table by day and
 `DROP PARTITION` every morning. Both work. Both are extra code,
 extra alerts, extra runbooks.
 
-### Polling vs change-data-capture
+## Polling vs change-data-capture
 
 The other escape hatch is to put **Debezium** in front of the outbox
 table. Debezium tails the WAL, watches for `INSERT`s on `outbox`,
@@ -382,7 +381,7 @@ the streaming-replication subprotocol. So OwlPost actually opens
 the boring `SELECT EXISTS(SELECT 1 FROM pg_replication_slots ...)`
 checks.
 
-### Setting up the slot
+## Setting up the slot
 
 Two one-time DDL operations. They run on every boot and are
 idempotent:
@@ -408,7 +407,7 @@ Slots are also the operational footgun. If OwlPost dies and never
 comes back, the WAL grows until your disk fills. We will return to
 this in §7.
 
-### Starting replication
+## Starting replication
 
 ```go
 // pkg/postgres/wal.go — startReplication
@@ -439,7 +438,7 @@ SELECT confirmed_flush_lsn FROM pg_replication_slots WHERE slot_name = $1;
 
 That single column is the entire durability state of the consumer.
 
-### The receive loop
+## The receive loop
 
 ```go
 for {
@@ -495,7 +494,7 @@ services, other prefixes) on the same database fan out the same way:
 each consumer subscribes to the same WAL with its own prefix, ignores
 everything else. The prefix is the routing key.
 
-### Prefix-based handler dispatch
+## Prefix-based handler dispatch
 
 In `pkg/outbox/consumer/consumer.go`:
 
@@ -640,7 +639,7 @@ and the event delivery are atomic." factlib + OwlPost preserves that
 guarantee through a careful LSN ack pipeline. There are four failure
 scenarios to think about. We'll walk all of them.
 
-### Scenario 1: the happy path
+## Scenario 1: the happy path
 
 ```txt
 producer       Postgres        OwlPost            Kafka
@@ -703,7 +702,7 @@ RPC — that is **four orders of magnitude** less ack traffic
 (`10,000 → 1` per second). We trade a 1-second window of replay-on-
 crash for it. Sensible default; tunable if your workload disagrees.
 
-### Scenario 2: producer crash mid-transaction
+## Scenario 2: producer crash mid-transaction
 
 ```txt
 producer        Postgres
@@ -727,7 +726,7 @@ a transaction's records when it sees the COMMIT. No COMMIT, no
 delivery. **Zero events leak.** This is the property that the
 table-based pattern also has, achieved here for free.
 
-### Scenario 3: consumer crash post-Kafka, pre-LSN-ack
+## Scenario 3: consumer crash post-Kafka, pre-LSN-ack
 
 ```txt
 OwlPost                Kafka         Postgres
@@ -786,7 +785,7 @@ a Kafka write whose callback hasn't fired.
 > guarantee is what you actually want, but it's worth knowing the
 > limit.
 
-### Scenario 4: Kafka down for hours
+## Scenario 4: Kafka down for hours
 
 ```txt
 OwlPost                Kafka
@@ -843,7 +842,7 @@ drops. No data loss.
 
 Two questions every event-bus eventually has to answer.
 
-### Ordering
+## Ordering
 
 - **Per-aggregate ordering: strict.** Kafka partition is keyed on
   `aggregateId`. All events for `aggregate_id = "user-12345"` land on
@@ -861,7 +860,7 @@ publisher database. If you cared, you could write a single-partition
 consumer and get a strict total order out of factlib. Most teams
 shouldn't.
 
-### Throughput — napkin math
+## Throughput — napkin math
 
 Each `Emit` call is exactly one extra `SELECT pg_logical_emit_message(...)`
 on top of the business transaction. Cost components:
@@ -928,7 +927,7 @@ network round-trips on the producer side, not the WAL itself. For
 hundred-thousand-per-second you start needing batched-emit (see §9
 for "when not to use this") or a dedicated event store.
 
-### How does this compare to a table-based outbox?
+## How does this compare to a table-based outbox?
 
 | | Outbox table (poll) | factlib (logical msg) |
 |---|---:|---:|
@@ -947,7 +946,7 @@ percent.
 
 Every win has a cost. Name it.
 
-### Cross-database transactions
+## Cross-database transactions
 
 `pg_logical_emit_message` is per-database. If your business
 transaction spans **multiple Postgres clusters** (write to A and B
@@ -955,7 +954,7 @@ atomically), you don't have an atomic write to begin with — and
 factlib doesn't help. You need 2PC or a saga. Don't pretend factlib
 solves a problem it can't see.
 
-### Non-Postgres backends
+## Non-Postgres backends
 
 There is no equivalent in MySQL. The binlog can be tailed (Debezium
 does this) but there is no `pg_logical_emit_message` analogue —
@@ -965,7 +964,7 @@ outbox table, with Debezium tailing the binlog. Cassandra, DynamoDB,
 Mongo — same story, different details. This pattern is genuinely
 Postgres-specific.
 
-### Ultra-high event rates (≥ 100K/sec)
+## Ultra-high event rates (≥ 100K/sec)
 
 At those rates the WAL itself becomes your bottleneck — not because
 of the bytes, but because every emit is a synchronous network
@@ -983,7 +982,7 @@ proceed. Possible mitigations:
 If you're operating a 100K/sec service, you've already had this
 conversation. For the rest of us, factlib's emit ceiling is fine.
 
-### Schemas that change often
+## Schemas that change often
 
 Protobuf evolution rules apply: add new optional fields, never
 re-use field numbers, never change types. You also need a registry
@@ -993,7 +992,7 @@ well use Buf Schema Registry or Confluent's. The point: factlib does
 not solve the schema-evolution problem, it just doesn't make it
 worse.
 
-### Long Postgres transactions
+## Long Postgres transactions
 
 With the `proto_version '1'` plugin arg factlib uses today, logical
 decoding does not see a transaction's records until COMMIT — a 30-

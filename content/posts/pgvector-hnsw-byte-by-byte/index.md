@@ -531,10 +531,11 @@ table size:        27.9 MB
 `128 × 4 = 512 B` plus a `Vector` header (28 B observed), the level-0
 neighbour tuple holds `2 × 16 = 32` TIDs at 6 B each, so
 `32 × 6 = 192 B`, plus an 8 B tuple header, plus the element tuple's
-per-page slot (`ItemIdData` is 4 B), plus alignment slack. The dominant term is the vector data; the index size to
-table size ratio measured at `41,631,744 / 29,261,824 = 1.42`,
-which means the index ships 42 % more bytes than the heap because
-each element exists in both.
+per-page slot (`ItemIdData` is 4 B), plus alignment slack. The dominant term is the vector data; the measured index
+size to table size ratio is `41,631,744 / 29,261,824 ≈ 1.42`,
+which means the index ships about 40 % more bytes than the heap
+because each element exists in both — see the size measurement
+below.
 
 Query latency at varying `ef_search`:
 
@@ -694,11 +695,12 @@ HNSW for anything that needs deterministic ranking.
 **Build time scales worse than IVFFlat.** Build is `O(N × log N ×
 ef_construction)` graph operations. IVFFlat's build is `O(N × probes
 × iterations)` k-means work, which parallelises better and uses less
-memory. Extrapolating from this post's measured build
-(`50,000 / 6.0 = 8,333` vectors/s single-threaded), a 10M-row HNSW
-build at that rate is `10,000,000 / 8,333 / 60 ≈ 20` minutes;
-pgvector's parallel-build mode (see `HnswParallelBuildMain`) brings
-that down by `max_parallel_maintenance_workers`-fold in practice.
+memory. The build measured in this post hit
+`50,000 / 6.0 ≈ 8,333` vectors/s single-threaded; at that rate a
+10M-row HNSW build takes about 1,200 s wall time — derived as
+`10,000,000 / 8,333 ≈ 1,200` seconds, i.e. roughly 20 minutes — and
+pgvector's parallel-build mode (`HnswParallelBuildMain`) cuts that
+by `max_parallel_maintenance_workers`-fold in practice.
 
 # 7. What I'd build differently
 

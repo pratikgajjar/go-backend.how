@@ -363,7 +363,8 @@ DEBUG:  query has a single distribution column value: 10
 ```
 
 Three DEBUG lines. The first is from `distributed_planner.c`
-line 271 (the fast-path branch). The second is from the router. The
+line 266 (`if (fastPathRouterQuery) result = PlanFastPathDistributedStmt(&planContext);` — verified at
+commit `a3d5708a6`). The second is from the router. The
 third comes from
 `src/backend/distributed/executor/multi_server_executor.c` line 97
 (quoted earlier) — Citus printing the literal value of the
@@ -615,7 +616,7 @@ continuous; Citus has explicit boundaries.
 
 **The fast path is fragile.** Adding a join, a CTE, a sublink, a
 volatile function — any of these knock you out of fast-path
-eligibility. The check, in `FastPathRouterQuery` lines 248–254:
+eligibility. The check, in `FastPathRouterQuery` lines 246–251:
 
 ```c
 // src/backend/distributed/planner/fast_path_router_planner.c

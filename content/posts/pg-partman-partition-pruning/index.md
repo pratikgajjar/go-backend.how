@@ -504,7 +504,7 @@ queries against the parent during draining miss in-flight rows.
 
 > Subpartitioning with multiple levels is supported, but it is of very
 > limited use in PostgreSQL and provides next to NO PERFORMANCE BENEFIT
-> outside of extremely large data in a single partition set (100s of
+> outside of extremely large data in a single partition set (hundreds of
 > terabytes, petabytes). If you're looking for performance benefits,
 > adjust your partition interval before considering subpartitioning.
 

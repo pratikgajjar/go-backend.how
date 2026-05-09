@@ -457,18 +457,34 @@ MOTIFS = {
 
 
 def pick_motif(slug: str, tags: list[str]) -> str:
-    """Match post topic to motif. Order: most specific first, generic last."""
-    t = [s.lower() for s in tags] + [slug.lower()]
-    text = " ".join(t)
+    """Match post topic to motif. Order: most specific first, generic last.
+
+    Match with word boundaries (space-padded slug-style tokens) to avoid
+    "ann" inside "planner"/"planning" leaking pgvector→hnsw_layers onto
+    Postgres planner posts.
+    """
+    # Build a tokens set: each tag + each slug-segment, lowercased.
+    tokens = set()
+    for tag in tags:
+        for piece in re.split(r"[\s_/\-]+", tag.lower()):
+            if piece:
+                tokens.add(piece)
+    for piece in re.split(r"[\s_/\-]+", slug.lower()):
+        if piece:
+            tokens.add(piece)
+
+    def has(*needles: str) -> bool:
+        return any(n in tokens for n in needles)
+
     # Specific topics first
-    if "tigerbeetle" in text or "payments" in text:
+    if has("tigerbeetle", "payments"):
         return "spoke_wheel"
-    if "foundationdb" in text or "dynamodb" in text or "fdyno" in text:
+    if has("foundationdb", "dynamodb", "fdyno"):
         return "hex_shield"
-    if "temporal" in text or "workflow" in text or "durable" in text:
+    if has("temporal", "workflow", "workflows", "durable"):
         return "concentric_clock"
     # Vector search / HNSW BEFORE postgres so pgvector→hnsw_layers (not grid_cells)
-    if "pgvector" in text or "hnsw" in text or "vector-search" in text or "ann" in text:
+    if has("pgvector", "hnsw", "ann", "vector"):
         return "hnsw_layers"
     # Containers / k8s — image layers
     if "kubernetes" in text or "k8s" in text or "containers" in text or "distroless" in text or "wolfi" in text:

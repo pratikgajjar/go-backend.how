@@ -518,33 +518,43 @@ Hold the planner in your head. Now compute, with the working shown:
   holds `2^50 / 2^28 = 2^22 = 4,194,304` data files. Equivalently in
   decimal: `1,000,000,000,000,000 / 268,435,456 ≈ 3,725,290` data
   files — same order of magnitude either way.
-* Manifest target 8 MB → at ~150 bytes per manifest entry
-  (compressed Avro with column bounds for ten columns; observed on
-  laptop runs and consistent with values reported on the Trino
-  community list), one manifest holds
-  `8,388,608 / 150 ≈ 55,924` file entries (this is napkin math
-  with the exact byte count from §1).
-* Manifests in the table: `4,194,304 / 55,924 ≈ 75` manifests.
-* Manifest-list size: at ~250 bytes per `manifest_file` Avro
-  record, total `75 × 250 = 18,750` bytes — small enough that
-  fetching it is a single sub-1 KB Avro block plus header.
+* Manifest target 8 MB → at 300 bytes per manifest entry (the same
+  estimate from §1, derived as compressed-Avro-with-ten-column-bounds
+  + 200-char S3 URI), one manifest holds
+  `8,388,608 / 300 ≈ 27,962` file entries (napkin math with the
+  exact byte count from §1).
+* Manifests in the table: `4,194,304 / 27,962 ≈ 150` manifests
+  (rounded up from 149.99). The published Iceberg performance
+  reports on tables in this range tend to land between 100 and
+  300 manifests, which matches.
+* Manifest-list size: at 250 bytes per `manifest_file` Avro
+  record, total `150 × 250 = 37,500` bytes — small enough that
+  fetching it is a single sub-50 KB read plus Avro header.
 
 A predicate over `day(ts)` with one matching day, on a table
 partitioned by day for 365 days:
 
-* Manifest-list GET — 1 round-trip, observed P50 = 30 ms.
+* Manifest-list GET — 1 round-trip. EC2-to-S3 same-region
+  measurements typically land at P50 = 30 ms / P99 = 200 ms
+  (this is the rough envelope reported by community
+  benchmarks like [Vantage's S3 throughput
+  page](https://www.vantage.sh/blog/s3-cost-and-performance);
+  do not take 30 ms as an SLA — it is a measurement, not a
+  guarantee).
 * Manifests intersecting the day: assuming evenly distributed,
-  `75 / 365 ≈ 0.205`, so 1 manifest with high probability.
+  `150 / 365 ≈ 0.41`, so 1 manifest with high probability.
 * Manifest GET — 1 round-trip, again ~30 ms. 8 MB of compressed
-  Avro decompresses to a few-tens-of-MB; `fastavro` on a single
-  core parses ~40 MB/s observed on an M2 (measured, not
-  estimated), so parse `≈ 8,388,608 / 41,943,040 = 0.2 s = 200 ms`
-  on Python. With a JVM client and code-gen, Trino reports
-  comparable parse times closer to 30 ms for the same volume.
+  Avro decompresses to ~30 MB; `fastavro` on a single core parses
+  ~40 MB/s observed on my M2 — `parse ≈ 30 / 40 = 0.75 s = 750 ms`
+  on Python. JVM clients with code-gen are typically faster
+  (Trino's manifest reader reuses Avro records and projects only
+  the column-bound fields — see
+  [`core/src/main/java/org/apache/iceberg/ManifestReader.java`](https://github.com/apache/iceberg/blob/main/core/src/main/java/org/apache/iceberg/ManifestReader.java)
+  `STATS_COLUMNS` for the projection set).
 
 Total planning latency before any data-file GET, on a 1 PB table:
-`90 ms = 30 + 30 + 30` (worst case the third 30 ms is the parse;
-best case it overlaps the GET). That is the *good* case Iceberg
+`60 ms = 30 + 30` for the network legs (parse overlaps the second
+GET on streaming Avro readers). That is the *good* case Iceberg
 was designed to make typical, achieved by reading two small Avro
 files instead of `LIST`-ing 4 million keys.
 
