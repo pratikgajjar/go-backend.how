@@ -394,13 +394,16 @@ third comes from
 (quoted earlier) - Citus printing the literal value of the
 distribution column it pruned on, for diagnostics.
 
-The plan generated is a `PlannedStmt` whose `planTree` is a
-`SeqScan` placeholder (`GeneratePlaceHolderPlannedStmt`,
-`fast_path_router_planner.c` line 116), wrapped in a `CustomScan`
-node tagged "Citus Adaptive" at `FinalizePlan`-time. No actual
-sequential scan is run on the coordinator. The `CustomScan` is the
-hook where Citus' executor takes over, evaluates the distribution
-column at execution time, picks the shard, and dispatches.
+`FastPathPlanner` first builds a placeholder `PlannedStmt` whose
+`planTree` is a `SeqScan` (`GeneratePlaceHolderPlannedStmt`,
+`fast_path_router_planner.c` line 116) so that the targetlist is
+populated correctly. `FinalizeRouterPlan` then constructs a *new*
+`PlannedStmt` whose `planTree` is a `CustomScan` tagged
+"Citus Adaptive" — the `SeqScan` placeholder is dropped on the
+floor at this point. No actual sequential scan ever runs on the
+coordinator. The `CustomScan` is the hook where Citus' executor
+takes over, evaluates the distribution column at execution time,
+picks the shard, and dispatches.
 
 ## Path 2 - multi-shard router (DELETE / UPDATE)
 
