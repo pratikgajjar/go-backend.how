@@ -153,7 +153,7 @@ that. Six files do most of the lifting:
 | `src/common/types/vector.cpp`                      | 972  | Vector primitive |
 | `src/common/types/data_chunk.cpp`                  | 486  | Chunk = array of Vectors |
 | `src/parallel/pipeline_executor.cpp`               | 558  | The push-pull driver |
-| `src/execution/join_hashtable.cpp`                 | ~2000 | Linear-probe HT |
+| `src/execution/join_hashtable.cpp`                 | 2135 | Linear-probe HT |
 | `src/execution/operator/join/physical_hash_join.cpp` | 1946 | Sink/Source operator |
 
 ## The 2048 constant
