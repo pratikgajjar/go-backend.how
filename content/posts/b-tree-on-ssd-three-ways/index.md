@@ -678,7 +678,7 @@ The Pebble path is below (~75 lines including imports). Add a
 run with `go run bench.go`.
 
 ```go
-// /tmp/btree-bench/bench.go (excerpt; 50-line reproducer of section 5)
+// /tmp/btree-bench/bench.go (Pebble excerpt; mirrors §5's reproducer)
 package main
 
 import (
