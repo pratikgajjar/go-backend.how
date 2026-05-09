@@ -720,20 +720,23 @@ pair using uprobes:
 # every 10 seconds. bpftrace's `*` glob handles the C++ name mangling.
 sudo bpftrace -e '
   uprobe:/usr/bin/scylla:*submit_to* {
-    @[cpu, arg1] = count();
+    @[cpu, arg0] = count();
   }
   interval:s:10 {
     print(@); clear(@);
   }'
 ```
 
-The `*` glob avoids hand-mangling Itanium C++ ABI symbols (which differ
-between compiler versions). If the glob is too broad, narrow it with
-the demangled prefix you find via `nm -C /usr/bin/scylla | grep
-submit_to | head`. On a healthy node the histogram should be
-diagonal-heavy (most counts on `@[cpu_X, cpu_X] = ...`, meaning the
-work stays local). A non-diagonal-heavy distribution means your client
-driver is misrouting and you're paying the full cross-core tax.
+`smp::submit_to` is a `static` member function, so `arg0` is the
+first declared parameter — the target shard `unsigned t`, not an
+implicit `this`. The `*` glob avoids hand-mangling Itanium C++ ABI
+symbols (which differ between compiler versions); if the glob is too
+broad, narrow it with the demangled prefix from `nm -C /usr/bin/scylla
+| grep submit_to | head`. On a healthy node the histogram should be
+diagonal-heavy — most counts on `@[cpu_X, cpu_X]`, meaning the work
+stays on the calling core. A non-diagonal-heavy distribution means
+your client driver is misrouting and you're paying the full
+cross-core tax.
 
 ## 50-line reproducer
 

@@ -415,21 +415,24 @@ heap pages; default 128; 11 GB / 8 KB / 128 = ~10,750
 ranges × ~50 B/range = 540 KB, in the range of 60–100 KB on production
 systems with smaller per-range tuples[^bench]).
 
-| Query                                              | Pruned?   | Children read | Heap read         | Wall p50 (estimate) |
-| -------------------------------------------------- | --------- | ------------- | ----------------- | ------------------- |
-| `WHERE created_at >= now() - '1 hour'`             | no (planner) yes (executor) | 90 plan / 1 exec  | ~46 MB            | 17 s (p50, range 12–25 s) |
-| `WHERE created_at` between two adjacent literal day boundaries | yes    | 1             | ~11 GB BRIN-bounded | from 220 ms to 480 ms (range observed) |
-| `WHERE id = 12345678`                              | no        | 90            | ~90 × btree probe = 90 × 5 ops | from 30 to 120 ms  |
-| Same with non-key filter (e.g. `user_id = 42`), no constraint | partial | 1 | scan all 11M rows | from 800 ms to 2.4 s |
-| Same query, with `apply_constraints` on a per-user column | yes (constraint exclusion) | 0–3      | from 0 to ~30 MB | range 5 to 80 ms  |
+| Query                                              | Pruned?   | Children opened / executed | Heap read         | Wall p50 (estimate) |
+| -------------------------------------------------- | --------- | -------------------------- | ----------------- | ------------------- |
+| `WHERE created_at >= now() - '1 hour'`             | no (planner) yes (executor) | 90 opened / 1 executed | ~46 MB metadata + ~12 MB data | range from 0.5 to 1.5 s, plan-dominated |
+| `WHERE created_at` between two adjacent literal day boundaries | yes    | 1 opened / 1 executed | ~11 GB BRIN-bounded | from 220 ms to 480 ms (range from past benchmarks) |
+| `WHERE id = 12345678`                              | no        | 90 opened / 90 executed | ~90 × btree probe = 90 × 5 ops | from 30 to 120 ms  |
+| Same with non-key filter (e.g. `user_id = 42`), no constraint | partial | 1 / 1 | scan all 11M rows | from 800 ms to 2.4 s |
+| Same query, with `apply_constraints` on a per-user column | yes (constraint exclusion) | 0–3 / 0–3 | from 0 to ~30 MB | range 5 to 80 ms  |
 
 The first row is the hook query from §1. Planner pruning fails
-because `now()` is `STABLE`. Executor pruning succeeds — 89 children
-are skipped at scan time — but plan time is dominated by opening 90
-relations. The estimate is computed as: ~480 ms plan time captured
-once on a 90-child set + ~16 s execution dominated by lock acquisition
-and per-child stats lookups[^bench]. Pin the time at the client and it
-collapses (≈ 4 ms plan + 200 ms exec).
+because `now()` is `STABLE`; the plan opens all 90 children for
+relation lookup, lock, and stats. Executor pruning then succeeds —
+89 of the 90 `Seq Scan` nodes are marked `(never executed)` — but
+plan time is dominated by the relation-open work. The estimate is
+computed as: range from 250 to 700 ms plan time on a 90-child set,
+plus 100–300 ms execution on the matching child[^bench]. Pin the
+time at the client and the plan-time tail collapses by an estimated
+factor of 25× to 35× (range from past benchmarks; one child plan
+instead of 90).
 
 The third row is the killer for naive partition users. A primary key
 lookup on `id` with no time predicate falls through to every child
