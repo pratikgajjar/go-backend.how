@@ -872,5 +872,7 @@ writing about.
     drawn from 100 isotropic Gaussian clusters with σ = 0.3. Queries
     are 500 cluster centres perturbed by σ = 0.4 noise. Ground truth
     is exact L2 nearest-neighbour from NumPy. The 50-line Python
-    reproduction is in §5. Run-to-run reproducibility is about ±2 %
-    on recall and ±10 % on latency.
+    reproduction is in §5. The index size and recall numbers are
+    deterministic between runs (verified on a re-run: 832.6 B / row,
+    matching 833 B above). Latency is host-load sensitive — on a
+    quiet machine ±10 %, on a loaded one closer to ±25 %.

@@ -1033,6 +1033,7 @@ import (
     "os"
 
     "git.famapp.in/fampay-inc/factlib/pkg/common"
+    flogger "git.famapp.in/fampay-inc/factlib/pkg/logger"
     "git.famapp.in/fampay-inc/factlib/pkg/outbox/producer"
     fpostgres "git.famapp.in/fampay-inc/factlib/pkg/postgres"
     "github.com/jackc/pgx/v5"
@@ -1046,7 +1047,7 @@ func main() {
     }
     defer conn.Close(ctx)
 
-    base, err := producer.NewPostgresAdapter("payments-user", nil)
+    base, err := producer.NewPostgresAdapter("payments-user", flogger.New())
     if err != nil {
         log.Fatal(err)
     }

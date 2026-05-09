@@ -1,6 +1,6 @@
 +++
 title = "🐢 etcd Raft in 200 µs — One Leader Election, Traced"
-description = "A line-by-line walk through how etcd-io/raft elects a leader. Where the time really goes (1.5 µs of state-machine work, ≈1.5 s of randomised waiting), why Pre-Vote and CheckQuorum exist, and what each one costs."
+description = "A line-by-line walk through how etcd-io/raft elects a leader. Where the time really goes (≈ 1.8 µs of state-machine work, ≈ 1.5 s of randomised waiting), why Pre-Vote and CheckQuorum exist, and what each one costs."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
 publishDate = "2026-05-09T12:00:00+05:30"
@@ -26,11 +26,13 @@ source code actually shows you, once you read it carefully:
 
 > One full leader-election state-machine round — `MsgHup`, become
 > candidate, tally votes, become leader, append empty entry —
-> finishes in **a few microseconds of CPU**. The same election in
-> production takes **1 to 2 seconds of wall-clock**. Six orders of
-> magnitude (≈ `1.5 s / 1.5 µs = 10⁶`) of the time that is missing
-> isn't computation — it's deliberate waiting, randomised, so that
-> a quorum can't dead-lock on simultaneous candidates.
+> finishes in **≈ 1.8 µs of CPU** (napkin math against
+> `BenchmarkOneNode` at 1,360 ns/op, breakdown below). The same
+> election in production takes **1 to 2 seconds of wall-clock**.
+> Roughly six orders of magnitude (`≈ 1.5 s / 1.8 µs ≈ 833,000×`) of
+> the time that is missing isn't computation — it's deliberate waiting,
+> randomised, so that a quorum can't dead-lock on simultaneous
+> candidates.
 
 This post is a walk through why that is. We'll trace the exact path the
 state machine takes from `tickElection()` firing on a follower to
