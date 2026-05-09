@@ -885,8 +885,11 @@ prefetch templates in `include/seastar/core/prefetch.hh`. Total
 ~8,500 lines surveyed; source citations point at the public GitHub
 mirror at scylladb/seastar.
 
-Numbers in the benchmark table are wall-clock measurements from three
-runs of the included Go program on a MacBook Pro M3 Max (14 cores, 36
-GB RAM, macOS 26.2, Go 1.26.3). Ratios will vary by `±20%` across
-hardware and OS schedulers; the *direction* of the ratio is invariant.
-Methodology and errors are mine; the architecture is ScyllaDB's.
+Numbers in the benchmark table are the median of three wall-clock
+measurements on a MacBook Pro M3 Max (14 cores, 36 GB RAM, macOS 26.2,
+Go 1.26.3). Variance is significant: on Apple Silicon's heterogeneous
+E/P core mix the same workload can swing `±50%` between runs depending
+on which cores get scheduled, so individual measurements drift but
+the order-of-magnitude ratio between contended-shared and sharded
+remains invariant. Methodology and errors are mine; the architecture
+is ScyllaDB's.

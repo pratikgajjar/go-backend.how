@@ -1,6 +1,6 @@
 +++
 title = "🦌 BadgerDB Internals — How an LSM Sustains 1M Writes/sec Without Compaction Stalls"
-description = "BadgerDB's writer path from memtable through L0→L6, the compaction-priority calculation, and a Mac M3 Max benchmark hitting 1M ops/s — until 1 KB values pull the LSM into 9-second L0 stalls."
+description = "BadgerDB's writer path from memtable through L0→L6, the compaction-priority calculation, and a Mac M3 Max benchmark hitting 1M ops/s — until 1 KB values drop it 3.6× into 13.8-second L0 stalls."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
 publishDate = "2026-05-09T12:00:00+05:30"
