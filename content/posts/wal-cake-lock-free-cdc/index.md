@@ -87,11 +87,13 @@ when someone introduces a "fast path" for one specific endpoint.
 busiest table on the database. Every row is `INSERT`ed once,
 `UPDATE`d once (the `processed = true` flip), and never read again.
 That churn outpaces the visibility map — HOT update or no — and the
-partial index on `processed = false` bloats with dead tuples. The
-unprocessed-index `idx_scan` collapses as the planner falls back to
-seq scans. You write a cleanup `DELETE FROM outbox WHERE processed
-AND created_at < now() - '1 hour'` cron and it generates more WAL
-than the original inserts.
+partial index on `processed = false` bloats with dead tuples. As the
+index gets multi-GB and dead-tuple-heavy, the planner starts skipping
+it and falling back to seq scans on the table; the
+`pg_stat_user_indexes.idx_scan` counter for the partial index plateaus
+while `seq_scan` on the table climbs. You write a cleanup
+`DELETE FROM outbox WHERE processed AND created_at < now() - '1 hour'`
+cron and it generates more WAL than the original inserts.
 
 **Failure 3: JSON-on-S3 is unqueryable.** Athena
 [charges $5 per TB scanned](https://aws.amazon.com/athena/pricing/),

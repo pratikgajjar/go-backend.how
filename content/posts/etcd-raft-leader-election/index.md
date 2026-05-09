@@ -134,10 +134,11 @@ send" outputs.
 `Tick`, `Step`, `Propose` are pure functions of the input plus
 local state. The library is intentionally deterministic so the
 [interaction-driven tests](https://github.com/etcd-io/raft/blob/main/interaction_test.go)
-can replay sequences and the [TLA+ trace
-validation](https://github.com/etcd-io/raft/blob/main/tla/raft.tla) can
-check refinement. This is the same trick TigerBeetle uses for
-[deterministic
+can replay sequences and the [TLA+ trace validation
+machinery](https://github.com/etcd-io/raft/blob/main/tla/Traceetcdraft.tla)
+(model in `etcdraft.tla`, trace harness in `Traceetcdraft.tla`) can
+check refinement against real Go runs. This is the same trick
+TigerBeetle uses for [deterministic
 simulation](https://backend.how/posts/the-tiger-style/) — separate
 "decide what to do" from "actually do it" so tests can fast-forward
 time.
