@@ -254,13 +254,14 @@ GetScanItems(IndexScanDesc scan, Datum value)
 }
 ```
 
-There are three calls of substance. `HnswGetMetaPageInfo` reads block
-0 to find the entry point's TID and the index's `M`.
+Three functions do the substantive work. `HnswGetMetaPageInfo` reads
+block 0 to find the entry point's TID and the index's `M`.
 `HnswEntryCandidate` reads that entry point's tuple, computes
-distance, and wraps it in a search candidate. The two `HnswSearchLayer`
-calls are the entire HNSW search algorithm: `entryPoint->level` calls
-with `ef = 1` walking down the layers, then one final call at layer
-0 with `ef = hnsw_ef_search`.
+distance, and wraps it in a search candidate. `HnswSearchLayer` is
+the actual HNSW algorithm and gets called from two sites here:
+`entryPoint->level` invocations with `ef = 1` walking down the
+upper layers, then one final invocation at layer 0 with
+`ef = hnsw_ef_search`.
 
 If you've read the
 [paper](https://arxiv.org/pdf/1603.09320v4.pdf), `GetScanItems` is
