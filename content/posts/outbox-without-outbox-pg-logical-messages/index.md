@@ -58,7 +58,7 @@ func CreateUser(ctx context.Context, u User) error {
 }
 ```
 
-It looks fine. It is not fine. This 4 lines have **at least three**
+It looks fine. It is not fine. These 4 lines hide **at least three**
 distinct failure modes that ship to production every week somewhere on
 the internet:
 
