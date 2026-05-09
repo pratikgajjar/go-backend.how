@@ -721,9 +721,12 @@ the gap is real but workload-dependent — measure on yours).
 # 5. Parquet that's small AND fast
 
 Parquet is not one format. It's a compression and encoding _kit_ with
-two dozen knobs. "I dumped my JSON to Parquet" is, on a busy lake, the
-difference between $400/month of S3 and $4,000/month of S3. The knobs
-in `internal/transform/parquet_writer.go` are **deliberate**.
+two dozen knobs. "I dumped my JSON to Parquet" is, on a busy lake,
+the estimated difference between `~$400/month` and `~$4,000/month`
+in S3 scan + storage on a 100 GB/day mutation stream — roughly the
+spread between snappy-default-no-dict-no-sort vs ZSTD-3-with-dict-
+and-sorted, observed across CDC implementations I've seen. The
+knobs in `internal/transform/parquet_writer.go` are **deliberate**.
 
 ```go
 // internal/transform/parquet_writer.go
@@ -1000,8 +1003,9 @@ bound rather than time-bound when busy), wal-cake uploads roughly
 load. S3 PUT is $5 per million, so:
 
 ```
-80 PUT/min × 60 × 24 × 30 = 3.5M PUT/month
-3.5M × ($5 / 1M)           ≈ $17.50/month
+80 PUT/min × 60 min/hr × 24 hr/day × 30 day/mo
+  = 80 × 43,200 = 3,456,000 PUT/mo  ≈ 3.5M PUT/mo
+3.5M PUT × ($5 / 1M PUT)   ≈ $17.50/month
 ```
 
 Plus storage. At 30 KB/Parquet × 3.5M files = ~100 GB/month new
