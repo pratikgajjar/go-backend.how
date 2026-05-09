@@ -1095,9 +1095,10 @@ while.
   ```
 
   Five-second buckets of "how many emits happened on this Postgres."
-  Apt-installed Postgres builds export the symbol; for from-source
-  builds you may need to install `postgresql-server-dev-17` for the
-  debug info.
+  apt-installed Postgres binaries are stripped; the
+  [PGDG `-dbgsym` package](https://wiki.postgresql.org/wiki/Apt) ships
+  the symbols separately (e.g. `apt install postgresql-17-dbgsym`).
+  Without it, the uprobe fails with `Could not resolve symbol`.
 - **What I would not change:** the choice of `pgoutput` over
   `wal2json`. `pgoutput` is in-tree, ships with every Postgres,
   needs no extension install, and the protocol is stable since

@@ -590,7 +590,7 @@ distributed transaction recovery infrastructure (the
 shards in an inconsistent state until recovery runs. The git log
 includes commits like `d3330fdfe` ("Shard move in block_writes mode
 fails with idle_in_transaction_session_timeout on metadata workers
-(#8484)") that hint at the kind of edge cases that show up in this
+(#8484)") that hint at the type of edge cases that show up in this
 layer. Distributed transaction handling is where Citus' bug surface
 is highest — not the planner, the executor.
 
