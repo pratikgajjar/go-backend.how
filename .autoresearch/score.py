@@ -741,7 +741,7 @@ def http_not_https_defects(body: str) -> int:
 
 
 DUPE_WORD_RE = re.compile(
-    r"(?<![\w/])\b(\w{2,})\s+\1\b(?!\w)", re.IGNORECASE
+    r"(?<![\w/])\b(\w{2,})[ \t]+\1\b(?!\w)", re.IGNORECASE
 )
 # words that are legitimately repeatable
 DUPE_OK = {"that", "had", "the"}  # adjusted below

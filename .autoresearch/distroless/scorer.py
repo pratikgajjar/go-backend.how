@@ -570,6 +570,13 @@ def main() -> int:
     cats["img_no_alt"] = img_no_alt_defects(body)
     cats["long_code_lines"] = long_code_line_defects(body)
     cats["math_off"] = math_off_defects(body)
+    cats["heading_skip"] = heading_skip_defects(body)
+    cats["footnote_balance"] = footnote_balance_defects(body)
+    cats["fence_balance"] = fence_balance_defects(body)
+    if os.environ.get("SCORE_LIVE_URLS"):
+        cats["url_live"] = url_live_defects(body)
+    else:
+        cats["url_live"] = 0
 
     weights = {
         "build_warnings": 1,
@@ -590,6 +597,10 @@ def main() -> int:
         "img_no_alt": 2,
         "long_code_lines": 1,
         "math_off": 4,
+        "heading_skip": 4,
+        "footnote_balance": 3,
+        "fence_balance": 5,
+        "url_live": 3,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
