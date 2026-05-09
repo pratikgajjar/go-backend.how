@@ -374,12 +374,18 @@ replConn, err := pgconn.Connect(ctx, replUrl)
 ```
 
 `?replication=database` is the magic suffix. Without it, Postgres
-gives you a normal connection that cannot run `START_REPLICATION`.
-With it, you get a replication-aware connection that *only* speaks
-the streaming-replication subprotocol. So OwlPost actually opens
-**two** connections — `replConn` for the WAL stream, `queryConn` for
-the boring `SELECT EXISTS(SELECT 1 FROM pg_replication_slots ...)`
-checks.
+hands you a normal connection that cannot run `START_REPLICATION` or
+`CREATE_REPLICATION_SLOT`. With it, the connection enters
+replication mode (it can still run regular SQL because we used
+`replication=database` rather than `replication=true`). So why does
+factlib open **two** connections? Once you fire `START_REPLICATION`
+on a connection, that connection is dedicated to the streaming
+sub-protocol — receiving CopyData frames forever — and can no
+longer be used for regular queries. The cleanest fix is to keep the
+two responsibilities on separate sockets: `replConn` runs
+`START_REPLICATION` and stays in stream-receive mode; `queryConn`
+handles the boring `SELECT EXISTS(SELECT 1 FROM pg_replication_slots ...)`
+bookkeeping.
 
 ## Setting up the slot
 
