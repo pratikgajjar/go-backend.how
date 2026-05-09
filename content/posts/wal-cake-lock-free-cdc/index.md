@@ -759,7 +759,7 @@ Each line is a tradeoff. Walked one by one:
 
 | Setting | Choice | Why |
 |---|---|---|
-| Codec | ZSTD level 3 | Sweet spot for CDC payloads. ~3× faster compress than gzip; ~10–15% smaller than snappy at level 3. Higher levels (10+) add minutes per file for single-digit-percent gains. |
+| Codec | ZSTD level 3 | Sweet spot for CDC payloads. ~3× faster compress than gzip; ~10–15% smaller than snappy at level 3. Higher levels (10+) trade order-of-magnitude more CPU for single-digit-percent size gains. |
 | Dict for `table`, `operation` | yes | Both have low cardinality (10s of tables, 4 ops). Dict cuts those columns ~90%. |
 | Dict default | OFF | Avoids overhead for high-cardinality JSON/timestamp/LSN columns where dict would just bloat the file. |
 | `timestamp` encoding | DELTA_BINARY_PACKED | Microsecond timestamps are monotonic in WAL order. DELTA_BINARY_PACKED stores `t[0]`, then `(t[i] - t[i-1])` packed at the minimum bit-width — typically 1–2 bytes/row instead of 8. |

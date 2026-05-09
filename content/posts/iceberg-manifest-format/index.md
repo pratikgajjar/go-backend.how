@@ -165,7 +165,8 @@ v<N>-<uuid>.metadata.json            ← table definition
 snap-<snapid>-<attempt>-<uuid>.avro  ← manifest list
         │  one Avro record per manifest
         ▼
-<commit_uuid>-m0.avro  …  -mN.avro   ← manifests (data + delete)
+<commit_uuid>-m0.avro  …  -mN.avro   ← manifests; each one is
+        │                              either data OR delete, not both
         │  one Avro record per data/delete file
         ▼
 data/.../part-<uuid>.parquet         ← actual rows

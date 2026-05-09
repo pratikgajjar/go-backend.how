@@ -717,8 +717,9 @@ software trap into kernel-space.)
 
 # Stretch — repro snippet
 
-If you have a working Citus cluster, this 50-line bash + SQL
-reproduces the four planner paths on a fresh schema. No fixtures,
+If you have a working Citus cluster, this ~40-line bash + SQL
+snippet (37 lines of body, verified by `wc -l`) reproduces the four
+planner paths on a fresh schema. No fixtures,
 just `createdb citus_demo` first.
 
 ```bash

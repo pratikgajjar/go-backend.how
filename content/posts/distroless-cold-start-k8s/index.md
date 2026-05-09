@@ -377,7 +377,7 @@ Three observations the trace makes obvious:
 
 1. **The Go runtime allocates 64 MiB of address space immediately** — the `mmap(NULL, 67108864, PROT_NONE)` is the heap arena. This is virtual reservation, not RSS — it does not affect cold-start time, but it does mean Go containers look bigger than they are in `top`.
 2. **The CA-bundle read happens lazily** at first `tls.Dial` — not at boot. If you're on scratch and forgot to ship a CA bundle, the bug doesn't appear until your first HTTPS call. The error is `x509: certificate signed by unknown authority`. Distroless includes the bundle at the canonical Linux path, so `crypto/x509` finds it without env-var gymnastics.
-3. **`time.LoadLocation("Asia/Kolkata")` opens `/usr/share/zoneinfo/Asia/Kolkata`**. On scratch that file does not exist; Go falls back to the embedded `tzdata` package only if you imported `time/tzdata` (which adds 450 KB to the binary). Distroless ships the OS zoneinfo so you don't have to.
+3. **`time.LoadLocation("Asia/Kolkata")` opens `/usr/share/zoneinfo/Asia/Kolkata`**. On scratch that file does not exist; Go falls back to the embedded `tzdata` package only if you imported `time/tzdata` (which adds 448 KB to the binary, measured: 1,638,562 → 2,097,314 B on Go 1.26 arm64-linux). Distroless ships the OS zoneinfo so you don't have to.
 
 These three are the "scratch surprises" that bite payments services when one engineer in Bangalore opens an OutboxItem, calls `time.LoadLocation`, and the test pod returns HTTP 500 in the staging cluster.
 
@@ -429,7 +429,9 @@ It produces the boot-time table above on any arm64 Mac with podman or Docker Des
 
 Pick a base, accept the holes:
 
-**Scratch breaks anything that needs `/etc`**. `time.LoadLocation` (no zoneinfo), `net.LookupHost` (Go's pure resolver works, but `nsswitch.conf` parsing returns "file not found" warnings unless you `import _ "time/tzdata"` and accept Go's `netgo` build tag). [`os/user`](https://pkg.go.dev/os/user) `Current()` returns ENOENT because there's no `/etc/passwd`. CA validation needs you to embed certs into the binary (`go:embed` works) or set `SSL_CERT_DIR`/`SSL_CERT_FILE`.
+**Scratch breaks anything that needs `/etc`** or `/usr/share`. `time.LoadLocation` (no zoneinfo) — fixed by `import _ "time/tzdata"` which embeds the Olson DB into the binary at a measured cost of `2,097,314 - 1,638,562 = 458,752 B ≈ 450 KB`. `net.LookupHost` (Go's pure-Go resolver under `CGO_ENABLED=0` reads `/etc/nsswitch.conf`; with no file it falls back to its hardcoded ordering — works, with a `nsswitch.conf` parse warning) — the `netgo` [build tag][netgo] forces this same resolver even with CGO. [`os/user`](https://pkg.go.dev/os/user) `Current()` returns ENOENT because there's no `/etc/passwd`. CA validation needs you to embed certs into the binary (`go:embed` works) or set `SSL_CERT_DIR`/`SSL_CERT_FILE` at runtime.
+
+[netgo]: https://pkg.go.dev/net#hdr-Name_Resolution
 
 **Distroless breaks anything that needs a shell**. `kubectl exec -- sh` returns `OCI runtime exec failed: exec failed: unable to start container process: exec: "sh": executable file not found in $PATH`. You can `kubectl debug --image=busybox` to share namespaces with the pod, but that adds a layer of indirection your incident-response runbook needs to teach. Distroless also pins specific versions of zoneinfo / CAs at image-build time — the first day someone needs to fix CA-cert pinning urgently (e.g., a new Let's Encrypt root rolls out), the SLA window for pushing a new image is "however long Google's distroless rebuild takes." You don't `apk upgrade ca-certificates` on distroless.
 
@@ -474,7 +476,7 @@ Three changes I'd make to a real platform team's container baseline.
 | Attack surface (rough)                | min     | min++   | min × 8    |
 
 ¹ unless you import `crypto/tls` with embedded certs or set `SSL_CERT_FILE`.
-² unless you `import _ "time/tzdata"` (+450 KB to the binary).
+² unless you `import _ "time/tzdata"` (+448 KB measured on Go 1.26 arm64-linux: 1,638,562 → 2,097,314 B).
 ³ Google rebuilds distroless on its own [release cadence][grcadence], driven by upstream Debian package updates rather than a fixed weekly clock.
 
 [grcadence]: https://github.com/GoogleContainerTools/distroless/blob/main/RELEASES.md

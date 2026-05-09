@@ -787,11 +787,13 @@ pgvector's authors made the right call at every step. The 800-line
 algorithmic core that I walked above is an exact transcription of a
 published paper, with the smallest possible Postgres adaptation
 layer around it. That choice — read the paper, copy it, do not
-embellish — is why this extension was production-ready at v0.4 and is
-still production-ready at v0.8. The changelog between those versions
-is a lesson in restrained improvement: parallel builds, half-precision
-support, iterative scan, binary quantization. Each is a paper-grounded
-addition, not a refactor.
+embellish — is why HNSW arrived production-shaped in v0.5 (the
+release that introduced it, August 2023, per the
+[CHANGELOG](https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md))
+and is still production-ready at v0.8. The intervening releases are
+a lesson in restrained improvement: parallel builds (0.6),
+half-precision and binary types (0.7), iterative scan (0.8). Each is
+a paper-grounded addition, not a refactor.
 
 If there is one architectural decision worth lifting from this code
 and applying elsewhere, it is the **on-page graph layout**. Most

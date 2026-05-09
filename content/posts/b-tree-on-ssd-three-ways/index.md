@@ -293,8 +293,12 @@ The single-writer constraint is encoded at
 [`db.go:1143`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1143):
 
 ```go
-// bbolt/db.go (around line 1143)
+// bbolt/db.go — DB struct + meta panic comment (around line 1143)
+rwlock   sync.Mutex   // Allows only one writer at a time.
+
+// This should never be reached, because both meta1 and meta0 were validated
 // on mmap() and we do fsync() on every write.
+panic("bolt.DB.meta(): invalid meta pages")
 ```
 
 Writers serialize through `db.rwlock`. A long writer pauses *all*
@@ -311,8 +315,8 @@ fsyncing the WAL. From the architecture comment in
 ```go
 // pebble/internal/cache/cache.go (line 23)
 // Cache implements Pebble's sharded block cache. The Clock-PRO algorithm is
-// used for page replacement
-// (http://static.usenix.org/event/usenix05/tech/general/full_papers/jiang/jiang_html/html.html). In
+// used for page replacement.
+// In
 // order to provide better concurrency, 4 x NumCPUs shards are created, with
 // each shard being given 1/n of the target cache size. The Clock-PRO algorithm
 // is run independently on each shard.
@@ -376,7 +380,7 @@ false-positive rate ≈ 1%, so for a 5-level LSM you decompress ~1.05
 blocks per Get on average — but you *visit* every level. Each visit is
 a hash, a cache-line fetch, and a few atomics on the shard mutex.
 
-That's where my measured 5.4 µs p50 comes from. Section 5 derives it.
+That's where my measured[^bench] 5.4 µs p50 comes from. Section 5 derives it.
 
 # 5. Real numbers — same machine, same workload
 
@@ -444,7 +448,7 @@ you don't get more writes; LMDB only allows one in-flight writer.
 The Pebble read path is dominated by 1 memtable probe + ~5 bloom
 checks (`L0` plus L1..L4 active given a 20 MB on-disk size means most
 data ended up at L0/L1 after the single Flush) + ~1 block fetch.
-Napkin: `5 × ~200 ns/bloom + 1 × ~3 µs/decompress ≈ 4 µs ≈ measured`
+Napkin: `5 × ~200 ns/bloom + 1 × ~3 µs/decompress ≈ 4 µs ≈ measured[^bench]`
 for the p50. Once the workload spans more levels, the p99 grows
 linearly with `L`. That is the shape of LSM read amp.
 
@@ -472,7 +476,7 @@ default block size is 32 KiB
 ([sstable/options.go:147](https://github.com/cockroachdb/pebble/blob/master/sstable/options.go#L147))
 and these blocks compress catastrophically well. With genuinely random
 values (incompressible), the same workload produces roughly
-`46.4 / 1.0 = 46 MiB` of sstable + ~10% bloom + ~2% index = ~52 MiB.
+`46.4 / 1.0 ≈ 46.4 MiB` of sstable + ~10% bloom + ~2% index ≈ 52 MiB.
 **The 20 MB number is partly an artifact of constant values**; I'd not
 generalize it to "Pebble is always 4× smaller."
 
@@ -534,9 +538,9 @@ the Go ecosystem.
 
 The 73 K ops/s write number is at *bulk-load* speed (batched, no
 contention). Single-record `db.Update`s with sync hit ~5 K ops/s on
-the same machine — one fsync per tx. BoltDB has [`db.Batch()`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)
-to merge concurrent writers, but you've still got one fsync per
-batch.
+the same machine — one fsync per tx. BoltDB has [`db.Batch`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)
+to merge concurrent writers, but you've still got
+one fsync per batch.
 
 The file-size cost is the more painful one in production. With
 `FillPercent = 0.5`, your 100 GB of payload is a 200 GB file. Etcd
@@ -623,7 +627,7 @@ rather than `4 × NumCPUs`
 On a 64-core box you get 256 shards × 4 MiB minimum = 1 GiB of cache
 metadata floor *before* you store any blocks. That's a footgun for
 embedded users on big machines who don't want a 1 GB cache. Cost:
-one `Options.CacheShards` field, three lines in `NewWithShards`.
+one new `CacheShards` knob on `Options`, three lines in `NewWithShards`.
 
 ## 7.1 50-line reproducer
 
@@ -722,4 +726,4 @@ SSD for 5 years and they'll still be there. The differences are at
 the second-derivative — tail latency, operational ergonomics, file-
 size at scale. Pick the one whose second-derivative bothers you least.
 
-[^bench]: Numbers were gathered on 2026-05-09, M2 MacBook (8 perf+E cores), 16 GB RAM, APFS on internal SSD, Go 1.26.3. `cc` is Apple Clang 17 (`-O2`). The Pebble write count uses `pebble.NoSync` to be apples-to-apples with bbolt's per-tx (not per-op) fsync; LMDB uses `MDB_NOSYNC` plus one `mdb_env_sync(env, 1)` at end.
+[^bench]: Numbers were gathered on May 9, 2026 — M2 MacBook (8 perf+E cores), 16 GB RAM, APFS on internal SSD, Go 1.26.3. `cc` is Apple Clang 17 (`-O2`). The Pebble write count uses `pebble.NoSync` to be apples-to-apples with bbolt's per-tx (not per-op) fsync; LMDB uses `MDB_NOSYNC` plus one `mdb_env_sync(env, 1)` at end.

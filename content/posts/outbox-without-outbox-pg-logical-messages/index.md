@@ -78,14 +78,11 @@ the internet:
    takes 8 ms instead of 800 µs and you've still got problems #1 and #2.
 
 The bug is structural. There is no atomic operation that spans your
-relational database and your message broker. You cannot two-phase
-commit Kafka. (You technically can with KIP-98 transactional
-producers, but it's expensive, fragile, requires consumer-side
-`isolation.level=read_committed`, and most people don't actually
-configure it correctly. Ask me how I know.)
-
-The real fix is to make the event emission part of the *same* atomic
-write that the business data goes into. That's the outbox pattern.
+relational database and your message broker. (Kafka transactions per
+KIP-98 don't help here — they bound a producer's writes across Kafka
+topics, not across Kafka and Postgres.) The fix is to make event
+emission part of the *same* atomic write that the business data goes
+into. That's the outbox pattern.
 
 # 2. Why the canonical "outbox table" pattern is *almost* right
 
@@ -235,12 +232,11 @@ Read that twice. Three properties matter:
 
 > The WAL **is** the outbox.
 
-The function has been there since 9.6. Logical replication itself was
-GA in 10. The decoding-message support was specifically added so that
-applications could co-opt the WAL stream as a generic event bus, and
-then it sat unused for nearly a decade because every blog post about
-event-driven architecture continued to teach the table-and-poller
-recipe.
+The function has been there since 9.6 (logical replication itself
+went GA in 10). It was added specifically so applications could
+co-opt the WAL stream as a generic event bus, then sat unused for
+nearly a decade while every event-driven-architecture post kept
+teaching the table-and-poller recipe.
 
 # 4. How factlib emits
 
@@ -633,20 +629,13 @@ ID and `span_id` as parent. Sentry / Jaeger / Tempo stitches them
 into one waterfall.
 
 We get this for the cost of an extra **~95 B in the protobuf** and
-zero extra plumbing on the consumer side. The byte derivation:
-
-| field | encoding | bytes |
-|---|---|---:|
-| `trace_info` wrapper | tag(1) + length(1) | 2 |
-| `trace_id` (32-hex string) | tag(1) + len(1) + 32 | 34 |
-| `span_id` (16-hex string) | tag(1) + len(1) + 16 | 18 |
-| `metadata["parent_op"="http.request"]` | tag(1) + len(1) + key (1+1+9) + val (1+1+12) | 27 |
-| `metadata["is_sampled"="1"]` | tag(1) + len(1) + key (1+1+10) + val (1+1+1) | 17 |
-| **total** | | **98** |
-
-Vary `parent_op` and the total moves; for the kind of tracer-supplied
-op names (`db.query`, `http.request`, `kafka.publish`) the envelope
-is **80–120 B**. The WAL is a fully trace-aware transport at single-
+zero extra plumbing on the consumer side. Derivation: every protobuf
+field is tag (1 B for field numbers 1–15) + length-prefix (1 B for
+short strings) + payload, so a 32-hex `trace_id` costs 34 B, a
+16-hex `span_id` 18 B, the two metadata map entries `parent_op`
+("http.request") and `is_sampled` ("1") add 27 + 17, plus 2 B for
+the `trace_info` wrapper — 98 B for a typical http.request span.
+Vary `parent_op` and you land in the **80–120 B** envelope. Single-
 digit-percent overhead on a 500 B payload.
 
 # 7. Reliability proof — the LSN dance
@@ -1003,13 +992,10 @@ conversation. For the rest of us, factlib's emit ceiling is fine.
 
 ## Schemas that change often
 
-Protobuf evolution rules apply: add new optional fields, never
-re-use field numbers, never change types. You also need a registry
-discipline so consumers in other languages know what wire format to
-expect. We use a shared `proto/` repo at FamPay; you could just as
-well use Buf Schema Registry or Confluent's. The point: factlib does
-not solve the schema-evolution problem, it just doesn't make it
-worse.
+Standard protobuf evolution rules apply (additive optional fields,
+never re-use field numbers, never change types) and you need a shared
+schema registry across consumer languages. factlib doesn't solve this
+problem, it just doesn't make it worse.
 
 ## Long Postgres transactions
 
@@ -1019,11 +1005,10 @@ second transaction blocks event delivery for 30 seconds. Same
 problem the outbox-table pattern has. The advice is the same: keep
 transactions short, hoist long-running work outside the transaction.
 
-Newer pgoutput protocols (`proto_version '2'`, added in Postgres 14;
-`proto_version '4'` adds two-phase commit support) can stream
-in-progress transactions, which would unblock long-runners. Switching
-factlib to v2 is on the deferred list — it requires care around
-rolled-back streamed messages on the consumer side.
+Newer pgoutput (`proto_version '2'`, added in PG 14) can stream
+in-progress transactions and would unblock long-runners; v4 (PG 16)
+adds two-phase commit. Switching factlib is on the deferred list
+— it needs care around rolled-back streamed messages.
 
 # 10. The Python client (and polyglot fan-in)
 
@@ -1213,7 +1198,6 @@ notice.
 
 ---
 
-*Colophon: factlib was built at FamPay and is in production for the
-events that move money. The killer line was committed on a Tuesday
-afternoon. The rest of the library is what you build around it
-when you decide to run it for real.*
+*Colophon: factlib is in production at FamPay. The killer line was
+one commit; the rest is what you build around it once you decide to
+run it for real.*
