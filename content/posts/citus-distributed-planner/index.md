@@ -644,8 +644,10 @@ worker. The git log
 includes commits like `d3330fdfe` ("Shard move in block_writes mode
 fails with idle_in_transaction_session_timeout on metadata workers
 (#8484)") that hint at the type of edge cases that show up in this
-layer. Distributed transaction handling is where Citus' bug surface
-is highest - not the planner, the executor.
+layer. Anecdotally — and I haven't measured this rigorously —
+distributed-transaction recovery is where the gnarliest issues
+land, more than the planner does, when something goes wrong in a
+multi-node Citus cluster.
 
 **Anything Postgres' planner sees but Citus' planner doesn't.**
 Citus runs `standard_planner` and uses _its_ restriction info. If a

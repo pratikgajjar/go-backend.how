@@ -20,7 +20,7 @@ Yet pushed to a `localhost:5005` registry and started with `podman run`, both im
 
 The smallest image isn't the fastest. The biggest one isn't the slowest. Image size is the wrong axis to argue on, and most "distroless vs scratch" posts you've read pick the wrong fight.
 
-> Cold-start on Kubernetes splits cleanly: image bytes dominate when you're cold-pulling (1.6–3 s for any of the three), and the container-runtime plumbing (namespace setup, snapshot creation, network bridge, kubelet's pull scheduler) dominates once the image is local (~200 ms here, regardless of base). The base-image *choice* moves wall-clock by tens of milliseconds either way. At 1000 pods, the math gets weirder.
+> Cold-start on Kubernetes splits cleanly: image bytes dominate when you're cold-pulling from a remote registry (we measured 1.87–2.99 s for the bare base images from `gcr.io` / `cgr.dev`), and the container-runtime plumbing (namespace setup, snapshot creation, network bridge, kubelet's pull scheduler) dominates once the image is local (~200 ms here, regardless of base). The base-image *choice* moves wall-clock by tens of milliseconds either way. At 1000 pods, the math gets weirder.
 
 This post takes a single 10 MB Go binary, builds it three ways, and reads the byte trail through the pull → mount → exec pipeline. Every number below was either pulled from a registry I queried or measured locally on `podman 5.6.0` running on an M3 MacBook Pro (Darwin arm64), with the test scripts pinned at the bottom.
 

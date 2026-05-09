@@ -70,15 +70,18 @@ two single-character flags), which means you pay `158 / 50 ≈ 3.2×`
 the IO you needed. That is the row-store tax before any CPU work.
 
 The CPU tax is bigger. Postgres' executor follows the Volcano model:
-every operator implements `ExecProcNode` and pulls one tuple from
-its child via a function-pointer call. Q01's plan is `Sort →
-HashAggregate → SeqScan`, but Sort and HashAggregate are blocking —
-Sort consumes everything from below before yielding, HashAggregate
-consumes everything below before yielding the (very small) group
-set. The 60M-row hot path therefore boils down to two per-tuple
-indirections: HashAggregate calling SeqScan via its function
-pointer, plus the internal `heap_getnext` → tuple-deform call. With
-60M rows, that is `60_000_000 × 2 = 120_000_000` indirect calls.
+every operator implements an ExecProcNode-style routine (see
+[ExecProcNode in `src/backend/executor/execProcnode.c`](https://github.com/postgres/postgres/blob/REL_17_STABLE/src/backend/executor/execProcnode.c))
+and pulls one tuple from its child via a function-pointer call.
+Q01's plan is Sort → HashAggregate → SeqScan, but Sort and
+HashAggregate are blocking — Sort consumes everything from below
+before yielding, HashAggregate consumes everything below before
+yielding the (very small) group set. The 60M-row hot path therefore
+boils down to two per-tuple indirections: HashAggregate calling
+SeqScan via its function pointer, plus the internal heap-tuple
+fetch that calls back through the same indirection on the table
+AM API. With 60M rows, that is `60_000_000 × 2 = 120_000_000`
+indirect calls.
 On modern Apple Silicon a mispredicted indirect call costs roughly
 five nanoseconds end-to-end (Firestorm/Avalanche/Everest cores
 quote a 13-cycle branch-mispredict penalty per

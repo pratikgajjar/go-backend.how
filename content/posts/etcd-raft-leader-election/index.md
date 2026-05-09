@@ -387,8 +387,9 @@ func (l *raftLog) isUpToDate(their entryID) bool {
 Two lines. In return: an under-replicated follower can never become
 leader and silently drop committed entries. A surprising number of the
 "subtle Raft bugs" you'll read about — particularly around log
-overwrite during view change — descend from getting this check wrong
-or weakening it under the wrong invariant.
+overwrite when a new leader takes over from a stale one — descend
+from getting this check wrong or weakening it under the wrong
+invariant.
 
 ## Step 5: the candidate tallies, becomes leader
 
