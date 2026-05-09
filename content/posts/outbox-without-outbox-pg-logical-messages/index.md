@@ -237,10 +237,9 @@ recipe.
 
 # 4. How factlib emits
 
-factlib is the producer half. It's about 200 lines of Go that gives
-you an ergonomic API on top of `pg_logical_emit_message`. Here is the
-hot path, lifted verbatim from
-[`pkg/outbox/producer/producer.go`](https://github.com/fampay-inc/factlib/blob/main/pkg/outbox/producer/producer.go):
+factlib's producer is the smaller half: `pkg/outbox/producer/producer.go`
+is **99 lines** end-to-end (`wc -l`), and the hot-path `Emit()`
+function is the bottom 50. Lifted verbatim:
 
 ```go
 // pkg/outbox/producer/producer.go
@@ -343,10 +342,12 @@ latency := time.Since(start).Seconds()
 metrics.EventProcessingLatency.WithLabelValues(...).Observe(latency)
 ```
 
-In production the histogram for `factlib_event_processing_seconds`
-sits comfortably between **120 µs and 400 µs p50** for events under
-1 KB. The marshal is a few µs; the rest is the round-trip to Postgres
-plus the WAL append. We will come back to the byte math in §8.
+The histogram is `factlib_event_processing_seconds`. The byte math
+in §8 derives an expected envelope of **80–250 µs p50** for sub-1KB
+events on a same-VPC pgx connection — most of which is the network
+round-trip, not the WAL append. We have not yet collected production
+percentiles to ship publicly, so resist the urge to read absolute
+numbers off this paragraph.
 
 # 5. How OwlPost consumes
 
@@ -819,25 +820,46 @@ on top of the business transaction. Cost components:
   parameter; pgx copies it once into the network buffer. For a 500 B
   payload, ~hundreds of nanoseconds.
 - **WAL append.** A logical-decoding message produces a single
-  `XLOG_LOGICAL_MESSAGE` WAL record. The record header is 24 B; the
-  `xl_logical_message` body adds ~16 B; then your prefix (a few
-  bytes), then the payload. For a 500 B payload with prefix
-  `"payments-user"` (13 B):
+  `XLOG_LOGICAL_MESSAGE` WAL record. The structural overhead is
+  fixed and easy to compute from the Postgres source headers
+  ([`xlogrecord.h`](https://github.com/postgres/postgres/blob/REL_17_0/src/include/access/xlogrecord.h),
+  [`replication/message.h`](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/message.h)):
+
+  - `SizeOfXLogRecord` = `offsetof(XLogRecord, xl_crc) + sizeof(pg_crc32c)`
+    = `4 + 4 + 8 + 1 + 1 + 2 (pad) + 4` = **24 B** (per-record header).
+  - `XLogRecordDataHeaderLong` = **5 B** (used because our payload >255 B).
+  - `SizeOfLogicalMessage` = `offsetof(xl_logical_message, message)`
+    = `4 (Oid) + 1 (bool) + 3 (pad) + 8 (Size prefix_size) + 8 (Size message_size)`
+    = **24 B**.
+  - The prefix is stored inline in the `message[]` flexible array, NUL-
+    terminated; for the literal `"payments-user"` that is `13 + 1 = 14 B`.
+  - The protobuf payload itself: **500 B** (worked example).
 
   ```txt
-  WAL record header        24 B
-  xl_logical_message       16 B
-  prefix len + bytes        4 + 13 = 17 B
-  content len + bytes       8 + 500 = 508 B
-  ────────────────────────────────────
-  ≈ 565 B per emit
+  XLogRecord header               24 B
+  XLogRecordDataHeaderLong         5 B
+  xl_logical_message header       24 B
+  prefix (NUL-terminated)         14 B   ("payments-user\0")
+  payload                        500 B
+  ─────────────────────────────────────
+  total                          567 B per emit
   ```
 
-  Throw in the COMMIT record (~24 B). Round up to 600 B.
+  Plus the surrounding `xl_xact_commit` record at COMMIT, which
+  the same headers put at `24 (XLogRecord) + 5 (data header) + 8
+  (TimestampTz xact_time)` = **37 B** in its minimal form. Round
+  the per-event amortised WAL footprint up to **~600 B**.
 
-- **Total round-trip.** Production observed p50 is **~150 µs** when
-  the database is on the same VPC. The bottleneck is network RTT,
-  not Postgres CPU.
+- **Total round-trip.** We have not run the rig that would let us
+  publish a measured p50 for `Emit()` honestly, so derive it from
+  parts: a localhost pgx round-trip is `~80 µs` (one TCP write +
+  read on loopback), the protobuf marshal of a 500 B event is
+  `~5 µs` on Apple Silicon (`google.golang.org/protobuf/proto.Marshal`
+  microbench), and `pg_logical_emit_message` itself is a single C
+  function call + WAL append. The expected envelope is
+  **80–250 µs p50** on a same-VPC connection. Anything outside that
+  band is either network or contention. We will measure properly in
+  a follow-up.
 
 At 10K events/sec:
 
