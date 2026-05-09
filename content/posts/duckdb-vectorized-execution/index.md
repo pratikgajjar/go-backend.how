@@ -96,10 +96,11 @@ for (idx_t i = 0; i < 2048; i++) {
 
 That is one branch per 2048 rows for the loop test, not 60 million. A
 modern compiler will auto-vectorize it to NEON or AVX. The
-[Boncz–Zukowski–Manegold paper "Vectorized Execution"](https://www.cidrdb.org/cidr2005/papers/P19.pdf)
-(CIDR 2005) is the academic ancestor; DuckDB is an in-process,
-single-binary implementation of the same idea, and the founders are
-the same Boncz lab from CWI Amsterdam.
+[CIDR 2005 paper "MonetDB/X100: Hyper-Pipelining Query Execution"
+by Boncz, Zukowski, and Nes](https://www.cidrdb.org/cidr2005/papers/P19.pdf)
+is the academic ancestor; DuckDB is an in-process, single-binary
+implementation of the same idea, and its founders Mark Raasveldt and
+Hannes Mühleisen are from the same CWI Amsterdam database group.
 
 # The architecture in 200 words
 
