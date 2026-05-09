@@ -24,8 +24,9 @@ as if it were an external service: "the vector store." It isn't. It's
 an extension that compiles to one shared library and shares the same
 buffer cache, the same WAL, the same MVCC, and the same vacuum as the
 rest of your database. There is no separate storage engine. There is
-no network hop. The "vector index" is just a B-tree-shaped reltype
-that happens to walk a graph instead of comparing keys.
+no network hop. The "vector index" plugs into Postgres' generic
+index access-method interface (`IndexAmRoutine`) the same way B-tree
+and GIN do — it just walks a graph instead of comparing keys.
 
 This post is a code-archaeology walk through the part that does the
 actual approximate-nearest-neighbour work: the HNSW (Hierarchical

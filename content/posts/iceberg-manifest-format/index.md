@@ -729,8 +729,11 @@ Netflix-shaped batch analytics on S3, [open-sourced in December
 constraints are starting to show under streaming, OLTP-shaped, and
 high-cardinality workloads that the original design did not target.
 The format keeps iterating; v3 was marked complete in May 2025 and
-v4 is under active development. The pointer-and-tree architecture
-is not going anywhere — but the leaf format almost certainly is.
+v4 is under active development — see
+[`API, Core: Introduce foundational types for V4 manifest support`](https://github.com/apache/iceberg/commit/ee1878f3d)
+for the manifest-side foundations being laid. The pointer-and-tree
+architecture is not going anywhere — but the leaf format almost
+certainly is.
 
 ---
 

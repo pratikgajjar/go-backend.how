@@ -152,9 +152,8 @@ the first time the cron host loses its lease[^bench].
 
 `pg_partman` is the cron entry, hardened. It owns two configuration
 tables ([`sql/tables/tables.sql`][tables-sql]) and a background worker
-([`src/pg_partman_bgw.c`][bgw-c]) and several thousand lines of
-PL/pgSQL (in the range from 6,400 to 6,700, see above) that do the
-boring DDL safely. The interesting question isn't "what does
+([`src/pg_partman_bgw.c`][bgw-c]) and ~7,650 lines of PL/pgSQL
+(see §2 for the breakdown) that do the boring DDL safely. The interesting question isn't "what does
 it do," it is "what does the interaction with the planner look like
 when it's done." That's what sections 4–6 are for.
 
