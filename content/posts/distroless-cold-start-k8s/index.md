@@ -316,7 +316,7 @@ The measured 17–56 ms internal boot is worth decomposing. With the actual `boo
 | `http.ListenAndServe` → `socket` + dual-stack `bind` + `listen` | ~5–10 ms |
 | First `accept` + handler dispatch + JSON encode        | ~2–5 ms        |
 
-Math: `5–10 + 0.5 + 5–10 + 2–5 ≈ 12–25 ms`, which brackets the **median** 17–32 ms band (the 56 ms outlier likely sat in a cold-VFS case where the listener bind paid extra page-cache misses). The big rocks are everything *before* `main()` (kernel + Go runtime init that needs `perf record` to sub-divide), and the `ListenAndServe` plumbing that has to bind both `[::]:8080` and `[::ffff:127.0.0.1]:8080` and probe `/proc/sys/net/core/somaxconn`. The user-code line is 0.5 ms — small enough to ignore in cold-start budgets.
+Math: `5–10 + 0.5 + 5–10 + 2–5 ≈ 12–25 ms`, which brackets the **median** 17–32 ms band (the 56 ms outlier likely sat in a cold-VFS case where the listener bind paid extra page-cache misses). The big rocks are everything *before* `main()` (kernel + Go runtime init that needs `perf record` to sub-divide), and the `ListenAndServe` plumbing — Go's net package opens a couple of dual-stack probe sockets (the `bind(...port=0...)` calls in the strace), reads `/proc/sys/net/core/somaxconn`, then binds the real `[::]:8080`. The user-code line is 0.5 ms — small enough to ignore in cold-start budgets.
 
 ## Image-pull at scale-from-zero
 

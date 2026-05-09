@@ -208,9 +208,11 @@ All runs were on a Mac M3 Max (12-core, 36 GB), Go 1.26.3, [`badger v4.9.1`](htt
 | 5M  × 1 KB                 | default      | 245,369        | 13.8 s    | 20.4 s        |
 | 5M  × 1 KB (varied vals)   | default      |  97,612        | 37.7 s    | 51.2 s        |
 | 5M  × 1 KB                 | mem=256 MB, zstall=30, comp=8 | 590,355 | 0 s | 8.5 s |
+| 5M  × 1 KB (varied vals)   | mem=256 MB, zstall=30, comp=8 | 325,538 | 0 s | 15.4 s |
 | 5M  × 1 KB                 | default + ValueThreshold=64    | 525,909 | 0 s | 9.5 s |
+| 5M  × 1 KB (varied vals)   | default + ValueThreshold=64    | 286,230 | 0 s | 17.5 s |
 
-The two **varied-values** rows are the same harness with the value buffer refilled by `rand.Read` on every iteration (block compression can't collapse identical entries). On 5M × 1 KB the throughput drops `245 / 98 ≈ 2.5×` and stall time jumps `13.8 s → 37.7 s`. The remaining tuned and `ValueThreshold=64` rows are still in identical-values mode; tuning the LSM goes back to a pure scheduling exercise once compression hides the bytes.
+The **varied-values** rows are the same harness with the value buffer refilled by `rand.Read` on every iteration (block compression can't collapse identical entries). On 5M × 1 KB default the throughput drops `245 / 98 ≈ 2.5×` and stall time jumps `13.8 s → 37.7 s`. The tuned + LSM and `ValueThreshold=64` rows still hit zero stalls under varied values, but throughput drops `590 / 326 ≈ 1.8×` and `526 / 286 ≈ 1.8×` respectively. Tuning the scheduler keeps the *stall* problem out of the way; the throughput hit is pure compression-savings vanishing.
 
 Three observations the table doesn't explain on its own:
 

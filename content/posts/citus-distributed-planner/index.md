@@ -593,12 +593,17 @@ magnitude faster: 32 s / 250 μs ≈ 1.3 × 105× at the optimistic end,
 co-locating tables on the join column matters more than any other
 tuning knob.
 
-The point of the planner is to keep you in the cheap path as much as
-possible. Single-table dist-key-equality queries stay in path 1
-(fast-path). Co-located multi-table joins stay in path 2 (router) -
-fast-path is gated to one range table by `FastPathRouterQuery`'s
-`numFromRels != 1` check, so adding a second table always pulls you
-out of path 1. Reference tables collapse path 4 into path 3.
+The point of the planner is to keep you in the cheapest path. The
+order of cheapness top-to-bottom: fast-path router (skips
+`standard_planner` entirely, ~250-1100 µs total — but only on
+single-table dist-key-equality queries; the
+`numFromRels != 1` check in `FastPathRouterQuery` rules out any
+join), then `CreateSingleTaskRouterSelectPlan` for co-located
+SELECTs that prune to one shard on one worker, then multi-shard
+modify via the router, then the multi-shard SELECT path (logical
+planner with aggregate split), and finally repartition. Reference
+tables collapse the repartition case into the multi-shard SELECT
+case (since they live on every worker, no shuffle is needed).
 Recursive planning collapses non-pushdownable subqueries into an
 intermediate result that then behaves like a reference table. Every
 layer is "how do I avoid the shuffle."

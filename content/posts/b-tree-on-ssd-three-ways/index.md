@@ -489,7 +489,8 @@ at [`db.go:mmapSize`](https://github.com/etcd-io/bbolt/blob/main/db.go#L519)
 (the file grows 1×, 2×, 4×, ... in powers of two until 1 GiB, then
 1 GiB chunks) plus branch-page overhead and you reach the measured
 96 MiB. **Set `tx.Bucket("kv").FillPercent = 0.95` for sequential
-inserts and the file shrinks to ~45 MiB**, matching LMDB.
+inserts and the file is 48 MiB**[^bench] (measured) — close to LMDB's
+42 MiB.
 
 For Pebble: `42.7 MiB` of payload, but values are constant `0xAB` ×
 200 bytes. snappy compresses that to a few percent - Pebble's

@@ -295,10 +295,7 @@ Types.NestedField SEQUENCE_NUMBER =
         "Sequence number when the manifest was added");
 ```
 
-IDs 500–520 belong to the manifest-list record (the
-"next ID to assign" comment at the bottom of `ManifestFile.java`
-reads `// next ID to assign: 521`, so 521 is the next free slot).
-Within each row the
+IDs 500–520 belong to the manifest-list record. Within each row the
 `PARTITION_SUMMARIES` (id 507) field carries one
 `field_summary` per partition column. A `field_summary` is exactly:
 
