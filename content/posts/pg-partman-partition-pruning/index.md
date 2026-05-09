@@ -609,13 +609,17 @@ trap in five minutes per partitioned table. Cost: bigger, but worth
 it — this is the type of regression that nobody catches in code review.
 
 **d. Variable BRIN range per child.** [BRIN's pages-per-range](https://www.postgresql.org/docs/current/brin.html#BRIN-INTRO)
-is set at index creation. `pg_partman` could parameterize it on the
-template table per child, choosing a smaller value for the most
-recent children (where queries are point-in-time and need finer
-ranges) and a larger value for older children (where queries are
-day-bounded and BRIN's coarseness is fine). The `template_table`
-mechanism in `pg_partman` already supports per-child storage parameters;
-this is one extra option. Cost: ~80 lines plus tests. The benefit:
+is set at index creation. `pg_partman` could choose it per child,
+using a smaller value (denser summary, more accurate skip) for the
+most recent children — where queries are point-in-time and need
+finer ranges — and a larger value (coarser summary, smaller index)
+for older children where queries are day-bounded and BRIN's
+coarseness is fine. Today the `template_table` mechanism applies
+the same index definition (including the BRIN `WITH (pages_per_range
+= ...)` clause, since `pg_get_indexdef` preserves it) to every child;
+varying per-child would require a per-child template or a callback
+hook in `inherit_template_properties.sql`. Cost: ~150 lines plus
+the inheritance-model change, not a one-knob toggle. Benefit:
 recent-data BRIN that actually accelerates "last N minutes" queries
 without exploding the BRIN size on cold partitions.
 
