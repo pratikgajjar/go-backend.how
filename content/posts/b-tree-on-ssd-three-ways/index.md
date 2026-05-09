@@ -552,7 +552,11 @@ one fsync per batch.
 
 The file-size cost is the more painful one in production. With
 `FillPercent = 0.5`, your 100 GB of payload is a 200 GB file. Etcd
-keeps `FillPercent = 0.9` for [its key-bound state](https://github.com/etcd-io/etcd/blob/main/server/storage/mvcc/kvstore.go).
+sets `bucket.FillPercent = 0.9` in
+[`server/storage/backend/batch_tx.go:161`](https://github.com/etcd-io/etcd/blob/main/server/storage/backend/batch_tx.go#L161)
+for its key-bound bucket (and again in `backend.go` for the per-batch
+bucket2seq writes), trading a marginally heavier per-tx split cost
+for a much smaller file.
 BoltDB has no compression, no level merge, no GC of ephemeral keys.
 If your workload has high churn, you fragment the file forever; the
 only fix is a [`compact`](https://github.com/etcd-io/bbolt/blob/main/compact.go)

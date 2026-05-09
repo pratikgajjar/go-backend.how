@@ -830,9 +830,9 @@ protocol that nobody can shave, so the field-measured gap is
 - [ScyllaDB engineering blog](https://www.scylladb.com/blog/) —
   ScyllaDB's running write-ups on the reactor model, scheduling, and IO.
   Search for posts tagged "reactor" or "shard-per-core".
-- [Glommio](https://github.com/DataDog/glommio) — Datadog's Rust port of
-  the Seastar architecture; a smaller, more readable code base if C++
-  isn't your first language.
+- [Glommio](https://github.com/DataDog/glommio) — Glauber Costa's
+  Seastar-shaped runtime in Rust (now developed at Datadog); a smaller,
+  more readable code base than Seastar if C++ isn't your first language.
 - [The Tiger Style](/posts/the-tiger-style/) — adjacent design
   discipline (TigerBeetle's), same philosophy: take the constraint
   seriously, and the performance follows.
