@@ -322,7 +322,7 @@ Math: `5–10 + 0.5 + 5–10 + 2–5 ≈ 12–25 ms`, which brackets the **media
 
 What people *actually* care about: HPA scales 1 → 1000 pods, the autoscaler triggers because traffic spiked, every node has to pull the image cold. Here's where the layer-count argument gets interesting.
 
-A node already running 5 distroless-based pods has all 13 base layers cached. Adding a 14th distroless pod with a different binary fetches just that single binary layer (≈3.98 MB). A node with 5 scratch pods of one binary, asked to schedule a 6th pod with a different binary, fetches the *full* 3.98 MB again — there's no shared base.
+A node already running any distroless-based pod has all 13 base layers in containerd's content-addressable cache. Pulling a *different* binary on top of distroless fetches only the new ~3.98 MB binary layer; the 13 base layers dedupe by SHA256. Scratch pods on the same node also share their *single-binary* layer with same-image pods but have nothing to dedupe across *different* binaries: each new binary is its own self-contained ~3.98 MB layer. So the per-new-binary cost is roughly equal between scratch and distroless (~3.98 MB each); the difference shows up only on the *first* binary that lands on a fresh node — distroless pays the 0.79 MB base once and gets it back as dedup credit for every subsequent binary.
 
 For a fleet with diverse binaries:
 
