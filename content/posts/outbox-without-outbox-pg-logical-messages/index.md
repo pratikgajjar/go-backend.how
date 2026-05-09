@@ -949,21 +949,12 @@ Postgres-specific.
 
 ## Ultra-high event rates (≥ 100K/sec)
 
-At those rates the WAL itself becomes your bottleneck — not because
-of the bytes, but because every emit is a synchronous network
-round-trip that has to land in WAL before the application thread can
-proceed. Possible mitigations:
-
-- **Batching.** Emit a single message that contains an array of
-  events. factlib doesn't expose this today; trivial extension.
-- **Move to a dedicated event store.** Kafka itself, EventStoreDB,
-  Pulsar. At that scale you're already operating Kafka, so the
-  argument against Kafka-as-store-of-record gets weaker.
-- **Partition writes.** Multiple producer DBs each emitting their
-  slice of the event stream.
-
-If you're operating a 100K/sec service, you've already had this
-conversation. For the rest of us, factlib's emit ceiling is fine.
+The bottleneck isn't bytes; it's that every emit is a synchronous
+round-trip that must land in WAL before the app thread proceeds.
+Mitigations: batched emit (one message with N inner events; factlib
+doesn't expose this yet — trivial extension), or move to a dedicated
+event store (Kafka, EventStoreDB, Pulsar). For the rest of us,
+factlib's emit ceiling is fine.
 
 ## Schemas that change often
 

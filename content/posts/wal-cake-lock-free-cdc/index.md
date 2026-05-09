@@ -597,9 +597,10 @@ budget expired, segment 1's events would be on the floor. The
 `confirmed_flush_lsn` on Postgres would be past them. They are gone.
 
 The walker fixes this. State is a `haxmap[int64, *Segment]` keyed by
-`StartIdx`. Workers mark segments `done = true` when `Process` returns
-nil. The walker only advances `readIdx` over segments where every
-predecessor is also `done`:
+`StartIdx`. Workers send the segment to `rb.ackSeg` after `Process`
+returns nil; the ack-pipeline goroutine consumes `ackSeg`, marks the
+segment `done = true`, and walks forward over contiguous-done
+segments only:
 
 ```go
 // internal/buffer/ring_buffer.go

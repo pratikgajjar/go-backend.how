@@ -546,8 +546,11 @@ constraint shape, easier ops in the Go ecosystem.
 ## 6.2 BoltDB - write throughput, file size, no compression
 
 The 73 K ops/s write number is at *bulk-load* speed (batched, no
-contention). Single-record `db.Update`s with sync hit ~5 K ops/s on
-the same machine - one fsync per tx. BoltDB has [`db.Batch`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)
+contention). Single-record `db.Update`s with sync collapse to
+**104 ops/s** on the same machine — measured with a tight 5,000-op
+loop, one fsync per tx, ≈ 9.6 ms per APFS commit.[^bench] BoltDB
+inherits whatever fsync latency the filesystem gives you; on a
+journaling FS like ext4 the same loop will hit a few thousand ops/s. BoltDB has [`db.Batch`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)
 to merge concurrent writers, but you've still got
 one fsync per batch.
 
