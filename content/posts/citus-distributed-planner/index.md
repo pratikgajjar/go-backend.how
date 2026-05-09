@@ -344,10 +344,12 @@ in the same colocation group; the actual error message lives in
 queries that reference non-colocated distributed tables" (visible
 under `client_min_messages = DEBUG2`). When colocation is satisfied
 but placements still don't intersect on a single node, the router
-falls through to the logical planner. If a table prunes to multiple shards — which happens for
-queries like `WHERE dist_key IN (1, 2, 3)` where the three values
-hash to three different shards — and the query is a `SELECT`, that
-also falls through to the logical planner. Multi-shard `UPDATE` /
+falls through to the logical planner.
+
+If a table prunes to multiple shards — which happens for queries
+like `WHERE dist_key IN (1, 2, 3)` where the three values hash to
+three different shards — and the query is a `SELECT`, that also
+falls through to the logical planner. Multi-shard `UPDATE` /
 `DELETE` is handled directly by the router via `QueryPushdownSqlTaskList`,
 because the merge step is trivial (concatenate `RETURNING` rows).
 
