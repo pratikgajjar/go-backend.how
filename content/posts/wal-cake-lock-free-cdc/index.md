@@ -260,16 +260,18 @@ inside Postgres's `CopyData` packet. The dispatch loop in wal-cake is
 exactly that:
 
 ```go
-// internal/replication/pg_replicator.go
+// internal/replication/pg_replicator.go (err handling elided)
 switch copyData.Data[0] {
 case pglogrepl.PrimaryKeepaliveMessageByteID:
-    pkm, _ := pglogrepl.ParsePrimaryKeepaliveMessage(copyData.Data[1:])
-    if pkm.ReplyRequested { _ = r.SendStandbyStatusUpdate(ctx, true) }
+	pkm, err := pglogrepl.ParsePrimaryKeepaliveMessage(copyData.Data[1:])
+	if pkm.ReplyRequested {
+		_ = r.SendStandbyStatusUpdate(ctx, true)
+	}
 case pglogrepl.XLogDataByteID:
-    xld, _    := pglogrepl.ParseXLogData(copyData.Data[1:])
-    xLogPos    := xld.WALStart + pglogrepl.LSN(len(xld.WALData))
-    logicalMsg, _ := pglogrepl.Parse(xld.WALData)
-    r.proccessLogicalMsg(logicalMsg, xLogPos, ch)
+	xld, err := pglogrepl.ParseXLogData(copyData.Data[1:])
+	xLogPos := xld.WALStart + pglogrepl.LSN(len(xld.WALData))
+	logicalMsg, err := pglogrepl.Parse(xld.WALData)
+	r.proccessLogicalMsg(logicalMsg, xLogPos, ch)
 }
 ```
 

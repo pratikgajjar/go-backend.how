@@ -841,10 +841,11 @@ than the main benchmark — both runs do the same work but the smaller
 binary starts with a colder OS scheduler and a warmer cache after the
 first variant runs (no preceding mutex/channel variants to dirty L1). If you see `≤ 5×`, your machine has fewer than 4 physical cores
 and the contention collapses to in-core (genuinely cheaper). If you see
-something extreme like `≥ 200×`, you're on a NUMA box with
+something extreme like `≥ 100×`, you're likely on a NUMA box with
 cross-socket cores in the same GOMAXPROCS set and the bouncing line
-is crossing a socket boundary — try `taskset -c 0-3` to keep them on
-one socket and the gap will normalise.
+is paying the inter-socket coherence tax (~200 ns per bounce vs
+~50 ns intra-socket) — try `taskset -c 0-3` to pin to one socket and
+the gap will normalise.
 
 That two-line output is, in microcosm, the entire reason a Cassandra
 fork that does nothing fundamentally different on the read path could
