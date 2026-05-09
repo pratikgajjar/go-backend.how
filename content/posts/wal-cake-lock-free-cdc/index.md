@@ -775,26 +775,26 @@ knobs in `internal/transform/parquet_writer.go` are **deliberate**.
 ```go
 // internal/transform/parquet_writer.go
 sorted := []parquet.SortingColumn{
-    {ColumnIdx: 2, Descending: false, NullsFirst: false}, // timestamp
-    {ColumnIdx: 3, Descending: false, NullsFirst: false}, // lsn
+	{ColumnIdx: 2, Descending: false, NullsFirst: false}, // timestamp
+	{ColumnIdx: 3, Descending: false, NullsFirst: false}, // lsn
 }
 props := parquet.NewWriterProperties(
-    parquet.WithDictionaryDefault(false),
-    parquet.WithDictionaryFor("table",     true),
-    parquet.WithDictionaryFor("operation", true),
-    parquet.WithEncodingFor("timestamp", parquet.Encodings.DeltaBinaryPacked),
-    parquet.WithEncodingFor("lsn",       parquet.Encodings.DeltaBinaryPacked),
-    parquet.WithEncodingFor("before",    parquet.Encodings.Plain),
-    parquet.WithEncodingFor("after",     parquet.Encodings.Plain),
-    parquet.WithStats(true),
-    parquet.WithStatsFor("before", false),
-    parquet.WithStatsFor("after",  false),
-    parquet.WithPageIndexEnabledFor("timestamp", true),
-    parquet.WithPageIndexEnabledFor("lsn",       true),
-    parquet.WithSortingColumns(sorted),
-    parquet.WithCompression(compress.Codecs.Zstd),
-    parquet.WithCompressionLevel(3),
-    parquet.WithCreatedBy("wal-cake #pg"),
+	parquet.WithDictionaryDefault(false),
+	parquet.WithDictionaryFor("table", true),
+	parquet.WithDictionaryFor("operation", true),
+	parquet.WithEncodingFor("timestamp", parquet.Encodings.DeltaBinaryPacked),
+	parquet.WithEncodingFor("lsn", parquet.Encodings.DeltaBinaryPacked),
+	parquet.WithEncodingFor("before", parquet.Encodings.Plain),
+	parquet.WithEncodingFor("after", parquet.Encodings.Plain),
+	parquet.WithStats(true),
+	parquet.WithStatsFor("before", false),
+	parquet.WithStatsFor("after", false),
+	parquet.WithPageIndexEnabledFor("timestamp", true),
+	parquet.WithPageIndexEnabledFor("lsn", true),
+	parquet.WithSortingColumns(sorted),
+	parquet.WithCompression(compress.Codecs.Zstd),
+	parquet.WithCompressionLevel(3),
+	parquet.WithCreatedBy("wal-cake #pg"),
 )
 ```
 
