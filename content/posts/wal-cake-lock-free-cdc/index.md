@@ -270,9 +270,9 @@ case pglogrepl.XLogDataByteID:
 The interesting line is `xLogPos = xld.WALStart + len(WALData)`. That
 arithmetic is the LSN of the **byte after** this message. It's what
 flows through the rest of the pipeline as the canonical position
-identifier for this event. Every CDC event downstream — every Parquet
-row, every S3 object key — eventually points back to one of these
-`xLogPos` values.
+identifier: stored on `CDCEvent.LSN`, written into the Parquet `lsn`
+column verbatim, and once the batch is durable on S3 it's fed back to
+Postgres as the `confirmed_flush_lsn` via `StandbyStatusUpdate`.
 
 ## REPLICA IDENTITY: K vs O
 

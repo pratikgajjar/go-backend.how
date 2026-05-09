@@ -638,11 +638,15 @@ aren't monoidal.
 
 **Cluster topology baked into table creation.** When you run
 `create_distributed_table('orders', 'customer_id')`, Citus picks the
-shard placement at that moment. Adding nodes later requires
-`rebalance_table_shards`, which is an operational event — not
-something a SQL query can trigger transparently. Compare this to
-systems like CockroachDB or Spanner where the placement decision is
-continuous; Citus has explicit boundaries.
+shard placement at that moment and the shard count stays fixed.
+Adding nodes later requires `rebalance_table_shards`, which is an
+operational event — not something a SQL query can trigger
+transparently. Compare this to systems where the data unit is
+auto-split: CockroachDB calls them "ranges" and rebalances them
+continuously across nodes; Spanner calls them "splits" and the
+TabletServer/Spanner placement layer auto-redistributes. Citus has
+explicit boundaries — fewer surprises on a quiet cluster, more
+operator work on a growing one.
 
 **The fast path is fragile.** Adding a join, a CTE, a sublink, a
 volatile function — any of these knock you out of fast-path
