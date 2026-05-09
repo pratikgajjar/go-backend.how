@@ -609,10 +609,12 @@ A few of these need elaboration.
 table state writes a new metadata.json and at least one manifest
 list (a no-op commit short-circuits via `updated.changes().isEmpty()`
 in `SnapshotProducer`, but a real append always writes both files).
-The minimum hot-path is `2 PUT + 1 CAS = 3 round-trips` to S3 +
-catalog. At 50 ms per round-trip the wall-clock cost is
-`3 × 50 = 150` ms, capping a single writer at `1000 / 150 ≈ 6.67`
-commits/s. The MERGE-ON-READ
+Data files and the manifest itself can be uploaded *before* the
+commit attempt and overlap with each other; the latency-critical
+hot path is just the final `2 PUT + 1 CAS = 3 round-trips` (manifest
+list, metadata.json, catalog CAS). At 50 ms per round-trip the
+wall-clock cost is `3 × 50 = 150` ms, capping a single writer at
+`1000 / 150 ≈ 6.67` commits/s. The MERGE-ON-READ
 formats sidestep this by buffering in a write-ahead log. Iceberg V2
 adds row-level deletes via delete files, but the commit cadence is
 the same — a write is a write. The default commit retry budget of
