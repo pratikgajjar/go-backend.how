@@ -266,7 +266,9 @@ done
 
 That's *not a typo*. Wolfi (2.5× scratch's wire bytes) pulled the **fastest** in this rig. Scratch (a single layer) pulled the **slowest** at p99. Three reasons, in order of weight:
 
-1. **Snapshot creation cost is per-layer-bounded, not per-byte-bounded** for tiny layers. Containerd's overlay snapshotter does a `mkdir` + `unlink` + `rename` cycle per layer. The fixed cost is bounded by syscall RTT and FS journal flush, in the low-millisecond range per layer regardless of layer size. Distroless's 13 base layers therefore cost on the order of 10–20 ms of pure filesystem overhead even when the bytes are zero — the same overhead doesn't shrink just because a layer is 67 bytes.
+1. **Snapshot creation cost is per-layer-bounded, not per-byte-bounded** for tiny layers. Containerd's [overlay snapshotter][overlay-snap] does a `mkdir` per layer plus a tar-extract pass and an atomic rename to commit the layer; the fixed cost is bounded by syscall RTT plus the journal flush from the rename, in the low-millisecond range per layer regardless of layer size. Distroless's 13 base layers therefore cost on the order of 10–20 ms of pure filesystem overhead even when the bytes are zero — the same overhead doesn't shrink just because a layer is 67 bytes.
+
+[overlay-snap]: https://github.com/containerd/containerd/blob/main/plugins/snapshots/overlay/overlay.go
 
 2. **Single-layer images can't parallelise.** Containerd's default `max_concurrent_downloads = 3` (see [`pkg/cri/config`][cricfg]) means scratch's lone layer fetches on one TCP connection, gzip-decompresses on one CPU. Distroless's 13-and-Wolfi's-11 spread across 3 parallel connections, so the binary layer (~3.98 MB compressed across all three) overlaps with the smaller base layers.
 
