@@ -808,11 +808,11 @@ a paper-grounded addition, not a refactor.
 
 If there is one architectural decision worth lifting from this code
 and applying elsewhere, it is the **on-page graph layout**. Most
-vector indexes either live in their own custom file format
-(Faiss, ScaNN) or in a dedicated columnar store (Lance, Vespa).
-Pgvector chose to put the graph inside Postgres' regular page
-machinery, which means it gets WAL, replication, point-in-time
-recovery, and `pg_basebackup` for free. The cost is that page
+vector indexes either live in their own custom file format (Faiss,
+ScaNN), in a columnar table format (Lance), or inside a dedicated
+search engine (Vespa, Weaviate). Pgvector chose to put the graph
+inside Postgres' regular page machinery, which means it gets WAL,
+replication, point-in-time recovery, and `pg_basebackup` for free. The cost is that page
 boundaries leak into the algorithm — `HnswGetMaxLevel`, the version
 check on neighbour tuples, the page-level `HNSW_UPDATE_LOCK`. The
 benefit is that the index is just another relation. Your DBA already
