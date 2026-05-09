@@ -668,13 +668,16 @@ def defaults_consistency_defects(body: str, cached_repo: Path) -> int:
 
 def range_bounds_defects(body: str) -> int:
     """A range A–B (en-dash) or A-B (hyphen between numbers) must have A ≤ B (after suffix scaling)."""
+    # Strip fenced code blocks (ASCII traces, etc.) and inline URLs.
+    prose = re.sub(r"```[^\n]*\n.*?```", "", body, flags=re.DOTALL)
+    prose = re.sub(r"https?://\S+", "", prose)
     # Match `N[suf]–M[suf]` with same/different unit
     pat = re.compile(
         rf"(?<!\w)({_NUM_PAT})({_SUF_PAT})\s*[–-]\s*({_NUM_PAT})({_SUF_PAT})"
         r"\s*(µs|us|ms|ns|s|MB|GB|KB|TB|GiB|MiB|KiB|/sec|/min|/hr|%|×|x)?"
     )
     n = 0
-    for m in pat.finditer(body):
+    for m in pat.finditer(prose):
         a, asu, b, bsu, _u = m.groups()
         try:
             A = _parse_num(a) * _scale(asu)

@@ -22,8 +22,9 @@ cluster, the SQL string never crosses a network until after the
 planner has already decided which one of 32 shards holds customer 42.
 Pruning happens on the coordinator, in C, against in-memory metadata.
 The shard query that lands on the worker is the same SQL — with
-`orders` rewritten to `orders_102047` and a planner-private function
-call holding the shard ID.
+`orders` rewritten to a per-shard table name (e.g. `lineitem_360000`
+in the regression test fixtures, where 360000 is a globally-unique
+shard ID) and a planner-private function call holding the shard ID.
 
 That's the easy case. The interesting cases are the four-table joins
 where two tables are co-located on the distribution key, one is a
@@ -89,19 +90,21 @@ A distributed database has two query languages whether you admit it
 or not.
 
 The first language is the user-facing SQL: `SELECT … FROM orders
-WHERE …`. The second is the per-shard SQL: `SELECT … FROM
-orders_102047 WHERE …`. The planner's job is to translate the first
-into a _set_ of the second, plus a coordinator-side merge step.
+WHERE …`. The second is the per-shard SQL — same query against
+`lineitem_360000` (or whatever the shard table happens to be named)
+instead of the logical table. The planner's job is to translate the
+first into a _set_ of the second, plus a coordinator-side merge
+step.
 
 Naïve translation is wrong on three axes.
 
 **The cardinality axis.** A query of the form `SELECT count(*) FROM
-orders` cannot be answered by sending `SELECT count(*) FROM
-orders_102047` to each shard and concatenating. The merge step has to
-sum the counts. `AVG(x)` is worse — you cannot average pre-computed
-averages. The planner has to rewrite `AVG(x)` to
-`SUM(x) / COUNT(x)` _before_ pushing each side down, and re-compose on
-the coordinator. The same logic applies to `STDDEV`, `VARIANCE`, and
+orders` cannot be answered by sending the same `count(*)` to each
+shard and concatenating. The merge step has to sum the counts.
+`AVG(x)` is worse — you cannot average pre-computed averages. The
+planner has to rewrite `AVG(x)` to `SUM(x) / COUNT(x)` _before_
+pushing each side down, and re-compose on the coordinator. The same
+logic applies to standard-deviation and variance aggregates, and to
 every aggregate that is not a monoid. Citus calls this "extended op
 node splitting" and the rules live in
 `multi_logical_optimizer.c`.
@@ -563,10 +566,10 @@ I've spent five sections on what Citus does well. Here's where it
 cracks.
 
 **Two-distribution-column joins.** A query like `SELECT * FROM orders
-JOIN line_items ON orders.id = line_items.order_id` where `orders` is
-distributed by `id` and `line_items` is distributed by `order_id` —
-those _must_ be co-located in the same colocation group at table
-creation time. Citus does not silently rewrite the join. If you
+JOIN lineitem ON orders.o_orderkey = lineitem.l_orderkey` where
+`orders` is distributed by `o_orderkey` and `lineitem` is distributed
+by `l_orderkey` — those _must_ be co-located in the same colocation
+group at table creation time. Citus does not silently rewrite the join. If you
 forgot to colocate, you get either a repartition (slow) or an error
 (`complex joins are only supported when all distributed tables are
 joined on their distribution columns with equal operator`,
@@ -574,25 +577,26 @@ joined on their distribution columns with equal operator`,
 
 **Cross-shard transactions.** Citus supports 2PC for multi-shard
 modifications, but the price is real — every write touches the
-distributed transaction recovery infrastructure
-(`pg_dist_transaction`), and coordinator failures can leave shards in
-an inconsistent state until recovery runs. The CHANGELOG has multiple
+distributed transaction recovery infrastructure (the
+`pg_dist_transaction` catalog), and coordinator failures can leave
+shards in an inconsistent state until recovery runs. The CHANGELOG has multiple
 entries about idle-in-transaction timeouts breaking shard moves
 (e.g., #8484 in Citus 14.0). Distributed transaction edge cases are
 where Citus' bug surface is highest — not the planner, the executor.
 
 **Anything Postgres' planner sees but Citus' planner doesn't.**
-Citus runs `standard_planner` and uses _its_ restriction info. If
-a Postgres planner version changes how it stores quals (PG 16's
-`PlannedStmt.permInfos` rework, PG 18's GROUP RTE) Citus has to be
+Citus runs `standard_planner` and uses _its_ restriction info. If a
+Postgres planner version changes how it stores quals — say, the PG 16
+`permInfos` rework or the PG 18 GROUP-RTE change — Citus has to be
 patched. The git log on `distributed_planner.c` shows a recurring
 pattern of "PG 16 compat", "PG 17 compat", "PG 18 compat" commits.
 That's structural debt — Citus is bound to Postgres' internals at a
 much tighter coupling than a SQL-on-anything system would be.
 
-**Aggregates that don't decompose.** `MEDIAN`, `MODE`, `PERCENTILE_*`
-in their general form cannot be split into worker-side + coordinator-
-side without re-collecting all the data. Citus uses `tdigest`
+**Aggregates that don't decompose.** Order-statistics aggregates
+(median, mode, the `percentile_cont` / `percentile_disc` family) in
+their exact form cannot be split into worker-side + coordinator-side
+without re-collecting all the data. Citus uses `tdigest`
 (an entire C file, `tdigest_extension.c`) for approximate quantiles,
 but exact percentiles over a multi-shard query require pulling rows
 to the coordinator. There's no free lunch on summary statistics that
@@ -644,7 +648,7 @@ If I write a join on a key that isn't the distribution column but
 that's _functionally_ co-located (e.g., `customer_id` and
 `customer_email` where every customer has one email), Citus gives me
 no escape hatch. A `SET LOCAL citus.assume_colocated = ('orders',
-'line_items', 'customer_id')` GUC for the duration of one query
+'lineitem', 'customer_id')` GUC for the duration of one query
 would let analysts trade a known-correct assumption for a fast path,
 similar to PostgreSQL's `enable_seqscan` family of flags. Cost: low,
 risk: medium (silent correctness bugs if the assumption is wrong, so
@@ -653,9 +657,9 @@ every co-location assumption check).
 
 **3. Push the fast-path eligibility check into PG's parse tree
 analysis layer.** Right now `FastPathRouterQuery` runs after
-parsing but before `standard_planner`. PostgreSQL has a hook
-(`post_parse_analyze_hook`) that fires after parse-analysis but
-before any planning. Moving the check earlier means Citus could
+parsing but before `standard_planner`. PostgreSQL has a hook that
+fires after parse-analysis but before any planning (the
+parse-analyze hook in `src/include/parser/analyze.h`). Moving the check earlier means Citus could
 short-circuit before any of `eval_const_expressions`,
 `pull_var_clause`, etc. runs. Marginal — saves maybe 50µs per query
 on the fast path — but on a workload of 100k QPS, 50µs × 10^5 = 5
