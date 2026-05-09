@@ -814,6 +814,8 @@ def main() -> int:
     cats["defaults_mismatch"] = defaults_consistency_defects(body, cached_repo)
     cats["range_inverted"] = range_bounds_defects(body)
     cats["unbacked_claims"] = claim_audit_defects(body)
+    cats["http_not_https"] = http_not_https_defects(body)
+    cats["heading_skip"] = heading_hierarchy_defects(body)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
@@ -839,6 +841,8 @@ def main() -> int:
         "defaults_mismatch": 5,
         "range_inverted": 3,
         "unbacked_claims": 2,
+        "http_not_https": 2,
+        "heading_skip": 2,
         "wordcount_off": 1,
         "frontmatter": 2,
     }

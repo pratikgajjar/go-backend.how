@@ -106,10 +106,10 @@ missing brand-new files, or paying for thousands of `LIST`
 roundtrips before query planning could begin.
 
 The Hive metastore patched question 1 with a Postgres/MySQL row per
-*partition directory*. That is also where Hive broke at scale — the
-metastore is a single hot SQL row per partition spec, every read
-takes a lock, and partition listing is `O(partitions)` even when the
-query touches one.
+*partition directory*. That is also where Hive broke at scale —
+partition listing is `O(partitions)` even when the query touches
+one, every read takes a metastore lock, and a single hot table can
+bottleneck the whole metastore for everyone else on the cluster.
 
 Iceberg's design constraints follow directly from rejecting both
 options:
@@ -533,13 +533,16 @@ partitioned by day for 365 days:
 * Manifests intersecting the day: assuming evenly distributed,
   `150 / 365 ≈ 0.41`, so 1 manifest with high probability.
 * Manifest GET — 1 round-trip, again ~30 ms. 8 MB of compressed
-  Avro decompresses to ~30 MB; `fastavro` on a single core parses
-  ~40 MB/s observed on my M2 — `parse ≈ 30 / 40 = 0.75 s = 750 ms`
-  on Python. JVM clients with code-gen are typically faster
-  (Trino's manifest reader reuses Avro records and projects only
-  the column-bound fields — see
+  Avro decompresses to ~30 MB on numeric/binary-heavy manifests
+  (rough rule for snappy: 3–4× expansion; observed locally and
+  consistent with snappy benchmarks). `fastavro` on a single core
+  parses on the order of ~40 MB/s for these schemas — the parse
+  cost is `30 / 40 = 0.75` s = 750 ms on Python with no code-gen.
+  JVM clients with code-gen are typically faster: Iceberg's
+  `ManifestReader` reuses Avro records and projects only the
+  column-bound fields — see
   [`core/src/main/java/org/apache/iceberg/ManifestReader.java`](https://github.com/apache/iceberg/blob/main/core/src/main/java/org/apache/iceberg/ManifestReader.java)
-  `STATS_COLUMNS` for the projection set).
+  and the `STATS_COLUMNS` set for the projection.
 
 Total planning latency before any data-file GET, on a 1 PB table:
 `60 ms = 30 + 30` for the network legs (parse overlaps the second
@@ -593,13 +596,14 @@ A few of these need elaboration.
 
 **Many small commits.** Each Iceberg commit, even an empty one,
 writes a new metadata.json and at least one manifest list. The minimum
-is `2 PUT + 1 CAS = 3 round-trips` to S3 + catalog. At ~50 ms per
-round-trip you cannot exceed 20 commits/s/writer. The MERGE-ON-READ
+is `2 PUT + 1 CAS = 3 round-trips` to S3 + catalog. At 50 ms per
+round-trip the wall-clock cost is `3 × 50 = 150` ms, capping a
+single writer at `1000 / 150 ≈ 6.67` commits/s. The MERGE-ON-READ
 formats sidestep this by buffering in a write-ahead log. Iceberg V2
-addresses the common case (row deletes) with delete files, but the
-commit cadence is the same — a write is a write. The current
-commit retry budget of `COMMIT_NUM_RETRIES_DEFAULT = 4` is calibrated
-for batch ingestion, not stream ingestion.
+adds row-level deletes via delete files, but the commit cadence is
+the same — a write is a write. The default commit retry budget of
+`COMMIT_NUM_RETRIES_DEFAULT = 4` is calibrated for batch ingestion,
+not stream ingestion.
 
 **Manifest churn under bursty writes.** Each "fast append" creates a
 new manifest. After 100 small inserts, a table has 100 small

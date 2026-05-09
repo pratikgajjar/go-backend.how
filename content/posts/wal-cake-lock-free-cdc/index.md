@@ -924,23 +924,16 @@ would add three round trips (init, parts, complete) for negligible
 parallelism gain on a sub-MB upload.
 
 Idempotency comes from the key. The `Timestamp.UnixMicro()` of the
-last event in the batch is monotonic per
-worker (it's the timestamp of the last event in the batch, which by
-contiguous-LSN ordering is monotonic across all batches). If a PUT
-fails and the worker retries via the worker-level retry-with-backoff
-loop, the retry uses the same key — S3 PUT is `last-write-wins`,
-identical key + identical bytes is a no-op. If the process crashes
-mid-PUT and restarts, the LSN walker hasn't acked yet, so on resume
-the same events are replayed and re-batched and re-PUT under a
-**different** key (the ts is now slightly later) — so we do
-double-write the data, but **deduplication on read** is trivial: rows
-are uniquely identified by `(table, lsn, operation)`. Athena's
-`SELECT DISTINCT ON (table, lsn) ... ORDER BY ts` handles it.
-
-If you want exactly-once on the lake side instead of at-least-once-
-plus-dedup, the upgrade path is Apache Iceberg with optimistic commits
-on a `(min_lsn, max_lsn)` per-file metadata column — see "What I'd
-change."
+last event in the batch is monotonic — by contiguous-LSN ordering,
+no later-LSN batch is uploaded before any earlier-LSN batch. A PUT
+retry uses the same key; S3 PUT is last-write-wins, so identical
+key + identical bytes is a no-op. If the process crashes mid-PUT and
+restarts, the LSN walker hasn't acked yet — on resume the same events
+are replayed under a **different** key (the ts is now slightly
+later). So we do double-write data, but **read-side dedup** is
+trivial: rows are uniquely identified by `(table, lsn, operation)`.
+For exactly-once on the lake side instead, the upgrade path is
+Apache Iceberg with `(min_lsn, max_lsn)` per-file metadata.
 
 ## MinIO for local dev
 
@@ -1094,20 +1087,14 @@ pragmatic.
 
 Two more I'd consider but probably wouldn't ship in v1:
 
-- **Multi-region S3 PUT with S3-Express.** S3-Express One Zone has
-  sub-10ms PUT p99 vs S3 Standard's ~40–60ms. For CDC, the latency
-  doesn't matter (we batch by 30s anyway). But the per-PUT cost
-  differential and single-AZ availability profile are real
-  considerations, not free wins.
-- **Direct columnar buffer (skip JSON round-trip).** We currently
-  decode pgoutput → `map[string]any` → `json.Marshal` → `byte[]` →
-  Parquet `BYTE_ARRAY`. A more efficient pipeline decodes pgoutput
-  directly into Arrow column builders. The work is real (you'd
-  re-implement most of `tuple_decoder.go` for every Arrow type), and
-  the throughput estimated above (`200,000 events/sec` Parquet
-  ceiling vs `10,000 events/sec` mid-range upstream) is already
-  `200,000 / 10,000 = 20×` the upstream WAL rate. File it under "if
-  profiling ever shows the JSON encoding as a bottleneck."
+- **Direct columnar buffer (skip JSON round-trip).** We decode
+  pgoutput → `map[string]any` → `json.Marshal` → `byte[]` → Parquet
+  `BYTE_ARRAY`. A more efficient pipeline decodes pgoutput directly
+  into Arrow column builders. The throughput estimated above
+  (`200,000 events/sec` Parquet ceiling vs `10,000 events/sec`
+  mid-range upstream = `200,000 / 10,000 = 20×` headroom) means this
+  isn't the current bottleneck. File it under "if profiling ever
+  shows JSON encoding on the hot path."
 
 # Where this leaves us
 

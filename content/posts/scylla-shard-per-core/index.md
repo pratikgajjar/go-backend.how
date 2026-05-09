@@ -16,8 +16,9 @@ math = false
 
 A modern Apple Silicon laptop has 14 cores. Pin a tight Go loop to four
 of them, have each goroutine do `atomic.AddInt64(&counter, 1)` against
-a single shared int. Measured on an M3 Max, that loop tops out at
-**~87 million ops/sec**. Wall time per op: ~11.5 ns.
+a single shared int. On an M3 Max ([reproducer below](#stretch-see-it-for-yourself)),
+that loop tops out at **~87 million ops/sec**. Wall time per op:
+~11.5 ns.
 
 Now repaint the same workload: every goroutine increments its own
 cache-line-padded counter (no atomic, no lock, no shared bytes). The
@@ -25,8 +26,8 @@ same four cores deliver **~3.0 _billion_ ops/sec**. Wall time per op:
 ~0.4 ns.
 
 > Same hardware. Same number of threads. Same total work. **~30× faster**
-> just by deleting the contention. (measured: 88 M ops/sec vs 2 832 M
-> ops/sec over three runs; ratio = 2832 / 88 ≈ 32.)
+> just by deleting the contention. ([wall-clock](#stretch-see-it-for-yourself):
+> 88 M ops/sec vs 2 832 M ops/sec over three runs; ratio = 2832 / 88 ≈ 32.)
 
 That ratio is the entire thesis of Scylla's architecture. The
 single-thread CAS isn't slow — it's coherence traffic. Four cores
@@ -265,12 +266,14 @@ sender's writes never invalidate a line the receiver is reading:
 
 That comment — "hw prefetcher will not accidentally prefetch cache line
 used by another cpu" — is the type of comment you only write after
-having profiled it. The hardware prefetcher pulls neighbouring lines
-into L1 speculatively. If sender stats and receiver stats lived in
-adjacent lines, the prefetch would drag a "remote" line into the wrong
-core's L1, then the next remote write would force a coherence miss on
-that line. The `_metrics` member sits between them as a deliberate
-spacer.
+a perf counter spikes. The hardware prefetcher pulls neighbouring lines
+into L1 speculatively (see [Intel optimisation reference
+manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html),
+ch. 12 "Cache and memory subsystem"). If sender stats and receiver
+stats lived in adjacent lines, the prefetch would drag a "remote" line
+into the wrong core's L1, then the next remote write would force a
+coherence miss on that line. The `_metrics` member sits between them as
+a deliberate spacer.
 
 ## 4. Batching and the wakeup barrier
 
@@ -425,7 +428,7 @@ ring's completion queue into another ring's submission queue, never
 yielding the core. `strace -c` on a hot Scylla shard shows this
 plainly — long stretches of zero syscalls between bursts.
 
-# Real numbers — measured on a 4-core slice of an M3 Max
+# Real numbers — three-run wall-clock on a 4-core slice of an M3 Max
 
 Scylla itself needs Linux + io_uring + ~1 GB of locked memory per shard
 (the io_uring SQ/CQ rings + per-shard arena; measured at startup, see
@@ -548,12 +551,11 @@ threads via a global thread pool. If one partition is hot (think:
 celebrity Twitter user's followers list, or your most-traded
 instrument), Cassandra slices it across worker threads and the rest of
 the cluster absorbs the heat. Scylla pins one partition to one shard.
-Napkin math: that shard runs flat-out at 100% CPU; the other 15 shards
-sit near-idle (`5%` measured on a hot-key benchmark, so `1 / 16` of total
-box capacity is doing the work and `15 / 16 ≈ 0.94` of the box is
-wasted). The fix is on the
-application side — model your data so no single partition is a hot
-spot — but the constraint is hard.
+Napkin math (illustrative): that shard runs flat-out at 100% CPU; the
+other 15 shards sit near-idle at `~5%`, so `1 / 16` of total box
+capacity is doing the work and `15 / 16 ≈ 0.94` of the box is wasted.
+The fix is on the application side — model your data so no single
+partition is a hot spot — but the constraint is hard.
 
 **2. Memory partitioning is brutal under heap-skew.** Napkin math: a
 64 GB box with 16 shards gives each shard exactly `64 / 16 = 4 GB`. A
