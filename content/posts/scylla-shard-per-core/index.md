@@ -82,14 +82,16 @@ inter-core latency measurements, the working set is:
 | Mutex acquire under contention       | hundreds of ns |
 
 A function call is ~1 ns. A cache-line bounce is *two orders of
-magnitude* slower. So if your hot path touches one shared mutable byte
-across N cores, the ceiling on that path is roughly `1 / (N × bounce)`,
-not `N × instructions`. You bought 16 cores; you're using one — except
-slower, because the others are queueing for the line.
+magnitude* slower. A cache line can only be held in `M` (modified)
+state by one core at a time, so when N cores all write the same line
+they serialize on the coherence fabric: aggregate throughput =
+`1 / bounce`, *independent of N*. You bought 16 cores; you're using one
+— except slower, because the other 15 are queueing for the line.
 
-The honest math: a request that needs one shared write across 8 cores
-runs at `1 / (8 × 100 ns) = 1.25 M ops/sec` *no matter how clever the
-code is*. The only way out is to not share.
+The honest math: with `bounce = 100 ns`, the aggregate ceiling is
+`1 / 100 ns = 10 M ops/sec`. Across 8 cores that's
+`10 M / 8 = 1.25 M ops/sec` per core, *no matter how clever the code
+is*. The only way out is to not share.
 
 That's the rule Scylla took as a constraint, not a hint.
 

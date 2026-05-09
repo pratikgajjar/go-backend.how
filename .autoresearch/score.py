@@ -901,6 +901,7 @@ def main() -> int:
     cats["http_not_https"] = http_not_https_defects(body)
     cats["heading_skip"] = heading_hierarchy_defects(body)
     cats["broken_post_links"] = cross_post_link_defects(body, repo_root)
+    cats["missing_sections"] = required_sections_defects(body)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
@@ -929,6 +930,7 @@ def main() -> int:
         "http_not_https": 2,
         "heading_skip": 2,
         "broken_post_links": 4,
+        "missing_sections": 4,
         "wordcount_off": 1,
         "frontmatter": 2,
     }

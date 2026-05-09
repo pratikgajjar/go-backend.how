@@ -561,10 +561,11 @@ shuffle alone moves ≈ 32 GB across the network. At a typical
 10 Gbit/s LAN ([Latency Numbers Every Engineer Should Know](https://gist.github.com/jboner/2841832)
 puts effective sustained throughput at ≈ 1 GB/s after framing
 overhead), that's 32 seconds of network time before the merge tasks
-even start. The fast-path router is roughly
-five orders of magnitude faster (200µs vs 32 s ≈ 1.6 × 10^5×). The
-gap is _why_ co-locating tables on the join column matters more than
-any other tuning knob.
+even start. The fast-path router is four to five orders of
+magnitude faster: 32 s / 250 µs ≈ 1.3 × 10⁵× at the optimistic end,
+32 s / 1100 µs ≈ 2.9 × 10⁴× at the pessimistic end. The gap is _why_
+co-locating tables on the join column matters more than any other
+tuning knob.
 
 The point of the planner is to keep you in the cheap path as much as
 possible. Co-located joins stay in path 1 or 2. Reference tables
