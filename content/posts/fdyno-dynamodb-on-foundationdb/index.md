@@ -151,19 +151,19 @@ client hides it — but it shapes everything about how transactions work.
   fsynced here, the commit is acknowledged. They fan out to storage
   servers in the background.
 - **Storage servers** hold the actual b-tree shards. Each server owns
-  some range of keys. Reads at version $V$ go to whichever storage
+  some range of keys. Reads at version \(V\) go to whichever storage
   server has that range and can serve at that version.
 
 The contract this exposes to a client like fdyno is small:
 
 1. Pick a read version (latest, by default).
-2. Read whatever you want; reads are MVCC and consistent at $V$.
+2. Read whatever you want; reads are MVCC and consistent at \(V\).
 3. Buffer writes locally.
-4. Commit → proxy assigns commit version $V'$, resolver checks
+4. Commit → proxy assigns commit version \(V'\), resolver checks
    conflicts, logs persist mutations, you get an ack.
 
-If you read $K$ keys totalling $b_r$ bytes and write $W$ keys totalling
-$b_w$ bytes, the work breaks down as:
+If you read \(K\) keys totalling \(b_r\) bytes and write \(W\) keys totalling
+\(b_w\) bytes, the work breaks down as:
 
 $$
 \underbrace{O(K \cdot \log n)}_{\text{storage server lookups}} +
@@ -171,7 +171,7 @@ $$
 \underbrace{O(\text{conflict ranges})}_{\text{resolver check}}
 $$
 
-For an OLTP workload — small $K$, small $b_w$ — latency is dominated by
+For an OLTP workload — small \(K\), small \(b_w\) — latency is dominated by
 the **log fsync** (the commit boundary), typically 2–8 ms on a
 well-tuned cluster. Reads parallelise; writes serialise at the logs.
 
@@ -179,8 +179,8 @@ well-tuned cluster. Reads parallelise; writes serialise at the logs.
 
 The single property that makes FDB pleasant to layer on is that every
 read happens at a specific **version** — a 64-bit number monotonically
-assigned by the proxies. A transaction picks one read version $V$ and
-sees the entire keyspace as it was at $V$. Other writes happening
+assigned by the proxies. A transaction picks one read version \(V\) and
+sees the entire keyspace as it was at \(V\). Other writes happening
 concurrently land at higher versions and are invisible until you start a
 new transaction.
 
@@ -504,7 +504,7 @@ fdyno on FDB (same UpdateItem):
                   ─▶ ack at commit version V'  ◀─ no windows
 ```
 
-Formally, every read at version $V \ge V'$ sees:
+Formally, every read at version \(V \ge V'\) sees:
 
 $$
 \{ \text{base}_{\text{new}},\ \text{GSI-1}_{\text{new}},\
@@ -512,7 +512,7 @@ $$
 $$
 
 simultaneously. Either all of them, or none of them — there is no
-$\Delta$.
+\(\Delta\).
 
 This is the property that made the experiment worth running for me.
 Everything else (PartiQL, error messages, validation ordering) is grunt
@@ -532,7 +532,7 @@ Each `PutItem` is one FDB transaction: read the existing item (for the
 item plus all secondary index entries, write a CDC record, commit. The
 commit boundary is one log fsync.
 
-Call the per-commit cost $T_c$. On a single-node FDB cluster with NVMe
+Call the per-commit cost \(T_c\). On a single-node FDB cluster with NVMe
 this is ~2–3 ms; on a multi-node cluster on a real network it's
 ~5–10 ms. The single-thread throughput ceiling is then:
 
