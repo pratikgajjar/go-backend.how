@@ -60,50 +60,47 @@ WHERE created_at >= now() - interval '1 hour';
 ```text
 Aggregate  (cost=...)
   ->  Append
-        ->  Seq Scan on events_p20260208  (cost=...) (actual rows=1)
+        ->  Seq Scan on events_p_today_minus_0   (rows=1)
               Filter: (created_at >= (now() - '01:00:00'::interval))
-              Buffers: shared hit=42 read=1573491
-        ->  Seq Scan on events_p20260207  (...)
-              Buffers: shared hit=39 read=1571440
-        ...  (88 more children, every one read in full)
-Planning Time: 481.220 ms
-Execution Time: 17,224.991 ms
+        ->  Seq Scan on events_p_today_minus_1   (rows=0)
+        ->  Seq Scan on events_p_today_minus_2   (rows=0)
+        ...  (87 more children, every one opened)
+Planning Time: hundreds of ms
+Execution Time: many seconds (range from past benchmarks[^bench])
 ```
 
-Two things are wrong here. The query touched every child even though
-89 of them cannot contain rows newer than `now() - 1 hour`. And the
-planner spent **481 ms** _planning_, before reading a buffer. You did
-not partition the table to read every partition more slowly than reading
-none of them.
+Two things are wrong. The query touched every child even though 89 of
+them cannot contain rows newer than `now() - 1 hour`. And the planner
+spent the bulk of the wall on _planning_, before reading the first
+useful row. You did not partition the table to read every partition
+more slowly than reading none of them.
 
-The cause is `now()`. Postgres marks `now()` as `STABLE`, not `IMMUTABLE`.
-A `STABLE` function returns the same value within one query but the
-planner has to invoke it _at execution time_, not plan time. So planner
-pruning — the kind that drops children before scans even open — sees
-`created_at >= STABLE_FUNC()` and concludes it cannot prune anything.
-Executor pruning kicks in next; it _does_ skip the actual `Seq Scan`
-nodes for partitions whose RANGE bound disqualifies them. Except every
-child still gets _opened_, locked (a [shared AccessShareLock](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES) on each child relation), and its statistics
-loaded into the planner. That's the 481 ms. And `EXPLAIN ANALYZE` was
-lying to me — it said `Buffers: shared read=1573491`. That was a stale
-cached plan I'd captured once on a query that did not have the `now()`
-gating, but it shows the worst case.
+The cause is `now()`. Postgres marks `now()` (and `current_timestamp`,
+`statement_timestamp`, etc.) as `STABLE`, not `IMMUTABLE`.
+[A `STABLE` function](https://www.postgresql.org/docs/current/xfunc-volatility.html) returns the same value within one query
+but the planner has to invoke it at _execution_ time, not plan time. So
+planner pruning — the kind that drops children before scans even open —
+sees `created_at >= STABLE_FUNC()` and concludes it cannot prune
+anything. Executor pruning kicks in next; it _does_ skip the actual
+`Seq Scan` nodes for partitions whose RANGE bound disqualifies them.
+Except every child still gets _opened_, locked (a
+[shared AccessShareLock](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)
+on each child relation), and its statistics loaded into the planner.
+That's the planning-time tail.
 
 Fix: pin the time at the client.
 
 ```sql
 -- the same query, planner-prunable
-PREPARE q AS
-SELECT count(*)
-FROM events
-WHERE created_at >= $1::timestamptz;
+PREPARE q (timestamptz) AS
+SELECT count(*) FROM events WHERE created_at >= $1;
 EXECUTE q (now() - interval '1 hour');
 ```
 
 Now the comparison is `created_at >= constant`, planner pruning fires,
-89 children are dropped, plan time falls to roughly 4 ms (`= 481 / ~120`,
-one child plan instead of 90 plus the parent shell). Execution time
-falls with it. The change is not "use `pg_partman` better." It is "do
+89 children are dropped, and plan time collapses by a factor of ~30
+(one child plan instead of 90 plus the parent shell, range from 25×
+to 35× across past benchmarks[^bench]). Execution time falls with it. The change is not "use `pg_partman` better." It is "do
 not give the planner a `STABLE` expression on the partition key if you
 want planner-time pruning."
 

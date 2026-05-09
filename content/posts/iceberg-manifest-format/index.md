@@ -319,14 +319,15 @@ for small object reads.)
 
 ## 4.3 Sequence numbers and inheritance — the trick that makes commits cheap
 
-This is the most interesting line of defence in the format. From
-`format/spec.md` §Sequence Number Inheritance:
+This is the most interesting line of defence in the format. Quoting
+[`format/spec.md`](https://github.com/apache/iceberg/blob/main/format/spec.md)
+§Sequence Number Inheritance verbatim:
 
 ```text
 When adding a new file, its data and file sequence numbers are set
-to null because the snapshot's sequence number is not assigned
+to `null` because the snapshot's sequence number is not assigned
 until the snapshot is successfully committed. When reading,
-sequence numbers are inherited by replacing null with the
+sequence numbers are inherited by replacing `null` with the
 manifest's sequence number from the manifest list.
 ```
 
