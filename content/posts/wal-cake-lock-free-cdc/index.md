@@ -833,8 +833,8 @@ A `parquet-tools meta` snippet on a representative wal-cake file
 (real layout, hand-formatted):
 
 ```
-$ parquet-tools meta default/2026/05/09/1715251200000000.zstd.parquet
-file:        default/2026/05/09/1715251200000000.zstd.parquet
+$ parquet-tools meta default/2026/05/09/1778328000000000.zstd.parquet
+file:        default/2026/05/09/1778328000000000.zstd.parquet
 creator:     wal-cake #pg
 extra:       {}
 file schema: schema

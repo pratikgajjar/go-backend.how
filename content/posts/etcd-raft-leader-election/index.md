@@ -504,11 +504,14 @@ The empty entry is appended a few lines lower:
 
 The empty entry has zero payload, so it doesn't count against the
 `maxUncommittedSize` budget — a fact tested separately as
-`TestPayloadSizeOfEmptyEntry`. And `bcastAppend()` then sends an
-`MsgApp` carrying that entry to every follower. Once a quorum of
-followers ack it, the leader's commit index advances to the new
-entry's index and any pending `MsgReadIndex` requests can finally be
-answered.
+`TestPayloadSizeOfEmptyEntry`. `becomeLeader` itself doesn't broadcast
+the entry: it only appends it locally and self-acks via
+`msgsAfterAppend`. The `bcastAppend()` call sits one stack frame up,
+in `stepCandidate` (the `case quorum.VoteWon:` branch we saw earlier);
+that's what sends `MsgApp` carrying the empty entry to every follower.
+Once a quorum of followers ack it, the leader's commit index advances
+to the new entry's index and any pending `MsgReadIndex` requests can
+finally be answered.
 
 # Real numbers
 
