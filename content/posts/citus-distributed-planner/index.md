@@ -79,7 +79,7 @@ tree-walker nodes through the optimizer at ~1 ns per step, putting
 single-table planning in the 100–300µs range. To pin down the actual
 number on a real cluster, the canonical tool is
 [`pg_stat_statements`](https://www.postgresql.org/docs/current/pgstatstatements.html),
-which exposes per-query `total_plan_time` directly. On the fast path,
+which exposes per-query plan-time totals directly. On the fast path,
 that 200µs of planning becomes overhead the cluster pays for nothing.
 The fast-path code path was added precisely to avoid it.
 
