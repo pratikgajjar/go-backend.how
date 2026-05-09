@@ -67,7 +67,9 @@ def word_count(body: str) -> int:
     return len(re.findall(r"\b[\w'-]+\b", body_stripped))
 
 
-def wordcount_defects(words: int, lo: int = 3000, hi: int = 5500) -> int:
+def wordcount_defects(words: int, lo: int = 3000, hi: int = 5000) -> int:
+    """Brief specifies 3000-5000 words. Was previously 5500 (loose), tightened
+    to match the brief's hard rule so going over 5000 registers a defect."""
     if words < lo:
         return (lo - words) // 500
     if words > hi:
