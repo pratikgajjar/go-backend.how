@@ -414,9 +414,10 @@ cold-cache cost).
 | Q03 | SF=10  | 7,137 ms   | 119 ms  | 60× |
 | Q06 | SF=10  | 25,825 ms  | 43 ms   | 600× |
 
-Cross-checking the napkin math: the six speedups multiply to
-`25 × 19 × 42 × 55 × 60 × 600 = 39_501_000_000`, sixth-root
-`39501000000^(1/6) ≈ 58.4`. So the honest geomean is 58×, not 80×.
+Cross-checking the napkin math: the six speedups (25, 19, 42, 55,
+60, 600) multiply to 39,501,000,000, sixth-root ≈ 58.4
+(verify: `python3 -c "print((25*19*42*55*60*600)**(1/6))"` prints
+58.36). So the honest geomean is 58×, not 80×.
 The Q06-at-SF=10 outlier is what pulls "median speedup" up; the
 title's 80× is the round headline that comes out when you
 arithmetically average Q01 and Q03 at SF=10 with Q06 at SF=1

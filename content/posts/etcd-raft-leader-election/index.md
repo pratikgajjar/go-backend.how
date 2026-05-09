@@ -37,13 +37,18 @@ numbers describe the same election, in three different regimes:
 
 The 200 µs in the title is the middle row: an estimated localhost
 wall-clock for the *protocol itself* doing one full election round
-once the campaign decision has been taken. The estimate comes from
-1.8 µs of state-machine work plus 8 channel sends × ~10 µs Go
-scheduler wakeup `≈ 1.8 + 80 ≈ 82 µs`, plus 2 in-memory `Storage.Append`
-calls and a single allocation-heavy `Ready` build, which we round up
-to `≈ 200 µs`. It's the order of magnitude you'd see if you
-`bpftrace`d the `MsgHup → becomeLeader` transition on a single-machine
-3-node test.
+once the campaign decision has been taken. The estimate comes from a
+napkin breakdown: 1.8 µs of state-machine work, plus a Ready/Advance
+loop that crosses Go's scheduler ~12 to 16 times per node (one channel
+op per `Step`, per `Ready` emission, per `Advance`, plus the
+fan-out to the 2 followers). At a typical Go scheduler wakeup of
+`~10 µs` per channel send under contention, that is on the order of
+`~12 × 10 µs ≈ 120 µs`. Add two in-memory `Storage.Append` calls
+(one per follower in this pass) and the allocation-heavy `Ready` build
+and you round up to `≈ 200 µs`. It's the order of magnitude you'd see
+if you `bpftrace`d the `MsgHup → becomeLeader` transition on a
+single-machine 3-node test — production with disk fsync and real
+network adds another `~1 to 10 ms` on top.
 
 This post is a walk through why that is. We'll trace the exact path the
 state machine takes from `tickElection()` firing on a follower to
