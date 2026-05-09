@@ -1055,8 +1055,10 @@ within a single batch's worth of events.
 **Where the upper limit lives.** Push events/sec to `100,000` and
 the Parquet+ZSTD math still works (`4 × 50 = 200 batches/sec` of
 ceiling), but the WAL itself becomes the issue. At `100,000`
-row-mutations/sec on typical OLTP rows of `~120` bytes-per-mutation
-in pgoutput's wire format, you're generating
+row-mutations/sec on typical OLTP rows, each WAL insert record is
+~`120` bytes (24-byte XLogRecord header per the
+[Postgres WAL docs](https://www.postgresql.org/docs/current/storage-page-layout.html#STORAGE-PAGE-LAYOUT-XLOG-RECORD)
++ a small heap tuple); you're generating roughly
 `100,000 × 120 = 12,000,000 B/sec ≈ 12 MB/sec` of WAL. Postgres'
 default WAL segment size is `16 MB` (see
 [`pg_controldata`](https://www.postgresql.org/docs/current/app-pgcontroldata.html)
