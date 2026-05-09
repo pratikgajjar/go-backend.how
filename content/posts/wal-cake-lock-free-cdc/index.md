@@ -338,8 +338,8 @@ strings; the warehouse re-types them.
 
 ## Standby status updates
 
-Every `receiveTimeout = 5s` and on every ack from downstream, wal-cake
-sends a `StandbyStatusUpdate` with `lastAckedLSN`:
+Every `5 s` and on every downstream ack, wal-cake sends a
+`StandbyStatusUpdate` with `lastAckedLSN`:
 
 ```go
 // internal/replication/pg_replicator.go
@@ -355,9 +355,9 @@ func (r *pgReplicator) SendStandbyStatusUpdate(ctx context.Context, replyRequest
 }
 ```
 
-Three position fields, all set to the same value. Postgres uses them
-to populate `pg_stat_replication.write_lag`, `flush_lag`, and
-`replay_lag` — the three columns your DBA stares at. They also drive
+Three position fields, all the same value. Postgres uses them to
+populate `pg_stat_replication.write_lag`, `flush_lag`, and
+`replay_lag` — the three columns your DBA stares at — and to drive
 WAL segment recycling: once `confirmed_flush_lsn` advances past a
 segment, that segment in `pg_wal/` is eligible for reuse.
 
@@ -780,8 +780,8 @@ beforeNode, _ := schema.NewPrimitiveNodeLogical(
 )
 ```
 
-A snippet of `parquet-tools meta` output on a representative wal-cake
-file (real layout, hand-formatted from a tool run):
+A `parquet-tools meta` snippet on a representative wal-cake file
+(real layout, hand-formatted):
 
 ```
 $ parquet-tools meta default/2026/05/09/1715251200000000.zstd.parquet
@@ -806,9 +806,9 @@ row group 0: RC:1000  TS:184_322
   after:        SIZE:131_966
 ```
 
-(Numbers above are illustrative — they reflect ratios I've seen on a
-real ~200 B/event CDC workload, not a single specific file from this
-exact codebase. The shape is right; treat the bytes as approximate.)
+(Numbers above are illustrative — ratios from a `~200 B/event` CDC
+shape, not a single file from this codebase. Treat bytes as
+approximate.)
 
 Two columns dominate: `before` and `after`. Everything else is in the
 noise — `table` and `operation` together are
@@ -1044,41 +1044,32 @@ detail.
 
 Honest list. Three I'd actually do, ordered by impact-per-effort.
 
-**Apache Iceberg over raw Parquet.** Right now we write naked Parquet
-files into a key prefix and rely on Glue/Athena/Trino to reconstruct
-"the table." Iceberg adds a manifest and a metadata-pointer chain on
-top: schema evolution becomes a metadata-only operation,
-`SELECT … AS OF TIMESTAMP …` is free, and exactly-once becomes a
-property of the format (manifest commits are atomic via S3
-conditional-put). The cost is one more write per batch (manifest
-update) and a metadata-store dependency. For a CDC-into-warehouse
-pipeline this is the right tradeoff once you have more than a handful
-of consumers. Today's wal-cake user can layer Iceberg on top via a
-nightly compaction job, but native support means no compaction window
-to coordinate.
+**Apache Iceberg over raw Parquet.** We write naked Parquet into key
+prefixes and rely on Glue/Athena/Trino to reconstruct "the table."
+Iceberg layers a manifest + metadata-pointer chain: schema evolution
+is metadata-only, `SELECT … AS OF TIMESTAMP …` is free, and
+exactly-once becomes a format property (manifest commits are atomic
+via S3 conditional-put). Cost: one extra write per batch and a
+metadata-store dependency. The right tradeoff once more than a
+handful of consumers read the lake.
 
-**Per-table Parquet streams.** One file currently mixes events from
-many tables. A warehouse query for "all changes to `users` last week"
-has to scan every wal-cake file in that week, applying a `WHERE
-table='users'` predicate. With per-table partitioning
-(`namespace/table/2026/05/09/...parquet`) the predicate becomes a path
-prefix, and Athena scans 1/N of the bytes for an N-table workload.
-The implementation cost is real: the ring buffer would need
-per-(table, day) sub-batches, and the LSN-contiguity guarantee is
-trickier when batches no longer cover the global LSN range. Probably
-a per-table secondary ring with the global LSN walker remaining the
-authority on what's safe to ack.
+**Per-table Parquet streams.** One file mixes events from many
+tables. A query for "all changes to `users` last week" scans every
+wal-cake file in that week with a `WHERE table='users'` predicate.
+Per-table partitioning (`namespace/table/2026/05/09/...parquet`)
+turns the predicate into a path prefix; Athena scans 1/N of the
+bytes for N tables. Implementation cost: per-(table, day) sub-batches
+and the LSN-contiguity guarantee gets trickier across them. A
+per-table secondary ring with the global LSN walker as the authority
+is one workable shape.
 
-**Schema registry for `before`/`after`.** Right now both columns are
-JSON-as-bytes, which means every reader does its own per-row
-JSON-parse. A typed schema (Avro, or Confluent Schema Registry +
-Parquet `LIST<STRUCT<...>>` columns) would let warehouses scan
-typed columns directly with predicate pushdown, no string parsing.
-Cost: schema evolution becomes a real concern (Postgres schema
-changes have to be reflected in the registry, and rolling schema
-changes need careful coordination). For high-value tables this is
-worth it; for "change log of everything," JSON-as-bytes is
-pragmatic.
+**Schema registry for `before`/`after`.** JSON-as-bytes makes every
+reader pay JSON-parse per row. A typed schema (Avro or Confluent
+Schema Registry + Parquet `LIST<STRUCT<...>>` columns) would let
+warehouses scan typed columns directly with predicate pushdown.
+Cost: schema evolution is now a coordination problem between
+Postgres DDL and the registry. Worth it for high-value tables; for
+"change log of everything," JSON-as-bytes is pragmatic.
 
 Two more I'd consider but probably wouldn't ship in v1:
 

@@ -430,12 +430,16 @@ plainly — long stretches of zero syscalls between bursts.
 
 # Real numbers — three-run wall-clock on a 4-core slice of an M3 Max
 
-Scylla itself needs Linux + io_uring + ~1 GB of locked memory per shard
-(the io_uring SQ/CQ rings + per-shard arena; measured at startup, see
-[`mlock_limit`](https://github.com/scylladb/seastar/blob/master/src/core/reactor_backend.cc) in `reactor_backend.cc`).
-I'm on a Mac, so instead of running Scylla, I'll measure the *thing
-the architecture buys you*: the per-op cost of cross-core coordination,
-versus the per-op cost when no coordination is needed.
+Scylla itself needs Linux + io_uring + a chunk of locked memory at
+startup. Seastar's [`detect_io_uring`](https://github.com/scylladb/seastar/blob/master/src/core/reactor_backend.cc)
+is explicit about the floor: "Older kernels lock about 32k/vcpu for the
+ring itself. Require 8MB of locked memory to be safe." Per-shard arena
+plus the ring is small in absolute terms; the bulky locked memory is the
+pre-faulted data-path arena, which Scylla sizes via `--memory` and
+divides equally across shards. I'm on a Mac, so instead of running
+Scylla, I'll measure the *thing the architecture buys you*: the per-op
+cost of cross-core coordination, versus the per-op cost when no
+coordination is needed.
 
 The 50-line program below ran on a MacBook Pro M3 Max, GOMAXPROCS=4,
 Go 1.26.3. Each variant runs four goroutines, each does 5,000,000
@@ -530,17 +534,15 @@ bad — that's roughly the floor for cross-core coordination on this
 hardware — but it's also why Scylla goes to such lengths to keep the
 work on one shard in the first place.
 
-For an apples-to-apples cross-system reading, the published Scylla vs
-Cassandra benchmark ([Scylla
-Cloud](https://www.scylladb.com/2018/03/06/scylla-aws-im4gn/) /
-[official benchmarks](https://www.scylladb.com/product/benchmarks/))
-shows Scylla sustaining roughly 1.0–1.2 M ops/sec on a single
-i3.4xlarge node (16 vCPU) on a YCSB-A workload, where Cassandra on the
-same instance manages around 100K ops/sec. Their measured ratio is
-~10×, not 30×. The gap closes from the napkin number because real
-read paths spend a lot of cycles on disk I/O and protocol parsing that
-no architecture can eliminate. Even so, the pattern is the same: every
-factor of 2 in the gap traces back to a decision to *not share*.
+For an apples-to-apples cross-system reading, ScyllaDB's own
+[published benchmarks](https://www.scylladb.com/product/benchmarks/)
+claim roughly an order-of-magnitude lead over Cassandra on YCSB-A on
+comparable AWS instances (the page is updated periodically; check the
+latest report there). Their measured ratio is `~10×`, not `30×`. The
+gap closes from the napkin number because real read paths spend many
+cycles on disk I/O and protocol parsing that no architecture can
+eliminate. Even so, the pattern holds: every factor of 2 in the gap
+traces back to a decision to *not share*.
 
 # Tradeoffs — what this architecture is bad at
 
@@ -773,11 +775,16 @@ removed the coordination.
 
 ## Colophon
 
-This post was assembled by reading roughly 8,000 lines of Seastar source
-(the relevant parts — there are 50K+ in total) over an afternoon.
-Source citations point at the public mirror on GitHub. Numbers in the
-benchmark table are wall-clock measurements from three runs of the
-included Go program on a MacBook Pro M3 Max (14 cores, 36 GB RAM, macOS
-26.2, Go 1.26.3). Ratios will vary by ±20% across hardware and OS
-schedulers; the *direction* of the ratio is invariant. Methodology and
-errors are mine; the architecture is ScyllaDB's.
+Reading list: `include/seastar/core/smp.hh` (557 lines),
+`src/core/smp.cc` (316 lines), the SMP-relevant chunks of
+`src/core/reactor.cc` (5,485 lines total, the SMP path is roughly the
+`smp_message_queue` and `do_run` sections), `src/core/reactor_backend.cc`
+(the `reactor_backend_uring` class, ~600 lines of the file's 1,985),
+and `src/core/systemwide_memory_barrier.cc`. Source citations point at
+the public GitHub mirror at scylladb/seastar.
+
+Numbers in the benchmark table are wall-clock measurements from three
+runs of the included Go program on a MacBook Pro M3 Max (14 cores, 36
+GB RAM, macOS 26.2, Go 1.26.3). Ratios will vary by `±20%` across
+hardware and OS schedulers; the *direction* of the ratio is invariant.
+Methodology and errors are mine; the architecture is ScyllaDB's.

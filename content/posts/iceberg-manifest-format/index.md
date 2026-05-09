@@ -53,7 +53,7 @@ differently* if I were designing v5 today.
 Iceberg is the format that everybody reaches for when they outgrow
 Hive — yet the on-disk metadata is **Avro**, the row-oriented
 format that started life as a Hadoop sub-project ([the Avro 1.4.0
-release on 2010-09-15](https://avro.apache.org/releases/) is the
+release in September 2010](https://avro.apache.org/releases/) is the
 first one tagged as a top-level Apache project, while the
 sub-project history goes back further). The "queryable data lake"
 is described by row-oriented files. The pointers to your Parquet
