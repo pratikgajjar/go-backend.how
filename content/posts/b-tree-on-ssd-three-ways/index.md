@@ -366,17 +366,19 @@ revisits them; the test-page list catches "thrashing" cold pages
 deserving promotion. A full LRU would need a doubly-linked list and a
 write lock on every read.
 
-The byte-by-byte hot path for a Pebble Get (cache miss) is
-roughly:
+The byte-by-byte hot path for a Pebble Get (cache miss) — verified
+against [`get.go:60`](https://github.com/cockroachdb/pebble/blob/master/get.go#L60)
+(`getInternal`) — is:
 
 ```
 Get(k)
-  → ingestedShared check (skip)
-  → memtable.Get (skiplist)        - RAM
-  → for each level L0..Ln:
-      bloom_filter[level].MayContain(k)?  no → skip
-      yes:  index_block.lookup(k)  - block cache
-            data_block.lookup(k)   - block cache, decompress on miss
+  → loadReadState()                        - pin memtables + version
+  → for each memtable in queue (newest→oldest, skiplist scan)
+  → for each L0 sublevel (overlapping sstables)
+  → for each level L1..Ln (non-overlapping):
+      bloom_filter[level].MayContain(k)?  no → skip (when configured)
+      yes:  index_block.lookup(k)          - block cache
+            data_block.lookup(k)           - block cache, decompress on miss
   → return value
 ```
 
