@@ -142,7 +142,7 @@ by Raasveldt & Mühleisen, and the implementation lives in
 
 # Source dive: how a vector flows through a pipeline
 
-The engine is roughly 489 KLOC of C++17 (`find src -type f \(
+The engine measures 489 KLOC of C++17 (`find src -type f \(
 -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) | xargs wc -l`
 reports `488898 total`), and the hot path is a tiny fraction of
 that. Six files do most of the lifting:

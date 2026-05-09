@@ -690,11 +690,12 @@ DETAIL:  Building will take significantly more time.
 
 For 1M rows of `vector(1536)` (OpenAI `text-embedding-ada-002`
 dimension): vector payload is `1536 × 4 = 6144` bytes per row;
-level-0 neighbour TIDs are `32 × 6 = 192` bytes plus a small tail
-for the ~6.25 % of nodes at level ≥ 1; tuple headers add ≈ 80 B;
-alignment and per-page slack ≈ 20 %. The in-memory graph is
-therefore about `(6144 + 200 + 80) × 1.2 ≈ 7700` bytes per row, so
-roughly 7.7 GB for 1M rows total. Below that, you're in slow mode.
+level-0 neighbour TIDs are `32 × 6 = 192` bytes (with a small tail
+for the ~6.25 % of nodes at level ≥ 1, negligible at the 1M-row
+scale); tuple headers add ≈ 80 B; alignment and per-page slack
+≈ 20 %. The in-memory graph is therefore about
+`(6144 + 192 + 80) × 1.2 ≈ 7700` bytes per row, so roughly 7.7 GB
+for 1M rows total. Below that, you're in slow mode.
 Production deployments with 100M-row tables can't just
 `CREATE INDEX`; they have to plan for it.
 

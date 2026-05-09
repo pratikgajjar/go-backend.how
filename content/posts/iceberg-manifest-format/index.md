@@ -26,11 +26,11 @@ JSON file, and every visible state points to a tree of Avro files
 that name the Parquet/ORC data. There is no global lock. There is no
 running daemon. There is a pointer that gets atomically swapped, and a
 tree of files that is grown by writers like a persistent data
-structure. Spec version 2 was [adopted by the community in September
+structure. Spec version 2 was [adopted in September
 2021](https://github.com/apache/iceberg/commit/09584aa78); version 3
 was [marked complete in May
 2025](https://github.com/apache/iceberg/commit/0ae939407); version 4
-is under active development at time of writing.
+is under active development.
 
 This post is a byte-level tour of the **manifest** layer, which is the
 part of the tree that does the real work of pruning a query down from
