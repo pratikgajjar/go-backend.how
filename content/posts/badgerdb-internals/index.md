@@ -328,7 +328,7 @@ That, more than the WiscKey separation itself, is the lesson. Storage engines ar
 # Further reading
 
 - [WiscKey: Separating Keys from Values in SSD-conscious Storage](https://www.usenix.org/system/files/conference/fast16/fast16-papers-lu.pdf) (FAST '16). The paper. Section 2 on write-amp-vs-read-amp tradeoff is the whole motivation.
-- [Introducing Badger blog post](https://hypermode.com/blog/badger/). Original Dgraph announcement, March 2017.
-- [Concurrent ACID Transactions in Badger](https://hypermode.com/blog/badger-txn/). The SSI implementation in `txn.go`.
+- [Introducing Badger blog post](https://www.hypermode.com/blog/badger/). Original Dgraph announcement, March 2017.
+- [Concurrent ACID Transactions in Badger](https://www.hypermode.com/blog/badger-txn/). The SSI implementation in `txn.go`.
 - [RocksDB Dynamic Level Sizes](https://rocksdb.org/blog/2015/07/23/dynamic-level.html). The technique Badger borrows for `levelTargets`.
 - [PebbleDB compaction picker](https://github.com/cockroachdb/pebble/blob/master/compaction_picker.go). The score-adjustment pattern in `pickCompactLevels` is lifted from here.

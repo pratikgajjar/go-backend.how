@@ -473,10 +473,10 @@ All on-disk sizes below are MiB (binary megabytes); the bench prints
 MiB. Payload is `200,000 × (8-byte key + 200-byte value + ~16-byte
 leafPageElement overhead) = 44,800,000 bytes ≈ 42.7 MiB`.
 
-For LMDB: with 4-KiB pages and `FillPercent ≈ 0.95` (LMDB default for
-sequential inserts) you'd expect `42.7 / 0.95 ≈ 44.9 MiB` - within 7%
-of the measured 42 MiB (the freelist hasn't allocated tail slack yet
-at this scale). The math is in
+For LMDB: with 4-KiB pages and sequential-insert packing (LMDB has
+no FillPercent knob — `mdb_page_split` packs to MDB_MINKEYS, ≈ 95%
+full for our 200-byte values), expect `42.7 / 0.95 ≈ 44.9 MiB`,
+within 7% of the measured 42 MiB. The page-allocator is in
 [`mdb_page_alloc`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L2501).
 
 For BoltDB: the **same** payload at `FillPercent = 0.5`

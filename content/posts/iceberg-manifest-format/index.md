@@ -550,12 +550,13 @@ partitioned by day for 365 days:
 * Manifests intersecting the day: assuming evenly distributed,
   `150 / 365 ≈ 0.41`, so 1 manifest with high probability.
 * Manifest GET — 1 round-trip, again ~30 ms. 8 MiB of compressed
-  Avro decompresses to roughly 30 MiB for numeric/binary-heavy
-  manifests (snappy on 32-bit-int-heavy data is in the 3–4×
-  expansion range; the
-  [snappy README](https://github.com/google/snappy)
-  reports ~3.5× compression on enwik9, which is mixed
-  text+binary). The parse
+  Avro decompresses to roughly 20–40 MiB for numeric/binary-heavy
+  manifests (Iceberg defaults to gzip on the manifest writer; gzip
+  on Avro-encoded counts + UUIDs typically lands at 3–5× expansion
+  in my own dumps. Snappy and zstd are also supported; the
+  [snappy README](https://github.com/google/snappy) reports
+  1.5–2× on text and higher ratios on repetitive numeric data).
+  The parse
   cost on Python with `fastavro` is roughly the disk-decode of
   that 30 MiB, which dominates over the network round-trip on
   small (single-day) queries. JVM clients are typically faster

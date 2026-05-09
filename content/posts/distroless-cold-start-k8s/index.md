@@ -451,7 +451,7 @@ Pick a base, accept the holes:
 
 [cgrpipe]: https://github.com/chainguard-dev/melange
 
-**All three break observability without `kubectl debug`**. None of them ship `curl`, `dig`, `tcpdump`, `lsof`, or `ps`. The modern fix is [ephemeral debug containers][ephemeral] (`kubectl debug pod -it --image=nicolaka/netshoot --target=app`), which works on scratch the same as on Wolfi. If your platform team hasn't enabled ephemeral containers, distroless and scratch will haunt you the first time a pod is "stuck" and you can't shell in.
+**Observability without `kubectl debug` is rough on all three**. Scratch and distroless ship none of `curl`, `dig`, `tcpdump`, `lsof`, `ps`. Wolfi-base ships `lsof`, `ps`, and `ping` (verified by `podman run cgr.dev/chainguard/wolfi-base which ...`) but not `curl`, `dig`, `tcpdump`, or `nc`. The modern fix on all three is [ephemeral debug containers][ephemeral] (`kubectl debug pod -it --image=nicolaka/netshoot --target=app`), which works on scratch the same as on Wolfi. If your platform team hasn't enabled ephemeral containers, distroless and scratch will haunt you the first time a pod is "stuck" and you can't shell in.
 
 [ephemeral]: https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container
 
