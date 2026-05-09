@@ -102,10 +102,11 @@ HNSW, from
 [Malkov & Yashunin's 2018 paper](https://arxiv.org/abs/1603.09320),
 trades a memory hit for a much friendlier curve. The construction:
 
-- Each inserted vector picks a random level `ℓ` from a geometric
-  distribution with mean `1/ln(M)`. The element exists on every layer
-  from 0 to `ℓ`. Most elements (about `1 − 1/M ≈ 93.75 %` for
-  `M = 16`) live only on layer 0.
+- Each inserted vector picks a random level `ℓ` as
+  `floor(-ln(U) × 1/ln(M))` for `U` uniform on `(0, 1)`. The element
+  exists on every layer from 0 to `ℓ`. The result is a geometric
+  distribution: most elements (about `1 − 1/M ≈ 93.75 %` for
+  `M = 16`) live only on layer 0; mean integer level is `1/(M−1)`.
 - On each layer the element is connected to up to `M` nearest
   neighbours (or `2M` on layer 0 — the ground layer carries the long
   tail of the data and needs more degree).
