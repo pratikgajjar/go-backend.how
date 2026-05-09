@@ -658,6 +658,24 @@ FILLER_RE = re.compile(
 )
 
 
+PG_VERSION_RE = re.compile(r"\b(?:Postgres|PostgreSQL|PG)\s*(\d{1,2})(?:\.\d+)?\b", re.IGNORECASE)
+# Latest released as of 2026-05: PG 17. PG 18 is in dev (beta as of 2026 Q2).
+PG_LATEST_RELEASED = 17
+
+
+def pg_version_defects(body: str) -> int:
+    """Reference to a Postgres version > latest-released is a likely typo or
+    forward-looking claim that should be marked as such."""
+    n = 0
+    for m in PG_VERSION_RE.finditer(body):
+        ver = int(m.group(1))
+        if ver > PG_LATEST_RELEASED + 1:  # allow "PG 18" since it's in beta
+            print(f"DEBUG pg_version: 'PG {ver}' (latest released is {PG_LATEST_RELEASED})",
+                  file=sys.stderr)
+            n += 1
+    return n
+
+
 def code_path_exact_defects(body: str, cached_repo: Path) -> int:
     """For every `// pkg/.../file.go` style path in a code block, the EXACT
     relative path must exist in the cached repo. Catches the regression where
@@ -988,6 +1006,7 @@ def main() -> int:
     cats["para_terminator"] = paragraph_terminator_defects(body)
     cats["trailing_ws"] = trailing_whitespace_defects(body)
     cats["code_path_exact"] = code_path_exact_defects(body, cached_repo)
+    cats["pg_version"] = pg_version_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -1022,6 +1041,7 @@ def main() -> int:
         "para_terminator": 1,
         "trailing_ws": 1,
         "code_path_exact": 4,
+        "pg_version": 3,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
