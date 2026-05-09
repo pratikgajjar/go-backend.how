@@ -805,6 +805,23 @@ Drop that file inside a checkout of `etcd-io/raft` and run
 `-v` will also surface the library's `Infof` lines, which mirror the
 trace this whole post walked.
 
+If you want to see the goroutine scheduling overhead the 200 µs
+estimate accounts for, run:
+
+```shell
+go test -trace=trace.out -run TestElectionDemo
+go tool trace trace.out
+```
+
+The browser view will show the candidate's goroutine yielding on
+`readyc` between every state-machine step, with the followers'
+goroutines waking up on `recvc` to receive `MsgVote`. The total
+wall-clock from the first `Step(MsgHup)` to the last `becomeLeader`
+log line is the localhost-wall-clock the title's 200 µs refers to.
+On Linux you can get the same data via `bpftrace` uprobes on the
+`raft.test` binary; on macOS, `dtrace -n 'pid$target::*becomeCandidate*:entry'`
+works once you've built the test binary with `go test -c`.
+
 # Closing
 
 The thing the source code teaches that the [Raft
