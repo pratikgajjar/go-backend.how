@@ -296,6 +296,7 @@ func CreateUser(ctx context.Context, db *pgxpool.Pool, u User) error {
         }
         producer, _ := factlibProducer.WithTxn(postgres.GetPgxTxn(tx))
         fact, _ := common.NewFact("user", u.ID, "user.created", payloadBytes, nil)
+        fact.TraceInfo = &common.TraceInfo{}  // mandatory; see §10 demo
         _, err := producer.Emit(ctx, fact)
         return err
     })
