@@ -6,7 +6,7 @@ lastmod = 2026-05-09T12:00:00+05:30
 publishDate = "2026-05-09T12:00:00+05:30"
 draft = true
 tags = ["postgres", "cdc", "parquet", "golang", "data-lake", "wal", "s3"]
-images = []
+images = ["og.png"]
 theme = "amber"
 featured = false
 math = false
@@ -1084,16 +1084,14 @@ The three things this post called out at the top:
    open-ended payloads, and ZSTD-3 across the whole row group.
 
 None of these are novel ideas. Logical replication has been in
-Postgres [since 9.4 (December 2014)][pg94]. Lock-free ring buffers go
-back to [the LMAX Disruptor (2011)][lmax-paper]. Parquet encoding
-tradeoffs are documented in the [format spec][parquet-spec]. The
-interesting work is putting the three together so that no one of them
-sneaks past the CDC contract while the other two were looking the
-other way.
-
-[pg94]: https://www.postgresql.org/docs/9.4/release-9-4.html "PostgreSQL 9.4 Release Notes — \"Add support for logical decoding of WAL data\""
-[lmax-paper]: https://lmax-exchange.github.io/disruptor/disruptor.html "LMAX Disruptor — Technical Paper (2011)"
-[parquet-spec]: https://parquet.apache.org/docs/file-format/data-pages/encodings/ "Apache Parquet — Encodings"
+Postgres [since 9.4 (December 2014)](https://www.postgresql.org/docs/9.4/release-9-4.html).
+Lock-free ring buffers go back to
+[the LMAX Disruptor (2011)](https://lmax-exchange.github.io/disruptor/disruptor.html).
+Parquet encoding tradeoffs are documented in the
+[format spec](https://parquet.apache.org/docs/file-format/data-pages/encodings/).
+The interesting work is putting the three together so that no one of
+them sneaks past the CDC contract while the other two were looking
+the other way.
 
 The spec was two lines. The implementation is two thousand. Most of
 the bytes between the two are saying _no_ to the obvious thing.

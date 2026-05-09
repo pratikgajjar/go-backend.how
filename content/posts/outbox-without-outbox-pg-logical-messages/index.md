@@ -1,6 +1,6 @@
 +++
 title = "🦉 The Outbox Without an Outbox — Postgres Logical Messages as Eventbus"
-description = "Most outbox-pattern tutorials hand you a table, a poller, an index, a vacuum problem, and a dual-write race. Postgres has shipped a feature since 9.6 that makes the table unnecessary. We walk factlib + OwlPost, line by line, to show how the WAL itself becomes the outbox."
+description = "Postgres has shipped pg_logical_emit_message since 9.6 (2016) — it makes the outbox table unnecessary. We walk factlib + OwlPost line by line and audit the LSN-ack pipeline."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
 publishDate = "2026-05-09T12:00:00+05:30"
@@ -196,7 +196,7 @@ sound. The implementation is just heavier than it needs to be.
 
 # 3. The forgotten Postgres feature: `pg_logical_emit_message`
 
-From the [Postgres 17 documentation](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-ADMIN-GENFILE):
+From the [Postgres 17 documentation](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-REPLICATION):
 
 > `pg_logical_emit_message(transactional boolean, prefix text, content text) → pg_lsn`
 > `pg_logical_emit_message(transactional boolean, prefix text, content bytea) → pg_lsn`
@@ -1007,7 +1007,7 @@ while.
   v1. `wal2json` would give us JSON instead of binary, which is
   *less* of what we want — we already have protobuf.
 
-The whole library is around 1,500 lines of Go. The clever line is
+The whole library is around 2,500 lines of Go (`find pkg cmd -name '*.go' -not -name '*_test.go' | xargs wc -l` → 2,483). The clever line is
 exactly one:
 
 ```go
@@ -1020,7 +1020,7 @@ notice.
 # Further reading
 
 - Postgres docs:
-  [`pg_logical_emit_message`](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-ADMIN-GENFILE),
+  [`pg_logical_emit_message`](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-REPLICATION),
   [logical decoding](https://www.postgresql.org/docs/17/logicaldecoding.html),
   [`pg_replication_slots`](https://www.postgresql.org/docs/17/view-pg-replication-slots.html).
 - factlib source: <https://github.com/fampay-inc/factlib> (Apache-2.0).

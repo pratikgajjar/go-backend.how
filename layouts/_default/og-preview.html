@@ -194,18 +194,22 @@
       </div>
     </header>
 
-    {{- /* Resolve OG image URL the same way opengraph.html does. */ -}}
+    {{- /* Resolve OG image URL using RelPermalink so the preview renders
+           on dev server (http://localhost:1313) without trying to fetch
+           images from production https://backend.how. */ -}}
     {{- range $page := where .Site.RegularPages "Section" "posts" }}
       {{ $img := "" }}
       {{ with $page.Params.images }}
         {{ $first := index . 0 }}
-        {{ if or (hasPrefix $first "http://") (hasPrefix $first "https://") (hasPrefix $first "/") }}
-          {{ $img = $first | absURL }}
+        {{ if or (hasPrefix $first "http://") (hasPrefix $first "https://") }}
+          {{ $img = $first }}
+        {{ else if hasPrefix $first "/" }}
+          {{ $img = $first | relURL }}
         {{ else }}
-          {{ $img = printf "%s%s" $page.Permalink $first }}
+          {{ $img = printf "%s%s" $page.RelPermalink $first }}
         {{ end }}
       {{ else }}
-        {{ $img = "/og-image.png" | absURL }}
+        {{ $img = "/og-image.png" | relURL }}
       {{ end }}
       {{ $title := $page.Title }}
       {{ $desc := $page.Description }}
