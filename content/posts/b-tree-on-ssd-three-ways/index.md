@@ -538,9 +538,10 @@ hour, every page modified in that hour stays alive in the file. The
 file *grows*. The
 [`mt_spill_pgs`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L1336)
 mechanism gives some spill-to-disk relief inside long writers, but
-it doesn't help long readers. Etcd's storage team [migrated to bbolt](https://github.com/etcd-io/etcd/issues/10523)
-in part for tooling reasons - same constraint shape, easier ops in
-the Go ecosystem.
+it doesn't help long readers. Etcd ships
+[`go.etcd.io/bbolt`](https://github.com/etcd-io/etcd/blob/main/go.mod)
+as a direct dependency for tooling reasons — same single-writer
+constraint shape, easier ops in the Go ecosystem.
 
 ## 6.2 BoltDB - write throughput, file size, no compression
 

@@ -619,16 +619,21 @@ const (
 )
 ```
 
-`ReadOnlySafe` is one heartbeat round-trip per read. On a 1 ms LAN, a
-linearizable read costs you ~1 ms. `ReadOnlyLeaseBased` is local — the
-leader trusts that no one has elected itself in the lease window — so a
-linearizable read is `O(memory access)`. The tradeoff is bounded clock
-drift, which Raft cannot guarantee on cloud VMs. CockroachDB and TiKV
-use lease-based reads with hardware-grade clock guarantees;
-[etcd's
-production choice](https://github.com/etcd-io/etcd/blob/main/server/etcdserver/server.go)
-is `ReadOnlySafe`. You pay 1 ms per read for not having to trust your VM
-clock.
+`ReadOnlySafe` is one heartbeat round-trip per read: cost is dominated
+by network latency, so on a `~1 ms` LAN a linearizable read costs you
+about that. `ReadOnlyLeaseBased` is local — the leader trusts that no
+one has elected itself in the lease window — so a linearizable read is
+`O(memory access)`, on the order of `~100 ns` to read the lease
+expiry. The tradeoff is *bounded* clock drift, which Raft cannot
+guarantee on cloud VMs. The library's [own comment](https://github.com/etcd-io/raft/blob/main/raft.go#L62)
+on `ReadOnlyLeaseBased` calls this out: "If the clock drift is
+unbounded, leader might keep the lease longer than it should (clock can
+move backward/pause without any bound)." Etcd defaults to `ReadOnlySafe`
+both in the library (the `iota` zero value) and in the
+[`etcd-server`
+configuration](https://github.com/etcd-io/etcd/blob/main/server/etcdserver/server.go).
+You pay one heartbeat round-trip per read for not having to trust your
+VM clock.
 
 ## Randomised timeout is a hack, not a fix
 

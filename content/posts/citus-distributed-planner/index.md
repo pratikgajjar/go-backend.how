@@ -608,10 +608,13 @@ is highest — not the planner, the executor.
 Citus runs `standard_planner` and uses _its_ restriction info. If a
 Postgres planner version changes how it stores quals — say, the PG 16
 `permInfos` rework or the PG 18 GROUP-RTE change — Citus has to be
-patched. The git log on `distributed_planner.c` shows a recurring
-pattern of "PG 16 compat", "PG 17 compat", "PG 18 compat" commits.
-That's structural debt — Citus is bound to Postgres' internals at a
-much tighter coupling than a SQL-on-anything system would be.
+patched. `git log --oneline -- src/backend/distributed/planner/distributed_planner.c`
+on the cached repo shows two "PG16 compatibility" commits (`b36c431ab`,
+`6056cb2c2`) and three explicit `PG18:` commits (`7cc0bb27c`,
+`002046b87`, `5d71fca3b`); the broader codebase has dozens more
+across `git log --all | grep -iE "PG ?1[5-8]"`. That's structural
+debt — Citus is bound to Postgres' internals at a much tighter
+coupling than a SQL-on-anything system would be.
 
 **Aggregates that don't decompose.** Order-statistics aggregates
 (median, mode, the `percentile_cont` / `percentile_disc` family) in
