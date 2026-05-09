@@ -664,9 +664,11 @@ lunch on summary statistics that aren't monoidal.
 
 **Cluster topology baked into table creation.** When you run
 `create_distributed_table('orders', 'customer_id')`, Citus picks the
-shard placement at that moment and the shard count stays fixed.
-Adding nodes later requires `rebalance_table_shards`, which is an
-operational event - not something a SQL query can trigger
+shard count and placement at that moment. Changing either later
+requires deliberate operator action: `alter_distributed_table(...,
+shard_count := N)` to re-shard, or `rebalance_table_shards()` to
+move existing shards to new nodes. Both are operational events with
+locks and downtime concerns, not something a SQL query can trigger
 transparently. Compare this to systems where the data unit is
 auto-split: CockroachDB calls them "ranges" and rebalances them
 continuously across nodes; Spanner calls them "splits" and the
