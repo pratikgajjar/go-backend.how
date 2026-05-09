@@ -446,10 +446,11 @@ in the L2 path. The loop is just structured so that the compiler
 can't miss the vectorization.
 
 The half-precision path in `halfutils.c` _does_ ship hand-rolled AVX
-intrinsics (`_mm256_cvtph_ps`, `_mm256_fmadd_ps`) because converting
-fp16 to fp32 inside the loop benefits from the F16C extension that
-the auto-vectorizer doesn't know how to use. That's the only place in
-the distance code with manual intrinsics.
+intrinsics (`_mm256_cvtph_ps`, `_mm256_fmadd_ps`) — explicit
+F16C-based fp16→fp32 conversion inside the inner loop, runtime-
+dispatched via `__cpuid` so machines without F16C fall back to a
+default scalar implementation. That's the only place in the distance
+code with manual intrinsics.
 
 For a `vector(128)` query, one distance call is 128 FMAs and a
 horizontal sum. On a 3 GHz core with AVX2 FMA (8 floats per FMA, 1
