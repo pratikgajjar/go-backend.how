@@ -445,14 +445,14 @@ Pick a base, accept the holes:
 
 Three changes I'd make to a real platform team's container baseline.
 
-**1. Pick distroless-static as the default, scratch as the opt-in**. The 5 MB delta over scratch is irrelevant to cold-start (we measured: 30 ms band). The CA bundle and tzdata are worth it for every TLS-using and time-zone-aware service — which is every payments service. Reserve scratch for binaries that have *measured* their startup floor and need to shave the last 1 MB of supply-chain attack surface (your build pipeline, your sidecars, your one-shot CronJobs).
+**1. Pick distroless-static as the default, scratch as the opt-in**. The wire delta vs scratch is `4.83 - 3.98 = 0.85 MB` and the cold-pull delta is inside the 30 ms run-to-run band measured above. The CA bundle and tzdata are worth those 0.85 MB on every TLS-using and time-zone-aware service — which is every payments service. Reserve scratch for binaries that have *measured* their startup floor and need to shave the last megabyte of supply-chain attack surface (your build pipeline, your sidecars, your one-shot CronJobs).
 
 **2. Build the binary with `-buildmode=pie` only when you need ASLR**. Default Go non-PIE binaries link against fixed virtual addresses; PIE adds a per-pod relocation pass on the dynamic linker side that, on a 10 MB binary, sums to a fraction of a millisecond per pod (rangier on x86, smaller on ARM64). At 1000 pods scaling in parallel the wall-clock impact stays sub-millisecond, but the cumulative CPU cost shows up on the cluster-wide PSI graph. Use [`go build -buildmode=pie`][pie] only on binaries that ship to untrusted hosts (and run [`go test -bench`][gobench] on your own binary to measure the delta before opting in).
 
 [pie]: https://pkg.go.dev/cmd/go#hdr-Build_modes
 [gobench]: https://pkg.go.dev/testing#hdr-Benchmarks
 
-**3. Run a registry mirror on every node, not in the cluster**. `containerd` supports [registry mirrors][mirror] in `/etc/containerd/config.toml`. Run a `registry:2` on each kubelet node bound to `127.0.0.1`, with the cluster registry as upstream, and the per-pod pull becomes a localhost RTT. We saw that explicit: localhost-registry pulls were 200–300 ms, gcr.io pulls were 2–3 s — a **10×** swing. At 1000 pods × 10× = 10000 ms saved per scale event, with no image-format change. That gives back more wall-clock than picking the right base ever can.
+**3. Run a registry mirror on every node, not in the cluster**. `containerd` supports [registry mirrors][mirror] in `/etc/containerd/config.toml`. Run a `registry:2` on each kubelet node bound to `127.0.0.1`, with the cluster registry as upstream, and the per-pod pull becomes a localhost RTT. We measured this explicitly: localhost-registry pulls landed at 0.25–0.30 s, gcr.io pulls at 2.79–2.99 s — a per-pull saving of `~2.5 s`. At 1000 pods scaling in parallel, that saving is 2.5 s of wall-clock per pod (cumulative CPU savings: `1000 × 2.5 = 2500 s`). For a fleet hitting `--serialize-image-pulls` (kubelet's default before v1.27 on some distros), the wall-clock saving is the cumulative figure. Either way it dwarfs the base-image choice.
 
 [mirror]: https://github.com/containerd/containerd/blob/main/docs/hosts.md
 

@@ -1058,6 +1058,72 @@ read it. The producer language never enters the picture downstream.
 That's a real win for any company with more than one backend
 language. Most have. Most pretend they don't.
 
+## Minimal Go producer
+
+A whole runnable producer, copy-pasteable. Set
+`DATABASE_URL=postgres://...?sslmode=disable` and a database with
+`wal_level = logical` and run:
+
+```go
+// cmd/demo/main.go — minimal factlib producer
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    "git.famapp.in/fampay-inc/factlib/pkg/common"
+    "git.famapp.in/fampay-inc/factlib/pkg/outbox/producer"
+    fpostgres "git.famapp.in/fampay-inc/factlib/pkg/postgres"
+    "github.com/jackc/pgx/v5"
+)
+
+func main() {
+    ctx := context.Background()
+    conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer conn.Close(ctx)
+
+    base, err := producer.NewPostgresAdapter("payments-user", nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    err = pgx.BeginFunc(ctx, conn, func(tx pgx.Tx) error {
+        if _, err := tx.Exec(ctx,
+            "INSERT INTO users (id, email) VALUES ($1, $2)",
+            "user-12345", "alice@example.com",
+        ); err != nil {
+            return err
+        }
+        p, err := base.WithTxn(fpostgres.GetPgxTxn(tx))
+        if err != nil {
+            return err
+        }
+        fact, err := common.NewFact(
+            "user", "user-12345", "user.created",
+            []byte(`{"email":"alice@example.com"}`),
+            map[string]string{"source": "demo"},
+        )
+        if err != nil {
+            return err
+        }
+        _, err = p.Emit(ctx, fact)
+        return err
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+Run `psql -c "SELECT data FROM pg_logical_slot_peek_binary_changes('factlib_slot', NULL, NULL, 'proto_version', '1', 'publication_names', 'factlib_pub', 'messages', 'true');"`
+and you'll see the protobuf bytes hanging out in the WAL, waiting
+for OwlPost to drain them.
+
 # Comparison
 
 | Approach | Atomic with business txn | Polling | Schema migration | Cleanup | Per-aggregate ordering | Trace context |

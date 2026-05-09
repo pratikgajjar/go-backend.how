@@ -548,13 +548,16 @@ and rely on the partition bound alone.
 has had these settings since version 11
 ([release notes][pg11rn]) but [enable_partitionwise_join](https://www.postgresql.org/docs/current/runtime-config-query.html#GUC-ENABLE-PARTITIONWISE-JOIN) defaults
 to `off`. With it off, a JOIN of two partitioned tables on a common
-partition key fans out into a hash join over all 90 × 90 = 8,100
-child pairs of which the planner cannot eliminate any without
-constraint exclusion on every column. Switch it on per-session for
-analytical queries. The reason it's off by default is that the
-planner cost model wasn't great for them through PG 13 and could
-pick worse plans for small tables. From PG 14 onward this is mostly
-fine; turn it on.
+partition key collapses both sides into a single Append and runs one
+big hash join across all 1B + 1B rows — no per-partition isolation,
+no parallel splitting, hash tables sized for the whole dataset.
+With it on (and matching partition bounds), the planner runs 90
+separate per-partition joins (partition `i` of A ⨝ partition `i`
+of B), each independent and parallelizable, with hash tables sized
+to a single child. Switch it on per-session for analytical queries.
+The reason it's off by default is that the planner cost model
+wasn't great for them through PG 13 and could pick worse plans for
+small tables. From PG 14 onward this is mostly fine; turn it on.
 
 [pg11rn]: https://www.postgresql.org/docs/11/release-11.html
 

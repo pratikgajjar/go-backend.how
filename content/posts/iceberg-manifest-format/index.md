@@ -603,11 +603,14 @@ makes worse than alternatives.
 
 A few of these need elaboration.
 
-**Many small commits.** Each Iceberg commit, even an empty one,
-writes a new metadata.json and at least one manifest list. The minimum
-is `2 PUT + 1 CAS = 3 round-trips` to S3 + catalog. At 50 ms per
-round-trip the wall-clock cost is `3 × 50 = 150` ms, capping a
-single writer at `1000 / 150 ≈ 6.67` commits/s. The MERGE-ON-READ
+**Many small commits.** Every Iceberg commit that actually changes
+table state writes a new metadata.json and at least one manifest
+list (a no-op commit short-circuits via `updated.changes().isEmpty()`
+in `SnapshotProducer`, but a real append always writes both files).
+The minimum hot-path is `2 PUT + 1 CAS = 3 round-trips` to S3 +
+catalog. At 50 ms per round-trip the wall-clock cost is
+`3 × 50 = 150` ms, capping a single writer at `1000 / 150 ≈ 6.67`
+commits/s. The MERGE-ON-READ
 formats sidestep this by buffering in a write-ahead log. Iceberg V2
 adds row-level deletes via delete files, but the commit cadence is
 the same — a write is a write. The default commit retry budget of
