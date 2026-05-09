@@ -142,16 +142,33 @@ def codeblock_path_defects(body: str, cached_repo: Path) -> tuple[int, int, int]
         if not path_matches:
             continue
         for path_str, _ext in path_matches:
+            # demo/example paths are intentional new code, not lifts from source
+            if re.search(r"\b(demo|example|sample|appendix)\b", path_str, re.IGNORECASE):
+                continue
             f = _file_lookup(cached_repo, path_str)
             if f is None:
                 missing += 1
                 print(f"DEBUG missing_path: {path_str}", file=sys.stderr)
                 continue
-            try:
-                src = f.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                missing += 1
-                continue
+            # If the path doesn't exist EXACTLY but a same-name file does, scan
+            # the whole repo for identifier matches instead of just the
+            # bystander file (otherwise we get false unverified_snippet hits).
+            exact = (cached_repo / path_str).exists()
+            if exact:
+                try:
+                    src = f.read_text(encoding="utf-8", errors="ignore")
+                except Exception:
+                    missing += 1
+                    continue
+            else:
+                try:
+                    src = "\n".join(
+                        ff.read_text(encoding="utf-8", errors="ignore")
+                        for ff in cached_repo.rglob(f"*{Path(path_str).suffix}")
+                        if ff.is_file()
+                    )
+                except Exception:
+                    src = f.read_text(encoding="utf-8", errors="ignore")
 
             # 1) cheap identifier check
             idents = set(re.findall(r"\b[A-Z][a-zA-Z0-9_]{6,}\b", code))

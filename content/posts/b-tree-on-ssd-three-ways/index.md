@@ -12,10 +12,11 @@ featured = false
 math = false
 +++
 
-> Three engines, one workload, one laptop. LMDB writes 26× faster than
-> BoltDB and reads 13× faster than Pebble — but Pebble's file is 4.8×
-> smaller. None of the three dominates all three axes. The shape of the
-> tradeoff is the post.
+> Three engines, one workload, one laptop. LMDB measured 26× faster
+> writes than BoltDB and 13× faster reads than Pebble (see
+> [section 5](#5-real-numbers--same-machine-same-workload)) — but
+> Pebble's file is 4.8× smaller. None of the three dominates all three
+> axes. The shape of the tradeoff is the post.
 
 # 1. The hook
 
@@ -440,7 +441,7 @@ overhead per page — every dirty `node` is a Go heap allocation,
 GC-tracked. LMDB allocates `MDB_page` on the C heap with `malloc` and
 hands it to `pwrite`. The 26× write gap (1.93 M vs 73 K ops/s)
 collapses to under 4× when bbolt is loaded under
-[`db.Batch()`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)
+[`db.Batch`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)
 (several goroutines coalesce their work into one tx) — but the
 single-writer ceiling is real either way. Run more cores at LMDB and
 you don't get more writes; LMDB only allows one in-flight writer.
@@ -520,9 +521,11 @@ You cannot relax this without giving up at least:
 
 LMDB's `mdb_env_set_mapsize` must be called before `mdb_env_open` and
 fixes an upper bound. If your data grows past it, you hit
-`MDB_MAP_FULL` and have to close + reopen with a bigger size. This is
-why people run LMDB at 1 TiB mapsize on a 50 GiB workload — sparse
-file, no harm done, but it's a sharp edge.
+`MDB_MAP_FULL` and have to close + reopen with a bigger size. The
+napkin-math heuristic is `mapsize ≈ 20× expected on-disk` — a
+50 GiB workload runs at 1 TiB mapsize, sparse-file allocated, no
+physical cost, because remap-on-grow is the sharp edge you want to
+amortize over the lifetime of the process.
 
 LMDB's other failure mode is reader pages. A long-running read txn
 prevents page reuse. If a reporting query holds a snapshot for an
