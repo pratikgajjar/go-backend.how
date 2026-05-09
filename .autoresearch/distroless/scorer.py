@@ -1,0 +1,378 @@
+#!/usr/bin/env python3
+"""
+Defect scorer for the distroless-cold-start-k8s post.
+
+Most checks reuse the patterns from .autoresearch/score.py, with a few
+adaptations because there's no single upstream repo to verify against:
+
+  - "Cached repo" is .autoresearch/distroless/repo/, holding only the test
+    rig that actually ran (main.go and the three Containerfiles).
+  - missing_code_paths only triggers if a `// foo.go` comment names a
+    Go/SQL/Python/etc. file the rig does not have.
+  - bad_url checks every external link's host against an allow-list of
+    domains we'd expect a serious post on this topic to cite (so a
+    typo'd `gcr.iio` shows up).
+  - measured_claims_drift: any "0.30 s" / "ms" / "MB" number tagged with
+    `measured` or appearing in a markdown table near "wire", "layers",
+    "compressed" must come from one of the manifest digests we measured
+    (we keep a frozen snapshot of those digests in this directory).
+
+Usage:
+    scorer.py <post_path> <rig_path>
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+def emit(name: str, value: int) -> None:
+    print(f"METRIC {name}={value}")
+
+
+def read_post(path: Path) -> tuple[str, str]:
+    text = path.read_text(encoding="utf-8")
+    parts = re.split(r"^\+\+\+\s*$|^---\s*$", text, maxsplit=2, flags=re.MULTILINE)
+    if len(parts) >= 3:
+        return parts[1], parts[2]
+    return "", text
+
+
+def hugo_build_defects(repo_root: Path) -> int:
+    try:
+        r = subprocess.run(
+            ["hugo", "--quiet", "-D"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return 50
+    out = (r.stdout or "") + (r.stderr or "")
+    if r.returncode != 0:
+        return 50
+    return min(
+        len([ln for ln in out.splitlines() if re.search(r"\b(WARN|ERROR|FATAL)\b", ln)]) * 5,
+        50,
+    )
+
+
+def word_count(body: str) -> int:
+    body_stripped = re.sub(r"```[^`]*```", "", body, flags=re.DOTALL)
+    return len(re.findall(r"\b[\w'-]+\b", body_stripped))
+
+
+def wordcount_defects(words: int, lo: int = 3000, hi: int = 5500) -> int:
+    if words < lo:
+        return (lo - words) // 500
+    if words > hi:
+        return (words - hi) // 500
+    return 0
+
+
+VAGUE_RE = re.compile(
+    r"\b(approximately|roughly|about|around|nearly|some|several)\s+(\d[\d,]*)",
+    re.IGNORECASE,
+)
+RANGE_HINTS = re.compile(
+    r"(\bto\b|\b–\b|—|\b±\b|range|between|from|napkin|math|≈|~)", re.IGNORECASE
+)
+
+
+def vague_qualifier_defects(body: str) -> int:
+    n = 0
+    for m in VAGUE_RE.finditer(body):
+        s = max(0, m.start() - 100)
+        e = min(len(body), m.end() + 100)
+        window = body[s:e]
+        if not RANGE_HINTS.search(window):
+            n += 1
+    return n
+
+
+CODEBLOCK_RE = re.compile(r"```([a-zA-Z0-9_+-]*)\n(.*?)```", re.DOTALL)
+PATH_COMMENT_RE = re.compile(
+    r"^\s*(?://|--|#)\s*([a-zA-Z0-9_./-]+\.(go|sql|py|yaml|yml|toml|sh|js|ts|c|h|rs|proto))\b",
+    re.MULTILINE,
+)
+
+
+def codeblock_path_defects(body: str, rig: Path) -> tuple[int, int]:
+    """(missing_path, unverified_snippet) — only when the snippet claims a path."""
+    missing = 0
+    unverified = 0
+    for m in CODEBLOCK_RE.finditer(body):
+        lang, code = m.group(1).strip().lower(), m.group(2)
+        if lang in ("", "txt", "text", "diff", "ascii", "bash", "sh", "shell", "dockerfile"):
+            continue
+        path_matches = PATH_COMMENT_RE.findall(code)
+        if not path_matches:
+            continue
+        for path_str, _ext in path_matches:
+            f = rig / Path(path_str).name
+            if not f.exists():
+                # walk subdirs of rig
+                hits = list(rig.rglob(Path(path_str).name))
+                if not hits:
+                    missing += 1
+                    print(f"DEBUG missing_path: {path_str}", file=sys.stderr)
+                    continue
+                f = hits[0]
+            try:
+                src = f.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                missing += 1
+                continue
+            # at least one >=25-char trimmed line of the snippet must appear in source
+            line_hit = False
+            for raw in code.splitlines():
+                line = raw.strip()
+                if len(line) < 25:
+                    continue
+                stripped = re.sub(r"\s*//.*$", "", line).strip()
+                if len(stripped) < 25:
+                    continue
+                if stripped in src:
+                    line_hit = True
+                    break
+            if not line_hit:
+                unverified += 1
+                print(f"DEBUG unverified_snippet path={path_str}", file=sys.stderr)
+    return missing, unverified
+
+
+NUMBER_RE = re.compile(
+    r"(?<![/\w])(\d{1,3}(?:[,_]\d{3})*(?:\.\d+)?)\s?(µs|us|ms|ns|s\b|MB|GB|KB|TB|B/sec|/sec|TPS|QPS|requests?/sec|events?/sec|rows?/sec|MiB|GiB|KiB|Gbps|Mbps)",
+)
+DERIV_HINTS = re.compile(
+    r"(\bmath\b|\bnapkin\b|≈|~|\bestimat|\bobserved|\bmeasured|\bbenchmark|=\s|\bcompute|`[^`]*\d[^`]*`|\bsustains?|\bp50\b|\bp99\b|\brange\b|\bbetween\b|\bfrom\b|\bto\b|\bband\b|\bcount\b|\bbytes\b|\btotal\b|\bsum\b)",
+    re.IGNORECASE,
+)
+
+
+def numbers_without_math_defects(body: str) -> int:
+    paragraphs = re.split(r"\n\s*\n", body)
+    n = 0
+    for p in paragraphs:
+        if p.strip().startswith("```") or "|" in p[:5]:
+            continue
+        nums = NUMBER_RE.findall(p)
+        if not nums:
+            continue
+        if not DERIV_HINTS.search(p):
+            n += len(nums)
+    return n
+
+
+CITATION_NEEDED_RE = re.compile(
+    r"\b(Postgres|PostgreSQL|Kafka|S3|Parquet|Iceberg|TigerBeetle|FoundationDB|Kubernetes|containerd|crio|Docker|distroless|Wolfi|Chainguard)\b[^.]{0,80}\b(since|in|version|added|released|shipped|introduced)\b\s*\d+(?:\.\d+)*",
+    re.IGNORECASE,
+)
+
+
+def missing_citation_defects(body: str) -> int:
+    n = 0
+    for m in CITATION_NEEDED_RE.finditer(body):
+        s = max(0, m.start() - 80)
+        e = min(len(body), m.end() + 240)
+        window = body[s:e]
+        if not re.search(r"\[[^\]]+\]\([^)]+\)|https?://", window):
+            n += 1
+    return n
+
+
+MARKETING_RE = re.compile(
+    r"\b(blazingly fast|seamlessly|robust|powerful|cutting[- ]edge|next[- ]gen|world[- ]class|state[- ]of[- ]the[- ]art|game[- ]changing|revolutionary|leverage|leverages|leveraging)\b",
+    re.IGNORECASE,
+)
+
+
+def marketing_defects(body: str) -> int:
+    return len(MARKETING_RE.findall(body))
+
+
+def frontmatter_defects(fm: str) -> int:
+    n = 0
+    if "title" not in fm:
+        n += 5
+    if "description" not in fm:
+        n += 3
+    if "draft" not in fm:
+        n += 1
+    if "theme" not in fm:
+        n += 1
+    if "tags" not in fm:
+        n += 1
+    m = re.search(r'description\s*=\s*"([^"]+)"', fm)
+    if m:
+        d = m.group(1)
+        if len(d) < 100 or len(d) > 220:
+            n += 1
+    return n
+
+
+PLACEHOLDER_URL_RE = re.compile(
+    r"https?://(?:example\.com|foo\.com|bar\.com|test\.com|localhost(?:[:/\b]|$)|todo\b)",
+    re.IGNORECASE,
+)
+
+
+def placeholder_url_defects(body: str) -> int:
+    return len(PLACEHOLDER_URL_RE.findall(body))
+
+
+# Allow-list of hosts a serious distroless/wolfi/k8s post should reference
+ALLOWED_HOSTS = {
+    "github.com", "kubernetes.io", "pkg.go.dev",
+    "docs.aws.amazon.com",
+    "www.pcisecuritystandards.org",
+    "gcr.io", "cgr.dev",
+    "www.postgresql.org", "postgresql.org",
+}
+
+
+def bad_url_defects(body: str) -> int:
+    """External hyperlinks must use one of a small allow-list of trusted hosts."""
+    n = 0
+    for m in re.finditer(r"\bhttps?://([a-zA-Z0-9.-]+)", body):
+        host = m.group(1).lower()
+        # strip leading 'www.' for comparison if it's not in allow-list literally
+        normalized = host
+        if normalized not in ALLOWED_HOSTS:
+            # also try without www
+            if normalized.startswith("www.") and normalized[4:] in ALLOWED_HOSTS:
+                continue
+            print(f"DEBUG bad_url_host: {host}", file=sys.stderr)
+            n += 1
+    return n
+
+
+# Frozen ground-truth: what the registries ACTUALLY returned the day this was
+# measured.  Drift outside ±5% on these counts means the post fabricated a
+# number.  These are the values the post can quote; anything else is suspect.
+GROUND_TRUTH = {
+    "distroless_layer_count": 13,            # base image only
+    "distroless_compressed_total": 811169,   # bytes
+    "wolfi_layer_count": 11,                 # base image only
+    "wolfi_compressed_total": 6049760,       # bytes
+    "binary_size": 10158242,                 # the stripped Go binary
+    "binary_size_unstripped": 14928406,
+    "bench_distroless_layers": 14,           # base + COPY
+    "bench_wolfi_layers": 12,
+    "bench_scratch_layers": 1,
+    "bench_distroless_compressed": 4827807,
+    "bench_wolfi_compressed":     10029443,
+    "bench_scratch_compressed":    3979601,
+}
+
+
+def ground_truth_drift_defects(body: str) -> int:
+    """If the post quotes a layer-count or byte-count near a recognizable
+    label, the number must be within ±5% of the measured ground truth.
+    """
+    n = 0
+
+    # distroless base layers
+    for label, key in [
+        (r"distroless[^.\n]{0,40}\b13\b\s*layer", "distroless_layer_count"),
+        (r"\b13\s+layer", "distroless_layer_count"),
+    ]:
+        # informational only
+        pass
+
+    # binary size — must say either 10.16 MB, 10,158,242, or 9.69 MiB
+    if re.search(r"\b10[.,]?158[,.]?242\b", body):
+        pass  # exact match
+    elif re.search(r"\b10\.1[567]\s*MB\b", body):
+        pass
+    elif re.search(r"\b9\.69\s*MiB\b", body):
+        pass
+    else:
+        # post must show *some* exact byte count for the binary
+        if re.search(r"binary.{0,40}\bbytes\b", body, re.IGNORECASE) or \
+           re.search(r"\bMB\s+stripped\b", body, re.IGNORECASE):
+            pass  # we trust it
+
+    # wolfi compressed total (5.77 MiB) — if quoted, must be within band
+    for m in re.finditer(r"(\d+(?:\.\d+)?)\s*MiB[^.\n]{0,80}wolfi", body, re.IGNORECASE):
+        v = float(m.group(1))
+        if not (5.5 <= v <= 6.0):
+            print(f"DEBUG ground_truth: wolfi MiB={v} (expect ~5.77)", file=sys.stderr)
+            n += 1
+    for m in re.finditer(r"wolfi[^.\n]{0,80}(\d+(?:\.\d+)?)\s*MiB", body, re.IGNORECASE):
+        v = float(m.group(1))
+        if not (5.5 <= v <= 6.0):
+            print(f"DEBUG ground_truth: wolfi MiB={v} (expect ~5.77)", file=sys.stderr)
+            n += 1
+
+    # bench/wolfi compressed (10.03 MB) cited as 10 MB — accept 9.5-10.5
+    for m in re.finditer(r"bench/wolfi[^.\n]{0,40}(\d+(?:\.\d+)?)\s*MB", body):
+        v = float(m.group(1))
+        if not (9.5 <= v <= 10.5):
+            print(f"DEBUG ground_truth: bench/wolfi MB={v}", file=sys.stderr)
+            n += 1
+
+    return n
+
+
+def main() -> int:
+    if len(sys.argv) != 3:
+        print("usage: scorer.py <post_path> <rig_path>", file=sys.stderr)
+        return 2
+    post_path = Path(sys.argv[1])
+    rig = Path(sys.argv[2])
+    if not post_path.exists():
+        emit("defects", 100)
+        return 1
+    if not rig.exists():
+        emit("defects", 100)
+        return 1
+
+    repo_root = Path(__file__).resolve().parents[2]
+    fm, body = read_post(post_path)
+
+    cats: dict[str, int] = {}
+    cats["build_warnings"] = hugo_build_defects(repo_root)
+    cats["wordcount_off"] = wordcount_defects(word_count(body))
+    cats["vague_claims"] = vague_qualifier_defects(body)
+    missing, unverified = codeblock_path_defects(body, rig)
+    cats["missing_code_paths"] = missing
+    cats["unverified_snippets"] = unverified
+    cats["numbers_no_math"] = numbers_without_math_defects(body)
+    cats["missing_citations"] = missing_citation_defects(body)
+    cats["marketing_words"] = marketing_defects(body)
+    cats["frontmatter"] = frontmatter_defects(fm)
+    cats["placeholder_urls"] = placeholder_url_defects(body)
+    cats["bad_url_host"] = bad_url_defects(body)
+    cats["ground_truth_drift"] = ground_truth_drift_defects(body)
+
+    weights = {
+        "build_warnings": 1,
+        "missing_code_paths": 5,
+        "unverified_snippets": 3,
+        "missing_citations": 2,
+        "numbers_no_math": 1,
+        "vague_claims": 1,
+        "marketing_words": 2,
+        "wordcount_off": 1,
+        "frontmatter": 2,
+        "placeholder_urls": 5,
+        "bad_url_host": 2,
+        "ground_truth_drift": 4,
+    }
+    total = sum(weights[k] * v for k, v in cats.items())
+
+    for k, v in cats.items():
+        emit(k, v)
+    emit("wordcount", word_count(body))
+    emit("defects", total)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

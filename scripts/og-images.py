@@ -354,6 +354,89 @@ def motif_text_columns(d: ImageDraw.ImageDraw, cx: int, cy: int, seed: int):
             d.line((x0, y, x0 + seg_w, y), fill=col, width=2 if li == 0 else 1)
 
 
+def motif_stacked_layers(d: ImageDraw.ImageDraw, cx: int, cy: int, seed: int):
+    """Horizontal stacked layers — container image layers, formats, etc."""
+    rng = random.Random(seed)
+    # 6 layers, each thinner than the next, with offset for parallax
+    layer_count = 6
+    base_w = 320
+    base_h = 26
+    spacing = 40
+    total_h = layer_count * spacing
+    top = cy - total_h // 2 + 10
+    for i in range(layer_count):
+        # Each layer narrows slightly going up, mimicking a stack
+        w = base_w - i * 14
+        h = base_h
+        x0 = cx - w // 2
+        y0 = top + i * spacing
+        # Outline
+        col = SPICE if i in (0, layer_count - 1) else COPPER
+        # Top + side faces (3D-ish): draw the front rectangle and a top parallelogram
+        front = [(x0, y0), (x0 + w, y0), (x0 + w, y0 + h), (x0, y0 + h)]
+        d.polygon(front, outline=col, width=2)
+        # Top edge: short parallelogram suggesting depth
+        depth = 14
+        top_face = [(x0, y0), (x0 + depth, y0 - depth // 2),
+                    (x0 + w + depth, y0 - depth // 2), (x0 + w, y0)]
+        d.line([top_face[0], top_face[1]], fill=col, width=1)
+        d.line([top_face[1], top_face[2]], fill=col, width=1)
+        d.line([top_face[2], top_face[3]], fill=col, width=1)
+        # A small dot inside indicating "files" in this layer
+        for _ in range(3 + i):
+            dx = rng.randint(x0 + 8, x0 + w - 8)
+            dy = rng.randint(y0 + 6, y0 + h - 6)
+            d.ellipse((dx - 1, dy - 1, dx + 1, dy + 1), fill=CREAM)
+
+
+def motif_hnsw_layers(d: ImageDraw.ImageDraw, cx: int, cy: int, seed: int):
+    """HNSW-style multi-layer graph — sparse top, dense bottom, vertical edges."""
+    rng = random.Random(seed)
+    # 4 layers, top has fewest nodes, bottom has most (HNSW semantics)
+    layer_y = [cy - 130, cy - 40, cy + 40, cy + 130]
+    layer_counts = [3, 6, 10, 14]
+    layer_x_span = [120, 180, 230, 270]
+    nodes_per_layer = []
+    for y, n, span in zip(layer_y, layer_counts, layer_x_span):
+        xs = [cx - span + (2 * span * i) // (n - 1) if n > 1 else cx for i in range(n)]
+        nodes_per_layer.append([(x, y) for x in xs])
+
+    # Faint horizontal layer guidelines (like rails)
+    for y, span in zip(layer_y, layer_x_span):
+        d.line((cx - span - 20, y, cx + span + 20, y), fill=DUNE, width=1)
+
+    # Intra-layer edges (sparse, more on lower layers)
+    for li, layer in enumerate(nodes_per_layer):
+        n = len(layer)
+        for i in range(n - 1):
+            if rng.random() < 0.3 + 0.15 * li:
+                d.line((layer[i][0], layer[i][1], layer[i + 1][0], layer[i + 1][1]),
+                       fill=COPPER, width=1)
+        # Skip-edges (HNSW property: long jumps within layer)
+        if n >= 3:
+            for _ in range(li + 1):
+                a, b = sorted(rng.sample(range(n), 2))
+                if b - a >= 2:
+                    d.line((layer[a][0], layer[a][1], layer[b][0], layer[b][1]),
+                           fill=COPPER, width=1)
+
+    # Inter-layer edges (each upper-layer node connects down)
+    for li in range(len(nodes_per_layer) - 1):
+        upper = nodes_per_layer[li]
+        lower = nodes_per_layer[li + 1]
+        for u in upper:
+            # Pick the closest lower node + maybe one more
+            closest = min(lower, key=lambda p: abs(p[0] - u[0]))
+            d.line((u[0], u[1], closest[0], closest[1]), fill=SPICE, width=1)
+
+    # Draw nodes on top of edges
+    for li, layer in enumerate(nodes_per_layer):
+        for x, y in layer:
+            r = 4 if li == 0 else 3
+            col = SPICE if li == 0 else CREAM
+            d.ellipse((x - r, y - r, x + r, y + r), fill=col)
+
+
 # --- Tag → motif routing -------------------------------------------------
 
 MOTIFS = {
