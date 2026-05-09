@@ -591,12 +591,14 @@ sudo bpftrace -e 'tracepoint:syscalls:sys_enter_pread64
 
 That gives you "for this 5-second window, how many `pread64` calls
 of each size class did each `comm` issue, bucketed per file
-descriptor?" In practice DuckDB shows up with a tight pile of
-8-KiB-to-256-KiB reads (one per column block per row group) on a
-small set of fds, and Postgres shows up with a wide histogram of
-8 KiB reads (one per heap page) across hundreds of fds (one per
-relation segment file). Two distributions, same query, different
-storage models.
+descriptor?" In practice DuckDB shows up with a tight pile of reads sized between
+8 KiB and the `DEFAULT_BLOCK_ALLOC_SIZE = 262144ULL = 256 KiB` defined
+in `src/include/duckdb/storage/storage_info.hpp` (one per column
+block per row group) on a small set of fds, and Postgres shows up
+with a wide histogram of 8 KiB reads (one per heap page) across
+many fds — one per 1 GiB relation segment file, so SF=10 lineitem
+alone (~9 GiB heap) is nine of them. Two distributions, same query,
+different storage models.
 
 # Tradeoffs
 

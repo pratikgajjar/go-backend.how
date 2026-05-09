@@ -111,7 +111,7 @@ hardware threads. Each reactor:
 5. Communicates with peers via N×N **single-producer-single-consumer
    lock-free queues**, batched up to 16 items per flush.
 
-A request's life looks like this:
+A write request's life looks like this:
 
 ```text
 client ──► token-aware driver ──► TCP connection to shard owner
@@ -123,6 +123,10 @@ client ──► token-aware driver ──► TCP connection to shard owner
                                           │
                                   ◄──── reply on same socket
 ```
+
+(Reads follow the same shard-affinity path; the inner steps become
+`parse → row cache lookup → memtable / sstable read`. The point isn't
+the LSM mechanics, it's that the entire path stays on one core.)
 
 The client is *expected* to know which shard owns each partition. The
 driver computes `murmur3(pkey) % shard_count` and connects to the

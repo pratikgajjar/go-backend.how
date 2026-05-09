@@ -618,6 +618,61 @@ def heading_skip_defects(repo_root: Path) -> int:
     return n
 
 
+def numbered_list_gap_defects(body: str) -> int:
+    """A markdown numbered list that goes 1, 2, 4 (skip) is a copy-paste regression.
+    Walks each adjacent run of `^\\d+\\. ` lines and verifies the numbers are 1..N."""
+    n = 0
+    lines = body.splitlines()
+    i = 0
+    in_fence = False
+    while i < len(lines):
+        if lines[i].lstrip().startswith("```"):
+            in_fence = not in_fence
+            i += 1
+            continue
+        if in_fence:
+            i += 1
+            continue
+        m = re.match(r"^(\d+)\.\s+\S", lines[i])
+        if m and int(m.group(1)) == 1:
+            # start of a numbered list
+            run = [int(m.group(1))]
+            j = i + 1
+            blank_buffer = 0
+            while j < len(lines):
+                if lines[j].lstrip().startswith("```"):
+                    in_fence = not in_fence
+                    j += 1
+                    continue
+                if in_fence:
+                    j += 1
+                    continue
+                m2 = re.match(r"^(\d+)\.\s+\S", lines[j])
+                if m2:
+                    run.append(int(m2.group(1)))
+                    blank_buffer = 0
+                elif lines[j].strip() == "":
+                    blank_buffer += 1
+                    if blank_buffer > 1:
+                        break
+                elif lines[j].startswith("   "):
+                    # continuation line in list item — keep scanning
+                    blank_buffer = 0
+                else:
+                    break
+                j += 1
+            if len(run) >= 2:
+                expected = list(range(1, len(run) + 1))
+                if run != expected:
+                    print(f"DEBUG numbered_list_gap: got {run}, expected {expected}",
+                          file=sys.stderr)
+                    n += 1
+            i = j
+        else:
+            i += 1
+    return n
+
+
 def duplicate_paragraph_defects(body: str) -> int:
     """Same paragraph appearing twice = bad copy-paste regression."""
     n = 0
@@ -772,6 +827,7 @@ def main() -> int:
     cats["gofmt"] = gofmt_defects(body)
     cats["fence_balance"] = fence_balance_defects(body)
     cats["duplicate_paragraph"] = duplicate_paragraph_defects(body)
+    cats["numbered_list_gap"] = numbered_list_gap_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -799,6 +855,7 @@ def main() -> int:
         "gofmt": 3,
         "fence_balance": 5,
         "duplicate_paragraph": 3,
+        "numbered_list_gap": 2,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 

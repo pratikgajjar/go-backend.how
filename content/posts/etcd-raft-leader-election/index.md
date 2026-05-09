@@ -742,9 +742,11 @@ as the cluster-correctness pair.
 
 # What I'd build differently
 
-Reading the source with five years of distance from when the code was
-written, three changes feel worth their cost. None of them are novel —
-all three are options other Raft implementations have made.
+Reading the source with a decade of distance from when the core was
+written (the
+[earliest tickElection commit](https://github.com/etcd-io/raft/commit/a17e5ac20183b7f9d848c7100ff627489d95d7ca)
+is dated July 2014), three changes feel worth their cost. None of them
+are novel — all three are options other Raft implementations have made.
 
 ## 1. Adaptive ticks
 

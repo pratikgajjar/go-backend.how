@@ -621,8 +621,13 @@ Pebble's operational surface is the other cost. It's an LSM, so:
 
 Pebble's correctness story is its strongest axis: its
 [metamorphic test suite](https://github.com/cockroachdb/pebble/tree/master/metamorphic)
-runs random ops against pebble + an oracle, then crashes pebble
-mid-write to verify recovery. The CockroachDB pull-request gauntlet
+runs the same randomized op stream against multiple Pebble
+configurations and asserts they all produce equivalent output (the
+package doc — `metamorphic/meta.go` — frames it as "logically
+equivalent operations should result in equivalent output across all
+configurations"). It also injects file-system errors via
+[`vfs/errorfs`](https://github.com/cockroachdb/pebble/tree/master/vfs/errorfs)
+to verify mid-write recovery. The CockroachDB pull-request gauntlet
 puts Pebble through more real-world abuse than LMDB or bbolt see.
 
 # 7. What I'd build differently
