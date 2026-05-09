@@ -528,11 +528,20 @@ HashPartitionCount(void)
 ```
 
 The default `citus.repartition_join_bucket_count_per_node` is 4
-(`shared_library_init.c` line 2456). On a 6-bucket plan you can
-infer the test cluster has 1 or 2 worker nodes (6 = 2 × 3 or 6 = 1 × 6
-after rounding). The comment in the source attributes this to
-Hadoop's reducer-count heuristic — there is a real lineage from
-MapReduce in here, and it shows up at the boundary where Citus
+(`shared_library_init.c` line 2456). The 6-bucket count in this
+specific EXPLAIN doesn't fall out of the default formula —
+`pg_regress_multi.pl` (the citus regression-test framework) sets
+`citus.repartition_join_bucket_count_per_node=2` and uses 2 worker
+nodes, which would naively give 4 — but for non-dual-hash partition
+types (`SINGLE_HASH_PARTITION_TYPE`, `RANGE_PARTITION_TYPE`) the
+bucket count is taken from the shard array length of the relevant
+partition target instead, so the exact number depends on which
+partition type the join planner picked. In a production cluster the
+arithmetic is simpler: `groupCount × RepartitionJoinBucketCountPerNode`
+on dual-hash, shard count on single-hash. The comment in the source
+attributes the formula to Hadoop's reducer-count heuristic — there
+is a real lineage from MapReduce in here, and it shows up at the
+boundary where Citus
 stops being a Postgres extension and starts being a shuffle engine.
 
 The `MapMergeJob` reads each shard, hashes the join column, writes
