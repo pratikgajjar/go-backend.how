@@ -573,7 +573,7 @@ bloat the post with all five, the [Stretch section
 below](#stretch-see-it-for-yourself) ships a 50-line reproducer for the
 two extremes.)
 
-Best-of-three results on the same 4 cores, same 20M total ops:
+Median-of-three results on the same 4 cores, same 20M total ops:
 
 | Variant                                    | ops/sec     | ns/op | Notes                                 |
 | ------------------------------------------ | ----------- | ----- | ------------------------------------- |

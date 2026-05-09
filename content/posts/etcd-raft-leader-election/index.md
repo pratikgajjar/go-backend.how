@@ -766,8 +766,8 @@ back to wall-clock timers if a follower hasn't replied within
 `2 × HeartbeatTick`. Cost: ~30 lines around `tickHeartbeat`. Benefit:
 say a 10 ms tick interval shrinks the election-timeout band to
 `[100 ms, 199 ms]` (`= 10 ticks × 10 ms`) and the expected first-fire
-to `100 + 100/3 ≈ 133 ms` — sub-200 ms failover on hot ranges, longer
-election timeouts on idle ones.
+to `100 ms + 100 ms / 3 ≈ 133 ms` — sub-200 ms failover on hot
+ranges, longer election timeouts on idle ones.
 
 ## 2. Sub-tick leader signalling
 
