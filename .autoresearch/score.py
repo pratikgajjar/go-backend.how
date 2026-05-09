@@ -389,6 +389,121 @@ def placeholder_url_defects(body: str) -> int:
     return len(PLACEHOLDER_URL_RE.findall(body))
 
 
+# Distinctive identifiers in prose backticks must exist in the cached source.
+# Allowlist: Postgres-style names + common units/keywords + small set of known
+# Postgres internals that won't appear in wal-cake's source.
+PG_ALLOWLIST = {
+    # Postgres catalogs / functions / settings (verifiable in postgresql docs)
+    "pg_publication", "pg_replication_slots", "pg_stat_replication",
+    "pg_stat_user_indexes", "pg_stat_statements", "pg_total_relation_size",
+    "pg_current_wal_lsn", "pg_create_logical_replication_slot",
+    "pg_database", "pg_toast_*", "pg_wal", "pg_wal/", "pg_toast_",
+    "confirmed_flush_lsn", "wal_level", "wal_writer", "wal_senders",
+    "max_replication_slots", "max_wal_senders",
+    "replay_lag", "write_lag", "flush_lag",
+    "REPLICA IDENTITY", "REPLICA IDENTITY FULL", "REPLICA IDENTITY DEFAULT",
+    "ALTER TABLE", "CREATE PUBLICATION", "CREATE TABLE",
+    "FOR ALL TABLES", "FOR UPDATE SKIP LOCKED", "ON CONFLICT",
+    "commit_delay", "fdatasync", "fsync", "fdatasync()", "fsync()",
+    "io_uring", "O_DSYNC", "TRUNCATE",
+    # Parquet / Arrow knobs
+    "BYTE_ARRAY", "DELTA_BINARY_PACKED", "PLAIN", "RLE_DICTIONARY",
+    "JSONLogicalType", "TIMESTAMP_MICROS", "UTF8", "JSON",
+    "page index", "row group", "ZSTD", "ZSTD-3", "snappy", "gzip",
+    "AthenaInfo",  # placeholder
+    # Standard libs / tools that won't be in wal-cake source
+    "encoding/json", "json.Marshal", "ParseInt", "ParseFloat",
+    "MSCK REPAIR TABLE", "ADD PARTITION",
+    # Generic CDC / SDK terms
+    "outbox", "outbox_unprocessed_idx",
+    "AWS_ENDPOINT", "AWS_ENDPOINT_URL", "AWS_REGION",
+    "S3 PUT", "S3 Standard", "S3-Express",
+    # Misc
+    "p99", "p50", "OLTP", "TPS",
+}
+
+
+# Looks for `IDENT` in prose; filters out common Go keywords and short tokens.
+# Captures CamelCase and snake_case identifiers, dotted method refs, struct fields.
+PROSE_IDENT_RE = re.compile(
+    r"`([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*(?:\(\))?|"
+    r"[a-z_]{3,}\.[A-Za-z_][A-Za-z0-9_]*)`"
+)
+# Common Go/SDK/general words to skip
+COMMON_PROSE_WORDS = {
+    "context", "ctx", "ok", "err", "nil", "true", "false", "if", "for",
+    "range", "go", "return", "switch", "case", "default", "func", "interface",
+    "struct", "map", "chan", "type", "var", "const", "package", "import",
+    "byte", "string", "int", "int64", "uint64", "uint32", "any",
+    "make", "len", "cap", "append", "close", "delete", "new",
+    "select", "Send", "Recv", "Get", "Set", "Add", "Process", "Close",
+    "Start", "Stop", "Open", "Read", "Write",
+    "Postgres", "PostgreSQL",
+}
+
+
+def identifier_consistency_defects(body: str, cached_repo: Path) -> int:
+    """Each distinctive `IDENT` in prose must appear in cached source or allowlist."""
+    # Strip code fences first; we only check prose.
+    prose = re.sub(r"```[^\n]*\n.*?```", "", body, flags=re.DOTALL)
+    seen: dict[str, bool] = {}
+    candidates: list[str] = []
+    for m in PROSE_IDENT_RE.finditer(prose):
+        tok = m.group(1)
+        if tok in COMMON_PROSE_WORDS or tok in PG_ALLOWLIST:
+            continue
+        if len(tok) < 5:
+            continue
+        # Must look distinctive: have either CamelCase or _ or .
+        if not re.search(r"[A-Z]|_|\.", tok):
+            continue
+        # Skip pure numeric or single-letter chains
+        if re.fullmatch(r"\d[\d.]*", tok):
+            continue
+        # Skip pg_/WAL prefixes (Postgres-internal — tracked via allowlist for the common ones)
+        if tok.startswith(("pg_", "WAL", "wal_", "max_wal", "max_replication")):
+            continue
+        # Skip common SDK module paths
+        if tok.startswith(("github.com/", "golang.org/", "go.opentelemetry.io/")):
+            continue
+        if tok in seen:
+            continue
+        seen[tok] = True
+        candidates.append(tok)
+    n = 0
+    for tok in candidates:
+        # cheap grep — fixed-string for safety
+        try:
+            r = subprocess.run(
+                ["rg", "-l", "-uu", "-F", tok, str(cached_repo)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if not r.stdout.strip():
+                n += 1
+                print(
+                    f"DEBUG inconsistent_ident: `{tok}` not found in cached source",
+                    file=sys.stderr,
+                )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+    return n
+
+
+def footnote_balance_defects(body: str) -> int:
+    """Every [^name] reference must have a matching [^name]: definition."""
+    refs = set(re.findall(r"\[\^([\w-]+)\](?!:)", body))
+    defs = set(re.findall(r"^\[\^([\w-]+)\]:", body, flags=re.MULTILINE))
+    orphan_refs = refs - defs
+    orphan_defs = defs - refs
+    if orphan_refs:
+        print(f"DEBUG orphan footnote refs: {sorted(orphan_refs)}", file=sys.stderr)
+    if orphan_defs:
+        print(f"DEBUG orphan footnote defs: {sorted(orphan_defs)}", file=sys.stderr)
+    return len(orphan_refs) + len(orphan_defs)
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print("usage: score.py <post_path> <cached_repo_path>", file=sys.stderr)
@@ -419,6 +534,8 @@ def main() -> int:
     cats["marketing_words"] = marketing_defects(body)
     cats["hedge_words"] = hedge_defects(body)
     cats["placeholder_urls"] = placeholder_url_defects(body)
+    cats["inconsistent_idents"] = identifier_consistency_defects(body, cached_repo)
+    cats["footnote_balance"] = footnote_balance_defects(body)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
@@ -436,6 +553,8 @@ def main() -> int:
         "marketing_words": 2,
         "hedge_words": 1,
         "placeholder_urls": 5,
+        "inconsistent_idents": 3,
+        "footnote_balance": 4,
         "wordcount_off": 1,
         "frontmatter": 2,
     }
