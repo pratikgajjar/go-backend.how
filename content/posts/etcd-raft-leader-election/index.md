@@ -129,7 +129,8 @@ send" outputs.
             │  Term uint64; Vote, lead uint64;                  │
             │  state ∈ {Follower, Candidate, PreCandidate,      │
             │           Leader}                                 │
-            │  step(message) → state', []Message                │
+            │  Step(m Message) error  // mutates r in place,    │
+            │                         // appends to r.msgs      │
             └───────────────────────────────────────────────────┘
 ```
 
