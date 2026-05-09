@@ -654,14 +654,15 @@ Three concrete suggestions, with their costs.
 Avro's row layout means you read the entire `data_file` struct to
 test one predicate against `lower_bounds[ts]`. With column-oriented
 manifests, you could project just the `lower_bounds`/`upper_bounds`
-maps and skip the rest. Estimated win on a 1-PB table:
-`8 MB manifest × 75 manifests = 600 MB` decompressed manifest data
-today; column-projected, ~`40%` of that for a single-column
-predicate (~240 MB), saving ~360 MB and the corresponding fastavro
-CPU. The cost is a new file format on the hot path, plus all the
-testing and rollout that implies. Iceberg V4 is the natural place
-to attempt this; the 2024 mailing-list discussion of "manifest v4"
-already weighs Apache Parquet vs a custom format.
+maps and skip the rest. Estimated win on a 1 PiB table: today the
+planner downloads `8 MiB × 150 = 1,200 MiB` of compressed manifest
+data in the worst case (every manifest must be opened). The
+column-bound maps are roughly 40% of each entry — so a column-
+projected reader pulls down ~`1,200 × 0.40 = 480` MiB compressed,
+saving ~720 MiB of network + decompress work, and the corresponding
+fastavro / `ManifestReader` CPU. The cost is a new file format on
+the hot path, plus the testing and rollout that implies; Iceberg V4
+is the natural place to attempt it.
 
 **2. Push the manifest list into the catalog.** The manifest list
 is the only file the planner *always* reads, and it is small enough

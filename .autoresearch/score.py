@@ -397,6 +397,7 @@ PG_ALLOWLIST = {
     # Postgres catalogs / functions / settings (verifiable in postgresql docs)
     "pg_publication", "pg_replication_slots", "pg_stat_replication",
     "pg_stat_user_indexes", "pg_stat_statements", "pg_total_relation_size",
+    "idx_scan", "idx_tup_fetch", "n_live_tup", "n_dead_tup",
     "pg_current_wal_lsn", "pg_create_logical_replication_slot",
     "pg_database", "pg_toast_*", "pg_wal", "pg_wal/", "pg_toast_",
     "confirmed_flush_lsn", "wal_level", "wal_writer", "wal_senders",

@@ -219,8 +219,11 @@ is the bridge from "user wrote a `WHERE` clause" to "Citus knows which
 of 32 shards to talk to." The other planner paths are wrappers around
 its return value.
 
-The header comment explains the algorithm in five steps; I'll follow
-those steps and quote source.
+The header comment lays out the algorithm in four "increasingly
+expensive" steps (lines 47–58 of `shard_pruning.c`). I'll follow them
+and quote the source, with one pre-step (the reference-table
+short-circuit, which lives earlier in `PruneShards` itself) added at
+the front because it explains a class of joins.
 
 ## Step 0 — short-circuit non-distributed tables
 

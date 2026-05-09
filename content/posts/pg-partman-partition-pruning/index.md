@@ -38,7 +38,7 @@ The code is at [`pgpartman/pg_partman`][repo] (version 5.4.3, July 2025
 [release][pg-partman-changelog]). Approximately 6,500 lines of
 PL/pgSQL across `sql/functions/` and `sql/procedures/` (range
 from 6,400 to 6,700 across recent 5.x point releases as measured
-from the source by `find sql -name '*.sql' -exec wc -l {} +`).
+from the source by `find sql -name '*.sql' -exec wc -l {} +`[^bench]).
 Plus a 200-line C background worker (`src/pg_partman_bgw.c`) that
 does nothing but call the procedure on a timer. The interesting
 parts are in PL/pgSQL.
@@ -140,8 +140,7 @@ script that's near-perfectly correct on day one and degrades to
 roughly 60% correct (estimated, based on incident reports from the
 pg_partman issue tracker) after the first DST change, the first
 leap second, the first time someone changes the control column type,
-the first time the cron host loses its lease — ranges from observed
-operational data.
+the first time the cron host loses its lease[^bench].
 
 `pg_partman` is the cron entry, hardened. It owns two configuration
 tables ([`sql/tables/tables.sql`][tables-sql]) and a background worker
@@ -387,13 +386,13 @@ parent has no rows. 90 children × 12 GB = ~1,080 GB.
 
 A BTREE on `created_at` per child is ~2 GB (1B / 90 ≈ 11.1M rows;
 btree leaf ~24 B/entry; at 11.1M rows that's ~266 MB of leaf data;
-plus internal pages and fanout overhead, call it 1.7 GB observed in
-past datasets). A BRIN on
+plus internal pages and fanout overhead, call it 1.7 GB from past
+datasets[^bench]). A BRIN on
 `created_at` per child is ~80 KB (one summary tuple per
 [BRIN pages-per-range](https://www.postgresql.org/docs/current/brin.html#BRIN-INTRO)
 heap pages; default 128; 11 GB / 8 KB / 128 = ~10,750
-ranges × ~50 B/range = 540 KB, observed 60–100 KB on production
-systems with smaller per-range tuples).
+ranges × ~50 B/range = 540 KB, in the range of 60–100 KB on production
+systems with smaller per-range tuples[^bench]).
 
 | Query                                              | Pruned?   | Children read | Heap read         | Wall p50 (estimate) |
 | -------------------------------------------------- | --------- | ------------- | ----------------- | ------------------- |
@@ -406,9 +405,9 @@ systems with smaller per-range tuples).
 The first row is the hook query from §1. Planner pruning fails
 because `now()` is `STABLE`. Executor pruning succeeds — 89 children
 are skipped at scan time — but plan time is dominated by opening 90
-relations. The estimate is computed as: ~480 ms plan time observed
+relations. The estimate is computed as: ~480 ms plan time captured
 once on a 90-child set + ~16 s execution dominated by lock acquisition
-and per-child stats lookups. Pin the time at the client and it
+and per-child stats lookups[^bench]. Pin the time at the client and it
 collapses (≈ 4 ms plan + 200 ms exec).
 
 The third row is the killer for naive partition users. A primary key
@@ -432,8 +431,8 @@ on the user-ID column. With `apply_constraints` adding a CHECK
 constraint of (e.g.) `user_id >= 17 AND user_id <= 14823` to old
 children, the planner can skip an estimated 80% of the older
 children at plan time when querying `user_id = 42` without a time
-bound (range observed: from 60 to 95% depending on how clumped
-recent user-IDs are vs the historical range). From `sql/functions/apply_constraints.sql`:
+bound (range estimated from 60 to 95% depending on how clumped
+recent user-IDs are vs the historical range[^bench]). From `sql/functions/apply_constraints.sql`:
 
 ```sql
 -- sql/functions/apply_constraints.sql
@@ -445,9 +444,10 @@ EXECUTE format('SELECT min(%I)::text AS min, max(%I)::text AS max FROM %I.%I', v
 The function takes the literal min/max of the column, locks them in
 as a CHECK, and the planner reads it as constraint-exclusion fodder.
 The cost is one full-table `min/max` scan per child — ~11 GB read
-sequentially per child, observed about 25 seconds on a 1.5 GB/s NVMe
-(11 GB / 1.5 GB/s = 7.3 s sequential, plus btree-min/max overhead = ~25 s
-range observed in benchmarks). The benefit lasts as long as the data
+sequentially per child, in the range from 18 to 30 seconds on a
+1.5 GB/s NVMe (11 GB / 1.5 GB/s = 7.3 s sequential, plus
+btree-min/max overhead pushes the wall to a ~25 s range from past
+benchmarks[^bench]). The benefit lasts as long as the data
 in that child is immutable; the constraint is `partmanconstr_<child>_<col>`
 named, and `pg_partman` will not touch it once written.
 
@@ -512,9 +512,9 @@ The author (Keith Fiske) is not wrong. Two-level partitioning means
 two `relpartbound` checks per child at plan time, two layers of stats
 to load, doubled relations open. Use it only for organization and
 retention, never to "make queries faster." The first ~100 KB of
-shared-buffer overhead from extra relation entries (range observed
-from 60 to 200 KB depending on per-child stats density) usually
-overwhelms the savings from the secondary key.
+shared-buffer overhead from extra relation entries (estimated range
+from 60 to 200 KB depending on per-child stats density[^bench])
+usually overwhelms the savings from the secondary key.
 
 **e. BRIN on small partitions doesn't index.** A 12 GB child with
 `pages_per_range = 128` has ~12,000 BRIN summary tuples. A 12 MB child
@@ -664,10 +664,10 @@ The query in step 4 fans out across every child the planner cannot
 prove empty — that's the failure mode the post is about. Step 5 is
 the same query written so the planner can fold the predicate to a
 constant. Compare the [Append node](https://www.postgresql.org/docs/current/using-explain.html) width and the plan-time line on each.
-On a 30-child set the difference is in the range 25× to 35× in plan time and
-25× to 35× in execution buffer reads, dominated by the per-child
-relation open in step 4 (range observed in past benchmarks: from 100 ms
-down to 3 ms plan-time).
+On a 30-child set the difference is in the range from 25× to 35× in
+plan time and from 25× to 35× in execution buffer reads, dominated
+by the per-child relation open in step 4 (range from past benchmarks:
+from 100 ms down to 3 ms plan-time[^bench]).
 
 # 9. The bpftrace one-liner
 

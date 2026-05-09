@@ -818,3 +818,17 @@ engine. This one is about a graph index. The pattern keeps working
 because most production systems are short, well-engineered cores
 wrapped in operational scaffolding, and the cores are the part worth
 writing about.
+
+[^bench]: All numbers in this post come from a single benchmark
+    harness: pgvector v0.8.2 inside the
+    [`docker.io/pgvector/pgvector:pg15`](https://hub.docker.com/r/pgvector/pgvector)
+    container, on Apple M4 Pro hardware (10 cores, 24 GB RAM) running
+    inside a Linux Podman VM. Postgres defaults except
+    `maintenance_work_mem = '256MB'` and
+    `max_parallel_maintenance_workers = 0` so the build is
+    deterministic. Dataset: 50,000 unit vectors of dimension 128
+    drawn from 100 isotropic Gaussian clusters with σ = 0.3. Queries
+    are 500 cluster centres perturbed by σ = 0.4 noise. Ground truth
+    is exact L2 nearest-neighbour from NumPy. The 50-line Python
+    reproduction is in §5. Run-to-run reproducibility is about ±2 %
+    on recall and ±10 % on latency.
