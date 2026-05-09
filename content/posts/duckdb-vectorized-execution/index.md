@@ -69,19 +69,24 @@ four `numeric(15,2)` columns stored as 8-byte big-int internals, and
 two single-character flags), which means you pay `158 / 50 ≈ 3.2×`
 the IO you needed. That is the row-store tax before any CPU work.
 
-The CPU tax is bigger. Postgres' executor is a Volcano iterator: every
-operator implements `next()` and pulls one tuple from its child. A
-`Sort → HashAggregate → SeqScan` plan is three function calls per
-tuple, each through a function pointer. With 60 million rows, that is
-`60_000_000 × 3 = 180_000_000` indirect calls. On modern
-Apple Silicon a mispredicted indirect call costs roughly five
-nanoseconds end-to-end (Firestorm/Avalanche/Everest cores quote a
-13-cycle branch-mispredict penalty per
+The CPU tax is bigger. Postgres' executor follows the Volcano model:
+every operator implements `ExecProcNode` and pulls one tuple from
+its child via a function-pointer call. Q01's plan is `Sort →
+HashAggregate → SeqScan`, but Sort and HashAggregate are blocking —
+Sort consumes everything from below before yielding, HashAggregate
+consumes everything below before yielding the (very small) group
+set. The 60M-row hot path therefore boils down to two per-tuple
+indirections: HashAggregate calling SeqScan via its function
+pointer, plus the internal `heap_getnext` → tuple-deform call. With
+60M rows, that is `60_000_000 × 2 = 120_000_000` indirect calls.
+On modern Apple Silicon a mispredicted indirect call costs roughly
+five nanoseconds end-to-end (Firestorm/Avalanche/Everest cores
+quote a 13-cycle branch-mispredict penalty per
 [7-cpu.com's M1 microbenchmark](https://www.7-cpu.com/cpu/Apple_M1.html);
 at the M3 Max P-core's 4.05 GHz that is `13 / 4.05 ≈ 3.2` ns of
 branch recovery, plus instruction-fetch refill and the dependent
-load on the function pointer, totalling ~5 ns), so `180000000 × 5 =
-900000000` ns ≈ 900 ms of dispatch tax alone, before any actual
+load on the function pointer, totalling ~5 ns), so `120000000 × 5
+= 600000000` ns ≈ 600 ms of dispatch tax alone, before any actual
 arithmetic.
 
 DuckDB rejects that loop. It packs each column into a `Vector`
@@ -490,9 +495,9 @@ compression families live under `src/storage/compression/` —
 ## Why the gap is exactly this big
 
 Napkin math for Q01 at SF=10. Postgres reads 9023 MiB of heap +
-60M × indirect call × 3 operators × ~5 ns of dispatch (per the
+60M × ~2 indirect calls × ~5 ns of dispatch (per the
 [branch-mispredict derivation](#the-problem-this-engine-was-built-to-solve)
-above) = ~900 ms of CPU dispatch tax single-thread, ~225 ms across
+above) = ~600 ms of CPU dispatch tax single-thread, ~150 ms across
 4 parallel workers. The remaining wall clock is IO. Postgres'
 parallel-bitmap-heap-scan effectively pushes ~340 MiB/s end-to-end on
 this NVMe (derived from the 8423 MiB read in the 25 s Q06 run:

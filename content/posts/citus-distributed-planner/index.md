@@ -740,8 +740,9 @@ which is why the DEBUG mode is non-negotiable).
 **3. Push the fast-path eligibility check into PG's parse tree
 analysis layer.** Right now `FastPathRouterQuery` runs at the start
 of `distributed_planner`, after the planner hook fires. PostgreSQL
-has a `post_parse_analyze_hook` that fires earlier, after parse-
-analysis but before any planner sees the query. Moving the check
+has a post-parse-analyze hook (declared in
+`src/include/parser/analyze.h` in the postgres tree) that fires
+earlier, after parse-analysis but before any planner sees the query. Moving the check
 into that hook means Citus could short-circuit before
 `distributed_planner`'s own setup work runs (RTE identity
 assignment in `AssignRTEIdentities`, partitioning adjustments via
