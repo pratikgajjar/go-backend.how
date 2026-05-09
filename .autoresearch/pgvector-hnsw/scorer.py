@@ -919,7 +919,9 @@ def main() -> int:
         section("defects", 100)
         return 1
 
-    repo_root = Path(__file__).resolve().parent.parent
+    # Local scorer lives at .autoresearch/pgvector-hnsw/scorer.py, so repo
+    # root is three levels up (go-backend.how/), not two as in the shared scorer.
+    repo_root = Path(__file__).resolve().parent.parent.parent
     fm, body, _full = read_post(post_path)
 
     cats: dict[str, int] = {}

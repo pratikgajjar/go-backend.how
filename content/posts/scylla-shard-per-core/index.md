@@ -680,7 +680,7 @@ The principle that survives the language switch: **the cost of crossing
 a cache line is non-negotiable, and your job as an architect is to make
 sure your hot path crosses as few as possible**.
 
-# Stretch — see it for yourself
+# Stretch: see it for yourself
 
 ## bpftrace one-liner
 
