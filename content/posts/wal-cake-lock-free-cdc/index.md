@@ -196,15 +196,19 @@ disk fills.
 ```go
 // internal/replication/pg_replicator.go
 func (r *pgReplicator) ensurePublication(ctx context.Context) error {
-    var exists bool
-    _ = r.queryConn.QueryRow(ctx,
-        `SELECT EXISTS(SELECT 1 FROM pg_publication WHERE pubname = $1)`,
-        r.cfg.Publication).Scan(&exists)
-    if !exists {
-        _, _ = r.queryConn.Exec(ctx,
-            fmt.Sprintf("CREATE PUBLICATION %s FOR ALL TABLES", r.cfg.Publication))
-    }
-    return nil
+	var exists bool
+	err := r.queryConn.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_publication WHERE pubname = $1)", r.cfg.Publication).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check if publication exists: %w", err)
+	}
+
+	if !exists {
+		_, err = r.queryConn.Exec(ctx, fmt.Sprintf("CREATE PUBLICATION %s FOR ALL TABLES", r.cfg.Publication))
+		if err != nil {
+			return fmt.Errorf("failed to create publication: %w", err)
+		}
+	}
+	return nil
 }
 ```
 

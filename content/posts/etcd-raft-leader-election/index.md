@@ -801,7 +801,7 @@ defence has to live above the library: the application must be sure
 the leader is actually going down before sending the message, e.g. by
 holding a fenced lease that the failing leader can't refresh.
 
-## 3. Async vote responses with a stable index
+## 3. Fixed-layout vote messages
 
 Right now every vote response is small but every vote response is a
 separate proto message. Batching votes for multiple pending
