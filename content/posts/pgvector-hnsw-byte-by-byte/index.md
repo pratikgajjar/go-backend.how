@@ -851,8 +851,9 @@ _Source for the numbers: 50k × 128-dim L2 benchmark, pgvector v0.8.2,
 Postgres 15 in a Linux Podman VM on an Apple M4 Pro, default settings
 except `maintenance_work_mem = 256MB` and `max_parallel_maintenance_workers = 0`. Code is included inline in §5; reproducible from a fresh
 `docker.io/pgvector/pgvector:pg15` container in under a minute.
-Recall and latency are run-to-run reproducible to about ±2 % and ±10 %
-respectively._
+Recall is deterministic (832.6 B/row reproduces to the byte); latency
+varies ±10 % on a quiet machine, more under host load — full
+methodology in [^bench]._
 
 # Further reading
 
