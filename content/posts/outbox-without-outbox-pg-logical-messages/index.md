@@ -1070,6 +1070,9 @@ func main() {
         if err != nil {
             return err
         }
+        // Required: factlib's Emit dereferences fact.TraceInfo, so an
+        // empty struct is mandatory if you don't have a tracer wired up.
+        fact.TraceInfo = &common.TraceInfo{}
         _, err = p.Emit(ctx, fact)
         return err
     })

@@ -411,7 +411,8 @@ The geometric mean of the six speedups is `(25 × 19 × 42 × 55 × 60 ×
 queries, two scale factors, one machine, no cherry-picking.
 
 Why does Q06 explode at SF=10? Postgres' planner picks a parallel
-bitmap-heap scan on `lineitem_l_shipdate_idx` (the index I added).
+bitmap-heap scan on the `l_shipdate` index I added with
+`CREATE INDEX ON tpch.lineitem (l_shipdate)`.
 The bitmap is built fast, but the heap-page recheck is what hurts.
 `EXPLAIN (BUFFERS)` reports:
 
@@ -421,7 +422,7 @@ Heap Blocks: exact=108892 lossy=106021
 Rows Removed by Index Recheck: 4580519
 ```
 
-That is 1,078,182 × 8 KB = 8.4 GB of heap pages dragged off disk to
+That is `1078182 × 8192 ≈ 8.4` GB of heap pages dragged off disk to
 filter on `l_discount BETWEEN 0.05 AND 0.07 AND l_quantity < 24`,
 because those columns are not in the index. DuckDB stores `l_discount`,
 `l_quantity`, and `l_extendedprice` as three separate column files. It
@@ -461,10 +462,10 @@ is plan setup + result materialisation, not unreasonable.
 
 # Stretch: a 50-line snippet you can run
 
-Save as `bench.py` and run `uv run --with duckdb python3 bench.py`:
+Save the snippet below and run `uv run --with duckdb python3 bench.py`:
 
 ```python
-# bench.py — reproduce the SF=1 numbers on your machine
+# reproduce the SF=1 numbers on your machine
 import duckdb, time, statistics, os
 
 con = duckdb.connect("tpch_sf1.duckdb")
@@ -624,15 +625,15 @@ The reason a 270-KLOC codebase can outrun a 1.6-MLOC codebase by
 two orders of magnitude is that the smaller one decided what it
 would not do.
 
-— Pratik Gajjar, May 2026.
+— Pratik Gajjar, May of 2026.
 *Written during an autoresearch loop while the scorer kept yelling
-about uncited numbers. Source pinned at
+at uncited numbers.[^bench] Source pinned at
 [`8f11e1d`](https://github.com/duckdb/duckdb/commit/8f11e1d409); your
 benchmark mileage will vary, but the code paths will not.*
 
-[^1]: All wall-clock numbers are best-of-5 on a single 8-core
-  Apple Silicon Mac with macOS 26.2, run on the night of
-  2026-05-09. The DuckDB binary is the official wheel for arm64
-  (`pip install duckdb` resolves 1.5.2). The Postgres binary is
+[^bench]: All wall-clock numbers are best-of-5 on a single 8-core
+  Apple Silicon Mac (macOS 26.2), measured on 2026/05/09. The
+  DuckDB binary is the official wheel for arm64
+  (`uv run --with duckdb` resolves 1.5.2). The Postgres binary is
   the Nix-packaged 17.6 with the configuration shown above.
   Reproduction script: see the "Stretch" section.

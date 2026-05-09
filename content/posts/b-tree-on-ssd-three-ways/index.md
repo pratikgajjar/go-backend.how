@@ -35,7 +35,7 @@ key-value stores on the same M2 MacBook, same APFS filesystem, same Go
 
 Three things should bother you:
 
-1. **LMDB**, written by [Howard Chu](https://www.openldap.org/lists/openldap-devel/202012/msg00004.html)
+1. **LMDB**, written by [Howard Chu](https://www.symas.com/symas-embedded-database-lmdb)
    in [11,477 lines](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c)
    of C, beats Pebble - [159,642 lines](https://github.com/cockroachdb/pebble)
    of Go with a CockroachDB-funded engineering org behind it - at
@@ -579,9 +579,12 @@ Pebble's operational surface is the other cost. It's an LSM, so:
   [`smoothedLevelMultiplier`](https://github.com/cockroachdb/pebble/blob/master/compaction_picker.go#L896)
   computes how aggressively to compact. Mistune it and you eat tail
   latency.
-- **Disk space amplification.** During a compaction L4 → L5, both
-  inputs and outputs are on disk. Worst-case usable space is roughly
-  `total - (LBaseMaxBytes × multiplier^L)` larger than your live data.
+- **Disk space amplification.** During a compaction the inputs and
+  the outputs are both on disk until the compaction finishes; the
+  peak transient overhead is the size of the level being merged.
+  For a 64 MiB Lbase doubling each level (`64 × 10^L`), the largest
+  level dominates: a 100 GiB Pebble store can briefly need
+  ~110 GiB free during the L4 → L5 sweep.
 - **Memory tuning.** Block cache, table cache, memtable count: each
   with a knob, each with a default tuned for CockroachDB. For a small
   embedded use, the defaults reserve more memory than LMDB needs to
