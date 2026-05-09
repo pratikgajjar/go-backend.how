@@ -238,6 +238,107 @@ def placeholder_url_defects(body: str) -> int:
     return len(PLACEHOLDER_URL_RE.findall(_strip_code_blocks(body)))
 
 
+# Hedge words that hide imprecision in prose
+HEDGE_RE = re.compile(
+    r"\b(essentially|basically|fairly|pretty much|more or less|kind of|sort of|"
+    r"obviously|clearly|of course|trivially|simply put|needless to say|in essence)\b",
+    re.IGNORECASE,
+)
+
+
+def hedge_defects(body: str) -> int:
+    return len(HEDGE_RE.findall(_strip_code_blocks(body)))
+
+
+# Tilde claims (`~50 ms`) need same-paragraph derivation
+TILDE_NUM_RE = re.compile(
+    r"~\s?\d+(?:[.,]\d+)?\s?(\u00b5s|us|ms|ns|s\b|MB|GB|KB|TB|MiB|GiB|KiB|%|\u00d7|x\b|/sec)",
+)
+
+
+def tilde_no_math_defects(body: str) -> int:
+    paragraphs = re.split(r"\n\s*\n", body)
+    n = 0
+    for p in paragraphs:
+        if p.strip().startswith("```") or "|" in p[:5]:
+            continue
+        hits = TILDE_NUM_RE.findall(p)
+        if not hits:
+            continue
+        if not DERIV_HINTS.search(p):
+            n += len(hits)
+    return n
+
+
+# Percent claims need same-paragraph derivation
+PERCENT_RE = re.compile(r"(?<![\w\d])(\d{1,3}(?:\.\d+)?)\s?%")
+
+
+def percent_no_math_defects(body: str) -> int:
+    paragraphs = re.split(r"\n\s*\n", body)
+    n = 0
+    for p in paragraphs:
+        if p.strip().startswith("```") or "|" in p[:5]:
+            continue
+        hits = PERCENT_RE.findall(p)
+        if not hits:
+            continue
+        if not DERIV_HINTS.search(p):
+            n += len(hits)
+    return n
+
+
+# Markdown images must have non-empty alt text
+IMG_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+
+
+def img_no_alt_defects(body: str) -> int:
+    return sum(
+        1 for m in IMG_RE.finditer(_strip_code_blocks(body)) if not m.group(1).strip()
+    )
+
+
+# Long lines inside code blocks (>110 chars) overflow on mobile
+LANG_DIAGRAM = {"text", "txt", "ascii", "diff", ""}
+
+
+def long_code_line_defects(body: str) -> int:
+    n = 0
+    for m in CODEBLOCK_RE.finditer(body):
+        lang = m.group(1).strip().lower()
+        if lang in LANG_DIAGRAM:
+            continue
+        for ln in m.group(2).splitlines():
+            if len(ln) > 110:
+                print(
+                    f"DEBUG long_code_line ({len(ln)} chars, lang={lang}): {ln[:60]}...",
+                    file=sys.stderr,
+                )
+                n += 1
+    return n
+
+
+# Internal math consistency: `A + B + C ≈ X ms` lines must actually add up
+MATH_LINE_RE = re.compile(
+    r"(\d+(?:\.\d+)?(?:\s*\+\s*\d+(?:\.\d+)?){2,})\s*[\u2248=]\s*(\d+(?:\.\d+)?)\s*(ms|s|MB|GB|KB)\b",
+)
+
+
+def math_off_defects(body: str) -> int:
+    n = 0
+    for m in MATH_LINE_RE.finditer(_strip_code_blocks(body)):
+        nums = [float(x) for x in re.findall(r"\d+(?:\.\d+)?", m.group(1))]
+        claimed = float(m.group(2))
+        actual = sum(nums)
+        if abs(actual - claimed) / max(actual, 0.01) > 0.05:  # 5% tolerance
+            print(
+                f"DEBUG math_off: {m.group(0)[:80]!r} sum={actual} claim={claimed}",
+                file=sys.stderr,
+            )
+            n += 1
+    return n
+
+
 # Allow-list of hosts a serious distroless/wolfi/k8s post should reference
 ALLOWED_HOSTS = {
     "github.com", "kubernetes.io", "pkg.go.dev",
