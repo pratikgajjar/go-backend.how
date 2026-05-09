@@ -31,6 +31,10 @@ Last reviewed: 2026-05-09 (iter 18, defects 0 stable).
 - Iter 35: §4.3 distance-work upper bound is `ef × 2M = 1280` candidates, not 528.
 - Iter 36: §4.4 derivation made integer-truncation explicit at each step (was `1358 / 16 - 2 = 82`, ambiguous).
 - Iter 37: §4.1 candidate-list ordering is furthest→nearest (drained from W max-heap); llast() is the nearest.
+- Iter 39: §3 page-layout description corrected (24-byte PageHeader + ItemIdData array, NOT ItemIds-in-header).
+- Iter 40: §2 historical claim weakened ('a common pre-HNSW answer was IVFFlat' instead of 'the pre-2016 industry standard').
+- Iter 41-42: index size is 39.7 MiB (not 39.8 MB) — verified by `41631744 / 1048576`. KB notation kept for 8 KB pages (Postgres convention).
+- Iter 43: §5 reproducibility honesty — inline script doesn't reproduce `maintenance_work_mem` settings, noted to reader.
 
 ## Open / deferred
 
