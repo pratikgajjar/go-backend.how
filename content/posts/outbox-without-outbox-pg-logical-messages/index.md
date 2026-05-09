@@ -786,10 +786,11 @@ OwlPost                Kafka
    │ ack chain proceeds
 ```
 
-While Kafka is down, OwlPost keeps reading WAL into its in-memory
-buffer (`w.events` is a 1000-deep channel) and franz-go's producer
-buffers writes. The LSN never advances. Postgres continues to retain
-WAL.
+While Kafka is down, OwlPost reads up to **1000** events into the
+`w.events` channel (a buffered Go channel; sends block past that),
+plus whatever franz-go's producer can buffer. Once both buffers are
+full, the WAL receive loop stops draining and Postgres continues to
+retain WAL behind the slot. The LSN never advances.
 
 After ~hours, two things start to break:
 
