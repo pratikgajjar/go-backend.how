@@ -529,13 +529,14 @@ practice: the probability of an element rolling above level 8 with
 `M = 16` is `1/16⁸ ≈ 2.3 × 10⁻¹⁰` (geometric tail). The `255` cap
 is to ensure `level` fits in a `uint8`.
 
-Derivation: page-header and opaque overhead total
-`24 + 8 = 32 B`; `ItemIdData` is 4 B; `offsetof(HnswNeighborTupleData,
-indextids)` is 4 B (`uint8 type + uint8 version + uint16 count`). So
-the space available for TIDs on a one-tuple page is
-`8192 − 32 − 4 − 4 = 8152 B`, which holds `8152 / 6 = 1358` TIDs
-at 6 bytes each. Dividing by `M = 16` and subtracting 2 (the `+2`
-on layer 0) gives `1358 / 16 − 2 = 82`.
+Derivation, all in C integer arithmetic: page-header and opaque
+overhead total `24 + 8 = 32 B`; `ItemIdData` is 4 B;
+`offsetof(HnswNeighborTupleData, indextids)` is 4 B (`uint8 type +
+uint8 version + uint16 count`). So the space available for TIDs on
+a one-tuple page is `8192 − 32 − 4 − 4 = 8152 B`, which holds
+`8152 / 6 = 1358` TIDs at 6 bytes each (truncating). Dividing by
+`M = 16` is `1358 / 16 = 84` (truncating again), and subtracting 2
+(for the extra `+2` on layer 0) gives `84 − 2 = 82`.
 
 # 5. Real numbers from a 50,000-vector benchmark
 

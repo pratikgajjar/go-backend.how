@@ -105,7 +105,9 @@ hardware threads. Each reactor:
 2. Owns its own arena of memory carved from the host RAM at startup.
 3. Owns its own slice of the partition keyspace (sharded by hash of the
    partition key).
-4. Talks to the kernel via its own private `io_uring` (Linux ≥ 5.6).
+4. Talks to the kernel via its own private `io_uring` (Seastar's
+   `detect_io_uring()` requires Linux ≥ 5.12 for mlock budget, ≥ 5.17
+   for MD/RAID).
 5. Communicates with peers via N×N **single-producer-single-consumer
    lock-free queues**, batched up to 16 items per flush.
 
