@@ -17,7 +17,9 @@ math = false
 A Raft leader election is one of those operations that everyone has a
 mental model for and almost nobody has measured. Ask three engineers how
 long it takes and you'll get answers from "instant" to "several seconds".
-Both are right, depending on what you measure.
+Both are right, depending on what you measure (and the
+[etcd-io/raft](https://github.com/etcd-io/raft/blob/main/raft.go) code
+itself spells out which is which, once you read it line by line).
 
 Here's the contradiction the [etcd-io/raft](https://github.com/etcd-io/raft)
 source code actually shows you, once you read it carefully:
@@ -814,10 +816,12 @@ time you wire `etcd-raft` into something new.
 ---
 
 _Numbers cited as "M1" came from a single Apple M1 laptop running
-`go1.26.3` on a hot bench. The 1,491 ns/op for `BenchmarkOneNode` is
-reproducible to ±5% across three runs; the per-step micro-estimates
-in the table above are derived from reading the code, not measured
-individually._
+`go1.26.3` against [the etcd-io/raft tree at commit
+`26c2367`](https://github.com/etcd-io/raft/commit/26c2367), via
+`go test -bench=BenchmarkOneNode -run=^$ -benchtime=2s` from the
+top-level package. The 1,491 ns/op figure is reproducible to ±5%
+across three runs; the per-step micro-estimates in the table above
+are derived from reading the code, not measured individually._
 
 ## Colophon
 

@@ -52,7 +52,7 @@ are in PL/pgSQL.
 
 [repo]: https://github.com/pgpartman/pg_partman
 
-# 1. The hook — 90 child tables, every one read
+# 1. The hook — 90 child tables, every one opened
 
 Here is the query and the plan, stripped to the relevant lines:
 
