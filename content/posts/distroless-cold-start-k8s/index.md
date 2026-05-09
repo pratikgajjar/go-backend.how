@@ -271,7 +271,7 @@ That's *not a typo*. Wolfi (2.5× scratch's wire bytes) pulled the **fastest** i
 
 [overlay-snap]: https://github.com/containerd/containerd/blob/main/plugins/snapshots/overlay/overlay.go
 
-2. **Single-layer images can't parallelise.** Containerd's default `max_concurrent_downloads = 3` (see [`pkg/cri/config`][cricfg]) means scratch's lone layer fetches on one TCP connection, gzip-decompresses on one CPU. Distroless's 13-and-Wolfi's-11 spread across 3 parallel connections, so the binary layer (~3.98 MB compressed across all three) overlaps with the smaller base layers.
+2. **Single-layer images can't parallelise.** Containerd's default `max_concurrent_downloads = 3` (see [`pkg/cri/config`][cricfg]) means scratch's lone layer fetches on one TCP connection, gzip-decompresses on one CPU. Bench/distroless's 14 layers and bench/wolfi's 12 spread across 3 parallel connections, so the binary layer (~4 MB compressed in each image) overlaps with the smaller base layers.
 
 [cricfg]: https://github.com/containerd/containerd/blob/main/internal/cri/config/config_unix.go
 
