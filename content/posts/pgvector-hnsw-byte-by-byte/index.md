@@ -381,9 +381,10 @@ A breadth-first graph search needs to remember which nodes it has
 already touched. The naive choice is "a `set<TID>`". pgvector keeps
 three hash tables and picks one at runtime:
 
-- `tids` (keyed by `ItemPointerData`) for on-disk traversals: the
-  TID is the only stable handle when the elements aren't pinned in
-  memory across the layer-descent calls.
+- `tids` (keyed by `ItemPointerData`) for on-disk traversals: each
+  candidate is identified by its TID inside the inner loop of one
+  `HnswSearchLayer` call, since we don't pin element data between
+  expansions and there's no other persistent identifier.
 - `offsets` (keyed by relative pointer offset) for parallel in-memory
   builds, where the graph lives in shared memory mapped to different
   addresses in different worker processes. You can't compare absolute

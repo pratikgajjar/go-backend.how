@@ -94,13 +94,14 @@ than the original inserts.
 
 **Failure 3: JSON-on-S3 is unqueryable.** Athena
 [charges $5 per TB scanned](https://aws.amazon.com/athena/pricing/),
-and JSON is row-oriented and barely compressed (gzipped JSON over
-CDC payloads is roughly `~3×` smaller than raw — well shy of
-columnar Parquet+ZSTD's `~30×`). A 3-column query over one day's
-mutations scans **every byte** of every JSON file. At, say,
-`~$14k/month` in estimated Athena scan, dashboards refresh in 90 s
-and the lake-cost line keeps growing. You quietly start writing
-Parquet.
+and JSON is row-oriented: a 3-column query over one day's mutations
+scans **every byte** of every JSON file because there's no way to
+project columns without parsing each blob. Columnar Parquet with
+ZSTD lets the engine read only the columns the query touches and
+skip pages that don't match the predicate — order-of-magnitude scan
+reduction versus JSON on the same query. At, say, `~$14k/month` in
+estimated Athena scan, dashboards refresh in 90 s and the lake-cost
+line keeps growing. You quietly start writing Parquet.
 
 The fix isn't a smarter outbox. The fix is to stop dual-writing. The
 WAL is already an outbox — Postgres has been writing one durably on

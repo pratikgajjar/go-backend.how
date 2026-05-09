@@ -508,17 +508,18 @@ Apple M3 Max give us. All numbers are derived, not waved.
 
 `BenchmarkOneNode` exercises a *fuller* path than a leader election —
 propose entry → Ready → fsync → Advance — and reports a median
-**1,360 ns/op** across three runs:
+**1,342 ns/op** across three runs:
 
 ```text
-$ go test -bench=BenchmarkOneNode -run=^$ -benchtime=3s -count=3
+$ go test -v -bench=BenchmarkOneNode -run=^$ -benchtime=3s -count=3
 goos: darwin
 goarch: arm64
 pkg: go.etcd.io/raft/v3
 cpu: Apple M3 Max
-BenchmarkOneNode-16    2445968     1333 ns/op
-BenchmarkOneNode-16    2641879     1369 ns/op
-BenchmarkOneNode-16    2506566     1360 ns/op
+BenchmarkOneNode
+BenchmarkOneNode-14    2667788    1326 ns/op
+BenchmarkOneNode-14    2660304    1342 ns/op
+BenchmarkOneNode-14    2615948    1373 ns/op
 PASS
 ```
 
