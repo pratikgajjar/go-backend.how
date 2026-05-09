@@ -1,10 +1,11 @@
 # distroless-cold-start-k8s — Ideas backlog
 
-Living scratchpad for the autoresearch loop. State at iter 42:
+Living scratchpad for the autoresearch loop. State at iter 52:
 - defects = 0 across 23 dimensions
-- 4882 prose words (within 3000-5500 band)
+- exactly 5000 prose words (at the global voice cap; specific brief allows 5500)
 - 22 URLs verified live (cached)
 - All 7 brief sections present + bpftrace/strace/repro stretch goals
+- §3 "ascii architecture" is 119 words (well under the brief's 200-word target)
 
 ## ✅ Done in this session (iter 1 → iter 42)
 
@@ -26,6 +27,25 @@ Living scratchpad for the autoresearch loop. State at iter 42:
 - iter 39+40: hook blockquote rewrite (image bytes vs runtime plumbing split)
 - iter 41: colophon honesty about kind/k3d gap — never spun up real K8s
 - iter 42: layer-count attribution clarity (bench-image vs base-image)
+- iter 43: ECR rate limits — `BatchGetImage` + `GetDownloadUrlForLayer`
+  per-account-per-region quotas (verified live by curling the AWS docs page),
+  not "per-IP throttle" as I'd previously claimed. Also added the math
+  `100 nodes × 15 calls = 1,500` API calls per scale event.
+- iter 44: parallelism math — `--serialize-image-pulls=true` serializes
+  PER NODE not across cluster, so 1000-pod-on-100-node savings are
+  10×2.5 = 25 s per node, not 1000×2.5 = 2500 s cluster-wide.
+- iter 45: real CVE-response fix — the COPY-only overlay path on distroless
+  silently fails (no `update-ca-certificates` script). Correct pattern
+  is multi-stage Dockerfile with Debian builder.
+- iter 46+49: scorer wordcount-cap reconciliation between brief specs.
+- iter 47: gunzip throughput as 150 MB/s in / 400 MB/s out (was '~200 MB/s'
+  which fit neither).
+- iter 50+51: per-new-binary cost is roughly equal between scratch and
+  distroless (both ~3.98 MB per new binary); the dedup advantage is only
+  on the *first* binary on a fresh node. Trim chain landed at exactly
+  5000 words.
+- iter 52: ASCII diagram TOML key consistency
+  (`max_concurrent_downloads`, not `maxConcurrentDownloads`).
 
 ## Deferred / not pursued (with reasons)
 
