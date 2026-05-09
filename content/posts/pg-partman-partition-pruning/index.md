@@ -62,10 +62,10 @@ WHERE created_at >= now() - interval '1 hour';
 ```text
 Aggregate  (cost=...)
   ->  Append
-        ->  Seq Scan on events_p_today_minus_0   (rows=1)
+        ->  Seq Scan on events_pYYYYMMDD       (rows=1)   # today
               Filter: (created_at >= (now() - '01:00:00'::interval))
-        ->  Seq Scan on events_p_today_minus_1   (rows=0)
-        ->  Seq Scan on events_p_today_minus_2   (rows=0)
+        ->  Seq Scan on events_pYYYYMMDD_t1    (rows=0)   # yesterday
+        ->  Seq Scan on events_pYYYYMMDD_t2    (rows=0)   # 2 days ago
         ...  (87 more children, every one opened)
 Planning Time: hundreds of ms
 Execution Time: many seconds (range from past benchmarks[^bench])

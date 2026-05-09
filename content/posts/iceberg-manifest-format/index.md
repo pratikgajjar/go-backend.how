@@ -304,18 +304,17 @@ IDs 500–520 belong to the manifest-list record. Within each row the
 This summary is the difference between a 1 PB table that plans a
 query in 100 ms and one that takes 100 s. Suppose the table is partitioned by
 `day(ts)` and a query asks for one day. The planner reads the
-manifest list — one Avro file, on the order of tens-of-KB to
-single-digit MB — and compares the predicate against each
-manifest's `lower_bound` / `upper_bound` for the `day(ts)` field.
-Manifests outside the range never get downloaded. With ~1,000
-manifests in a 1-PB table and a one-day predicate spanning ~1
-manifest, the planner downloads `1 manifest list + 1 manifest =
-2 S3 GETs ≈ 2 × 30 ms = 60 ms` before it has the candidate
-data-file list. (The 30 ms figure is a measured median for a single
-S3 GET against a same-region bucket; AWS publishes [SLA target
-P50 ~30 ms / P99 ~100
-ms](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html)
-for small object reads.)
+manifest list — one Avro file, tens-of-KB to single-digit MB by §1's
+math — and compares the predicate against each manifest's
+`lower_bound` / `upper_bound` for the `day(ts)` field. Manifests
+outside the range never get downloaded. With ~150 manifests in a
+1 PiB table (matching §1) and a one-day predicate spanning ~1
+manifest, the planner downloads exactly two Avro files —
+manifest list + one matching manifest — before it has the
+candidate data-file list. The full latency arithmetic is in §5.1;
+the headline is two GET round-trips, where each round-trip is
+whatever your EC2-to-S3 same-region GET latency happens to be
+(warm connection, small object).
 
 ## 4.3 Sequence numbers and inheritance — the trick that makes commits cheap
 

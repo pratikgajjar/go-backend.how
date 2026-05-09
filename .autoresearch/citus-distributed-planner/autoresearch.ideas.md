@@ -34,22 +34,29 @@ issues the regex scorer cannot see.
 
 ## Open audit ideas (non-trivial verification)
 
-- [ ] Verify the napkin claim "PostgreSQL planner runs in 100-300µs"
-      against published benchmarks. Right now I claim derived; would
-      be stronger with a citation to a specific PGPro/EDB benchmark.
-- [ ] The "200µs total fast-path" napkin assumes ~50ns binary search +
-      ~100µs LAN RTT + 100-500µs worker exec. The 100µs RTT is
-      load-bearing. Verify against a real LAN ping (not done here).
+- [x] Iter 6: napkin claim about PG planner 100-300µs reframed as
+      "derived from planner-step complexity" + pg_stat_statements as
+      the canonical measurement tool. Honest about being unmeasured.
+- [x] Iter 7: 200µs total reworked into 250–1100µs range; 100µs RTT
+      claim split into rack-local 50–100µs vs cross-rack 500µs (per
+      jboner gist), the latter cited explicitly. Order of magnitude
+      claim updated to 4–5 (was "5") with both ratios shown.
+- [x] Iter 8: §7 idea #2 acknowledged prior art
+      (`citus.enable_non_colocated_router_query_pushdown` already
+      exists as a cluster-wide blanket GUC; my idea is the per-query
+      escape hatch + DEBUG verification mode).
+
 - [ ] The bash repro snippet (50 lines, section §7 stretch) — verify
       it runs end-to-end against a real Citus cluster. Right now it's
-      only validated by reading.
-- [ ] Section 7 idea #2 ("co-location as query hint") — sanity-check
-      that no existing Citus feature already does this. (If
-      `citus.shard_replication_factor` and similar GUCs already let
-      you fake colocation in any way, the claim weakens.)
+      only validated by reading. (Cannot verify on this machine: no
+      Citus binary in NixOS pkgs, no Docker.)
 - [ ] Verify I haven't quoted any source with a typo. The
       multi-line quote checker in the scorer catches paraphrases but
       not inserted/dropped whitespace.
+- [ ] Verify the "five orders of magnitude" claim once more: jboner's
+      gist puts in-DC RTT at 500µs, not 100µs. The 50–100µs lower
+      bound assumes rack-local 10 GbE which I'm sourcing from generic
+      datacenter networking knowledge, not a specific benchmark.
 
 ## Pruned (already verified or moot)
 

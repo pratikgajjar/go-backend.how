@@ -354,23 +354,23 @@ strace -f -tt -e trace=execve,mmap,openat,read,write,brk,connect \
        -p $(pgrep -f /app | head -1)
 ```
 
-For our binary, the first 100 syscalls look like:
+A representative trace excerpt for a Go binary like the one in this post (composited from `runtime` source-reading and the Linux ELF loader path; not a literal capture from this rig because podman-on-macOS adds a VM hop that distorts the timestamps). The call *shape* matches what `strace -p` will show on a real Linux node:
 
 ```text
-12:00:00.123456 execve("/app", ["/app"], 0x...) = 0
-12:00:00.124012 brk(NULL)                       = 0x4000200000
+12:00:00.123456 execve("/app", ["/app"], 0x...)  = 0
+12:00:00.124012 brk(NULL)                        = 0x4000200000
 12:00:00.124045 mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0) = ...
 12:00:00.124220 openat(AT_FDCWD, "/proc/self/auxv", O_RDONLY) = 3
-12:00:00.124310 read(3, ...) = 192
+12:00:00.124310 read(3, ...)                     = 192
 12:00:00.124380 mmap(NULL, 67108864, PROT_NONE, MAP_PRIVATE|MAP_ANON, -1, 0) = ...
 12:00:00.124450 mmap(NULL, 4194304, PROT_READ|PROT_WRITE, ...) = ...
-... (60–80 lines of mmap/mprotect for the Go runtime arena) ...
+... (60–80 mmap/mprotect calls for the Go runtime arena + segmented stack pools) ...
 12:00:00.130100 openat(AT_FDCWD, "/etc/ssl/certs/ca-certificates.crt", O_RDONLY|O_CLOEXEC) = 4
-12:00:00.130250 read(4, ...) = 8192
-... (TLS root cert pool init when the first http.Client is constructed) ...
+12:00:00.130250 read(4, ...)                     = 8192
+... (TLS root-cert pool init when the first http.Client is constructed) ...
 12:00:00.131800 socket(AF_INET6, SOCK_STREAM, IPPROTO_IP) = 5
 12:00:00.131850 bind(5, {sa_family=AF_INET6, sin6_port=htons(8080), ...}, ...) = 0
-12:00:00.131900 listen(5, 4096) = 0
+12:00:00.131900 listen(5, 4096)                  = 0
 ```
 
 Three observations the trace makes obvious:
