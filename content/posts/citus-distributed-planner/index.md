@@ -695,10 +695,14 @@ future PG planner refactors.
 If you have a Citus cluster and want to see the planner's path
 selection in real time, set `client_min_messages = DEBUG2` and watch
 the per-query DEBUG output. The fast-path queries print three lines
-(quoted in section 5); the router prints "Creating router plan"; the
-logical planner prints "Creating distributed plan". Per
-`distributed_planner.c`, the log level is ERROR-quiet by default;
-`DEBUG2` is the minimum to surface routing decisions.
+(quoted in section 5, including "Distributed planning for a
+fast-path router query"); the router prints "Creating router plan";
+the multi-shard / logical planner doesn't emit a single canonical
+banner — instead you'll see per-step DEBUG output from
+`shard_pruning.c` ("shard count after pruning for *table*: *N*"),
+`multi_logical_optimizer.c` ("push down of limit count: *N*"), and
+others. `DEBUG2` is the minimum log level for the routing decisions;
+deeper details require `DEBUG3` or higher.
 
 For a more aggressive view, on Linux with `bpftrace`:
 

@@ -186,7 +186,12 @@ static futurize_t<std::invoke_result_t<Func>> submit_to(unsigned t, smp_submit_t
                 // Non-deferring function, so don't worry about func lifetime
                 return futurize<ret_type>::invoke(std::forward<Func>(func));
             } else if (std::is_lvalue_reference_v<Func>) {
-                /* ... lvalue and rvalue futurize paths, all inline ... */
+                return futurize<ret_type>::invoke(func);  // lvalue: caller owns lifetime
+            } else {
+                // rvalue + deferring: extend lifetime with a unique_ptr
+                auto w = std::make_unique<std::decay_t<Func>>(std::move(func));
+                auto ret = futurize<ret_type>::invoke(*w);
+                return ret.finally([w = std::move(w)] {});
             }
         } catch (...) {
             return futurize<std::invoke_result_t<Func>>::make_exception_future(std::current_exception());
