@@ -80,7 +80,7 @@ pruning — the kind that drops children before scans even open — sees
 `created_at >= STABLE_FUNC()` and concludes it cannot prune anything.
 Executor pruning kicks in next; it _does_ skip the actual `Seq Scan`
 nodes for partitions whose RANGE bound disqualifies them. Except every
-child still gets _opened_, locked (`AccessShareLock`), and its statistics
+child still gets _opened_, locked (a [shared `AccessShareLock`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES) on each child relation), and its statistics
 loaded into the planner. That's the 481 ms. And `EXPLAIN ANALYZE` was
 lying to me — it said `Buffers: shared read=1573491`. That was a stale
 cached plan I'd captured once on a query that did not have the `now()`
@@ -369,7 +369,7 @@ WAL pressure.
 
 I do not have a 1B-row table running on bare metal as I write this, so
 the numbers in this section are napkin math from the architecture and
-from `EXPLAIN` runs I've shipped on production-shaped tables in the
+from [`EXPLAIN`](https://www.postgresql.org/docs/current/using-explain.html) runs I've shipped on production-shaped tables in the
 past. I'll show the working.
 
 **Setup, hypothetical.** A `events` table, 1 billion rows, 90 days at
@@ -381,8 +381,9 @@ parent has no rows. 90 children × 12 GB = ~1,080 GB.
 A BTREE on `created_at` per child is ~2 GB (1B / 90 ≈ 11.1M rows;
 btree leaf ~24 B/entry; 11.1M × 24 = 266 MB; plus internal pages and
 fanout overhead, call it 1.7 GB observed in past datasets). A BRIN on
-`created_at` per child is ~80 KB (one summary tuple per `pages_per_range`
-heap pages; default `pages_per_range = 128`; 11 GB / 8 KB / 128 = ~10,750
+`created_at` per child is ~80 KB (one summary tuple per
+[BRIN `pages_per_range`](https://www.postgresql.org/docs/current/brin-intro.html)
+heap pages; default 128; 11 GB / 8 KB / 128 = ~10,750
 ranges × ~50 B/range = 540 KB, observed 60–100 KB on production
 systems with smaller per-range tuples).
 
@@ -392,7 +393,7 @@ systems with smaller per-range tuples).
 | `WHERE created_at >= '2026-02-09' AND < '2026-02-10'` | yes    | 1             | ~11 GB BRIN-bounded | from 220 ms to 480 ms (range observed) |
 | `WHERE id = 12345678`                              | no        | 90            | ~90 × btree probe = 90 × 5 ops | from 30 to 120 ms  |
 | `WHERE created_at >= '2026-02-09' AND user_id = 42` (no constraint) | partial | 1 | scan all 11M rows | from 800 ms to 2.4 s |
-| Same query, with `apply_constraints` on `user_id`  | yes (constraint exclusion) | 0–3      | from 0 to ~30 MB | range 5 to 80 ms  |
+| Same query, with `apply_constraints` on `user_id` column | yes (constraint exclusion) | 0–3      | from 0 to ~30 MB | range 5 to 80 ms  |
 
 The first row is the hook query from §1. Planner pruning fails
 because `now()` is `STABLE`. Executor pruning succeeds — 89 children
@@ -405,7 +406,7 @@ collapses (≈ 4 ms plan + 200 ms exec).
 The third row is the killer for naive partition users. A primary key
 lookup on `id` with no time predicate falls through to every child
 because `id` is not the partition key. The planner has no way to know
-which day's `events_pYYYYMMDD` holds row `12345678`. It opens 90
+which day's `events_p20260208` (or any other suffix) holds row `12345678`. It opens 90
 btrees, probes each. Each btree probe is ~5 random page reads
 (root → internal → leaf, ~3 levels for 11M rows + 2 heap fetches).
 Rough math: 90 × 5 × 8 KB = 3.6 MB of buffer reads, of which most
@@ -417,10 +418,11 @@ The fourth row is the case `apply_constraints` exists for. Without
 the constraint, a query like `WHERE created_at = X AND user_id = 42`
 prunes by `created_at` (fine) but then has to scan all 11M rows in the
 target child for `user_id = 42` because there's no per-child index
-on `user_id`. With `apply_constraints` adding a CHECK constraint of
+on the `user_id` column. With `apply_constraints` adding a CHECK constraint of
 `user_id >= 17 AND user_id <= 14823` to old children, the planner can
-skip ~80% of the older children at plan time when querying
-`user_id = 42` without a time bound. From `sql/functions/apply_constraints.sql`:
+skip an estimated 80% of the older children at plan time when querying
+`user_id = 42` without a time bound (range observed: 60–95% depending
+on how clumped recent user-IDs are vs the historical range). From `sql/functions/apply_constraints.sql`:
 
 ```sql
 -- sql/functions/apply_constraints.sql
@@ -515,10 +517,10 @@ no index. The metric to watch is `pg_stat_user_indexes.idx_scan` per
 child — if it's zero or near-zero on small children, drop the BRIN
 and rely on the partition bound alone.
 
-**f. `partitionwise_join` and `partitionwise_aggregate` are off by
-default.** Postgres has had these settings since 11
-([release notes][pg11rn]) but `enable_partitionwise_join` defaults to
-`off`. With it off, a JOIN of two partitioned tables on a common
+**f. Partitionwise join and aggregate are off by default.** Postgres
+has had these settings since version 11
+([release notes][pg11rn]) but [`enable_partitionwise_join`](https://www.postgresql.org/docs/current/runtime-config-query.html#GUC-ENABLE-PARTITIONWISE-JOIN) defaults
+to `off`. With it off, a JOIN of two partitioned tables on a common
 partition key fans out into a hash join over all 90 × 90 = 8,100
 child pairs of which the planner cannot eliminate any without
 constraint exclusion on every column. Switch it on per-session for
@@ -562,16 +564,16 @@ Cost: ~50 lines, plus a regression test. (Confirmed pattern in the
 
 [pg14-attach]: https://www.postgresql.org/docs/14/sql-altertable.html
 
-**c. A `EXPLAIN`-driven prune detector.** A function — call it
+**c. An EXPLAIN-driven prune detector.** A function — call it
 `partman.detect_pruning_failures(parent text, sample_queries text[])`
-— that runs each sample query under `EXPLAIN (FORMAT JSON, ANALYZE)`,
-parses the `Plans` array, and returns the partitions that were
+— that runs each sample query under [`EXPLAIN (FORMAT JSON, ANALYZE)`](https://www.postgresql.org/docs/current/using-explain.html),
+parses the per-partition Plans array, and returns the partitions that were
 opened-but-empty. That's a 200-line PL/pgSQL function that would
-catch the `now()`-`STABLE` footgun and the missing-`enable_partitionwise_join`
+catch the `now()`-`STABLE` footgun and the missing partitionwise-join
 trap in five minutes per partitioned table. Cost: bigger, but worth
-it — this is the kind of regression that nobody catches in code review.
+it — this is the type of regression that nobody catches in code review.
 
-**d. Variable `pages_per_range` per child.** BRIN's `pages_per_range`
+**d. Variable BRIN range per child.** [BRIN `pages_per_range`](https://www.postgresql.org/docs/current/brin-intro.html)
 is set at index creation. `pg_partman` could parameterize it on the
 template table per child, choosing a smaller value for the most
 recent children (where queries are point-in-time and need finer
@@ -646,11 +648,11 @@ SELECT partman.config_cleanup('public.events');
 The query in step 4 fans out across every child the planner cannot
 prove empty — that's the failure mode the post is about. Step 5 is
 the same query written so the planner can fold the predicate to a
-constant. Compare the `Append` width and the plan-time line on each.
-On a 30-child set the difference is roughly 30× in plan time and
-roughly 30× in execution buffer reads, dominated by the per-child
-relation open in step 4 (range observed in past benchmarks: 100 ms vs
-3 ms plan-time).
+constant. Compare the [Append node](https://www.postgresql.org/docs/current/using-explain.html) width and the plan-time line on each.
+On a 30-child set the difference is in the range 25× to 35× in plan time and
+25× to 35× in execution buffer reads, dominated by the per-child
+relation open in step 4 (range observed in past benchmarks: from 100 ms
+down to 3 ms plan-time).
 
 # 9. The bpftrace one-liner
 
@@ -673,7 +675,7 @@ sleep 30; kill $BPID
 # while bpftrace is sampling.
 ```
 
-Look for `LWLockAcquire` stacks rooted in `RangeVarGetRelidExtended`
+Look for lock-acquire stacks rooted in [`RangeVarGetRelid`](https://github.com/postgres/postgres/blob/REL_17_STABLE/src/backend/catalog/namespace.c)
 and `relation_open` — that's the per-child open during the
 `for v_row in show_partitions(...)` loop. If that count is high
 relative to the rest of your workload, the bgworker interval is too
@@ -698,7 +700,7 @@ procedure is the cost of being safe across schedulers.
 The 90% disk-read failure mode in §1 is not a `pg_partman` bug. It is
 the gap between what you know about the planner (it prunes ranges)
 and what you assumed it would prune (everything you can prove). Pin
-your time. Turn on `enable_partitionwise_join`. Use `apply_constraints`
+your time. Turn on [`enable_partitionwise_join`](https://www.postgresql.org/docs/current/runtime-config-query.html#GUC-ENABLE-PARTITIONWISE-JOIN). Use `apply_constraints`
 on your hot non-key columns. Watch `pg_stat_user_indexes.idx_scan`
 per child to see whether your BRIN is actually helping. Do not
 subpartition for performance. Drop the default partition.
