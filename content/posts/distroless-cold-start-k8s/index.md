@@ -305,9 +305,9 @@ After the pull, `podman run` to first 200 OK on `/healthz`. Same harness, three 
 
 `app-uptime` is read from the JSON response: how many ms the Go process had been alive when it answered the curl. That difference (`end-to-end - app-uptime`) is the *non-app* cost — namespace creation, bridge networking, OCI hook execution, image-mount, kubelet readiness probing in production. It's **6–10 ms for every 1 ms** of app boot.
 
-> Measured: the Go runtime starts in 17–32 ms inside any of these three images. The container runtime spends 200 ms on plumbing whether you ship 4 MB or 10 MB. Optimising the binary past stripped-and-trimpath does nothing for this number.
+> Measured: the Go runtime + listener-ready chain takes 17–56 ms inside any of these three images (median ~20 ms; one scratch run hit 56 ms as an outlier). The container runtime spends ~200 ms on plumbing whether you ship 4 MB or 10 MB. Optimising the binary past stripped-and-trimpath does nothing for this number.
 
-The measured 17–32 ms internal boot is itself worth decomposing. With the actual `boot=0.000523587 s` zap line as one anchor, a 10 MB stripped Go binary in this Linux VM lands in:
+The measured 17–56 ms internal boot is worth decomposing. With the actual `boot=0.000523587 s` zap line as one anchor (which captures Go init + main()-user-code-init only — NOT the listener bind or first accept), a 10 MB stripped Go binary in this Linux VM breaks down to:
 
 | Phase                                                  | Order-of-magnitude  |
 |---|---:|
@@ -316,7 +316,7 @@ The measured 17–32 ms internal boot is itself worth decomposing. With the actu
 | `http.ListenAndServe` → `socket` + dual-stack `bind` + `listen` | ~5–10 ms |
 | First `accept` + handler dispatch + JSON encode        | ~2–5 ms        |
 
-Math: `5–10 + 0.5 + 5–10 + 2–5 ≈ 12–25 ms`, which brackets the measured 17–32 ms band. The big rocks are everything *before* `main()` (kernel + Go runtime init that needs `perf record` to sub-divide), and the `ListenAndServe` plumbing that has to bind both `[::]:8080` and `[::ffff:127.0.0.1]:8080` and probe `/proc/sys/net/core/somaxconn`. The user-code in `main()` is sub-millisecond — don't blame chi or zap for cold-start.
+Math: `5–10 + 0.5 + 5–10 + 2–5 ≈ 12–25 ms`, which brackets the **median** 17–32 ms band (the 56 ms outlier likely sat in a cold-VFS case where the listener bind paid extra page-cache misses). The big rocks are everything *before* `main()` (kernel + Go runtime init that needs `perf record` to sub-divide), and the `ListenAndServe` plumbing that has to bind both `[::]:8080` and `[::ffff:127.0.0.1]:8080` and probe `/proc/sys/net/core/somaxconn`. The user-code in `main()` is sub-millisecond — don't blame chi or zap for cold-start.
 
 ## Image-pull at scale-from-zero
 
@@ -379,7 +379,7 @@ openat(AT_FDCWD, "/sys/fs/cgroup/cpu.max", O_RDONLY|O_CLOEXEC) = 3
 [pid 13] listen(4, 4096) = 0
 ```
 
-The zap line is the punchline: `boot=0.000523587 s ≈ 523 µs` from `execve` to the moment `logger.Info("ready")` fires (which sits right after `go func() { _ = srv.ListenAndServe() }()` at line 66 of `main.go`). The 17–32 ms end-to-end number we measured earlier is dominated by `socket → bind → listen` and the curl-poll loop, *not* by Go runtime init. The runtime itself is ~30× faster than the listener-accept-curl chain.
+The zap line is the punchline: `boot=0.000523587 s ≈ 523 µs` from `execve` to the moment `logger.Info("ready")` fires (which sits right after `go func() { _ = srv.ListenAndServe() }()` at line 66 of `main.go`). The 17–56 ms app-uptime numbers we measured earlier are dominated by `socket → bind → listen` and the curl-poll loop, *not* by Go runtime init. The runtime user-code path is ~30–50× faster than the listener-accept-curl chain (`17000µs / 523µs = 32.5×` at the floor; `56000/523 = 107×` at the slow tail).
 
 Four observations the real trace makes obvious:
 

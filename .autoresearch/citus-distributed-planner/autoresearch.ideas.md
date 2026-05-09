@@ -82,11 +82,38 @@ issues the regex scorer cannot see.
 
 - [ ] (CANNOT VERIFY ON THIS MACHINE) End-to-end repro of §7
       stretch bash against a real Citus cluster.
-- [ ] §6 CockroachDB/Spanner comparison — left as directional claim;
-      both systems do continuous range/split rebalancing; phrasing
-      "the placement decision is continuous" is fair but light on
-      detail. Could cite Cockroach's "ranges" or Spanner's "splits"
-      explicitly. Not a correctness issue, just polish.
+- [x] Iter 24: §6 CockroachDB/Spanner — closed; named "ranges" and
+      "splits" explicitly, added the upside framing ("fewer
+      surprises on a quiet cluster, more operator work on a growing
+      one").
+- [x] Iter 25: SIGMOD paper Section 4.1 reference removed — claim
+      was unverified (I haven't opened the PDF locally). Reworded
+      to "cited from the repo's own README" + "useful complements
+      to reading the C source".
+
+## Audit pattern that found the most real bugs in this resume cycle
+
+Re-read each section under the assumption that every napkin number,
+file:line, and DEBUG message is a hypothesis to falsify against the
+cached source. The regex scorer cannot catch:
+
+- Fabricated DEBUG strings ("Creating distributed plan" — iter 16)
+- Wrong line-numbers (271 → 266 — original iter 2; 248-254 →
+  246-251 — original iter 2; ~140 → 67 — original iter 2)
+- Cause/effect inversions (router error path — iter 13)
+- Off-by-one or off-by-N arithmetic (250-500µs vs 100-300µs — iter 14;
+  6 = 2 × 3 — iter 21; 50-line vs 37-line — iter 12)
+- Inconsistent ranges (200µs flat → 250-1100µs span — iter 7)
+- Whitespace drift in quoted comments (iter 11)
+- Untrue terminology ("FilterTask" — original iter 5)
+- Unverified version claims (Citus 14.0 release date — original iter 0)
+- DEBUG-level visibility wrong (DEBUG2 sees DEBUG1 + DEBUG2 only —
+  iter 17)
+- Inflated test corpus size (3,000+ → 925 — iter 18)
+- Loose commit-pattern phrasing ("PG 16/17/18 compat" — iter 19)
+- Wrong probe overhead numbers (uprobe ~200ns → 1-2µs — iter 20)
+
+Future post audits should run this same pattern.
 
 ## Loop instruction
 

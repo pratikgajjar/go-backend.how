@@ -490,11 +490,12 @@ with mean `ml`; flooring it gives an integer geometric. The choice of
 ```
 
 `log` here is `ln` (libc convention). For `M = 16`, `ml ≈ 0.361` —
-the rate parameter, equal to the mean of the underlying continuous
-exponential, not the mean integer level. The integer-level
-distribution is geometric: `P(level ≥ 1) = e^(−1/ml) = e^(−ln M) =
-1/M = 6.25 %`; `P(level ≥ 2) = 1/M² = 0.39 %`; and so on. The mean
-level is `E[level] = 1/(M − 1) ≈ 0.067` for `M = 16` (verifiable in
+the mean of the underlying continuous exponential
+(`-log(U) * ml ~ Exp(rate = 1/ml)`), which is *not* the same as the
+mean integer level. The integer-level distribution after flooring is
+geometric: `P(level ≥ 1) = e^(−1/ml) = e^(−ln M) = 1/M = 6.25 %`;
+`P(level ≥ 2) = 1/M² = 0.39 %`; and so on. The mean integer level
+is `E[level] = 1/(M − 1) ≈ 0.067` for `M = 16` (verifiable via
 `python3 -c "M=16; print(sum(k*(M**(-k)-M**(-k-1)) for k in range(1, 100)))"`).
 The graph is dense at the bottom and exponentially sparse at the top,
 which is exactly what you want for the layered greedy descent to

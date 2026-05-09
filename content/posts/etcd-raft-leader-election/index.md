@@ -638,7 +638,7 @@ about that. `ReadOnlyLeaseBased` is local — the leader trusts that no
 one has elected itself in the lease window — so a linearizable read is
 `O(memory access)`, on the order of `~100 ns` to read the lease
 expiry. The tradeoff is *bounded* clock drift, which Raft cannot
-guarantee on cloud VMs. The library's [own comment](https://github.com/etcd-io/raft/blob/main/raft.go#L62)
+guarantee on cloud VMs. The library's [own comment](https://github.com/etcd-io/raft/blob/main/raft.go#L62-L67)
 on `ReadOnlyLeaseBased` calls this out: "If the clock drift is
 unbounded, leader might keep the lease longer than it should (clock can
 move backward/pause without any bound)." Etcd defaults to `ReadOnlySafe`

@@ -83,17 +83,14 @@ are not the same atomic operation, you've lost rows. Reviewers always
 catch this on the first PR. Reviewers always miss it on the third PR
 when someone introduces a "fast path" for one specific endpoint.
 
-**Failure 2: vacuum cannot keep up at 1B/day.** The outbox is the
-busiest table on the database. Every row is `INSERT`ed once,
-`UPDATE`d once (the `processed = true` flip), and never read again.
-That churn outpaces the visibility map — HOT update or no — and the
-partial index on `processed = false` bloats with dead tuples. As the
-index gets multi-GB and dead-tuple-heavy, the planner starts skipping
-it and falling back to seq scans on the table; the
-`pg_stat_user_indexes.idx_scan` counter for the partial index plateaus
-while `seq_scan` on the table climbs. You write a cleanup
-`DELETE FROM outbox WHERE processed AND created_at < now() - '1 hour'`
-cron and it generates more WAL than the original inserts.
+**Failure 2: vacuum cannot keep up at 1B/day.** Every outbox row is
+`INSERT`ed, `UPDATE`d once (the `processed = true` flip), then never
+read. That churn outpaces the visibility map; the partial index on
+`processed = false` bloats. The planner starts skipping it for seq
+scans on the table — `pg_stat_user_indexes.idx_scan` plateaus while
+`seq_scan` climbs. You write a `DELETE FROM outbox WHERE processed
+AND created_at < now() - '1 hour'` cron and it generates more WAL
+than the original inserts.
 
 **Failure 3: JSON-on-S3 is unqueryable.** Athena
 [charges $5 per TB scanned](https://aws.amazon.com/athena/pricing/),

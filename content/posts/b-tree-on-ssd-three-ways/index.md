@@ -653,13 +653,19 @@ replays the WAL into the page allocator on open. Material change to
 the file format. But it would close the 26× write gap with LMDB
 without breaking the API.
 
-**Pebble** - make the block cache shard count a per-process tunable
-rather than `4 × NumCPUs`
-([cache.go:105](https://github.com/cockroachdb/pebble/blob/master/internal/cache/cache.go#L105)).
-On a 64-core box you get 256 shards × 4 MiB minimum = 1 GiB of cache
-metadata floor *before* you store any blocks. That's a footgun for
-embedded users on big machines who don't want a 1 GB cache. Cost:
-one new `CacheShards` knob on `Options`, three lines in `NewWithShards`.
+**Pebble** - the block cache's `4 × NumCPUs` shard count
+([cache.go:105](https://github.com/cockroachdb/pebble/blob/master/internal/cache/cache.go#L105))
+*can* already be overridden — you call
+[`cache.NewWithShards(size, shards)`](https://github.com/cockroachdb/pebble/blob/master/internal/cache/cache.go#L120)
+and pass the result via `Options.Cache`. What's missing is making
+this discoverable: most embedded users don't realize that on a 64-core
+box, the cache.New default produces 256 shards × 4 MiB minimum = 1 GiB
+of cache metadata floor *before* storing any blocks. A one-line
+`Options.CacheShards int` (with `<= 0 ⇒ 4 × NumCPUs` to preserve
+back-compat, mirroring `FileCacheShards` at
+[options.go:721](https://github.com/cockroachdb/pebble/blob/master/options.go#L721))
+would surface the knob without forcing users to assemble a Cache by
+hand. Cost: ~10 lines in `EnsureDefaults` and the option's docstring.
 
 ## 7.1 Minimal reproducer
 

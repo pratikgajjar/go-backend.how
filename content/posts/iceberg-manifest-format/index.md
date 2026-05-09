@@ -695,9 +695,10 @@ it is `150 × 250 = 37,500` bytes (the same number from §5.1).
 Even a 100 PiB table at the same shape gives 15,000 manifests; at
 250 bytes per row that is `15,000 × 250 = 3,750,000` bytes ≈ 3.6
 MiB — well within the size a metastore can serve. Embedding it in the
-catalog response would shave one S3 round-trip per query (~30 ms
-median in same-region EC2 measurements; see §5.1 for the
-benchmark reference). The cost is making the catalog larger and
+catalog response would shave one S3 round-trip per query (the
+warm-connection lower bound from §5.1, ~30 ms; the realistic
+P50 closer to the AWS-published 100–200 ms for small-object
+GETs). The cost is making the catalog larger and
 more expensive to refresh; for REST catalogs it is a config change,
 for Glue it would require an extension. Many production Iceberg
 teams already cache the manifest list in their session catalog;
