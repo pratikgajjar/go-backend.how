@@ -741,6 +741,8 @@ def main() -> int:
     cats["math_off"] = math_equality_defects(body)
     cats["dollar_no_math"] = dollar_no_math_defects(body)
     cats["bad_anchors"] = anchor_check_defects(body)
+    cats["defaults_mismatch"] = defaults_consistency_defects(body, cached_repo)
+    cats["range_inverted"] = range_bounds_defects(body)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
