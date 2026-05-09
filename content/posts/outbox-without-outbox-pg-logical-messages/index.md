@@ -1073,19 +1073,25 @@ while.
   instance, you'll run out. Bump these in `postgresql.conf` before
   you scale.
 - **A bpftrace one-liner that counts emits in real time** is useful
-  during incident response:
+  during incident response. The SQL function
+  `pg_logical_emit_message` maps to two C entry points
+  (`pg_logical_emit_message_text` and `pg_logical_emit_message_bytea`);
+  both call `LogLogicalMessage` internally, so probe that to count
+  both variants in one rule:
 
   ```bash
   bpftrace -e '
-    uprobe:/usr/lib/postgresql/17/bin/postgres:pg_logical_emit_message {
-      @[probe] = count();
+    uprobe:/usr/lib/postgresql/17/bin/postgres:LogLogicalMessage {
+      @ = count();
     }
     interval:s:5 { print(@); clear(@); }
   '
   ```
 
   Five-second buckets of "how many emits happened on this Postgres."
-  You'll be glad you have it.
+  Apt-installed Postgres builds export the symbol; for from-source
+  builds you may need to install `postgresql-server-dev-17` for the
+  debug info.
 - **What I would not change:** the choice of `pgoutput` over
   `wal2json`. `pgoutput` is in-tree, ships with every Postgres,
   needs no extension install, and the protocol is stable since
