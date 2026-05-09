@@ -347,6 +347,7 @@ ALLOWED_HOSTS = {
     "gcr.io", "cgr.dev",
     "www.postgresql.org", "postgresql.org",
     "go.dev",
+    "www.rbi.org.in",
 }
 
 
