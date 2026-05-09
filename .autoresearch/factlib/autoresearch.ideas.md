@@ -1,5 +1,12 @@
 # Deferred ideas — factlib autoresearch
 
+## Real factlib bugs found (not the post's bugs — the LIBRARY's)
+- **`Emit` nil-derefs on `fact.TraceInfo`** — `common.NewFact` doesn't init it; if caller forgets `fact.TraceInfo = &common.TraceInfo{}` the producer panics. Worth a PR upstream.
+- **`listenEventAck` last-write-wins LSN overwrite** — see iter-9 sharp-edge callout in §7. Cross-partition out-of-order Kafka acks can advance `w.xLogPos` past unacked LSNs and lose events on crash. Worth a PR.
+- **`RegiserHandlerAck` typo** in `pkg/outbox/consumer/consumer.go` — exposed in the public API; renaming breaks callers. Worth a deprecation PR.
+
+## Earlier ideas (still deferred)
+
 - Run a real Linux Postgres + factlib in Podman, time `pg_logical_emit_message` p50/p99 directly so we can replace observed-latency claims with a measured histogram.
 - Compute actual WAL byte overhead by issuing `pg_current_wal_lsn()` before/after one emit, and reporting the diff for several payload sizes.
 - Build a `pg_stat_statements` snapshot showing producer-side function-call counts at 10K/sec.

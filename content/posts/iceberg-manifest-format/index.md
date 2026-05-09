@@ -135,7 +135,8 @@ Everything else is consequence.
 The `Goals` section of [`format/spec.md`](https://github.com/apache/iceberg/blob/main/format/spec.md)
 states the constraint set in the same order as above (serializable
 isolation, speed, scale, evolution, dependable types, storage
-separation, formats), copied below verbatim from the spec source:
+separation, formats), abbreviated for the four most relevant lines
+of the seven (full bullets are in the linked spec source):
 
 ```text
 * Serializable isolation -- Reads will be isolated from concurrent

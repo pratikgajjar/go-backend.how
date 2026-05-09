@@ -18,5 +18,6 @@
   "https://pkg.go.dev/net#hdr-Name_Resolution": 200,
   "https://pkg.go.dev/os/user": 200,
   "https://pkg.go.dev/testing#hdr-Benchmarks": 200,
-  "https://www.pcisecuritystandards.org/document_library/?category=pcidss": 200
+  "https://www.pcisecuritystandards.org/document_library/?category=pcidss": 200,
+  "https://www.rbi.org.in/scripts/NotificationUser.aspx?Id=10435": 200
 }

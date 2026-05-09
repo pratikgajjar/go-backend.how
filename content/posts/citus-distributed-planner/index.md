@@ -698,11 +698,14 @@ the per-query DEBUG output. The fast-path queries print three lines
 (quoted in section 5, including "Distributed planning for a
 fast-path router query"); the router prints "Creating router plan";
 the multi-shard / logical planner doesn't emit a single canonical
-banner — instead you'll see per-step DEBUG output from
-`shard_pruning.c` ("shard count after pruning for *table*: *N*"),
-`multi_logical_optimizer.c` ("push down of limit count: *N*"), and
-others. `DEBUG2` is the minimum log level for the routing decisions;
-deeper details require `DEBUG3` or higher.
+banner — at `DEBUG2` you'll catch the `multi_logical_optimizer.c`
+output ("push down of limit count: *N*", emitted at `DEBUG1` and
+therefore visible at `DEBUG2`), but the per-shard pruning detail
+("shard count after pruning for *table*: *N*" in `shard_pruning.c`)
+is logged at `DEBUG3`, so you have to bump `client_min_messages` to
+`DEBUG3` (or `DEBUG4`/`DEBUG5`) to see it. Postgres' convention is
+that `DEBUG5` is the most verbose level and each step toward
+`DEBUG1` is less verbose.
 
 For a more aggressive view, on Linux with `bpftrace`:
 

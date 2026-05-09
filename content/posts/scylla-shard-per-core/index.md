@@ -117,17 +117,23 @@ client ──► token-aware driver ──► TCP connection to shard owner
                                           ▼
                                     [shard k reactor]
                                           │
-                                  parse → memtable → commitlog
+                                  parse → commitlog (fsync) → memtable
                                           │
                                   ◄──── reply on same socket
 ```
 
-The client is *expected* to know which shard owns each partition (the
-driver computes `murmur3(pkey) % shard_count` and connects to the right
-TCP port). When the client gets it right — almost always — the request
-never hops cores. When it gets it wrong, Scylla shovels it across via
-`smp::submit_to(target, lambda)`, paying one cross-core message but
-keeping the rest of the work on a single core's L1.
+The client is *expected* to know which shard owns each partition. The
+driver computes `murmur3(pkey) % shard_count` and connects to the
+"shard-aware" CQL port (`native_shard_aware_transport_port`, default
+`19042` per
+[`db/config.cc`](https://github.com/scylladb/scylladb/blob/master/db/config.cc));
+the server uses the client-side ephemeral port `mod shard_count` to
+route the new socket to the owning reactor. When the client gets it
+right — which token-aware drivers do almost always — the request never
+hops cores. When it gets it wrong (legacy `9042` driver), Scylla
+shovels it across via `smp::submit_to(target, lambda)`, paying one
+cross-core message but keeping the rest of the work on a single core's
+L1.
 
 No global locks. No global allocator. No shared row cache. The reactor
 is the unit of concurrency, the unit of memory, the unit of I/O, and the
