@@ -353,8 +353,6 @@ The receiving reactor processes the batch:
 
 ```cpp
 // src/core/reactor.cc
-template<size_t PrefetchCnt, typename Func>
-size_t smp_message_queue::process_queue(lf_queue& q, Func process) {
     // copy batch to local memory in order to minimize
     // time in which cross-cpu data is accessed
     work_item* items[queue_length + PrefetchCnt];
@@ -365,15 +363,23 @@ size_t smp_message_queue::process_queue(lf_queue& q, Func process) {
     // access with potential cache miss the second pop may cause
     prefetch<2>(wi);
     auto nr = q.pop(items);
+    std::fill(std::begin(items) + nr, std::begin(items) + nr + PrefetchCnt, nr ? items[nr - 1] : wi);
+    unsigned i = 0;
+    do {
+        prefetch_n<2>(std::begin(items) + i, std::begin(items) + i + PrefetchCnt);
+        process(wi);
+        wi = items[i++];
+    } while(i <= nr);
 ```
 
-The receiver pops the *whole* available batch into a local stack
-buffer before touching any work-item payload, then prefetches the next
-one while processing the current. That two-instruction `prefetch<2>`
-overlaps the inevitable cache miss for the work-item body with the
-useful work of running the previous lambda. On a Cassandra-equivalent
-workload of small reads, this is the difference between L2-bound (~3 ns
-per pop) and L3/RAM-bound (~30-100 ns).
+The receiver pops one item, issues a prefetch hint for it (`prefetch<2>`,
+the `2` is the L2-cache hint level), then pops the rest of the batch
+into a local stack array. Inside the loop, `prefetch_n<2>` walks ahead
+by `PrefetchCnt` items, so by the time `process(wi)` runs the next two
+work-items are already being pulled into L2 from the producer's L1.
+Read-amplifying memory access overlaps with useful work. On a
+Cassandra-equivalent workload of small reads, this is the difference
+between L2-bound (`~3 ns` per pop) and L3/RAM-bound (`~30 ns` to `~100 ns`).
 
 ## 6. Where it ties to io_uring
 
