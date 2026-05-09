@@ -740,6 +740,33 @@ def http_not_https_defects(body: str) -> int:
     return len(HTTP_RE.findall(body))
 
 
+def commit_ref_defects(body: str, cached_repo: Path) -> int:
+    """Each `commit \\`HASH\\`` reference must exist in the cached repo's git log."""
+    refs = set(
+        re.findall(r"commit\s+`?([0-9a-fA-F]{6,40})`?", body)
+    )
+    if not refs:
+        return 0
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(cached_repo), "log", "--all", "--format=%H"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return 0
+    if r.returncode != 0:
+        return 0
+    hashes = r.stdout.split()
+    n = 0
+    for ref in refs:
+        if not any(h.startswith(ref) or ref.startswith(h) for h in hashes):
+            n += 1
+            print(f"DEBUG bad_commit_ref: `{ref}` not in cached repo", file=sys.stderr)
+    return n
+
+
 def required_sections_defects(body: str) -> int:
     """Brief specified 8 sections that must be present (renamed allowed).
     Match by keyword set within section headings."""
@@ -902,6 +929,7 @@ def main() -> int:
     cats["heading_skip"] = heading_hierarchy_defects(body)
     cats["broken_post_links"] = cross_post_link_defects(body, repo_root)
     cats["missing_sections"] = required_sections_defects(body)
+    cats["bad_commit_refs"] = commit_ref_defects(body, cached_repo)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
@@ -931,6 +959,7 @@ def main() -> int:
         "heading_skip": 2,
         "broken_post_links": 4,
         "missing_sections": 4,
+        "bad_commit_refs": 4,
         "wordcount_off": 1,
         "frontmatter": 2,
     }

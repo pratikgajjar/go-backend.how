@@ -433,7 +433,9 @@ Pick a base, accept the holes:
 
 **Distroless breaks anything that needs a shell**. `kubectl exec -- sh` returns `OCI runtime exec failed: exec failed: unable to start container process: exec: "sh": executable file not found in $PATH`. You can `kubectl debug --image=busybox` to share namespaces with the pod, but that adds a layer of indirection your incident-response runbook needs to teach. Distroless also pins specific versions of zoneinfo / CAs at image-build time — the first day someone needs to fix CA-cert pinning urgently (e.g., a new Let's Encrypt root rolls out), the SLA window for pushing a new image is "however long Google's distroless rebuild takes." You don't `apk upgrade ca-certificates` on distroless.
 
-**Wolfi breaks the "minimal attack surface" argument**. You shipped glibc, libssl, busybox, ldconfig. Each is a CVE source. Chainguard rebuilds daily and signs every package, but you've still increased the surface area by 6–10×. PCI-DSS auditors notice. The benefit is that when CVE-2026-XXXX drops at midnight you can `apk upgrade openssl3 && rebuild` from your CI in 30 seconds, instead of waiting for a base-image refresh upstream. That's a real ops-velocity win that scratch and distroless don't give you.
+**Wolfi breaks the "minimal attack surface" argument**. You shipped glibc, libssl, busybox, ldconfig. Each is a CVE source. Chainguard's [build pipeline][cgrpipe] rebuilds and re-signs every package, but you've still increased the surface area by 6–10× (5.77 MB / 0.79 MB = 7.3× by bytes; counting installed binaries the ratio is closer to 10×). PCI-DSS auditors notice. The benefit is that when a CVE drops at midnight you can `apk upgrade openssl3` and rebuild from your CI in seconds instead of waiting for a base-image refresh upstream. That's a real ops-velocity win that scratch and distroless don't give you.
+
+[cgrpipe]: https://github.com/chainguard-dev/melange
 
 **All three break observability without `kubectl debug`**. None of them ship `curl`, `dig`, `tcpdump`, `lsof`, or `ps`. The modern fix is [ephemeral debug containers][ephemeral] (`kubectl debug pod -it --image=nicolaka/netshoot --target=app`), which works on scratch the same as on Wolfi. If your platform team hasn't enabled ephemeral containers, distroless and scratch will haunt you the first time a pod is "stuck" and you can't shell in.
 
@@ -471,7 +473,9 @@ Three changes I'd make to a real platform team's container baseline.
 
 ¹ unless you import `crypto/tls` with embedded certs or set `SSL_CERT_FILE`.
 ² unless you `import _ "time/tzdata"` (+450 KB to the binary).
-³ Google rebuilds distroless on its own cadence — usually weekly.
+³ Google rebuilds distroless on its own [release cadence][grcadence], driven by upstream Debian package updates rather than a fixed weekly clock.
+
+[grcadence]: https://github.com/GoogleContainerTools/distroless/blob/main/RELEASES.md
 
 The pithy version: **scratch is for things that don't talk to TLS or care about time. Distroless is the sane default for Go services. Wolfi is for teams that want their security team to own the base.** None of the three meaningfully changes cold-start latency for a 10 MB binary — that lever is on the runtime side, not the image side.
 

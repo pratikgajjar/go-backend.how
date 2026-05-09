@@ -198,12 +198,13 @@ hnswgettuple(IndexScanDesc scan, ScanDirection dir)
 
 On the first call, all of HNSW happens. `GetScanItems` returns a
 `List *` of search candidates already sorted by distance. Subsequent
-calls just `llast()` the next one. The `HNSW_SCAN_LOCK` is a
-[Postgres page-level
-LWLock](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L41-L42)
-held in shared mode — vacuum takes it exclusive when it needs to
-mark tuples as deleted. So the index doesn't block reads against
-each other; it only blocks reads against vacuum's repair phase.
+calls just `llast()` the next one. The `HNSW_SCAN_LOCK` is a Postgres
+[heavyweight page-level
+lock](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L41-L42)
+(via `LockPage`, not the lighter `LWLockAcquire` used for the
+allocator and per-element locks); held in shared mode by readers,
+exclusive by vacuum's repair phase. So the index doesn't block reads
+against each other, only against vacuum.
 
 `GetScanItems` is the entire algorithm in 30 lines:
 
@@ -822,9 +823,11 @@ respectively._
 # Colophon
 
 This post is a code-archaeology run on pgvector v0.8.2. I read every
-line of `src/hnsw*.c` and `src/hnswutils.c` (`5,333` lines total),
-ran the index against a 50,000-row dataset I generated, and timed
-recall and latency from a Python harness reproduced in §5 above. The "800 lines" in the title is a small
+line of `src/hnsw*.{c,h}` (`5,333` lines total: hnsw.c 402, hnswbuild.c 1171,
+hnswinsert.c 797, hnswscan.c 345, hnswutils.c 1428, hnswvacuum.c 669,
+hnsw.h 521), ran the index against a 50,000-row dataset I generated,
+and timed recall and latency from a Python harness reproduced in §5
+above. The "800 lines" in the title is a small
 honest exaggeration: the full HNSW machinery is `5,333` lines if you
 count WAL plumbing, vacuum, MVCC, parallel builds, and disk paging.
 The _algorithm_ — `HnswSearchLayer`, `HnswFindElementNeighbors`,
