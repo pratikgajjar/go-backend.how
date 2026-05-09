@@ -584,11 +584,15 @@ originates at or terminates at the leader/candidate.
 
 ## How big each message is
 
-`MsgVote` is a `Message` proto with `Type, From, To, Term, Index, LogTerm`
-populated. With proto3 varints these are typically ≤ 5 bytes each, so a
-vote is **~30 bytes on the wire**. Even a million-node cluster (which no
-one actually runs) would push only `30 × 4(n − 1) ≈ 120 MB` of
-election traffic — and would have failed for other reasons long before.
+`MsgVote` is a `Message` proto with six fields populated: `type, to,
+from, term, logTerm, index`. Each is a varint with a 1-byte field tag.
+For a small-cluster, freshly-started election all six values fit in a
+single varint byte, so wire size is `≈ 6 × (1 tag + 1 varint) = 12 bytes`,
+plus a few bytes of gRPC framing. Round to **~15 to 20 bytes on the
+wire** per vote message. Even a million-node cluster (which no one
+actually runs) would push only `20 × 4(n − 1) ≈ 80 MB` of election
+traffic per election round — and would have failed for other reasons
+long before.
 
 # Tradeoffs
 

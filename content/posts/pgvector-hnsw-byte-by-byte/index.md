@@ -451,14 +451,16 @@ horizontal sum. On a 3 GHz core with AVX2 FMA (8 floats per FMA, 1
 FMA issued per cycle, ~4-cycle latency pipelined) the multiply
 phase is `128 / 8 = 16` cycles plus pipeline drain, ≈ 7 ns of
 arithmetic. ARM NEON's 4-wide FMLA needs `128 / 4 = 32` cycles plus
-a similar drain, ≈ 12 ns. The total
-query time of 382 µs at default `ef_search` (see the table below) is
-dominated by the buffer-read random walk through the graph, not the
-math. `EXPLAIN (BUFFERS, ANALYZE)` on this post's benchmark shows
-each search at `ef_search = 40` registers 528 shared-buffer hits —
-a measured `528 × 8 = 4224` KB of cache touch[^bench] — versus
-`528 × 7 = 3696` ns of FMA work. At those numbers, buffer-pool
-bookkeeping is the dominant cost.
+a similar drain, ≈ 12 ns. The total query time of 382 µs at default
+`ef_search` (see the table below) is dominated by the buffer-read
+random walk through the graph, not the math. `EXPLAIN (BUFFERS,
+ANALYZE)` on this post's benchmark[^bench] shows each search at
+`ef_search = 40` touches 528 shared-buffer pages, a measured
+`528 × 8 = 4224` KB of warm cache. The distance-computation work
+is bounded above by `ef_search × 2M = 40 × 32 = 1280` candidates —
+or at 7 ns per distance, under 9 µs total. That's roughly 2 % of
+the query's 382 µs; buffer-pool bookkeeping and cache fetches are
+the rest.
 
 ## 4.4 Random levels: where 1/ln(M) comes from
 

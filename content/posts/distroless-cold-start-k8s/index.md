@@ -501,7 +501,7 @@ The pithy version: **scratch is for things that don't talk to TLS or care about 
 
 - [google/distroless](https://github.com/GoogleContainerTools/distroless) — the build rules, including `bazel run :static` if you want to learn what each of those 13 layers is for.
 - [chainguard-images/images/wolfi-base](https://github.com/chainguard-images/images/tree/main/images/wolfi-base) — Wolfi-base's APKO build config, including the SBOM emission.
-- [containerd/imgcrypt and snapshots](https://github.com/containerd/containerd/tree/main/docs/snapshotters) — how layer mounts actually work; useful when you wonder why your overlayfs pod is slow.
+- [containerd snapshotters](https://github.com/containerd/containerd/tree/main/docs/snapshotters) — how layer mounts actually work; useful when you wonder why your overlayfs pod is slow.
 - [opencontainers/image-spec](https://github.com/opencontainers/image-spec/blob/main/manifest.md) — the manifest format the curls in this post pull. Worth a read for everyone who deploys containers.
 - [The 1B-payments post](/posts/1b-payments-per-day/) — same observability lens, applied to the database layer instead of the container runtime.
 
