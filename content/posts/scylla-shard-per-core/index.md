@@ -343,8 +343,8 @@ Seastar splits the cost between the busy and the sleeping cases:
   compiler-only fence, zero CPU cost) plus a relaxed load on the
   receiver's `_sleeping` flag in `reactor::wakeup`. If the receiver is
   awake, the producer returns immediately — no syscall, no barrier.
-- **Sleeping receiver**: before parking on `epoll_wait` /
-  `io_uring_enter`, the receiver calls `systemwide_memory_barrier()`
+- **Sleeping receiver**: before parking on `epoll_wait` (or the io_uring
+  equivalent), the receiver calls `systemwide_memory_barrier()`
   (`src/core/systemwide_memory_barrier.cc`), which on Linux ≥ 4.14
   becomes a single `syscall(SYS_membarrier,
   MEMBARRIER_CMD_PRIVATE_EXPEDITED, 0)`. That syscall forces *every*

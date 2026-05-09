@@ -215,9 +215,11 @@ calling itself one. Postgres remembers the slot's `confirmed_flush_lsn`
 
 ```go
 // internal/replication/pg_replicator.go
-err := r.queryConn.QueryRow(ctx,
-    `SELECT confirmed_flush_lsn FROM pg_replication_slots WHERE slot_name = $1`,
-    r.cfg.Slot).Scan(&lsn)
+err := r.queryConn.QueryRow(ctx, "SELECT confirmed_flush_lsn FROM pg_replication_slots WHERE slot_name = $1", r.cfg.Slot).Scan(&lsn)
+if err == nil {
+    log.Info().Str("lsn", lsn.String()).Msg("Starting replication from confirmed LSN position")
+    return lsn, nil
+}
 ```
 
 If the slot has never been used, fall back to `pg_current_wal_lsn()` via
@@ -318,13 +320,13 @@ handler registry:
 
 ```go
 // internal/replication/tuple_decoder.go
-registry.RegisterHandler(pgtype.Int2OID,    &IntegerHandler{})
-registry.RegisterHandler(pgtype.Int4OID,    &IntegerHandler{})
-registry.RegisterHandler(pgtype.Int8OID,    &IntegerHandler{})
-registry.RegisterHandler(pgtype.Float4OID,  &FloatHandler{})
-registry.RegisterHandler(pgtype.Float8OID,  &FloatHandler{})
+registry.RegisterHandler(pgtype.Int2OID, &IntegerHandler{})
+registry.RegisterHandler(pgtype.Int4OID, &IntegerHandler{})
+registry.RegisterHandler(pgtype.Int8OID, &IntegerHandler{})
+registry.RegisterHandler(pgtype.Float4OID, &FloatHandler{})
+registry.RegisterHandler(pgtype.Float8OID, &FloatHandler{})
 registry.RegisterHandler(pgtype.NumericOID, &NumericHandler{})
-registry.RegisterHandler(pgtype.BoolOID,    &BooleanHandler{})
+registry.RegisterHandler(pgtype.BoolOID, &BooleanHandler{})
 ```
 
 `Null` becomes Go `nil`. `Toast` becomes the literal string `<TOAST>`
