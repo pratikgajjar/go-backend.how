@@ -630,14 +630,16 @@ manifests, and scan planning starts paying for them. The `RewriteManifests`
 action in
 [`core/src/main/java/org/apache/iceberg/BaseRewriteManifests.java`](https://github.com/apache/iceberg/blob/main/core/src/main/java/org/apache/iceberg/BaseRewriteManifests.java)
 exists exactly to merge them, but the action is *another* commit and
-must contend with concurrent writers. In the cached repo,
+must contend with concurrent writers. The cached repo shows the
+ongoing work around this surface area:
 [commit `08ac7844d`](https://github.com/apache/iceberg/commit/08ac7844d)
-— "Core: Propagate Avro compression settings to manifest writers"
-— and
-[`b53d97d3b`](https://github.com/apache/iceberg/commit/b53d97d3b) —
-"Add mergeAppendTest to ensure consist[ent] distribution of data
-files in manifests" — are recent fixes for exactly this class of
-manifest-churn pain.
+("Propagate Avro compression settings to manifest writers") makes
+appended manifests smaller, and
+[`b53d97d3b`](https://github.com/apache/iceberg/commit/b53d97d3b)
+("Add mergeAppendTest to ensure consistent distribution of data
+files in manifests") locks in fair distribution during merge —
+both incremental, both relevant to churn, neither a closed-form
+solution.
 
 **Eventually consistent S3 LIST is irrelevant — until you orphan
 files.** The format avoids `LIST` for *reads* by keeping the file
