@@ -148,11 +148,10 @@ _ = rb.Start(ctx, eventsCh)                  // ← events, → ackCh writes
 Two channels. One direction of data: WAL → events → ring → Parquet → S3.
 One direction of acknowledgement: S3-success → contiguous-LSN → standby
 status update. The replicator never moves the LSN forward on its own.
-The ring buffer never reads from S3. There are no shared mutexes
-between the two halves; the only boundary is the two channels
-(`eventsCh`, `ackCh`). Inside the ring buffer, an
-[`errgroup`](https://pkg.go.dev/golang.org/x/sync/errgroup) supervises
-the receiver, the workers, and the ack pipeline.
+The ring buffer never reads from S3. No shared mutex between the two
+halves; the only boundary is two channels (`eventsCh`, `ackCh`). An
+[`errgroup`](https://pkg.go.dev/golang.org/x/sync/errgroup) inside the
+ring buffer supervises receiver, workers, and ack pipeline.
 
 That is the entire program. Everything else is _what each box does
 correctly_.
