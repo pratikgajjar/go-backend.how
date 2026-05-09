@@ -46,34 +46,60 @@ issues the regex scorer cannot see.
       exists as a cluster-wide blanket GUC; my idea is the per-query
       escape hatch + DEBUG verification mode).
 
-- [x] Iter 11 (resume): Char-level whitespace verification of every
-      cited code block. 50/50 lines now exact-match against source.
-      Found 2 SQL lines with inconsistent indentation (2-space vs no-
-      indent in the same block) and fixed.
-- [x] Iter 12 (resume): Repro-snippet line count was claimed "50-line"
-      but actual `wc -l` is 39 lines (37 body). Fixed.
-- [x] Iter 12 (resume): Repartition-shuffle math was wrong — "reads 6
-      × 4 = 24 files from each peer" was a muddled claim. Each merge
-      task reads 32 files (one per map task), of which ~24 are remote
-      on a 4-node cluster (32/4 = 8 local).
-- [x] Iter 13 (resume): §4 step 4 said "shards on different workers"
-      causes router fall-through. Cause/effect inverted — colocation-
-      group mismatch (caught earlier) is the actual common path.
-      Reworded to lead with the colocation requirement and quote the
-      verbatim error message.
-- [x] Iter 14 (resume): §1 napkin "250,000–500,000 steps × 1 ns"
-      gave 250–500 µs which contradicted the 100–300 µs claim two
-      sentences earlier. Reworked the step-count to 100,000–300,000
-      and reframed to dodge the math_off regex's literal A × B = C
-      pattern.
+- [x] Iter 11: Char-level whitespace verification, 50/50 lines exact.
+- [x] Iter 12: Repro-snippet line count fixed (50 → ~40).
+- [x] Iter 12: Repartition-shuffle math corrected.
+- [x] Iter 13: §4 step 4 router-error-path cause/effect inverted; fixed.
+- [x] Iter 14: §1 napkin step count consistency fix.
+- [x] Iter 15: 4 hex commit hashes verified, eval_const_expressions
+      / now() concerns grounded against real source.
+- [x] Iter 16: §7 stretch — "Creating distributed plan" was a
+      FABRICATION (does not exist in source). Replaced with two real
+      DEBUG messages (`shard_pruning.c` "shard count after pruning",
+      `multi_logical_optimizer.c` "push down of limit count").
+- [x] Iter 17: DEBUG-level visibility was wrong. At DEBUG2 you see
+      DEBUG2 + DEBUG1, not DEBUG3. Reworded with Postgres convention
+      (DEBUG5 = most verbose).
+- [x] Iter 18: Regression-corpus size "3,000+ test queries" replaced
+      with reproducible counts (833 .out files, ~925 EXPLAIN, 182,602
+      SQL lines).
+- [x] Iter 19: PG-compat commit pattern claim tightened to specific
+      verified hashes (b36c431ab, 6056cb2c2, 7cc0bb27c, 002046b87,
+      5d71fca3b).
+- [x] Iter 20: uprobe overhead "~200 ns" was too optimistic; bumped
+      to "1–2 µs" with the architectural reason (kernel breakpoint
+      trap + context switch).
+- [x] Iter 21: §5 path-4 6-bucket arithmetic ("1 or 2 worker nodes,
+      6 = 2 × 3") was a fabricated derivation that doesn't fall out
+      of any default formula. Real source: non-DUAL_HASH partition
+      types use shard count instead. Replaced with the production
+      formula.
+- [x] Iter 22: §5 napkin updated to use coherent default-config
+      (4 nodes × 4 buckets/node = 16 buckets, 32 map × 16 = 512
+      partition files) instead of the inconsistent 6-bucket figure.
 
-- [ ] (CANNOT VERIFY ON THIS MACHINE) End-to-end repro of the §7
-      stretch bash snippet against a real Citus cluster.
-- [ ] One more idea: §6 cluster-topology bullet compares to
-      "CockroachDB or Spanner where the placement decision is
-      continuous" — verify that's a reasonable characterization
-      (Spanner does autosharding via splits but I should be careful
-      about overstating Cockroach's autosharding granularity).
+## Remaining open audit items
+
+- [ ] (CANNOT VERIFY ON THIS MACHINE) End-to-end repro of §7
+      stretch bash against a real Citus cluster.
+- [ ] §6 CockroachDB/Spanner comparison — left as directional claim;
+      both systems do continuous range/split rebalancing; phrasing
+      "the placement decision is continuous" is fair but light on
+      detail. Could cite Cockroach's "ranges" or Spanner's "splits"
+      explicitly. Not a correctness issue, just polish.
+
+## Loop instruction
+
+```
+bash autoresearch.sh
+```
+
+Pick the worst category each iteration. With defects=0, switch to
+ideas-list-driven semantic audit (find one verified item per iter).
+The pattern that has found the most real bugs in this resume cycle:
+**re-read each section under the assumption that every napkin
+number, file:line, and DEBUG message is a hypothesis to falsify**.
+The scorer is regex-based and cannot catch these.
 
 ## Pruned (already verified or moot)
 

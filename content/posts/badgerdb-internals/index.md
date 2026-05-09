@@ -61,7 +61,8 @@ Five components. None of them are fancy on their own; the engineering is in how 
          │ vptr {fid,off,len}       │ full?
          └──────────────────────────▼
                               ┌──────────┐
-                              │ flushChan│  immutable list
+                              │ flushChan│  buffered chan
+                              │  + imm[] │  cap=NumMemtables
                               └─────┬────┘
                                     ▼
                          ┌──────────────────┐

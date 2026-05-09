@@ -22,12 +22,11 @@ math = false
 > because Postgres' bitmap-heap scan reads 8 GB of pages off disk
 > while DuckDB streams three columns through L2 cache. Across
 > Q01/Q03/Q06 at SF=1 and SF=10 [the six speedups](#real-numbers)
-> compute to a geometric mean of ≈ 58× (the sixth root of
-> 25 × 19 × 42 × 55 × 60 × 600), with the headline 600× being a
+> compute to a geometric mean of ≈ 58× (sixth root of
+> `25 · 19 · 42 · 55 · 60 · 600`), with the headline 600× being a
 > single-query worst case for the row-store. The "80×" in the title
-> is the round number that falls out when you focus on the more
-> common Q01/Q03 family at SF≥10; the 58× geomean is the honest
-> summary across the whole mix.[^bench]
+> is a round headline; the 58× geomean is the honest summary across
+> the whole mix.[^bench]
 
 The interesting question is not whether DuckDB is faster. The
 interesting question is *why a 7-line difference in how you store
