@@ -460,11 +460,14 @@ compression families live under `src/storage/compression/` —
 
 Napkin math for Q01 at SF=10. Postgres reads 9 GB of heap + 60M ×
 indirect call × 3 operators × ~10 ns = 1.8 s of CPU dispatch tax.
-At the 350 MB/s sustained random-read this NVMe shows in `dd
-if=/tmp/duckdb-bench/sf10_lineitem.csv of=/dev/null bs=8K`,
-9000 MB / 350 MB/s ≈ 26 s of IO upper-bound, so the parallel
-scan gets to `26 / 4 = 6.5` s of IO + ~5 s of CPU + planner ≈ 11.7 s.
-Matches the [reported](#real-numbers) measurement.
+Postgres' parallel-bitmap-heap-scan effectively pushes ~350 MB/s
+end-to-end on this NVMe (derived from the 8.4 GiB read in the 25 s
+Q06 run: `8400 / 25 ≈ 336` MB/s — the bound is Postgres' per-page
+bookkeeping, not the SSD's raw read which is closer to 2 GB/s).
+Applying the same throughput to Q01: `9000 / 350 = 25.7` s of IO
+upper-bound, parallelised across 4 workers gives `25.7 / 4 ≈ 6.4` s
+of IO + ~5 s of CPU + planner ≈ 11.7 s. Matches the
+[reported](#real-numbers) measurement.
 
 DuckDB Q01 at SF=10: needs `l_returnflag`, `l_linestatus`, `l_quantity`,
 `l_extendedprice`, `l_discount`, `l_tax`, `l_shipdate`. Compressed

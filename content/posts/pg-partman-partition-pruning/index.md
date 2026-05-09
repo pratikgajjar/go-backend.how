@@ -560,10 +560,12 @@ large, naturally-sorted data. If you partition hourly on a 100K-row/sec
 firehose, each child is 360M rows × ~200 B = 72 GB; BRIN is fine. If
 you partition hourly on a 1K-row/sec stream, each child is 3.6M rows
 × ~200 B = 720 MB; BRIN is borderline. If you partition every 5
-minutes on the same stream, each child is 60 MB and BRIN is worse than
-no index. The metric to watch is `pg_stat_user_indexes.idx_scan` per
-child — if it's zero or near-zero on small children, drop the BRIN
-and rely on the partition bound alone.
+minutes on the same stream, each child is 60 MB (about 60 BRIN
+entries) and BRIN's overhead — bitmap-heap fanout, planner cost,
+maintenance — exceeds the savings vs a plain Seq Scan of 60 MB.
+The metric to watch is `pg_stat_user_indexes.idx_scan` per child —
+if it's zero or near-zero on small children, drop the BRIN and rely
+on the partition bound alone.
 
 **f. Partitionwise join and aggregate are off by default.** Postgres
 has had these settings since version 11
