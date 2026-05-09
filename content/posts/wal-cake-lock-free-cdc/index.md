@@ -812,7 +812,7 @@ Each line is a tradeoff. Walked one by one:
 | Page index for ts, lsn | enabled | Without page index, pushdown prunes whole row groups only (each batch is one row group, so a `WHERE timestamp BETWEEN …` query reads the file or skips it whole). Page index lets the reader skip individual data pages, scanning only time-overlapping pages. |
 | Stats for `before`, `after` | OFF | These are JSON-as-bytes columns. Min/max on raw JSON bytes is meaningless to a reader and costs CPU during write. |
 | `before`, `after` type | `JSONLogicalType` over `BYTE_ARRAY` | The physical type is bytes; the logical-type annotation tells Athena, DuckDB, Spark to treat it as JSON. You preserve schema flexibility (every event's `before/after` shape can differ) without lying to the reader. |
-| Encoding for `before`, `after` | Plain | JSON bytes don't dictionary-compress well (every blob is unique-ish). Plain + ZSTD page compression beats dict + plain. |
+| Encoding for `before`, `after` | Plain | JSON bytes don't dictionary-compress well (every blob is unique-ish). With high cardinality, the dictionary itself ends up nearly as big as the data — no win, plus an index-lookup cost per row. Plain + ZSTD page compression beats dict + ZSTD. |
 | `WithCreatedBy("wal-cake #pg")` | string in the file footer | Forensics. When a downstream warehouse engineer asks "who wrote these files?", `parquet-tools meta` shows the producer string. |
 
 Schema construction is `JSONLogicalType`-aware:
