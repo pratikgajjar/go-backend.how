@@ -39,7 +39,7 @@ The 200 µs in the title is the middle row: an estimated localhost
 wall-clock for the *protocol itself* doing one full election round
 once the campaign decision has been taken. The estimate comes from
 1.8 µs of state-machine work plus 8 channel sends × ~10 µs Go
-scheduler wakeup ≈ `1.8 + 80 = 82 µs`, plus 2 in-memory `Storage.Append`
+scheduler wakeup `≈ 1.8 + 80 ≈ 82 µs`, plus 2 in-memory `Storage.Append`
 calls and a single allocation-heavy `Ready` build, which we round up
 to `≈ 200 µs`. It's the order of magnitude you'd see if you
 `bpftrace`d the `MsgHup → becomeLeader` transition on a single-machine

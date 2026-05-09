@@ -693,19 +693,17 @@ constraint and you eat the dual-write fallacy on every worker crash.
 ## Why no mutex
 
 Three reasons. **(1)** The hot writer path (`Add`) has a single writer
-goroutine, so its `writeIdx` mutation is uncontended. **(2)** Workers
-read `buffer[i % size]` for `i ∈ [StartIdx, EndIdx)`, and the
-producer never re-uses those slots until `readIdx` has advanced past
-them — which the walker guarantees only happens after the worker
-acked. So worker reads and producer writes are on disjoint ranges of
-`buffer`. **(3)** The tracker is a concurrent map (`haxmap`),
-sharded internally. Workers `Set` on insert and write `s.done = true`
-on completion (a single boolean store, never racing with another
-write to the same key); the walker `Get`/`Del`s. There's a benign
-race between "worker sets `done = true`" and "walker reads `done`":
-if the walker misses a worker's write, the segment is still picked
-up next time the walker fires (which it does on every subsequent
-ack), so the worst case is one extra cycle of latency.
+goroutine (the receiver loop in `Start`), so its `writeIdx` mutation
+is uncontended. **(2)** Workers read `buffer[i % size]` for
+`i ∈ [StartIdx, EndIdx)`, and the producer never re-uses those slots
+until `readIdx` has advanced past them — `Add` returns `false` while
+`writeIdx - readIdx >= size`. So worker reads and producer writes are
+always on disjoint ranges of `buffer`. **(3)** The tracker is a
+concurrent map (`haxmap`). The receiver `Set`s a segment when it cuts
+one; workers send the segment to `ackSeg` on completion (no shared
+state mutation); a single ack-pipeline goroutine consumes `ackSeg`
+and is the only writer of `s.done = true` inside `findHighestContiguous`.
+One writer per field, no mutex needed.
 
 ## Tracker choice
 
