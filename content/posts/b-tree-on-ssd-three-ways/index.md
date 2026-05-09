@@ -752,8 +752,10 @@ func benchPebble() {
 }
 ```
 
-The bbolt and LMDB equivalents are 60 and 80 lines respectively; the
-shape is identical (open, write loop, sorted-latency reads, close).
+The bbolt and LMDB equivalents follow the same shape (open, write
+loop, sorted-latency reads, close) and are roughly the same length
+(~70 lines of Go for bbolt; ~100 lines of C for LMDB including the
+batched-latency timing).[^bench]
 
 ## 7.2 Closing
 
@@ -769,4 +771,4 @@ SSD for 5 years and they'll still be there. The differences are at
 the second-derivative - tail latency, operational ergonomics, file-
 size at scale. Pick the one whose second-derivative bothers you least.
 
-[^bench]: Numbers were gathered on May 9, 2026 - M2 MacBook (8 perf+E cores), 16 GB RAM, APFS on internal SSD, Go 1.26.3. `cc` is Apple Clang 17 (`-O2`). The Pebble write count uses `pebble.NoSync` to be apples-to-apples with bbolt's per-tx (not per-op) fsync; LMDB uses `MDB_NOSYNC` plus one `mdb_env_sync(env, 1)` at end. The reported numbers are from a single cold-cache run (fresh `/tmp` directory, fresh process); successive warm-cache runs on the same machine moved write throughput up ~30-60% (Pebble 635K → 660K, bbolt 73K → 100K, LMDB 1.93M → 3.2M ops/s) because APFS metadata caches and the Go runtime's allocator both warm up. Read p50 was stable across runs (well within ±10%); read p99 jittered by up to 2× on bbolt+LMDB due to occasional sub-microsecond GC pauses.
+[^bench]: Numbers were gathered on May 9, 2026 - M2 MacBook (4 performance + 4 efficiency = 8 cores), 16 GB RAM, APFS on internal SSD, Go 1.26.3. `cc` is Apple Clang 17 (`-O2`). The Pebble write count uses `pebble.NoSync` to be apples-to-apples with bbolt's per-tx (not per-op) fsync; LMDB uses `MDB_NOSYNC` plus one `mdb_env_sync(env, 1)` at end. The reported numbers are from a single cold-cache run (fresh `/tmp` directory, fresh process); successive warm-cache runs on the same machine moved write throughput up ~30-60% (Pebble 635K → 660K, bbolt 73K → 100K, LMDB 1.93M → 3.2M ops/s) because APFS metadata caches and the Go runtime's allocator both warm up. Read p50 was stable across runs (well within ±10%); read p99 jittered by up to 2× on bbolt+LMDB due to occasional sub-microsecond GC pauses.
