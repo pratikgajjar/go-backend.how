@@ -431,12 +431,12 @@ cold-cache cost).
 
 | Query | DB state | Postgres best | DuckDB best | Speedup |
 |---|---|---:|---:|---:|
-| Q01 | SF=1   | 555 ms     | 22 ms   | 25× |
-| Q03 | SF=1   | 183 ms     | 10 ms   | 19× |
-| Q06 | SF=1   | 135 ms     | 3 ms    | 42× |
-| Q01 | SF=10  | 11,678 ms  | 211 ms  | 55× |
-| Q03 | SF=10  | 7,137 ms   | 119 ms  | 60× |
-| Q06 | SF=10  | 25,825 ms  | 43 ms   | 600× |
+| Q01 | SF=1   | 555 ms     | 21.8 ms   | 25× |
+| Q03 | SF=1   | 183 ms     |  9.5 ms   | 19× |
+| Q06 | SF=1   | 135 ms     |  3.2 ms   | 42× |
+| Q01 | SF=10  | 11,678 ms  | 210.5 ms  | 55× |
+| Q03 | SF=10  |  7,137 ms  | 118.8 ms  | 60× |
+| Q06 | SF=10  | 25,825 ms  |  42.9 ms  | 600× |
 
 Cross-checking the napkin math: the six speedups (25, 19, 42, 55,
 60, 600) multiply to 39,501,000,000, sixth-root ≈ 58.4

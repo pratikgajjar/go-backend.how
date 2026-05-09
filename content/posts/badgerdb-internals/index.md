@@ -14,7 +14,7 @@ math = false
 
 # The 1M-writes/sec headline isn't a lie. It's a configuration.
 
-Run BadgerDB out of the box on a Mac M3 Max, ten million `(32-byte key + 128-byte value)` writes through `WriteBatch`, and three runs land in `821 K`, `891 K`, `1,048 K` ops/s with **zero L0 stall time** in every run. The famous Badger headline — a million writes per second on a laptop — is real, sometimes even on the median.
+Run BadgerDB out of the box on a Mac M3 Max, ten million `(32-byte key + 128-byte value)` writes through `WriteBatch`, and three runs land in `821 K`, `891 K`, `1,048 K` ops/s — median `891 K`, peak above a million — with **zero L0 stall time** in every run. The famous Badger headline of a million writes per second on a laptop is real on the peak runs and within ~10% on the median.
 
 Now change one thing — make the values `1 KB` instead of `128 B`.
 
