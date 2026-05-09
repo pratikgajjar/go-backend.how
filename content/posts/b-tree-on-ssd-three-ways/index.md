@@ -375,11 +375,15 @@ Get(k)
 ```
 
 That's 1 skiplist probe + N bloom probes + at most M block decompresses
-where M is the number of levels the key actually lives in. With
-[10 bits/key bloom defaults](https://github.com/cockroachdb/pebble/blob/master/sstable/tablefilters/bloom/bloom.go),
-false-positive rate ≈ 1%, so for a 5-level LSM you decompress ~1.05
-blocks per Get on average - but you *visit* every level. Each visit is
-a hash, a cache-line fetch, and a few atomics on the shard mutex.
+where M is the number of levels the key actually lives in. Pebble's
+out-of-the-box default is actually
+[`NoFilterPolicy`](https://github.com/cockroachdb/pebble/blob/master/options.go#L68)
+(no bloom at any level) — CockroachDB and other production users opt
+in via [`bloom.FilterPolicy`](https://github.com/cockroachdb/pebble/blob/master/sstable/tablefilters/bloom/bloom.go)
+typically at 10 bits/key, which gives ~1% false-positive rate. Under
+that configuration a 5-level LSM decompresses ~1.05 blocks per Get
+on average - but you *visit* every level. Each visit is a hash, a
+cache-line fetch, and a few atomics on the shard mutex.
 
 That's where my measured[^bench] 5.4 μs p50 comes from. Section 5 derives it.
 
