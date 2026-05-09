@@ -705,7 +705,9 @@ S3 and S4. **Two acks, four segments, in-order LSN advancement.**
 Out-of-order completion + in-order ack is what makes this both
 lock-free **and** correct. Drop the walker and you have to fall back
 to sequential processing (no concurrency). Drop the contiguous
-constraint and you eat the dual-write fallacy on every worker crash.
+constraint and a worker crash mid-batch leaves a hole in S3 that
+Postgres has already moved past — exactly the data-loss the CDC
+contract forbids.
 
 ## Why no mutex
 
