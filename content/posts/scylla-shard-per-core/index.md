@@ -621,10 +621,10 @@ spreads across the whole pool; Scylla's request waits for its shard. P99
 under saturation is sharper for Scylla. P50 is much better. You pick
 your poison.
 
-The lesson — and Scylla is honest about this in their own blog
-[posts](https://www.scylladb.com/2017/07/24/asynchronous-task-execution/) —
-is that share-nothing is a *constraint discipline*, not a free lunch.
-You give up the JVM's flexibility to get a 10× ceiling raise.
+The lesson — and Scylla is honest about this in their own engineering
+[blog](https://www.scylladb.com/blog/) — is that share-nothing is a
+*constraint discipline*, not a free lunch. You give up the JVM's
+flexibility to get a `10×` ceiling raise.
 
 # What I'd change — build differently
 
@@ -649,8 +649,8 @@ of work.
 
 ## b) Custom polling with `golang.org/x/sys/unix.IOUring`
 
-A small group of Go projects ([cilium/ebpf-go](https://github.com/cilium/ebpf),
-[ronaksoft/uring-go](https://github.com/ronaksoft/uring-go)) call into
+A small group of Go projects ([iceber/iouring-go](https://github.com/iceber/iouring-go),
+[godzie44/go-uring](https://github.com/godzie44/go-uring)) wrap
 io_uring directly. You can build a per-goroutine SQ + CQ pair, pin the
 goroutine via runtime.LockOSThread + pthread_setaffinity_np via cgo, and
 have a Scylla-shaped event loop in Go.
@@ -792,9 +792,9 @@ removed the coordination.
 
 - [Seastar tutorial](https://github.com/scylladb/seastar/blob/master/doc/tutorial.md) — the
   authoritative explanation of the futures-and-continuations model.
-- [Asynchronous Task Execution in
-  Scylla](https://www.scylladb.com/2017/07/24/asynchronous-task-execution/) —
-  ScyllaDB's own write-up on the reactor model.
+- [ScyllaDB engineering blog](https://www.scylladb.com/blog/) —
+  ScyllaDB's running write-ups on the reactor model, scheduling, and IO.
+  Search for posts tagged "reactor" or "shard-per-core".
 - [Glommio](https://github.com/DataDog/glommio) — Datadog's Rust port of
   the Seastar architecture; a smaller, more readable code base if C++
   isn't your first language.

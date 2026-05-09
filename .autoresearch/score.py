@@ -817,6 +817,52 @@ def rendered_html_link_defects(repo_root: Path, post_slug: str) -> int:
     return n
 
 
+LOC_CLAIM_RE = re.compile(
+    r"~?\s*(\d[\d,]*)\s*lines?\s+of\s+(go|python|rust|c|cpp|c\+\+)",
+    re.IGNORECASE,
+)
+
+
+def loc_drift_defects(body: str, cached_repo: Path) -> int:
+    """Verify "~N lines of <lang>" claims against actual line count of source
+    files in the cached repo. Tolerance: ±15% (rounding-friendly)."""
+    EXT = {
+        "go": [".go"],
+        "python": [".py"],
+        "rust": [".rs"],
+        "c": [".c", ".h"],
+        "cpp": [".cpp", ".cc", ".hpp"],
+        "c++": [".cpp", ".cc", ".hpp"],
+    }
+    n = 0
+    for m in LOC_CLAIM_RE.finditer(body):
+        claimed = int(m.group(1).replace(",", ""))
+        lang = m.group(2).lower()
+        exts = EXT.get(lang, [])
+        if not exts:
+            continue
+        actual = 0
+        for ext in exts:
+            for p in cached_repo.rglob(f"*{ext}"):
+                # Skip vendor, .cache, generated
+                if "/vendor/" in str(p) or "/.cache/" in str(p):
+                    continue
+                try:
+                    actual += sum(1 for _ in p.open(encoding="utf-8", errors="replace"))
+                except Exception:
+                    pass
+        if actual == 0:
+            continue
+        if abs(actual - claimed) / actual > 0.15:
+            n += 1
+            print(
+                f"DEBUG loc_drift: prose claims '~{claimed} lines of {lang}' "
+                f"but cached repo has {actual} ({((claimed - actual) / actual * 100):+.1f}%)",
+                file=sys.stderr,
+            )
+    return n
+
+
 def commit_ref_defects(body: str, cached_repo: Path) -> int:
     """Each `commit \\`HASH\\`` reference must exist in the cached repo's git log."""
     refs = set(
