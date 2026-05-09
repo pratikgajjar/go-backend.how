@@ -612,9 +612,22 @@ reads `trace_id` from headers, opens a new span with the same trace
 ID and `span_id` as parent. Sentry / Jaeger / Tempo stitches them
 into one waterfall.
 
-We get this for the cost of an extra ~80 bytes in the protobuf and
-zero extra plumbing on the consumer side. The WAL is a fully
-trace-aware transport.
+We get this for the cost of an extra **~95 B in the protobuf** and
+zero extra plumbing on the consumer side. The byte derivation:
+
+| field | encoding | bytes |
+|---|---|---:|
+| `trace_info` wrapper | tag(1) + length(1) | 2 |
+| `trace_id` (32-hex string) | tag(1) + len(1) + 32 | 34 |
+| `span_id` (16-hex string) | tag(1) + len(1) + 16 | 18 |
+| `metadata["parent_op"="http.request"]` | tag(1) + len(1) + key (1+1+9) + val (1+1+12) | 27 |
+| `metadata["is_sampled"="1"]` | tag(1) + len(1) + key (1+1+10) + val (1+1+1) | 17 |
+| **total** | | **98** |
+
+Vary `parent_op` and the total moves; for the kind of tracer-supplied
+op names (`db.query`, `http.request`, `kafka.publish`) the envelope
+is **80–120 B**. The WAL is a fully trace-aware transport at single-
+digit-percent overhead on a 500 B payload.
 
 # 7. Reliability proof — the LSN dance
 
