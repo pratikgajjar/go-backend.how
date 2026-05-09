@@ -79,11 +79,11 @@ quickly: a 1 PiB table (`2^50` bytes) at 256 MiB per Parquet file
 If one manifest entry averages 300 bytes — compressed Avro with
 column bounds for ten columns and a 200-char S3 URI; consistent
 with manifests I have decoded on real production tables — that is
-`4,194,304 × 300 = 1,258,291,200` bytes ≈ 1.2 GB of manifest
+`4,194,304 × 300 = 1,258,291,200` bytes ≈ 1.17 GiB of manifest
 entries total. A single 8 MiB manifest can index
 `8,388,608 / 300 ≈ 27,962` files, so the 1 PiB table needs
 `4,194,304 / 27,962 ≈ 150` manifests. Scanning 150 small Avro
-files is tractable; scanning a 1.2 GB blob on every read is not.
+files is tractable; scanning a 1.17 GiB blob on every read is not.
 That is what forces the *tree*.
 
 # 2. The problem this system was built to solve

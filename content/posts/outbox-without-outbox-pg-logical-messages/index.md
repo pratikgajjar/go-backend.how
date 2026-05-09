@@ -224,13 +224,11 @@ Three properties matter:
 
 > The WAL **is** the outbox.
 
-The function has been there since 9.6. (Pedantic ordering: the
-underlying logical-decoding framework went GA in 9.4; the `pgoutput`
-plugin factlib's consumer relies on landed in 10 alongside built-in
-logical replication.) It was added specifically so applications could
-co-opt the WAL stream as a generic event bus, then sat unused for
-nearly a decade while every event-driven-architecture post kept
-teaching the table-and-poller recipe.
+The function has been there since 9.6. (The underlying
+logical-decoding framework went GA in 9.4; `pgoutput` landed in 10
+alongside built-in logical replication.) It was added so apps could
+co-opt the WAL as a generic event bus, then sat unused for a decade
+while every event-driven post kept teaching table-and-poller.
 
 # 4. How factlib emits
 
