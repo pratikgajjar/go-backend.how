@@ -648,11 +648,14 @@ JVM heap can. Scylla's `--memory N` flag sets the total per-process
 budget that gets divided equally across shards — no amount of tuning
 lets you escape the partition.
 
-**3. It owns the box.** Co-tenancy is hostile to shard-per-core. If
-another process on the same machine starts using CPUs that Scylla has
-pinned, the kernel cannot rebalance and the colocated process gets the
-crumbs. Production deployments give Scylla its own machine; trying to
-run it alongside an unrelated service is not a supported mode.
+**3. It owns the box.** Co-tenancy is hostile to shard-per-core.
+`pthread_setaffinity_np` pins Scylla's threads to specific CPUs but
+doesn't exclude other processes from those same CPUs. If a colocated
+process spins up there, the kernel time-slices: Scylla's reactor —
+which assumed exclusive access to that core's L1/L2 — now wakes up to
+a polluted cache and runs at half speed. Production deployments give
+Scylla its own machine; trying to run it alongside an unrelated
+service degrades both.
 
 **4. Operational story is custom.** All the standard JVM tooling — GC
 logs, JMX, Java profilers — is gone. You profile Scylla with

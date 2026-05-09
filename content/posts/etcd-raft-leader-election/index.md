@@ -305,9 +305,10 @@ func (r *raft) becomeCandidate() {
 ```
 
 Note that `r.Vote = r.id` — the candidate votes for itself before sending
-anything. The self-vote isn't a network message; it's just a field
-write. That single fact is what makes single-node clusters elect a
-leader instantly, without a real vote round.
+anything. The self-vote isn't a network message; it's a field write
+followed by a self-`MsgVoteResp` that the application replays after
+fsync. That fast path is what makes single-node clusters elect a
+leader in one local fsync, with no real vote round.
 
 The fan-out walks the voter set in deterministic order (sorted ID), and
 calls `r.send(...)` per voter. The self-vote takes the

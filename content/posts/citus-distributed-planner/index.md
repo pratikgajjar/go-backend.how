@@ -402,7 +402,7 @@ sequential scan is run on the coordinator. The `CustomScan` is the
 hook where Citus' executor takes over, evaluates the distribution
 column at execution time, picks the shard, and dispatches.
 
-## Path 2 - multi-shard router (UPDATE)
+## Path 2 - multi-shard router (DELETE / UPDATE)
 
 User query (modify path), verbatim from
 `src/test/regress/expected/multi_explain.out` line 1128:
