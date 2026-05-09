@@ -91,7 +91,7 @@ The contradiction is intentional. Citus needs Postgres' planner to
 constant-fold expressions (so that `WHERE id = 100 + 5` becomes
 `WHERE id = 105` before pruning), resolve stable functions like
 `now()` to a single value for the duration of the query, and pull
-vars out of complex quals — all of which feed shard pruning. But
+vars out of complex quals - all of which feed shard pruning. But
 the _plan tree_ Postgres returns assumes the table is local. So
 Citus runs the planner for its side effects.
 
@@ -404,7 +404,7 @@ distribution column it pruned on, for diagnostics.
 `fast_path_router_planner.c` line 116) so that the targetlist is
 populated correctly. `FinalizeRouterPlan` then constructs a *new*
 `PlannedStmt` whose `planTree` is a `CustomScan` tagged
-"Citus Adaptive" — the `SeqScan` placeholder is dropped on the
+"Citus Adaptive" - the `SeqScan` placeholder is dropped on the
 floor at this point. No actual sequential scan ever runs on the
 coordinator. The `CustomScan` is the hook where Citus' executor
 takes over, evaluates the distribution column at execution time,
@@ -606,7 +606,7 @@ tuning knob.
 
 The point of the planner is to keep you in the cheapest path. The
 order of cheapness top-to-bottom: fast-path router (skips
-`standard_planner` entirely, ~250-1100 µs total — but only on
+`standard_planner` entirely, ~250-1100 μs total - but only on
 single-table dist-key-equality queries; the
 `numFromRels != 1` check in `FastPathRouterQuery` rules out any
 join), then `CreateSingleTaskRouterSelectPlan` for co-located
@@ -738,13 +738,17 @@ risk: medium (silent correctness bugs if the assumption is wrong,
 which is why the DEBUG mode is non-negotiable).
 
 **3. Push the fast-path eligibility check into PG's parse tree
-analysis layer.** Right now `FastPathRouterQuery` runs after
-parsing but before `standard_planner`. PostgreSQL has a hook that
-fires after parse-analysis but before any planning (the
-parse-analyze hook in `src/include/parser/analyze.h`). Moving the check earlier means Citus could
-short-circuit before any of `eval_const_expressions`,
-`pull_var_clause`, etc. runs. Marginal - saves maybe 50μs per query
-on the fast path - but on a workload of 100k QPS, 50μs × 10^5 = 5
+analysis layer.** Right now `FastPathRouterQuery` runs at the start
+of `distributed_planner`, after the planner hook fires. PostgreSQL
+has a `post_parse_analyze_hook` that fires earlier, after parse-
+analysis but before any planner sees the query. Moving the check
+into that hook means Citus could short-circuit before
+`distributed_planner`'s own setup work runs (RTE identity
+assignment in `AssignRTEIdentities`, partitioning adjustments via
+`AdjustPartitioningForDistributedPlanning`, the
+`CreateAndPushPlannerRestrictionContext` allocation, the
+`PG_TRY`/`PlannerLevel++`). Marginal — maybe 50 µs per query on the
+fast path — but on a workload of 100k QPS, 50 µs × 10⁵ = 5
 core-seconds per second, i.e., 5 cores of headroom. Cost: high,
 because it changes the contract with Postgres and risks fighting
 future PG planner refactors.
