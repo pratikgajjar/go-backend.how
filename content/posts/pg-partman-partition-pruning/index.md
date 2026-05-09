@@ -26,9 +26,11 @@ executor partition pruning still kicks in and skips 89 of the 90
 the 90 children is opened, locked, and its statistics loaded into the
 planner before pruning runs. You partitioned the table to make this
 query fast. It got worse than the un-partitioned version because the
-planner now has 90 child relations to plan against and the BRIN index
-on each child has the same cardinality it had when the table was one
-giant slab.
+planner now has 90 child relations to plan against (lookup, lock,
+stats), and the per-child BRIN indexes — while smaller per child —
+sum to the same total cardinality across the partition set as the
+unpartitioned BRIN had, so there's no aggregate index-size win
+either.
 
 That's the failure mode this post is about. It is not a `pg_partman`
 bug. It is the gap between "Postgres can partition tables" and

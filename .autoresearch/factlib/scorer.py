@@ -618,6 +618,41 @@ def heading_skip_defects(repo_root: Path) -> int:
     return n
 
 
+def gofmt_defects(body: str) -> int:
+    """Run gofmt -l on every Go code block. Each unparsable block = 1 defect.
+    Skips blocks containing '...' (intentionally elided) or top-level keywords
+    that signal pseudocode (no `package` or `func` decl)."""
+    import tempfile
+    n = 0
+    for m in CODEBLOCK_RE.finditer(body):
+        lang, code = m.group(1).strip().lower(), m.group(2)
+        if lang != "go":
+            continue
+        # ignore pseudocode-flavored blocks (the §4 application example uses
+        # ellipses like `"INSERT INTO users ...", u.ID, ...` and `payloadBytes`
+        # which are illustrative, not valid Go)
+        if "..." in code or re.search(r"^\s*[a-z][a-zA-Z0-9_]*\s*:?=\s*\w+\(", code, re.MULTILINE) and "func " not in code:
+            continue
+        # require either a `func main()` or a top-level `func (` to be a real check
+        if "func " not in code:
+            continue
+        # wrap snippets that lack `package` so gofmt has something to parse
+        snippet = code if re.search(r"^\s*package\s+\w+", code, re.MULTILINE) else "package x\n" + code
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".go", delete=False) as f:
+            f.write(snippet)
+            tmp = f.name
+        try:
+            r = subprocess.run(["gofmt", "-l", tmp], capture_output=True, text=True, timeout=5)
+            if r.returncode != 0 or r.stderr.strip():
+                print(f"DEBUG gofmt: {r.stderr.strip()[:200]}", file=sys.stderr)
+                n += 1
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+        finally:
+            os.unlink(tmp)
+    return n
+
+
 def long_line_defects(body: str) -> int:
     """Code-block lines wider than 100 chars overflow on mobile."""
     n = 0
@@ -707,6 +742,7 @@ def main() -> int:
     cats["heading_skip"] = heading_skip_defects(repo_root)
     cats["bad_anchor_link"] = anchor_resolution_defects(body, repo_root)
     cats["license_claim"] = license_claim_defects(body, cached_repo)
+    cats["gofmt"] = gofmt_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -731,6 +767,7 @@ def main() -> int:
         "heading_skip": 4,
         "bad_anchor_link": 3,
         "license_claim": 4,
+        "gofmt": 3,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 

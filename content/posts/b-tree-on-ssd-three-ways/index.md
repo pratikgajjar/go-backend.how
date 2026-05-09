@@ -239,11 +239,11 @@ The meta page is itself a 4-KiB page on most platforms.
 ## 4.2 BoltDB: spill, then write meta page id 0 or 1
 
 BoltDB's commit is the same idea in Go.
-[`internal/common/meta.go:48`](https://github.com/etcd-io/bbolt/blob/main/internal/common/meta.go#L48)
+[`internal/common/meta.go:50`](https://github.com/etcd-io/bbolt/blob/main/internal/common/meta.go#L50)
 makes the meta page id depend on `txid`:
 
 ```go
-// bbolt/internal/common/meta.go (line 48)
+// bbolt/internal/common/meta.go (line 50)
 // Page id is either going to be 0 or 1 which we can determine by the transaction ID.
 p.id = Pgid(m.txid % 2)
 p.SetFlags(MetaPageFlag)
@@ -260,7 +260,7 @@ meta page on open
 The other half of bbolt's commit is the [node.go spill](https://github.com/etcd-io/bbolt/blob/main/node.go#L295):
 
 ```go
-// bbolt/node.go - spill (line 295)
+// bbolt/node.go - spill (function at line 295, body excerpt)
 // Spill child nodes first.
 sort.Sort(n.children)
 for i := 0; i < len(n.children); i++ {

@@ -239,15 +239,17 @@ class smp_message_queue {
                             boost::lockfree::capacity<queue_length>>;
 ```
 
-`boost::lockfree::spsc_queue` is the canonical Lamport ring buffer — one
-producer index, one consumer index, both `std::atomic<size_t>`. Push
-and pop are wait-free, and there are *no* `cmpxchg` instructions on the
-hot path: the producer only needs `store(release)` of the new tail
-(release prevents the previous payload writes from being reordered after
-it), and the consumer only needs `load(acquire)` of that tail (acquire
-prevents subsequent reads from being reordered before it). On x86 these
-compile down to plain MOVs because the architecture is already strongly
-ordered. On ARM they compile to STLR/LDAR.
+`boost::lockfree::spsc_queue` is a Lamport-style single-producer
+single-consumer ring — one producer-owned head index, one
+consumer-owned tail index, both `std::atomic<size_t>`. Push and pop
+are wait-free; there are *no* `cmpxchg` instructions on the hot path.
+The producer only needs `store(release)` of the new tail (release
+prevents prior payload writes from being reordered after it); the
+consumer only needs `load(acquire)` of that tail (acquire prevents
+subsequent reads from being reordered before it). On x86 release/acquire
+on naturally-aligned word stores compile down to plain MOVs because
+the TSO memory model already guarantees the ordering. On ARM the same
+operations compile to STLR/LDAR.
 
 `queue_length = 128`, `batch_size = 16`, `prefetch_cnt = 2`. Those are
 not arbitrary. 128 work-item pointers occupy `8 × 128 = 1024 B`, which

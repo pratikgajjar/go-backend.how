@@ -590,19 +590,26 @@ case m.GetTerm() > r.Term:
 			// of hearing from a current leader, it does not update its term or grant its vote
 ```
 
-`inLease` is the runtime cost of `CheckQuorum`: the leader has to ping
-every follower at least once per `electionTimeout`, otherwise followers
-will start trusting MsgVotes from rejoining nodes. That's `n − 1`
-heartbeats per `ElectionTick × tick interval`, or about
-`(n − 1) / electionTimeout` extra messages per second. With `n = 5` and
-a 1 s election timeout: 4 heartbeats/s — negligible.
+`inLease` does the heavy lifting: a follower with `CheckQuorum` on
+will reject any `MsgVote` that arrives while it still believes a
+leader is alive (`r.lead != None && r.electionElapsed < r.electionTimeout`).
+The message-cost of `CheckQuorum` itself is effectively zero — the
+leader's heartbeats fire every `HeartbeatTick × tick interval` whether
+or not `CheckQuorum` is enabled, so no extra wire traffic is added.
+What `CheckQuorum` does add is *active* leader-step-down on the
+leader side: every `electionTimeout`, the leader runs `MsgCheckQuorum`
+and demotes itself if a quorum hasn't been recently active. The cost
+is one extra map walk over the progress tracker per election timeout —
+napkin math: `n` map entries × ~10 ns hash lookup `≈ n × 10 ns`,
+or 50 ns per second on a 5-node cluster.
 
 Pre-Vote eliminates the term bump entirely (the partitioned node never
 gets a quorum to advance to the next term, so it doesn't), at the cost
 of one extra round-trip per *real* election. For a cluster with
-`n = 3` and an expected 1.33 s of wait time, that round-trip adds ~1 ms
-LAN latency: a 0.1% slowdown on the rare path to fix a problem that
-otherwise breaks the cluster on every flap. That's a great trade.
+`n = 3` and an expected 1.33 s of wait time, that round-trip is on the
+order of `~1 ms` LAN latency: a `1 ms / 1.33 s ≈ 0.075 %` slowdown on
+the rare path, to fix a problem that otherwise breaks the cluster on
+every flap. That's a great trade.
 
 ## Lease-based reads vs ReadIndex
 

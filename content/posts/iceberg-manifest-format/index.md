@@ -604,7 +604,7 @@ makes worse than alternatives.
 | Streaming aggregates over the data | No materialised view; every query re-scans                            | Druid, Pinot, ClickHouse                 |
 | Thousands of partitions            | Manifest-list summaries grow linearly with partition cardinality      | Hash bucketing or `truncate(N)`          |
 | Loose / inferred schemas           | Iceberg requires explicit schema-on-write with permanent field IDs    | Plain Parquet directories or DuckDB on `*.parquet` |
-| Browsable storage                  | Files are uuid-named under a partition path; the metadata tree is the only authoritative listing | Hive-style partitioned directories       |
+| Authoritative `ls` over the bucket | Iceberg's metadata tree is the only authoritative file list — `ls` of the bucket may include data from old snapshots, in-flight writes, or orphans | Hive metastore + Hive-style directories  |
 
 A few of these need elaboration.
 
