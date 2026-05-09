@@ -367,10 +367,14 @@ IF v_partstrat NOT IN ('r', 'l') OR v_partstrat IS NULL THEN
 for the duration of `create_partition`. That's not your daily
 maintenance run — that's the one-shot setup function (or the alias
 `create_parent`). But it's worth knowing: do not `SELECT create_partition(...)`
-during peak hours. The function is short, but a few seconds of `ACCESS
-EXCLUSIVE` on a busy parent is a few seconds of every connection
-piling up behind it, and `ACCESS EXCLUSIVE` requests jump the lock
-queue, so any reader that arrives during those few seconds also waits.
+during peak hours. The function is short, but a few seconds of
+`ACCESS EXCLUSIVE` on a busy parent is a few seconds of every
+connection piling up behind it. Postgres' lock queue is FIFO; once
+an `ACCESS EXCLUSIVE` request lands on a parent that has an
+in-flight `ACCESS SHARE`, every subsequent reader queues behind the
+exclusive request even though they'd be compatible with the current
+holder. So a single `create_partition` call during traffic stalls
+both writers and readers for the duration.
 
 The maintenance procedure is friendlier:
 
