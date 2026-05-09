@@ -771,10 +771,13 @@ relations and a join at read time. Microsoft's
 this layout in detail.
 
 **3. Cost-based fallback to IVFFlat.** Both index types ship in
-pgvector. There is no automatic chooser. On a dataset where
-HNSW's recall curve plateaus early (extremely clustered data, our
-benchmark above), IVFFlat with `probes = √N` is competitive and
-builds [substantially faster on the same hardware](https://github.com/pgvector/pgvector#index-build-time) (also benchmark- and dataset-dependent). A meta-extension that picked between the two based
+pgvector. There is no automatic chooser. The README is candid about
+the difference: ["[HNSW] has better query performance than IVFFlat
+(in terms of speed-recall tradeoff), but has slower build times and
+uses more memory"](https://github.com/pgvector/pgvector#hnsw). On a
+dataset where HNSW's recall curve plateaus early (extremely clustered
+data, our benchmark above), IVFFlat with `probes = √N` is competitive
+and builds faster. A meta-extension that picked between the two based
 on a quick training sample, or even let you write
 `CREATE INDEX ... USING ann (...)` and chose at build time, would
 remove a real foot-gun from teams new to vector search.

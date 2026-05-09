@@ -34,8 +34,9 @@ day's child, drop the oldest one. The interesting parts are the three
 or four places where its choices interact with the planner in ways the
 documentation only hints at.
 
-The code is at [`pgpartman/pg_partman`][repo] (version 5.4.3, July 2025
-[release][pg-partman-changelog]). Approximately 6,500 lines of
+The code is at [`pgpartman/pg_partman`][repo] (version 5.4.3, tagged
+March 2026 per the cached `git log --tags`; CHANGELOG entry at
+[CHANGELOG.md][pg-partman-changelog]). Approximately 6,500 lines of
 PL/pgSQL across `sql/functions/` and `sql/procedures/` (range
 from 6,400 to 6,700 across recent 5.x point releases as measured
 from the source by `find sql -name '*.sql' -exec wc -l {} +`[^bench]).
@@ -751,9 +752,9 @@ where the engineering happens.
 ---
 
 _Thanks to the `pg_partman` maintainers for keeping this thing alive.
-Most of the source dive in this post is from version 5.4.3 (July 2025);
-older versions differ in details (especially trigger-based partitioning
-in 4.x, removed in 5.0). Numbers here are derived from past benchmarks
+Most of the source dive in this post is from version 5.4.3 (tagged
+March 2026); older versions differ in details (especially trigger-based
+partitioning in 4.x, removed in 5.0). Numbers here are derived from past benchmarks
 on 1B-row time-series tables on a 1.5 GB/s NVMe host plus napkin math
 from the source — your mileage will vary; please share if it does._
 

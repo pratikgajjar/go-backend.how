@@ -407,8 +407,9 @@ type RingBuffer struct {
 }
 ```
 
-Five atomics, two channels, one concurrent map (`alphadose/haxmap`).
-No `sync.Mutex` anywhere on the data path.
+Four `atomic.Int64`s (`writeIdx`, `readIdx`, `lastSegIdx`,
+`nextSegSeq`), two channels (`segments`, `ackSeg`), one concurrent
+map (`alphadose/haxmap`). No `sync.Mutex` anywhere on the data path.
 
 ## Sizing and bounded memory
 
@@ -439,11 +440,12 @@ func (rb *RingBuffer) Add(event *model.CDCEvent) bool {
 }
 ```
 
-Five lines. One `Load`, one comparison, one slice write, one `Add`.
-The wraparound is `w % rb.size`. There's no compare-and-swap because
-there's only one writer goroutine (the receiver loop in `Start`).
-Reads at `w%rb.size` are safe because workers only read indices below
-`writeIdx` — and `writeIdx.Add(1)` is the publication barrier.
+Five lines. Two `Load`s (`writeIdx` + `readIdx`), one subtract +
+compare, one slice write, one `Add`. The wraparound is `w % rb.size`.
+There's no compare-and-swap because there's only one writer goroutine
+(the receiver loop in `Start`). Reads at `w%rb.size` are safe because
+workers only read indices below `writeIdx` — and `writeIdx.Add(1)` is
+the publication barrier.
 
 If `Add` returns false, the producer is full. The receiver doesn't
 drop. It backs off:
