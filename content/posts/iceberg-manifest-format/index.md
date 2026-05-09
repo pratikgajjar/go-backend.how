@@ -247,8 +247,8 @@ fields that matter most for query planning are:
 | 108      | `column_sizes`      | `map<int,long>`| Column-id → bytes-on-disk; used by cost model  |
 | 109      | `value_counts`      | `map<int,long>`| Column-id → values (incl. null/NaN)            |
 | 110      | `null_value_counts` | `map<int,long>`| Used for `IS NULL` predicate skip              |
-| 125      | `lower_bounds`      | `map<int,bin>` | The *single-row min* for each column           |
-| 128      | `upper_bounds`      | `map<int,bin>` | The *single-row max* for each column           |
+| 125      | `lower_bounds`      | `map<int,bin>` | Per-file min for each column (binary-encoded)   |
+| 128      | `upper_bounds`      | `map<int,bin>` | Per-file max for each column (binary-encoded)   |
 | 132      | `split_offsets`     | `list<long>`   | Parquet row-group offsets — sub-file pruning   |
 | 134      | `content`           | `int`          | 0=DATA, 1=POSITION DELETES, 2=EQUALITY DELETES |
 
