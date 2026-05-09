@@ -335,18 +335,29 @@ smp_message_queue::lf_queue::maybe_wakeup() {
 
 The optimisation hidden in that comment is a beautiful piece of systems
 work. A naive design would issue an MFENCE (full memory barrier) on
-every push to make sure the receiver sees the new tail. MFENCE on
-modern x86 takes ~30 cycles in the best case, more under contention. So
-instead, Seastar issues a *zero-cost* compiler-only fence on every
-push, and once per reactor poll it issues a single
-`membarrier(MEMBARRIER_CMD_PRIVATE_EXPEDITED)` syscall — a "system-wide
-barrier" — that flushes pending writes on *all* cores simultaneously.
+every push so the receiver sees the new tail; on modern x86 MFENCE costs
+~30 cycles uncontended, more when multiple cores compete. Instead,
+Seastar splits the cost between the busy and the sleeping cases:
 
-The cost of `MFENCE × N pushes` becomes the cost of `1 membarrier × M
-polls`. On a hot reactor, M is small (the reactor polls millions of
-times per second but each `membarrier` covers a whole batch of work
-since the previous one). The amortised barrier cost per message drops
-to nanoseconds.
+- **Busy producer**: only `std::atomic_signal_fence(seq_cst)` (a
+  compiler-only fence, zero CPU cost) plus a relaxed load on the
+  receiver's `_sleeping` flag in `reactor::wakeup`. If the receiver is
+  awake, the producer returns immediately — no syscall, no barrier.
+- **Sleeping receiver**: before parking on `epoll_wait` /
+  `io_uring_enter`, the receiver calls `systemwide_memory_barrier()`
+  (`src/core/systemwide_memory_barrier.cc`), which on Linux ≥ 4.14
+  becomes a single `syscall(SYS_membarrier,
+  MEMBARRIER_CMD_PRIVATE_EXPEDITED, 0)`. That syscall forces *every*
+  core to do a full barrier, so the receiver knows it isn't about to
+  sleep on a queue that just had a producer push and didn't yet
+  publish.
+- **Sleeping receiver, woken**: the producer's relaxed load sees
+  `_sleeping=true`, so it does one `write(eventfd, 1)` to wake the
+  receiver. One syscall per dormant-→-active transition, not per push.
+
+The net: zero coordination cost on every busy-producer push, one
+amortised barrier when the receiver chooses to sleep. The kernel sees
+the queues only at sleep boundaries.
 
 ## 5. Drain on the receiver
 
