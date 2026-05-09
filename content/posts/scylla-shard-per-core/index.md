@@ -542,7 +542,7 @@ func benchShardedNoSync(workers, iters int) (int64, time.Duration) {
 ```
 
 (The full bench has three more variants — `shared_mutex`,
-`sharded_falseshare`, and `channel_hop` — built the same way: each
+sharded_falseshare, and channel_hop — built the same way: each
 spawns four goroutines, each runs 5,000,000 iterations of the variant's
 inner loop, and the wall-clock is the median of three runs. Rather than
 bloat the post with all five, the [Stretch section
