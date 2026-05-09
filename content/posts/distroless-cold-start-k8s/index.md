@@ -435,7 +435,7 @@ for n in scratch static wolfi-base; do
 done
 ```
 
-It produces the boot-time table above on any arm64 Mac with podman or Docker Desktop. On Linux x86 you'll see the runtime overhead drop from ~200 ms (podman-machine-on-mac) to ~30 ms (native cgroups), but the *relative* ordering of the three bases stays inside the noise band.
+It produces the boot-time table above on any arm64 Mac with podman or Docker Desktop. On native Linux x86 nodes the runtime overhead is typically much lower than the ~200 ms we measured here (no VM hop, native overlayfs and cgroups), but the *relative* ordering of the three bases stays inside the noise band.
 
 # What this system is bad at
 

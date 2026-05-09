@@ -61,7 +61,8 @@ node in the graph is one heap-shaped tuple with a vector payload and
 a sidecar tuple of neighbour pointers (Postgres `ItemPointerData`s,
 6 bytes each). To traverse a neighbour you dereference a TID and
 read another buffer. The hot path is bounded by random buffer reads,
-SIMD inner-product over a few hundred floats, and a small pairing
+SIMD distance computation over a few hundred floats (L2, inner
+product, or cosine — operator-class dispatched), and a small pairing
 heap.
 
 The system is doing approximate nearest-neighbour search at memory

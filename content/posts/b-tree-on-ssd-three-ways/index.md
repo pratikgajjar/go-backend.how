@@ -1,5 +1,5 @@
 +++
-title = "🐳 LMDB vs Pebble vs BoltDB — B-Tree-on-SSD, Three Ways"
+title = "🐳 LMDB vs Pebble vs BoltDB - B-Tree-on-SSD, Three Ways"
 description = "Three embedded KV stores, one workload, one machine. LMDB does 1.9M writes/sec in 11K LOC of C. Pebble's 160K LOC of Go shrinks the file 4×. BoltDB lands in between and stays simple."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
@@ -14,7 +14,7 @@ math = false
 
 > Three engines, one workload, one laptop. LMDB measured 26× faster
 > writes than BoltDB and 13× faster reads than Pebble (see
-> [section 5](#5-real-numbers---same-machine-same-workload)) — but
+> [section 5](#5-real-numbers---same-machine-same-workload)) - but
 > Pebble's file is 4.8× smaller. None of the three dominates all three
 > axes. The shape of the tradeoff is the post.
 
@@ -378,7 +378,7 @@ That's 1 skiplist probe + N bloom probes + at most M block decompresses
 where M is the number of levels the key actually lives in. Pebble's
 out-of-the-box default is actually
 [`NoFilterPolicy`](https://github.com/cockroachdb/pebble/blob/master/options.go#L68)
-(no bloom at any level) — CockroachDB and other production users opt
+(no bloom at any level) - CockroachDB and other production users opt
 in via [`bloom.FilterPolicy`](https://github.com/cockroachdb/pebble/blob/master/sstable/tablefilters/bloom/bloom.go)
 typically at 10 bits/key, which gives ~1% false-positive rate. Under
 that configuration a 5-level LSM decompresses ~1.05 blocks per Get
@@ -450,12 +450,18 @@ collapses to under 4× when bbolt is loaded under
 single-writer ceiling is real either way. Run more cores at LMDB and
 you don't get more writes; LMDB only allows one in-flight writer.
 
-The Pebble read path is dominated by 1 memtable probe + ~5 bloom
-checks (`L0` plus L1..L4 active given a 20 MB on-disk size means most
-data ended up at L0/L1 after the single Flush) + ~1 block fetch.
-Napkin: `5 × ~200 ns/bloom + 1 × ~3 μs/decompress ≈ 4 μs ≈ measured[^bench]`
-for the p50. Once the workload spans more levels, the p99 grows
-linearly with `L`. That is the shape of LSM read amp.
+The Pebble read path on this benchmark is *more* expensive than the
+napkin sketch above suggests, because my `&pebble.Options{}` left
+`NoFilterPolicy` in place. With no bloom, every level's index block
+must be consulted. After Flush, the 40 MiB of payload spread across
+~10 memtable flushes (each at the 4-MiB default) → ~3 sstables left
+in L0 plus a partial L1 by the time reads start. So a Get touches
+~5 sstables; each touches index + (sometimes) data block from cache.
+Napkin: `5 × (~500 ns index-lookup + ~500 ns data-block) ≈ 5 µs ≈
+measured[^bench]` for the p50. Add a 10-bits/key bloom and the same
+load drops to ~1.05 block fetches per Get; under heavier data
+volume (multi-TB, 6+ levels), p99 grows linearly with the number of
+sstables visited. That is the shape of LSM read amp.
 
 ## 5.2 Where do the on-disk sizes come from?
 
@@ -465,7 +471,7 @@ MiB. Payload is `200,000 × (8-byte key + 200-byte value + ~16-byte
 leafPageElement overhead) = 44,800,000 bytes ≈ 42.7 MiB`.
 
 For LMDB: with 4-KiB pages and `FillPercent ≈ 0.95` (LMDB default for
-sequential inserts) you'd expect `42.7 / 0.95 ≈ 44.9 MiB` — within 7%
+sequential inserts) you'd expect `42.7 / 0.95 ≈ 44.9 MiB` - within 7%
 of the measured 42 MiB (the freelist hasn't allocated tail slack yet
 at this scale). The math is in
 [`mdb_page_alloc`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L2501).
@@ -480,7 +486,7 @@ at [`db.go:mmapSize`](https://github.com/etcd-io/bbolt/blob/main/db.go#L519)
 inserts and the file shrinks to ~45 MiB**, matching LMDB.
 
 For Pebble: `42.7 MiB` of payload, but values are constant `0xAB` ×
-200 bytes. snappy compresses that to a few percent — Pebble's
+200 bytes. snappy compresses that to a few percent - Pebble's
 default block size is 4 KiB and `Compression = SnappyCompression`
 ([sstable/options.go:147](https://github.com/cockroachdb/pebble/blob/master/sstable/options.go#L147),
 [sstable/block/compression.go:92](https://github.com/cockroachdb/pebble/blob/master/sstable/block/compression.go#L92)),
@@ -507,7 +513,7 @@ For the bbolt benchmark with `N=200,000` and `batch=1000`, the math
 predicts: `fsync = N/batch = 200`; `pwrite ≈ 200` (one per
 db.Update commit); `mmap ≈ log2(96 MiB / 16 KiB) ≈ 13` remap-on-grow
 calls plus a few for open/close (the file grows by powers of two from
-16 KiB until 1 GiB — see [bbolt's mmapSize](https://github.com/etcd-io/bbolt/blob/main/db.go#L519)).
+16 KiB until 1 GiB - see [bbolt's mmapSize](https://github.com/etcd-io/bbolt/blob/main/db.go#L519)).
 Pebble's syscall profile is dominated by `write` (the WAL) plus
 `pread` (block-cache misses on read); LMDB's single big tx fires one
 `pwrite` per dirty page (the new pages) plus one `pwrite` for the
@@ -547,14 +553,14 @@ file *grows*. The
 mechanism gives some spill-to-disk relief inside long writers, but
 it doesn't help long readers. Etcd ships
 [`go.etcd.io/bbolt`](https://github.com/etcd-io/etcd/blob/main/go.mod)
-as a direct dependency for tooling reasons — same single-writer
+as a direct dependency for tooling reasons - same single-writer
 constraint shape, easier ops in the Go ecosystem.
 
 ## 6.2 BoltDB - write throughput, file size, no compression
 
 The 73 K ops/s write number is at *bulk-load* speed (batched, no
 contention). Single-record `db.Update`s with sync collapse to
-**104 ops/s** on the same machine — measured with a tight 5,000-op
+**104 ops/s** on the same machine - measured with a tight 5,000-op
 loop, one fsync per tx, ≈ 9.6 ms per APFS commit.[^bench] BoltDB
 inherits whatever fsync latency the filesystem gives you; on a
 journaling FS like ext4 the same loop will hit a few thousand ops/s. BoltDB has [`db.Batch`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1126)

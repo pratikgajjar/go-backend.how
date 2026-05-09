@@ -70,12 +70,16 @@ The CPU tax is bigger. Postgres' executor is a Volcano iterator: every
 operator implements `next()` and pulls one tuple from its child. A
 `Sort → HashAggregate → SeqScan` plan is three function calls per
 tuple, each through a function pointer. With 60 million rows, that is
-`60_000_000 × 3 = 180_000_000` indirect calls. On modern Apple
-Silicon a mispredicted indirect call benchmarks at roughly ten
-nanoseconds (the Firestorm front-end recovery cost, observed in the
-[Anandtech M1 microbench](https://www.anandtech.com/show/16252/mac-mini-apple-m1-tested/3)),
-so `180000000 × 10 = 1800000000` ns ≈ 1.8 seconds of
-branch-prediction tax alone, before adding the actual arithmetic.
+`60_000_000 × 3 = 180_000_000` indirect calls. On modern
+Apple Silicon a mispredicted indirect call costs roughly five
+nanoseconds end-to-end (Firestorm/Avalanche/Everest cores quote a
+13-cycle branch-mispredict penalty per
+[7-cpu.com's M1 microbenchmark](https://www.7-cpu.com/cpu/Apple_M1.html);
+at the M3 Max P-core's 4.05 GHz that is `13 / 4.05 ≈ 3.2` ns of
+branch recovery, plus instruction-fetch refill and the dependent
+load on the function pointer, totalling ~5 ns), so `180000000 × 5 =
+900000000` ns ≈ 900 ms of dispatch tax alone, before any actual
+arithmetic.
 
 DuckDB rejects that loop. It packs each column into a `Vector`
 holding 2,048 contiguous values, hands the whole vector to the next
