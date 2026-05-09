@@ -47,7 +47,7 @@ query, same hardware, with the index turned off and Postgres falling
 back to a sequential scan with [`vector_l2_ops`](https://github.com/pgvector/pgvector/blob/v0.8.2/src/vector.c#L573)
 returns an exact answer in **5,440 µs**.
 
-That is **14× faster** for **5.4 % less recall**, observed first-hand
+That is **14× faster** for **5.4 % less recall**, measured first-hand
 on an Apple M4 Pro inside a Linux VM[^bench]. The arithmetic is
 `5440 / 382 ≈ 14.24`, and "recall@10 = 94.6 %" means out of every
 10 true neighbours returned by the exhaustive scan, the index agreed
@@ -441,9 +441,9 @@ the distance code with manual intrinsics.
 For a `vector(128)` query, one distance call is 128 FMAs and a
 horizontal sum. On a 3 GHz core with AVX2 FMA (8 floats per FMA, 1
 FMA issued per cycle, ~4-cycle latency pipelined) the multiply
-phase is `128 / 8 = 16` cycles plus pipeline drain, totalling about
-7 ns of arithmetic. ARM NEON's 4-wide FMLA needs roughly
-`128 / 4 = 32` cycles plus a similar drain, about 12 ns. The total
+phase is `128 / 8 = 16` cycles plus pipeline drain, ≈ 7 ns of
+arithmetic. ARM NEON's 4-wide FMLA needs `128 / 4 = 32` cycles plus
+a similar drain, ≈ 12 ns. The total
 query time of 382 µs at default `ef_search` (see the table below) is
 dominated by the buffer-read random walk through the graph, not the
 math. `EXPLAIN (BUFFERS, ANALYZE)` on this post's benchmark shows
@@ -510,7 +510,7 @@ rolling above level 8 with `M = 16` is `1/16⁸ ≈ 5.4 × 10⁻¹⁰` (computed
 from the geometric tail). The `255` cap is to ensure `level` fits in a
 `uint8`.
 
-# 5. Real numbers — measured
+# 5. Real numbers from a 50,000-vector benchmark
 
 I built the index against pgvector v0.8.2 inside a Linux Podman VM
 on an Apple M4 Pro Mac mini (10 cores, 24 GB RAM). The container is
