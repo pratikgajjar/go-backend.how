@@ -472,20 +472,20 @@ with open(manifest_path, "rb") as f:
         print(json.dumps(entry, indent=2, default=str))
 ```
 
-On a laptop that takes about a second end to end, mostly because
-PyIceberg lazily creates the SQLite catalog. The interesting output
-is the second print:
+On a laptop that runs in about a second end to end (most of which
+is PyIceberg lazily creating the SQLite catalog). I ran this and
+the manifest list row decodes to:
 
 ```text
 manifest list row (decoded Avro):
 {
-  "manifest_path": "file:///tmp/iceberg/warehouse/demo.db/tx/metadata/<uuid>.avro",
-  "manifest_length": 6481,
+  "manifest_path": "file:///tmp/iceberg/warehouse/demo/tx/metadata/<uuid>-m0.avro",
+  "manifest_length": 4285,
   "partition_spec_id": 0,
   "content": 0,
   "sequence_number": 1,
   "min_sequence_number": 1,
-  "added_snapshot_id": 5174213900384301842,
+  "added_snapshot_id": 5104645832028282283,
   "added_files_count": 1,
   "existing_files_count": 0,
   "deleted_files_count": 0,
@@ -497,20 +497,21 @@ manifest list row (decoded Avro):
 }
 ```
 
-A two-row insert produces a manifest a few KB long; on a recent run
-the `manifest_length` field reported `6481` bytes. From the manifest
-entry print we see one record holding the column bounds:
+A two-row insert produces a 4,285-byte manifest (measured on this
+laptop). From the manifest entry print, the column bounds are:
 
 ```text
 "lower_bounds":  [{"key":1,"value": b"BD"},
-                  {"key":2,"value": b"\x32\x00\x00\x00\x00\x00\x00\x00"}],
+                  {"key":2,"value": b"2\x00\x00\x00\x00\x00\x00\x00"}],
 "upper_bounds":  [{"key":1,"value": b"IN"},
-                  {"key":2,"value": b"\x64\x00\x00\x00\x00\x00\x00\x00"}]
+                  {"key":2,"value": b"d\x00\x00\x00\x00\x00\x00\x00"}]
 ```
 
-The bounds for the `amount` column are little-endian int64s: `0x32`
-is decimal `50` (the BD row) and `0x64` is decimal `100` (the IN
-row). Single-value encoding rules for these bytes are documented in
+The bounds for the `amount` column are little-endian int64s.
+The byte `0x32` (ASCII "2") encodes decimal `50` (the BD row)
+and `0x64` (ASCII "d") encodes decimal `100` (the IN row);
+both followed by 7 zero bytes for the unused high-order int64
+positions. Single-value encoding rules are documented in
 [Appendix D of the spec](https://iceberg.apache.org/spec/#appendix-d-single-value-serialization)
 — `int` and `long` are little-endian two's complement; the
 `string` bound is encoded as raw UTF-8 of the truncated value (no

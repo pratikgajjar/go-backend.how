@@ -127,7 +127,7 @@ shared_buffers (8 KB pages)
 ┌──────────────────────────────────────────────────────────────┐
 │ block 0  HnswMetaPageData                                    │
 │   magic 0xA953A953 │ version │ dimensions │ m │ efConstr.    │
-│   entryBlkno  ─────────────────────────┐ entryLevel          │
+│   (entryBlkno, entryOffno) ────────────┐ entryLevel          │
 │   insertPage  ───────────────────┐     │                     │
 ├──────────────────────────────────┼─────┼─────────────────────┤
 │ block 1+ element/neighbor tuples on the same MAIN_FORKNUM    │
@@ -139,7 +139,7 @@ shared_buffers (8 KB pages)
 │   │ Vector data         │  │     │                           │
 │   └─────────────────────┘  │     │                           │
 │   ┌─ HnswNeighborTuple ─┐  │     │                           │
-│   │ type=NEIGHBOR       │◄─┘     │                           │
+│   │ type=NEIGHBOR ver   │◄─┘     │                           │
 │   │ count               │        │                           │
 │   │ indextids[(L+2)·M]  │        │                           │
 │   └─────────────────────┘        │                           │

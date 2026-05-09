@@ -449,7 +449,7 @@ Pick a base, accept the holes:
 
 **Distroless breaks anything that needs a shell**. `kubectl exec -- sh` returns `OCI runtime exec failed: exec failed: unable to start container process: exec: "sh": executable file not found in $PATH`. You can `kubectl debug --image=busybox` to share namespaces with the pod, but that adds a layer of indirection your incident-response runbook needs to teach. Distroless also pins specific versions of zoneinfo / CAs at image-build time — the first day someone needs to fix CA-cert pinning urgently (e.g., a new Let's Encrypt root rolls out), the SLA window for pushing a new image is "however long Google's distroless rebuild takes." You don't `apk upgrade ca-certificates` on distroless.
 
-**Wolfi breaks the "minimal attack surface" argument**. You shipped glibc, libssl, busybox, ldconfig. Each is a CVE source. Chainguard's [build pipeline][cgrpipe] rebuilds and re-signs every package, but you've still increased the surface area by 6–10× (5.77 MB / 0.79 MB = 7.3× by bytes; counting installed binaries the ratio is closer to 10×). PCI-DSS auditors notice. The benefit is that when a CVE drops at midnight you can `apk upgrade openssl3` and rebuild from your CI in seconds instead of waiting for a base-image refresh upstream. That's a real ops-velocity win that scratch and distroless don't give you.
+**Wolfi breaks the "minimal attack surface" argument**. You shipped glibc, libssl, busybox, ldconfig. Each is a CVE source. Chainguard's [build pipeline][cgrpipe] rebuilds and re-signs every package, but you've still increased the surface area by 6–10× (5.77 MB / 0.79 MB = 7.3× by bytes; counting installed binaries the ratio is closer to 10×). PCI-DSS auditors notice. The benefit is that when a CVE drops at midnight you can `apk upgrade openssl` (the Wolfi package is named `openssl`, currently shipping at `openssl-3.6.2-r5`) and rebuild from your CI in seconds instead of waiting for a base-image refresh upstream. That's a real ops-velocity win that scratch and distroless don't give you.
 
 [cgrpipe]: https://github.com/chainguard-dev/melange
 
@@ -484,7 +484,7 @@ Three changes I'd make to a real platform team's container baseline.
 | `kubectl exec -- sh` works            | ❌      | ❌      | ✅         |
 | `tls.Dial` works without code change  | ❌¹     | ✅      | ✅         |
 | `time.LoadLocation("Asia/Kolkata")`   | ❌²     | ✅      | ✅         |
-| `apk upgrade libssl` from CI          | ❌      | ❌      | ✅         |
+| `apk upgrade openssl` from CI         | ❌      | ❌      | ✅         |
 | Daily-rebuilt CVE-fixed base image    | ❌      | partial³ | ✅         |
 | SBOM shipped in image                 | ❌      | ❌      | ✅         |
 | Attack surface (rough)                | min     | min++   | min × 8    |

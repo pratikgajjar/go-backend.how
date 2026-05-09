@@ -681,12 +681,16 @@ is most damaging.
 ## Pre-Vote is opt-in
 
 `PreVote: true` is not the default in
-[`Config`](https://github.com/etcd-io/raft/blob/main/raft.go). etcd
-itself enabled it cluster-wide many years ago, but library users have to
-opt in. New CockroachDB ranges, for example, default to Pre-Vote, but
-older code paths that constructed Configs without setting it
-inadvertently shipped without the protection. Defaults matter; this one
-arguably should have flipped years ago.
+[`Config`](https://github.com/etcd-io/raft/blob/main/raft.go) — the
+zero value of `bool` is `false`, and `Config.PreVote` is just a
+field assignment in `newRaft`. Library users have to remember to set
+it. Any code path that constructs a `Config` without it inadvertently
+ships without the disruptive-server protection. Defaults matter; this
+one arguably should have flipped years ago. The
+[discussion thread on
+PR #70](https://github.com/etcd-io/raft/pull/70) (the data-driven
+PreVote/CheckQuorum tests) makes the case for treating these together
+as the cluster-correctness pair.
 
 # What I'd build differently
 

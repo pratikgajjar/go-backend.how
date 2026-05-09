@@ -711,9 +711,10 @@ One writer per field, no mutex needed.
 optimizes for read-heavy "many readers, one writer" patterns and uses
 a read-mostly atomic snapshot under the hood. Our pattern is
 **balanced**: every segment is `Set` once, `Get` zero-or-many times by
-the walker, then `Del`. `haxmap` is a striped hashmap with per-bucket
-spinlocks and reports `~3×` over `sync.Map` on this access pattern in
-its [README benchmarks](https://github.com/alphadose/haxmap#benchmarks)
+the walker, then `Del`. `haxmap` is a lock-free, CAS-based hashmap
+([source](https://github.com/alphadose/haxmap)) and reports `~3×`
+over `sync.Map` on this access pattern in its
+[README benchmarks](https://github.com/alphadose/haxmap#benchmarks)
 (don't take a README at face value; the gap is real but
 workload-dependent — derive your own with `go test -bench`).
 
