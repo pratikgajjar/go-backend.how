@@ -611,10 +611,12 @@ joined on their distribution columns with equal operator`,
 `multi_join_order.c` line 308).
 
 **Cross-shard transactions.** Citus supports 2PC for multi-shard
-modifications, but the price is real — every write touches the
-distributed transaction recovery infrastructure (the
-`pg_dist_transaction` catalog), and coordinator failures can leave
-shards in an inconsistent state until recovery runs. The git log
+modifications, but the price is real — once a transaction touches more
+than one shard, Citus runs the prepare/commit dance and writes to the
+`pg_dist_transaction` catalog (`LogTransactionRecord` in
+`transaction_recovery.c`), and coordinator failures can leave prepared
+transactions on workers that need to be cleaned up by the recovery
+worker. The git log
 includes commits like `d3330fdfe` ("Shard move in block_writes mode
 fails with idle_in_transaction_session_timeout on metadata workers
 (#8484)") that hint at the type of edge cases that show up in this
