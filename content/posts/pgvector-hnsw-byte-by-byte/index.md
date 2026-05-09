@@ -702,15 +702,17 @@ a filter-aware index. There is active research on
 properly; pgvector handles it pragmatically.
 
 **Deletes don't shrink the graph until vacuum runs, and vacuum's HNSW
-path is expensive.** When you delete a row, the corresponding heap
-TIDs are tombstoned in the element tuple. The element stays in the
-graph as a "ghost" that contributes neighbour structure but
-participates in `heaptidsLength = 0` filtering at scan time. Vacuum
-walks the entire index, removes ghosts, and re-knits the neighbours
-of every node that pointed at a deleted ghost. On a million-row
-index this is minutes of `AccessExclusiveLock` on the page being
-repaired. If your workload is delete-heavy, this is the part you
-will feel.
+path is heavy.** When you delete a row, the corresponding heap TID
+is tombstoned in the element tuple. The element stays in the graph
+as a "ghost" that contributes neighbour structure but is filtered at
+scan time when `heaptidsLength` reaches 0. Vacuum walks the entire
+index, removes ghosts, and re-knits the neighbours of every node
+that pointed at a deleted ghost. The repair takes
+`BUFFER_LOCK_EXCLUSIVE` (and `LockBufferForCleanup` in places \u2014 see
+[hnswvacuum.c L484](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnswvacuum.c#L484))
+on every neighbour-tuple page it edits, blocking concurrent reads on
+those pages for the duration. If your workload is delete-heavy, this
+is the part you will feel.
 
 **MVCC on neighbour structure is eventual.** I mentioned the `version`
 check earlier — when vacuum repairs a neighbour, it bumps the version
