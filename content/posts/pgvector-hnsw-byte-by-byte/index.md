@@ -786,8 +786,9 @@ the difference: ["[HNSW] has better query performance than IVFFlat
 (in terms of speed-recall tradeoff), but has slower build times and
 uses more memory"](https://github.com/pgvector/pgvector#hnsw). On a
 dataset where HNSW's recall curve plateaus early (extremely clustered
-data, our benchmark above), IVFFlat with `probes = √N` is competitive
-and builds faster. A meta-extension that picked between the two based
+data, our benchmark above), IVFFlat with the README's recommended
+[`lists ≈ rows / 1000` and `probes ≈ √lists`](https://github.com/pgvector/pgvector#ivfflat)
+is competitive and builds faster. A meta-extension that picked between the two based
 on a quick training sample, or even let you write
 `CREATE INDEX ... USING ann (...)` and chose at build time, would
 remove a real foot-gun from teams new to vector search.
