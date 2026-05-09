@@ -390,7 +390,7 @@ btree leaf ~24 B/entry; at 11.1M rows that's ~266 MB of leaf data;
 plus internal pages and fanout overhead, call it 1.7 GB observed in
 past datasets). A BRIN on
 `created_at` per child is ~80 KB (one summary tuple per
-[BRIN pages-per-range](https://www.postgresql.org/docs/current/brin-intro.html)
+[BRIN pages-per-range](https://www.postgresql.org/docs/current/brin.html#BRIN-INTRO)
 heap pages; default 128; 11 GB / 8 KB / 128 = ~10,750
 ranges × ~50 B/range = 540 KB, observed 60–100 KB on production
 systems with smaller per-range tuples).
@@ -588,7 +588,7 @@ catch the `now()`-`STABLE` footgun and the missing partitionwise-join
 trap in five minutes per partitioned table. Cost: bigger, but worth
 it — this is the type of regression that nobody catches in code review.
 
-**d. Variable BRIN range per child.** [BRIN's pages-per-range](https://www.postgresql.org/docs/current/brin-intro.html)
+**d. Variable BRIN range per child.** [BRIN's pages-per-range](https://www.postgresql.org/docs/current/brin.html#BRIN-INTRO)
 is set at index creation. `pg_partman` could parameterize it on the
 template table per child, choosing a smaller value for the most
 recent children (where queries are point-in-time and need finer

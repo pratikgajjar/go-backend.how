@@ -60,7 +60,8 @@ def word_count(body: str) -> int:
     return len(re.findall(r"\b[\w'-]+\b", body_stripped))
 
 
-def wordcount_defects(words: int, lo: int = 3000, hi: int = 5500) -> int:
+def wordcount_defects(words: int, lo: int = 3000, hi: int = 5000) -> int:
+    """Brief: 3000–5000 prose words. Each 500-word excess/deficit is 1 defect."""
     if words < lo:
         return (lo - words) // 500
     if words > hi:
@@ -708,6 +709,30 @@ CLAIM_RE = re.compile(
     r"\b(measured|observed|benchmarked|profiled|empirically)\b",
     re.IGNORECASE,
 )
+
+
+HTTP_RE = re.compile(r"\bhttp://(?!localhost|127\.0\.0\.1|0\.0\.0\.0)[^\s\)\>]+")
+
+
+def http_not_https_defects(body: str) -> int:
+    """External http:// URLs should be https:// (except local dev addresses)."""
+    return len(HTTP_RE.findall(body))
+
+
+def heading_hierarchy_defects(body: str) -> int:
+    """h1 → h2 → h3 should not skip levels (no h1 followed directly by h3)."""
+    n = 0
+    prev = 0
+    for m in re.finditer(r"^(#{1,6})\s", body, flags=re.MULTILINE):
+        lvl = len(m.group(1))
+        if prev and lvl > prev + 1:
+            n += 1
+            print(
+                f"DEBUG heading_skip: jumped from h{prev} to h{lvl} at offset {m.start()}",
+                file=sys.stderr,
+            )
+        prev = lvl
+    return n
 
 
 def claim_audit_defects(body: str) -> int:

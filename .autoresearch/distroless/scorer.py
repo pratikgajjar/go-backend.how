@@ -226,7 +226,10 @@ PLACEHOLDER_URL_RE = re.compile(
 
 
 def _strip_code_blocks(body: str) -> str:
-    return re.sub(r"```[^`]*```", "", body, flags=re.DOTALL)
+    # Non-greedy fence match because Go raw-string literals can contain
+    # backticks inside a code block (e.g. `fmt.Fprintf(w, ` + backtick + ...).
+    # `[^`]*` would terminate prematurely; `.*?` with DOTALL is the right tool.
+    return re.sub(r"```.*?```", "", body, flags=re.DOTALL)
 
 
 def placeholder_url_defects(body: str) -> int:

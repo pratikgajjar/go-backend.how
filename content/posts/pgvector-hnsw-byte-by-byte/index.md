@@ -12,11 +12,11 @@ featured = false
 math = false
 +++
 
-> A 1.4 MB shared object turns Postgres — a system that has spent
-> twenty-five years optimising B-trees over rows — into a vector
-> database that beats brute force by an order of magnitude. The
-> algorithmic core fits in 800 lines of C that mostly manipulates
-> 8 KB pages — measured below.
+> A 1.0 MB shared object (`vector.so` is 1,015,584 bytes on Postgres
+> 15) turns Postgres — a system that has spent twenty-five years
+> optimising B-trees over rows — into a vector database that beats
+> brute force by an order of magnitude. The algorithmic core fits in
+> 800 lines of C that mostly manipulates 8 KB pages — measured below.
 
 I keep meeting teams who treat [pgvector](https://github.com/pgvector/pgvector)
 as if it were an external service: "the vector store." It isn't. It's
@@ -437,12 +437,17 @@ the auto-vectorizer doesn't know how to use. That's the only place in
 the distance code with manual intrinsics.
 
 For a `vector(128)` query, one distance call is 128 FMAs and a
-horizontal sum. On a 3 GHz core that's ~85 ns of arithmetic. The 
-total query time of 382 µs at default `ef_search` (see numbers below) 
-is dominated by the buffer-read random walk through the graph, not the 
-math: each search touched roughly **40–80 buffers** of 8 KB each,
-which on a warmed-up `shared_buffers` is the cost of a few thousand
-L2 cache misses.
+horizontal sum. On a 3 GHz core with AVX2 FMA (8 floats per
+FMA, 1 FMA issued per cycle, ~4-cycle latency pipelined) that's
+`128 / 8 + 4 = 20` cycles of arithmetic, about 7 ns; on ARM NEON
+with 4-wide FMLA it's closer to `128 / 4 + 5 ≈ 37` cycles or 12 ns.
+The total query time of 382 µs at default `ef_search`
+(see the table below) is dominated by the buffer-read random walk
+through the graph, not the math. `EXPLAIN (BUFFERS, ANALYZE)` on
+our benchmark shows each search at `ef_search = 40` registers
+528 shared-buffer hits — a measured `528 × 8 = 4,224` KB of cache
+touch — versus on the order of `528 × 7 = 3,696` ns of FMA work.
+At those numbers buffer-pool bookkeeping is the dominant cost.
 
 ## 4.4 Random levels: where 1/ln(M) comes from
 
@@ -560,13 +565,14 @@ latency. The default of 40 is well-chosen for `K = 10`; pushing past
 95 % recall costs over 8× the latency at the same `K`, as the table
 above shows.
 
-**Latency is dominated by the random walk, not the math.** At
-`ef_search = 80`, each query reads on the order of `(ef × M / 2) ≈
-640` neighbour candidates plus the layer descent. The math (one L2
-distance per candidate) is ~50 µs; the rest is buffer-read latency.
-That means the index is exquisitely sensitive to `shared_buffers`
-sizing — if your hot graph evicts to disk, every query takes the SSD
-hit on every neighbour.
+**Latency is dominated by the random walk, not the math.**
+`EXPLAIN (BUFFERS, ANALYZE)` measures `ef_search = 40` at 528
+shared-buffer hits per query, `ef_search = 80` at 635, and
+`ef_search = 320` at 943. The math (one L2 distance per candidate
+at 7–12 ns) totals well under 100 µs; the rest is buffer-pool
+bookkeeping and cache fetches. That means the index is sensitive to
+`shared_buffers` sizing — if your hot graph evicts to disk, every
+query takes the SSD hit on every neighbour.
 
 **The exact baseline is 5.4 ms for 50,000 rows.** That's
 108 ns per row, which is what you'd predict from a SIMD-accelerated
@@ -719,18 +725,18 @@ shrink the graph by ~20 % at the cost of CPU on every traversal.
 Probably not worth it — buffer reads, not bytes, dominate.
 
 **2. Separate the vector payload from the graph nodes.** pgvector
-stores the full vector in every element tuple. For an L2 search at
-default `ef_search = 40` with 7 layer hops, you read about 47
-tuples × 8 KB = 376 KB to answer one query, of which the actual
-vectors (47 × 512 B = 24 KB) are 6 % of the bytes read. The other
-352 KB is element header + neighbour arrays, but the graph
-interior of higher layers is 95 % element header. If you split the
-vector into its own relation and indexed it by `(blkno, offno)`, you
-could pack more graph nodes into each page and reduce the number of
-buffer reads per query. The cost is two relations and joining them at
-read time. Microsoft's
-[DiskANN](https://github.com/microsoft/DiskANN) and the FreshDiskANN
-paper describe this layout.
+stores the full vector in every element tuple. The L2-search
+benchmark above touched `528 × 8 = 4,224` KB of buffer per query
+at default `ef_search = 40` (`EXPLAIN BUFFERS`-measured), and a tuple
+size for `vector(128)` is dominated by `128 × 4 = 512` bytes of
+floats. If you split the vector into a side relation and kept only
+the TID and neighbour pointers in the graph node, you'd pack many
+more graph nodes per 8 KB page and the buffer-read working set
+shrinks roughly proportional to the savings. The cost is two
+relations and a join at read time. Microsoft's
+[DiskANN](https://github.com/microsoft/DiskANN) and the
+[FreshDiskANN paper](https://arxiv.org/abs/2105.09613) describe
+this layout in detail.
 
 **3. Cost-based fallback to IVFFlat.** Both index types ship in
 pgvector. There is no automatic chooser. On a dataset where

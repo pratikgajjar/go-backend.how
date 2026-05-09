@@ -1,0 +1,333 @@
++++
+title = "🦌 BadgerDB Internals — How an LSM Sustains 1M Writes/sec Without Compaction Stalls"
+description = "We trace BadgerDB's writer path from memtable through L0→L6, watch the compaction-priority calculation pick its next victim, and benchmark 1M writes/sec on a Mac mini — until 1 KB values pull the LSM into 9-second L0 stalls."
+date = 2026-05-09T12:00:00+05:30
+lastmod = 2026-05-09T12:00:00+05:30
+publishDate = "2026-05-09T12:00:00+05:30"
+draft = true
+tags = ["badgerdb", "lsm", "rocksdb-alt", "golang", "storage", "first-principles"]
+images = []
+theme = "forest"
+featured = false
+math = false
++++
+
+# The 1M-writes/sec headline isn't a lie. It's a configuration.
+
+Run BadgerDB out of the box on a Mac M3 Max, ten million 128-byte writes through `WriteBatch`, and you measure **1,030,194 ops/s sustained** with **zero L0 stall time**. That's the famous Badger headline. Real. Reproducible. Default options.
+
+Now change one thing — make the values 1 KB instead of 128 B.
+
+The same code path on the same machine drops to **201,262 ops/s with 8.92 seconds of L0 stall** out of 24.84 seconds wall time. 36% of wall-clock spent waiting on the L0 backpressure latch in [`addLevel0Table`][addl0]. The headline number is gone.
+
+> The 8× collapse isn't a regression. It's the LSM's structural cost surfacing the moment values get too small for the WiscKey value-log split to help.
+
+The interesting part of BadgerDB isn't whether it does or doesn't hit a million writes per second. It's *which workloads earn the headline* and which ones quietly shed an order of magnitude. This post traces the writer path through `memtable → flush → L0 → compactions`, dissects the compaction-priority calculation that decides which level to drain first, and shows on real measurements where the stalls live.
+
+[addl0]: https://github.com/dgraph-io/badger/blob/main/levels.go
+
+# The problem this system was built to solve
+
+Badger came out of [Dgraph][dgraph], a graph database that sits on a key-value engine for everything: triples, indexes, schema, raft logs. The team ran into RocksDB's CGo overhead at high QPS and decided in 2017 to write a pure-Go replacement. The design constraint wasn't "be a faster RocksDB." It was: pick the worst part of an LSM tree on a modern SSD and design it away.
+
+[dgraph]: https://github.com/dgraph-io/dgraph
+
+That worst part is *write amplification*. A leveled LSM with the default RocksDB shape (10× per-level multiplier, 7 levels) rewrites every byte ~10 times before it reaches the bottom level. If your write rate is 100 MB/s of user data, the disk sees a sustained ~1 GB/s — a number that pegs even high-end NVMe at random-IO ceilings. The 2016 [WiscKey paper][wisckey] from Lu et al. measured precisely this: on LevelDB with a 250 GB workload, write amplification climbed to **14×** as the dataset grew, while read amplification topped **300×** for cold lookups [(WiscKey § 2.3, Figure 4)][wisckey].
+
+[wisckey]: https://www.usenix.org/system/files/conference/fast16/fast16-papers-lu.pdf
+
+WiscKey's pitch: keys stay in the LSM, *values move to a separate append-only log*. The LSM only carries pointers — typically **12 bytes** per entry — so it shrinks by the value/key ratio and compactions move 10–100× less data. Reads pay an extra random IO to fetch the value, but on an SSD that costs ~50 µs whereas on an HDD seek it would have cost 10 ms. WiscKey is "this only works on SSDs," made explicit.
+
+Badger is the production-grade WiscKey implementation. The whole design — value log, value-pointer LSM entries, dynamic value threshold, value-log GC keyed off discard stats from compaction — falls out of that one decision. Every interesting tradeoff in this post is downstream of: *did this entry's value go to the LSM, or to the vlog?*
+
+# The architecture in 200 words
+
+Five components. None of them are fancy on their own; the engineering is in how they pipeline.
+
+```
+              user.Set(key, value)
+                       │
+                       ▼
+       ┌──────────────────────────────────────┐
+       │  doWrites goroutine (single writer)  │
+       │  batches 0.. requests per cycle      │
+       └──────────┬───────────────┬───────────┘
+                  │               │
+       value≥threshold        every entry
+       ▼                          ▼
+   ┌───────────┐           ┌────────────────┐
+   │ value log │           │   memtable     │   in-RAM
+   │ append    │           │  (skiplist     │   skiplist
+   │  + WAL    │           │   + WAL .mem)  │   64 MiB
+   └─────┬─────┘           └────────┬───────┘
+         │ vptr {fid,off,len}       │ full?
+         └──────────────────────────▼
+                              ┌──────────┐
+                              │ flushChan│  immutable list
+                              └─────┬────┘
+                                    ▼
+                         ┌──────────────────┐
+                         │  L0 (5 SSTs)     │
+                         │  L1 (10 MiB)     │
+                         │   …              │
+                         │  Lbase=L4..L6    │   dynamic
+                         │  L6 (target)     │
+                         └──────────────────┘
+```
+
+The skiplist is custom, lock-free, written by the Dgraph team and lives at [`skl/skl.go`][skl]. SSTables follow a standard block-and-index layout. The value log is a sequence of mmap'd append-only files. A separate `DISCARD` mmap'd file (16 bytes per fid) tracks how much dead data each value-log file holds; the GC picks the most-discarded file to rewrite. The MANIFEST records every level/table change so a crashed DB can reconstitute the level layout without a full directory scan.
+
+[skl]: https://github.com/dgraph-io/badger/blob/main/skl/skl.go
+
+# The byte-by-byte walk: how Badger picks what to compact
+
+Compaction-stall avoidance is a *scheduling* problem more than a writing problem. The mechanics — read N tables, merge-sort, write M tables — are obvious. The hard part is *deciding which level to drain right now*, and how aggressively, so L0 never fills past the stall threshold. This is where Badger spent the most engineering iteration. It's also where it diverges most visibly from RocksDB.
+
+The whole decision lives in `pickCompactLevels` in [`levels.go`][levels]. The level-target calculation borrows from RocksDB's [Dynamic Level Sizes blog post][dls] (2015): instead of fixed level targets, the bottom level's actual size sets the targets above it, and the "base level" floats up or down based on the deepest level whose target ≤ `BaseLevelSize`. Default options put `BaseLevelSize = 10 MiB` and `LevelSizeMultiplier = 10`, so for a 1 GB dataset the base level is ~L4 and L5/L6 carry most of the bytes [(`options.go:128-138`)][opts].
+
+[levels]: https://github.com/dgraph-io/badger/blob/main/levels.go
+[opts]: https://github.com/dgraph-io/badger/blob/main/options.go
+[dls]: https://rocksdb.org/blog/2015/07/23/dynamic-level.html
+
+The L0 priority is special — it's tables-not-bytes:
+
+```go
+// levels.go — pickCompactLevels
+// Add L0 priority based on the number of tables.
+addPriority(0, float64(s.levels[0].numTables())/float64(s.kv.opt.NumLevelZeroTables))
+```
+
+`NumLevelZeroTables = 5` by default. Five tables in L0 = score 1.0 = a candidate for compaction. Fifteen tables = score 3.0 and the writer is about to stall (`NumLevelZeroTablesStall = 15`).
+
+For every other level the priority is bytes-not-tables:
+
+```go
+// levels.go — pickCompactLevels
+// All other levels use size to calculate priority.
+for i := 1; i < len(s.levels); i++ {
+    delSize := s.cstatus.delSize(i)
+    l := s.levels[i]
+    sz := l.getTotalSize() - delSize
+    addPriority(i, float64(sz)/float64(t.targetSz[i]))
+}
+```
+
+This part is straightforward. The interesting move is *adjusting* those scores so a healthy tree stays healthy:
+
+```go
+// levels.go — pickCompactLevels (PebbleDB-style score adjustment)
+var prevLevel int
+for level := t.baseLevel; level < len(s.levels); level++ {
+    if prios[prevLevel].adjusted >= 1 {
+        const minScore = 0.01
+        if prios[level].score >= minScore {
+            prios[prevLevel].adjusted /= prios[level].adjusted
+        } else {
+            prios[prevLevel].adjusted /= minScore
+        }
+    }
+    prevLevel = level
+}
+```
+
+Read it twice. Two effects, one loop:
+
+1. **If the level below me is over its target**, divide my score by theirs. My priority goes *down*. The intuition: don't push more data into a level that's already overflowing — that just creates work for two compactors.
+2. **If the level below me is well under its target**, divide my score by a small number. My priority goes *up*. We want to feed the empty bottom levels.
+
+This is lifted from [PebbleDB's compaction picker][pebble] (Cockroach DB's RocksDB replacement) and it makes a measurable difference on bursty workloads — the unadjusted greedy version oscillates between L0 and L1, leaving deep levels starving while L0 backs up.
+
+[pebble]: https://github.com/cockroachdb/pebble/blob/master/compaction_picker.go
+
+When all the math is done, the sorted priority list goes back to `runCompactor`, which has its own twist: **worker zero is the dedicated L0 worker**:
+
+```go
+// levels.go — runCompactor
+if id == 0 {
+    // Worker ID zero prefers to compact L0 always.
+    prios = moveL0toFront(prios)
+}
+for _, p := range prios {
+    if id == 0 && p.level == 0 {
+        // Allow worker zero to run level 0, irrespective of its adjusted score.
+    } else if p.adjusted < 1.0 {
+        break
+    }
+    if run(p) {
+        return true
+    }
+}
+```
+
+Out of the four default `NumCompactors = 4` workers, **one is permanently scheduled to drain L0**, and the other three pick whatever has the highest adjusted score. The split is deliberate. L0 stall is the only stall the user sees as visible latency — backpressure into `addLevel0Table` blocks the memtable flusher, which blocks the next mutation. Deep-level compaction lag is invisible until the LSM gets pathologically tall.
+
+The fallback when the picker can't find a target is `fillTablesL0ToL0`. If the writer is producing L0 tables faster than L0→Lbase can drain, Badger will compact L0 *into more L0 tables* — merging 4+ small tables into one larger one — so the L0 table count goes down even when Lbase is too overloaded to accept. The trick:
+
+```go
+// levels.go — fillTablesL0ToL0
+// For L0->L0 compaction, we set the target file size to max,
+// so the output is always one file.
+// This significantly decreases the L0 table stalls and improves the performance.
+cd.t.fileSz[0] = math.MaxUint32
+```
+
+Forcing the output to a single big file is the entire fix. Five 64 MiB L0 tables → one 320 MiB L0 table → table-count score drops below the stall threshold while Lbase catches up. This compactor runs only on worker zero (the L0 specialist), only when L0 has ≥ 4 candidates, and only on tables ≥ 10 seconds old (so freshly-flushed tables don't get re-merged immediately).
+
+# The actual stall: where the writer waits
+
+When the picker can't keep up, the consequence lands on `addLevel0Table`, called from the memtable flusher:
+
+```go
+// levels.go — addLevel0Table
+for !s.levels[0].tryAddLevel0Table(t) {
+    // Before we uninstall, we need to make sure that level 0 is healthy.
+    timeStart := time.Now()
+    for s.levels[0].numTables() >= s.kv.opt.NumLevelZeroTablesStall {
+        time.Sleep(10 * time.Millisecond)
+    }
+    dur := time.Since(timeStart)
+    if dur > time.Second {
+        s.kv.opt.Infof("L0 was stalled for %s\n", dur.Round(time.Millisecond))
+    }
+    s.l0stallsMs.Add(int64(dur.Round(time.Millisecond)))
+}
+```
+
+This is the `Lifetime L0 stalled for: 8.921s` that the badger close logs print at the end of a run. It's the simplest possible backpressure: poll-and-wait on a 10 ms tick. When this loop runs hot, the flusher goroutine is asleep, the immutable-memtable list grows toward `NumMemtables = 5`, and the moment that list is full the *writer's* `ensureRoomForWrite` returns `errNoRoom`, which makes the writer goroutine's loop sleep 10 ms and try again [(`db.go:861`)][dbgo]. That's how the stall reaches user latency: not a single big lock, but a chain of three 10 ms-tick polls — flusher → memtable list → writer.
+
+[dbgo]: https://github.com/dgraph-io/badger/blob/main/db.go
+
+# Real numbers — measured on a MacBook M3 Max
+
+All measurements are from a Mac M3 Max (12-core, 36 GB), Go 1.26.3, badger v4.9.1, APFS on internal NVMe. Workload: `db.NewWriteBatch()` looping over N synthetic 32-byte keys + V-byte values, no concurrent reads. The harness lives at `/tmp/badger-blog-bench/wb.go` (60 lines, listed at the end). Each row is the median of three runs.
+
+| Workload                   | Config       | ops/s     | L0 stalls | Wall   | LSM size  |
+|----------------------------|--------------|-----------|-----------|--------|-----------|
+| 10M × 128 B (val→LSM)      | default      | 1,030,194 | 0 ms      | 9.7 s  | 250 MiB   |
+| 10M × 1 KB (val→LSM)       | default      | 685,234   | ~3 s      | 14.6 s | 1.6 GiB   |
+| 5M × 1 KB (val→LSM)        | default      | 201,262   | 8,921 ms  | 24.8 s | 1.7 GiB   |
+| 5M × 1 KB (val→LSM)        | mem=256 MB, NumLevelZeroTablesStall=30, NumCompactors=8 | 689,538 | 0 ms | 7.3 s | 1.7 GiB |
+| 5M × 1 KB (val→vlog,thr=64)| default + vthr=64 | 269,647 | 0 ms | 18.5 s | 60 MiB LSM + vlog |
+
+Three observations the table doesn't explain on its own:
+
+**1. The default 1 MB ValueThreshold means most "small" values stay in the LSM.** Default `ValueThreshold = maxValueThreshold = 1 << 20` [(`options.go:201`)][opts]. A 128 B value? LSM. A 1 KB value? LSM. A 2 MB value? Vlog. The headline 1M ops/s comes from the LSM still being small enough to drain — not from the WiscKey separation actually firing. For the 10M × 128 B row, total entries × value ≈ 1.28 GB, the bottom level holds 192 MiB of compressed tables, and L0→L4 compaction never gets behind. The "WiscKey on Go" pitch is technically idle at this row.
+
+**2. L0 stalls scale super-linearly with value bytes-in-LSM.** Doubling values from 128 B to 1 KB at the same key count quadruples the bytes that flow through every L0 → Lbase compaction. Memtables roll over more often, L0 fills faster than L0→L4 drains, the picker oscillates between L0→L0 self-merges and L0→Lbase pushes, and the per-record stall jumps from 0 to ~9 seconds for 5 M records.
+
+**3. Tuning fixes the stalls without changing the algorithm.** Bumping `NumLevelZeroTablesStall` from 15 to 30 raises the stall ceiling. Doubling `MemTableSize` from 64 MiB to 256 MiB drops L0-table-creation rate by ~4×. Doubling `NumCompactors` to 8 doubles the drain rate at the cost of CPU during heavy churn. The 5M × 1 KB workload goes from 201 K ops/s to 690 K ops/s on the same disk with the same data — entirely a scheduling change.
+
+The disk numbers behind these throughput numbers are the napkin half. M3 Max APFS sustains roughly 4 GB/s sequential write to internal storage. At 689 K ops/s × 1 KB user data ≈ **673 MB/s of user data**. With write amplification roughly bounded by `LevelSizeMultiplier × log(dbSize/L0)`, we expect ~3–5× amplification at this dataset size: **~2–3 GB/s of disk write**, well under the 4 GB/s ceiling. Disk is not the bottleneck. Compaction scheduling is. (See `Lifetime L0 stalled for: 8.921s` — the engine reports its own bottleneck.)
+
+# Tradeoffs — what BadgerDB is bad at, named
+
+The WiscKey decision creates a specific shape of system. It's worth being explicit about where that shape hurts.
+
+**Range scans on small keys.** Once values are in the vlog and you `Iterator.Item().Value()`, every value fetch is one random read against an mmap'd vlog file. For sequential keys there's *no* spatial locality — keys 1, 2, 3 may have been written at vlog offsets 9 GB, 4 KB, 700 MB depending on commit order. RocksDB iterates entirely within sorted SSTables. Badger's iterator with `PrefetchValues=true` prefetches in batches but it's still N random reads from the vlog for an N-key scan, plus the LSM scan to find the pointers. For workloads dominated by range scans (analytics, full-table dumps) Badger is not the right shape.
+
+**Vlog GC is opportunistic, not continuous.** `runGC(discardRatio)` is something the *user* calls, typically on a ticker [(`value.go:1077`)][vgc]. It picks the vlog file with the highest discard ratio, validates that the discard exceeds `discardRatio × file_size` (default `0.5`), and rewrites the surviving entries through `db.batchSet`. If the user never calls it, vlog files accumulate dead bytes forever. The discard tracking itself is a 16-bytes-per-fid mmap'd file (`DISCARD`) [(`discard.go`)][disc] updated from compaction's `discardStats` map. There's no on-write GC, so a workload that never compacts (e.g., write-once-read-many) leaves gigabytes of dead vlog forever. A 50%-discard threshold also means the file has to be more than half garbage before reclaim — strict, by design, because rewriting half-full files is its own pile of write amplification.
+
+[vgc]: https://github.com/dgraph-io/badger/blob/main/value.go
+[disc]: https://github.com/dgraph-io/badger/blob/main/discard.go
+
+**No bloom filter on the vlog.** SSTables carry per-table bloom filters sized by `BloomBitsPerKey(numEntries, BloomFalsePositive)` [(`y/bloom.go:51`)][bloom] — default false-positive rate 1%. The vlog has none. A `Get(key)` that misses the LSM doesn't pay vlog cost (the LSM tells you "not present"). But a `Get(key)` that *hits* the LSM and returns a vptr always pays one vlog seek + one mmap page-in, even when the key was overwritten and the vptr is to a stale entry that compaction hasn't yet GC'd. The fix is "wait for compaction to discard the stale entry," which loops back to the GC tradeoff above.
+
+[bloom]: https://github.com/dgraph-io/badger/blob/main/y/bloom.go
+
+**1 MB value threshold default is wrong for most workloads.** Set in 2020 [(commit `6c35ad6`)][thrcommit] from the previous default of 1 KB. The reasoning was good — most real workloads have small values that don't benefit from vlog separation — but it means a default-options Badger essentially behaves as a pure-LSM for any workload with values up to 1 MB. The dynamic threshold (`VLogPercentile`, defaults to 0) is opt-in. The result is what we measured: out-of-the-box Badger gets the LSM stalls of a normal LSM and the API of WiscKey, while only the 1 MB+ users see the "no compaction stalls" benefit.
+
+[thrcommit]: https://github.com/dgraph-io/badger/commit/6c35ad6
+
+**MVCC keeps every version of every key until compaction discards them.** Each key in the LSM is suffixed with an 8-byte commit timestamp; compaction's `subcompact` keeps versions where `version > discardTs`, where `discardTs = orc.readMark.DoneUntil()` [(`txn.go:121`)][txn]. A long-running iterator (or a managed-DB user who forgets to advance the discard ts) holds back compaction across the entire DB. Reasonable for a transactional engine. Surprising the first time you see it.
+
+[txn]: https://github.com/dgraph-io/badger/blob/main/txn.go
+
+**Single-writer goroutine.** All `db.Update` calls funnel through one `doWrites` goroutine that batches up to `3 × kvWriteChCapacity` requests per loop [(`db.go:915`)][dbgo]. Concurrent writers fan in via the unbuffered `writeCh`. This is *good* — it avoids cross-goroutine memtable contention — but means Badger doesn't scale write throughput past one core's worth of memtable insertion. On the M3 Max benchmarks above, peak ops/s of 1.03 M corresponds to ~1.0 µs per memtable insert + per-WAL append — close to a single-core ceiling for this hardware. There is no multi-writer mode; a workload that needs 4× this on a single Badger instance has to look elsewhere.
+
+# What I'd build differently
+
+A few specific things, rough cost in parens.
+
+**Continuous, write-amount-budgeted vlog GC.** Today GC runs only when `db.RunValueLogGC(0.5)` is called explicitly. Half the production deployments I've read forget to schedule it, then watch their vlog grow unboundedly. The LSM controller already has a per-iteration write-budget concept implicit in `NumCompactors`. Extending that to vlog GC — "spend X% of compaction-write bandwidth on vlog rewrite when discard ratio of any file > Y" — is a bounded loop that would take maybe 200 LOC in `value.go`, plus a metric to expose the budget consumption. (cost: 1–2 weeks)
+
+**Per-block, not per-table, bloom filters on the vlog.** Even a coarse bloom on every 4 MiB vlog chunk would let `Get` short-circuit the vlog read on stale-version misses. The vlog is append-only and immutable per-fid, so the bloom can be built when the file rolls and stored in a sidecar. Cost: storage = ~32 KB per 4 MiB chunk at 1% FPR, computed via [`y.BloomBitsPerKey`][bloom] — under 1% of vlog footprint. (cost: 1–2 weeks)
+
+**Adaptive `NumLevelZeroTablesStall`.** The default 15 was set when memtables were 64 MiB. At 256 MiB memtables, 15 L0 tables is *4 GiB of L0 backpressure* — enormous, with the same 10 ms-tick wait loop. A formula like `min(15, max(8, BaseLevelSize/MemTableSize × 5))` would push back earlier on big-memtable configs and harder on small-memtable configs. Cost is minimal — one line in `Open` validation — but it reduces tail latency by collapsing the burst zone. (cost: a few days, but require a benchmark sweep first)
+
+**A `BatchPut` API that bypasses the txn machinery.** `WriteBatch` already does this internally, but you still go through the watermark + readTs dance to assign each entry a commit ts. For pure ingest (no concurrent reads) the WriteBatch is essentially a glorified `for { txn.Set; txn.Commit }` loop, paying the SSI overhead for nothing. A `db.IngestUnsafe(entries [][]byte)` that takes the writer lock once and short-circuits the oracle would push the 1.03 M ops/s headline closer to the memtable insert ceiling — and stop people from using `WriteBatch` for things it wasn't designed for. (cost: ~300 LOC, but careful invariants)
+
+**Surface the L0-stall counter as a Prometheus metric.** `levelsController.l0stallsMs` is already an `atomic.Int64`. Today the only place it's reported is `db.Close()` — when it's far too late to react. Plumbing it through the existing `y.NumXxxAdd` metrics is a 5-line change [(`y/metrics.go`)][met]. If your Badger is stalling, you should know in real time. (cost: 1 day)
+
+[met]: https://github.com/dgraph-io/badger/blob/main/y/metrics.go
+
+# Reproducing the benchmark
+
+Here's the harness that produced the numbers above. Drop it in a fresh module with `github.com/dgraph-io/badger/v4` and a `go run`:
+
+```go
+// /tmp/badger-blog-bench/wb.go
+package main
+
+import (
+    "encoding/binary"
+    "flag"
+    "fmt"
+    "log"
+    "math/rand"
+    "os"
+    "time"
+
+    badger "github.com/dgraph-io/badger/v4"
+)
+
+func main() {
+    dir := flag.String("dir", "/tmp/badgerbench-wb", "data dir")
+    n := flag.Int("n", 5_000_000, "num keys")
+    valSz := flag.Int("v", 1024, "value size")
+    flag.Parse()
+    _ = os.RemoveAll(*dir)
+    opts := badger.DefaultOptions(*dir).WithSyncWrites(false)
+    db, err := badger.Open(opts)
+    if err != nil {
+        log.Fatal(err)
+    }
+    val := make([]byte, *valSz)
+    rand.New(rand.NewSource(1)).Read(val)
+    key := make([]byte, 32)
+    startAll := time.Now()
+    wb := db.NewWriteBatch()
+    for i := 0; i < *n; i++ {
+        binary.BigEndian.PutUint64(key, uint64(i))
+        if err := wb.Set(append([]byte{}, key...), val); err != nil {
+            log.Fatal(err)
+        }
+    }
+    if err := wb.Flush(); err != nil {
+        log.Fatal(err)
+    }
+    dur := time.Since(startAll)
+    if err := db.Close(); err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("count=%d wall=%s ops/s=%.0f\n",
+        *n, dur, float64(*n)/dur.Seconds())
+}
+```
+
+`go run wb.go -n 10000000 -v 128` reproduces the **1,030,194 ops/s** row. Bump `-v` to `1024` to watch the same code drop into the stalls.
+
+For an in-process view of the stall, there's no need for `bpftrace`; Badger's own logger prints `L0 was stalled for X` at the end of every stall window > 1 s. Pipe a run through `grep stalled` and you get the per-window timing without any kernel tooling. If you want a syscall-level view, the relevant calls are `pwrite64` (SST flush) and `madvise` (block-cache eviction); a simple `dtruss -e -t pwrite -p $BADGER_PID` on macOS gives you the per-flush byte count without instrumentation overhead.
+
+# Closing
+
+The "1M writes/sec without compaction stalls" headline is real for the workload Badger was designed for: small keys, small-and-getting-smaller LSM, value bytes flowing through the WiscKey vlog. It's just not the *default* shape, and the system never told you that. Walking the source — `pickCompactLevels` for the scoring, `addLevel0Table` for the stall point, `runCompactor` for the worker-zero L0 specialist — is what makes the gap between headline and default behavior obvious. Once you see it, the tuning is a 5-flag search over `MemTableSize`, `NumLevelZeroTablesStall`, `NumCompactors`, `ValueThreshold`, `VLogPercentile`, and you can pick which trade you want to pay.
+
+That, more than the WiscKey separation itself, is the lesson. Storage engines are a few hundred well-named knobs sitting on top of a couple of hard ideas. Reading the source and watching the engine break under load is faster than reading the docs.
+
+# Further reading
+
+- [WiscKey: Separating Keys from Values in SSD-conscious Storage](https://www.usenix.org/system/files/conference/fast16/fast16-papers-lu.pdf) (FAST '16). The paper. Section 2 on write-amp-vs-read-amp tradeoff is the whole motivation.
+- [Introducing Badger blog post](https://hypermode.com/blog/badger/). Original Dgraph announcement, March 2017.
+- [Concurrent ACID Transactions in Badger](https://hypermode.com/blog/badger-txn/). The SSI implementation in `txn.go`.
+- [RocksDB Dynamic Level Sizes](https://rocksdb.org/blog/2015/07/23/dynamic-level.html). The technique Badger borrows for `levelTargets`.
+- [PebbleDB compaction picker](https://github.com/cockroachdb/pebble/blob/master/compaction_picker.go). The score-adjustment pattern in `pickCompactLevels` is lifted from here.
