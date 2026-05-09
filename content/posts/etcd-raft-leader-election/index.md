@@ -652,10 +652,11 @@ VM clock.
 A 3-node cluster with both followers ticking in phase will sometimes
 still split. The randomisation window is uniform over a band of
 `ElectionTick` ticks. For two iid uniform draws on a band of width
-`L = 10` ticks, the probability that they land within one tick of each
-other is `≈ 2/L = 2/10 = 20 %` (`P(|X − Y| < 1) ≈ 2ε/L − ε²/L²` for
-`ε ≪ L`), so a pair-collision happens roughly **once every five
-elections** under the default `ElectionTick = 10`.
+`L = 10` ticks, the probability they land within one tick of each
+other is `P ≈ 2/L`, i.e. `2 / 10 ≈ 0.2` of the time
+(`P(|X − Y| < ε) ≈ 2ε/L − ε²/L²` for `ε ≪ L`). That works out to
+roughly **once every five elections** with the default
+`ElectionTick = 10`.
 
 The protocol survives this — split votes lead to nothing changing and
 all candidates re-roll — but it costs another whole election timeout

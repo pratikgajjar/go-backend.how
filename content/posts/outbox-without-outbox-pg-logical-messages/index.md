@@ -1077,22 +1077,32 @@ func main() {
 }
 ```
 
-After running the demo against an empty database, the WAL holds the
-encoded `OutboxEvent` bytes; create a temporary slot to peek at them:
+To verify the emit landed in WAL, create a slot **before** running
+the demo (a slot only sees changes after its creation point), then
+peek after:
 
 ```sql
-SELECT pg_create_logical_replication_slot('demo_peek', 'pgoutput');
+-- 1. Before running the Go demo:
 CREATE PUBLICATION demo_pub;
-SELECT data FROM pg_logical_slot_peek_binary_changes(
+SELECT pg_create_logical_replication_slot('demo_peek', 'pgoutput');
+
+-- 2. Run the Go program above (it does the INSERT + emit).
+
+-- 3. Peek at the bytes:
+SELECT lsn, encode(data, 'hex')
+FROM pg_logical_slot_peek_binary_changes(
     'demo_peek', NULL, NULL,
     'proto_version', '1', 'publication_names', 'demo_pub',
     'messages', 'true'
 );
+
+-- 4. Cleanup:
 SELECT pg_drop_replication_slot('demo_peek');
+DROP PUBLICATION demo_pub;
 ```
 
-Stand up an actual OwlPost (`docker-compose up owlpost` from the
-factlib repo) and the same bytes flow into Kafka instead.
+Stand up a real OwlPost (`docker-compose up owlpost` from the factlib
+repo) and the same bytes flow into Kafka instead.
 
 # Comparison
 

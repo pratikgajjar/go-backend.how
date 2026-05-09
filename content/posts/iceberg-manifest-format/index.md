@@ -130,8 +130,10 @@ options:
   changing `partition by day(ts)` to `partition by hour(ts)` must
   not rewrite a single byte of existing data.
 
-These four constraints uniquely determine the shape of Iceberg.
-Everything else is consequence.
+These four constraints largely determine the shape of Iceberg
+(Delta Lake and Hudi land at adjacent designs from the same
+constraint set; the differences live one level below). Everything
+in §3 onwards follows from this list.
 
 The `Goals` section of [`format/spec.md`](https://github.com/apache/iceberg/blob/main/format/spec.md)
 states the constraint set in the same order as above (serializable
