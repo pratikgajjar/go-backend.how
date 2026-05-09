@@ -302,10 +302,36 @@ write. That single fact is what makes single-node clusters elect a
 leader instantly, without a real vote round.
 
 The fan-out walks the voter set in deterministic order (sorted ID), and
-calls `r.send(...)` per voter. The self-vote is enqueued onto
-`msgsAfterAppend`, which is the slice the application drains *after* it
-has fsync'd HardState — Raft's correctness rule is that you must not
-acknowledge a vote before the vote is durable.
+calls `r.send(...)` per voter. The self-vote takes the
+`msgsAfterAppend` path; the peer votes go onto `r.msgs`:
+
+```go
+// raft.go (inside campaign)
+	var ids []uint64
+	{
+		idMap := r.trk.Voters.IDs()
+		ids = make([]uint64, 0, len(idMap))
+		for id := range idMap {
+			ids = append(ids, id)
+		}
+		slices.Sort(ids)
+	}
+	for _, id := range ids {
+		if id == r.id {
+			// The candidate votes for itself and should account for this self
+			// vote once the vote has been durably persisted (since it doesn't
+			// send a MsgVote to itself). This response message will be added to
+			// msgsAfterAppend and delivered back to this node after the vote
+			// has been written to stable storage.
+			r.send(pb.Message{To: new(id), Term: new(term), Type: voteRespMsgType(voteMsg).Enum()})
+			continue
+		}
+		last := r.raftLog.lastEntryID()
+```
+
+`msgsAfterAppend` is the slice the application drains *after* it has
+fsync'd HardState — Raft's correctness rule is that you must not
+acknowledge a vote before the vote is durable, including your own.
 
 ## Step 4: voters check the log, respond
 

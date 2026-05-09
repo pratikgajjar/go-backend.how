@@ -379,7 +379,7 @@ openat(AT_FDCWD, "/sys/fs/cgroup/cpu.max", O_RDONLY|O_CLOEXEC) = 3
 [pid 13] listen(4, 4096) = 0
 ```
 
-The zap line is the punchline: `boot=0.000523587 s ≈ 523 µs` from `execve` to the moment `logger.Info("ready")` fires (which sits right after `go func() { _ = srv.ListenAndServe() }()` at line 66 of `main.go`). The 17–56 ms app-uptime numbers we measured earlier are dominated by `socket → bind → listen` and the curl-poll loop, *not* by Go runtime init. The runtime user-code path is ~30–100× faster than the listener-accept-curl chain (`17000µs / 523µs = 32.5×` at the floor; `56000/523 = 107×` at the slow tail).
+The zap line is the punchline: `boot=0.000523587 s ≈ 523 µs`. This number measures from `var bootedAt = time.Now()` (a top-level declaration that runs during our package-init phase, *after* Go runtime init but before `main()`) to the moment `logger.Info("ready")` fires (which sits right after `go func() { _ = srv.ListenAndServe() }()` at line 66 of `main.go`). It's the time spent in our user code — chi router build, prom registration, zap setup, goroutine spawn — and it's just over half a millisecond. The 17–56 ms app-uptime numbers we measured earlier therefore come from two places we did *not* time inline: (a) the pre-`bootedAt` cost of Go runtime + package init (a few ms), and (b) the `socket → bind → listen` plumbing and curl-poll loop after the goroutine starts. The runtime user-code path is ~30–100× faster than (a) + (b) combined (`17000µs / 523µs = 32.5×` at the floor; `56000/523 = 107×` at the slow tail).
 
 Four observations the real trace makes obvious:
 

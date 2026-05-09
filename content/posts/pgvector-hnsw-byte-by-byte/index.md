@@ -14,10 +14,11 @@ math = false
 
 > A 1.0 MB shared object (1,015,584 bytes for the `pg15` build of
 > pgvector v0.8.2 on `pgvector/pgvector:pg15`) turns Postgres — a
-> system that has spent twenty-five years optimising B-trees over
-> rows — into a vector database that beats brute force by an order
-> of magnitude. The algorithmic core fits in 800 lines of C that
-> mostly manipulates 8 KB pages.[^bench]
+> system that has spent
+> [thirty years](https://www.postgresql.org/about/history/) optimising
+> B-trees over rows — into a vector database that beats brute force
+> by an order of magnitude. The algorithmic core fits in 800 lines of
+> C that mostly manipulates 8 KB pages.[^bench]
 
 I keep meeting teams who treat [pgvector](https://github.com/pgvector/pgvector)
 as if it were an external service: "the vector store." It isn't. It's
