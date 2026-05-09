@@ -754,8 +754,9 @@ func benchPebble() {
 
 The bbolt and LMDB equivalents follow the same shape (open, write
 loop, sorted-latency reads, close) and are roughly the same length
-(~70 lines of Go for bbolt; ~100 lines of C for LMDB including the
-batched-latency timing).[^bench]
+(a ~70-line Go function for bbolt; a ~100-line C program for LMDB,
+including the batched-latency timing required to escape macOS
+clock-resolution).[^bench]
 
 ## 7.2 Closing
 
