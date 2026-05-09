@@ -393,9 +393,9 @@ Four observations the real trace makes obvious:
 
 These four are the "scratch surprises" that bite payments services when one engineer in Bangalore opens an OutboxItem, calls `time.LoadLocation`, and the test pod returns HTTP 500 in the staging cluster.
 
-## A 50-line repro
+## A 35-line repro
 
-Want to run it yourself? This script is the entire benchmark, including the pull-time + boot-time matrix above:
+Want to run it yourself? This script is the entire benchmark (35 non-blank lines, including the in-line Go program and the build-and-time loop), reproducing the pull-time + boot-time matrix above:
 
 ```bash
 #!/usr/bin/env bash

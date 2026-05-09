@@ -1147,7 +1147,7 @@ The interesting work is putting the three together so that no one of
 them sneaks past the CDC contract while the other two were looking
 the other way.
 
-The spec was two lines. The implementation is two thousand. Most of
+The spec was two lines. The implementation is `~1,800`. Most of
 the bytes between the two are saying _no_ to the obvious thing.
 
 # Further reading
