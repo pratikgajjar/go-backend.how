@@ -644,6 +644,44 @@ def github_line_ref_defects(body: str, cached_repo: Path) -> int:
     return n
 
 
+DIGIT_CLAIM_RE = re.compile(
+    r"\b(single|double|triple|low single|high single)[- ]digit\b", re.IGNORECASE
+)
+
+
+def digit_claim_consistency_defects(body: str) -> int:
+    """If a paragraph says 'single-digit % overhead', the nearby percentages
+    must actually be 1-9. Catches the iter-49 self-contradiction."""
+    n = 0
+    paragraphs = re.split(r"\n\s*\n", body)
+    for p in paragraphs:
+        m = DIGIT_CLAIM_RE.search(p)
+        if not m:
+            continue
+        kind = m.group(1).lower().strip()
+        # Find numeric percentages or counts in same paragraph
+        nums = [int(x) for x in re.findall(r"(\d{1,4})\s?[%]", p)]
+        # If no nearby percentages, fall back to bare numbers
+        if not nums:
+            nums = [int(x) for x in re.findall(r"\b(\d{1,4})\b", p) if int(x) < 10000]
+        if not nums:
+            continue
+        bands = {
+            "single": (1, 9),
+            "low single": (1, 4),
+            "high single": (5, 9),
+            "double": (10, 99),
+            "triple": (100, 999),
+        }
+        lo, hi = bands.get(kind, (0, 99999))
+        ok = any(lo <= v <= hi for v in nums[:5])
+        if not ok:
+            print(f"DEBUG digit_claim_consistency: '{kind}-digit' but paragraph has {nums[:5]}",
+                  file=sys.stderr)
+            n += 1
+    return n
+
+
 def numbered_list_gap_defects(body: str) -> int:
     """A markdown numbered list that goes 1, 2, 4 (skip) is a copy-paste regression.
     Walks each adjacent run of `^\\d+\\. ` lines and verifies the numbers are 1..N."""
@@ -855,6 +893,7 @@ def main() -> int:
     cats["duplicate_paragraph"] = duplicate_paragraph_defects(body)
     cats["numbered_list_gap"] = numbered_list_gap_defects(body)
     cats["github_line_ref"] = github_line_ref_defects(body, cached_repo)
+    cats["digit_claim"] = digit_claim_consistency_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -884,6 +923,7 @@ def main() -> int:
         "duplicate_paragraph": 3,
         "numbered_list_gap": 2,
         "github_line_ref": 3,
+        "digit_claim": 3,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
