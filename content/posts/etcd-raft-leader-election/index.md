@@ -61,7 +61,7 @@ running `go test -bench` against the same tree.
 
 > Single-node `Propose → Ready → Append → Advance` round-trip:
 > **1,360 ns/op** on an Apple M3 Max MacBook Pro
-> (median of 3 runs, ±5%; `BenchmarkOneNode`,
+> (median of 3 runs, ±3%; `BenchmarkOneNode`,
 > [`node_bench_test.go`](https://github.com/etcd-io/raft/blob/main/node_bench_test.go)).
 >
 > The election path is shorter than that — it doesn't propose a user
