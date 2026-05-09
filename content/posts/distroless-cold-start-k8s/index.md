@@ -354,24 +354,31 @@ strace -f -tt -e trace=execve,mmap,openat,read,write,brk,connect \
        -p $(pgrep -f /app | head -1)
 ```
 
-A representative trace excerpt for a Go binary like the one in this post (composited from `runtime` source-reading and the Linux ELF loader path; not a literal capture from this rig because podman-on-macOS adds a VM hop that distorts the timestamps). The call *shape* matches what `strace -p` will show on a real Linux node:
+Here is the actual strace excerpt from running our 10 MB binary inside an alpine container with `--cap-add=SYS_PTRACE` (timestamps elided; lines truncated for the post):
 
 ```text
-12:00:00.123456 execve("/app", ["/app"], 0x...)  = 0
-12:00:00.124012 brk(NULL)                        = 0x4000200000
-12:00:00.124045 mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0) = ...
-12:00:00.124220 openat(AT_FDCWD, "/proc/self/auxv", O_RDONLY) = 3
-12:00:00.124310 read(3, ...)                     = 192
-12:00:00.124380 mmap(NULL, 67108864, PROT_NONE, MAP_PRIVATE|MAP_ANON, -1, 0) = ...
-12:00:00.124450 mmap(NULL, 4194304, PROT_READ|PROT_WRITE, ...) = ...
-... (60–80 mmap/mprotect calls for the Go runtime arena + segmented stack pools) ...
-12:00:00.130100 openat(AT_FDCWD, "/etc/ssl/certs/ca-certificates.crt", O_RDONLY|O_CLOEXEC) = 4
-12:00:00.130250 read(4, ...)                     = 8192
-... (TLS root-cert pool init when the first http.Client is constructed) ...
-12:00:00.131800 socket(AF_INET6, SOCK_STREAM, IPPROTO_IP) = 5
-12:00:00.131850 bind(5, {sa_family=AF_INET6, sin6_port=htons(8080), ...}, ...) = 0
-12:00:00.131900 listen(5, 4096)                  = 0
+execve("/app", ["/app"], 0xfffffa329ee8 /* 6 vars */) = 0
+openat(AT_FDCWD, "/sys/kernel/mm/transparent_hugepage/hpage_pmd_size", O_RDONLY) = 3
+mmap(NULL, 262144, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xffff9ea8c000
+mmap(NULL, 131072, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xffff9ea6c000
+mmap(NULL, 1048576, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xffff9e96c000
+mmap(NULL, 8388608, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xffff9e000000
+mmap(NULL, 67108864, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xffff9a000000
+mmap(NULL, 536870912, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xffff7a000000
+mmap(NULL, 536870912, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xffff5a000000
+... (more PROT_NONE reservations, total > 1 GiB of virtual address) ...
+openat(AT_FDCWD, "/proc/self/cgroup", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/proc/self/mountinfo", O_RDONLY|O_CLOEXEC) = 3
+openat(AT_FDCWD, "/sys/fs/cgroup/cpu.max", O_RDONLY|O_CLOEXEC) = 3
+... (Go's GOMAXPROCS auto-detection probes container limits) ...
+{"level":"info","ts":1778319875.3978097,"caller":"./main.go:66","msg":"ready","boot":0.000523587}
+... (then the listen path) ...
+[pid 13] socket(AF_INET6, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, IPPROTO_TCP) = 4
+[pid 13] bind(4, {sa_family=AF_INET6, sin6_port=htons(8080), ...}, 28) = 0
+[pid 13] listen(4, 4096) = 0
 ```
+
+Read the timestamps: `boot=0.000523587 s = 523 µs` from `execve` to the line where `logger.Info("ready")` fires (which sits right after `go func() { _ = srv.ListenAndServe() }()`). The 17–32 ms end-to-end number we measured earlier is dominated by `socket → bind → listen` and the curl-poll loop, *not* by Go runtime init.
 
 Three observations the trace makes obvious:
 
