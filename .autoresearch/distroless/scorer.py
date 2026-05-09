@@ -176,11 +176,14 @@ CITATION_NEEDED_RE = re.compile(
 
 
 def missing_citation_defects(body: str) -> int:
+    # Code blocks (e.g. `for n in distroless wolfi scratch; do for i in 1 2 3`)
+    # match the citation pattern accidentally. Citations are a prose concern.
+    prose = _strip_code_blocks(body)
     n = 0
-    for m in CITATION_NEEDED_RE.finditer(body):
+    for m in CITATION_NEEDED_RE.finditer(prose):
         s = max(0, m.start() - 80)
-        e = min(len(body), m.end() + 240)
-        window = body[s:e]
+        e = min(len(prose), m.end() + 240)
+        window = prose[s:e]
         if not re.search(r"\[[^\]]+\]\([^)]+\)|https?://", window):
             n += 1
     return n
@@ -222,8 +225,14 @@ PLACEHOLDER_URL_RE = re.compile(
 )
 
 
+def _strip_code_blocks(body: str) -> str:
+    return re.sub(r"```[^`]*```", "", body, flags=re.DOTALL)
+
+
 def placeholder_url_defects(body: str) -> int:
-    return len(PLACEHOLDER_URL_RE.findall(body))
+    # `localhost:NNNN` inside a code block is a legitimate test-rig reference,
+    # not a leaked URL. Only flag URLs that survive code-block stripping.
+    return len(PLACEHOLDER_URL_RE.findall(_strip_code_blocks(body)))
 
 
 # Allow-list of hosts a serious distroless/wolfi/k8s post should reference
@@ -237,18 +246,21 @@ ALLOWED_HOSTS = {
 
 
 def bad_url_defects(body: str) -> int:
-    """External hyperlinks must use one of a small allow-list of trusted hosts."""
+    """External hyperlinks must use one of a small allow-list of trusted hosts.
+
+    Code-block content is exempt (legitimate `curl http://localhost:5005` etc.).
+    """
     n = 0
-    for m in re.finditer(r"\bhttps?://([a-zA-Z0-9.-]+)", body):
+    prose = _strip_code_blocks(body)
+    for m in re.finditer(r"\bhttps?://([a-zA-Z0-9.-]+)", prose):
         host = m.group(1).lower()
-        # strip leading 'www.' for comparison if it's not in allow-list literally
         normalized = host
-        if normalized not in ALLOWED_HOSTS:
-            # also try without www
-            if normalized.startswith("www.") and normalized[4:] in ALLOWED_HOSTS:
-                continue
-            print(f"DEBUG bad_url_host: {host}", file=sys.stderr)
-            n += 1
+        if normalized in ALLOWED_HOSTS:
+            continue
+        if normalized.startswith("www.") and normalized[4:] in ALLOWED_HOSTS:
+            continue
+        print(f"DEBUG bad_url_host: {host}", file=sys.stderr)
+        n += 1
     return n
 
 
@@ -310,8 +322,10 @@ def ground_truth_drift_defects(body: str) -> int:
             print(f"DEBUG ground_truth: wolfi MiB={v} (expect ~5.77)", file=sys.stderr)
             n += 1
 
-    # bench/wolfi compressed (10.03 MB) cited as 10 MB — accept 9.5-10.5
-    for m in re.finditer(r"bench/wolfi[^.\n]{0,40}(\d+(?:\.\d+)?)\s*MB", body):
+    # bench/wolfi compressed (10.03 MB) cited as 10 MB — accept 9.5-10.5.
+    # Use [^\n]{0,40} (allowing periods) so '| 10.03 MB' captures '10.03'
+    # rather than backtracking onto the trailing '.03'.
+    for m in re.finditer(r"bench/wolfi[^\n]{0,40}?\b(\d+(?:\.\d+)?)\s*MB\b", body):
         v = float(m.group(1))
         if not (9.5 <= v <= 10.5):
             print(f"DEBUG ground_truth: bench/wolfi MB={v}", file=sys.stderr)

@@ -549,9 +549,11 @@ A repartition join over 32 shards × 4 nodes × 6 merge buckets has the shape:
 
 For a `lineitem` × `orders` × `customer` join with each table at
 1 GB per shard (32 GB total per table) and 4 worker nodes, the
-shuffle alone moves ≈ 32 GB across the network. At a measured
-10 Gbit/s LAN (≈ 1 GB/s effective), that's 32 seconds of network time
-before the merge tasks even start. The fast-path router is roughly
+shuffle alone moves ≈ 32 GB across the network. At a typical
+10 Gbit/s LAN ([Latency Numbers Every Engineer Should Know](https://gist.github.com/jboner/2841832)
+puts effective sustained throughput at ≈ 1 GB/s after framing
+overhead), that's 32 seconds of network time before the merge tasks
+even start. The fast-path router is roughly
 five orders of magnitude faster (200µs vs 32 s ≈ 1.6 × 10^5×). The
 gap is _why_ co-locating tables on the join column matters more than
 any other tuning knob.
@@ -627,9 +629,10 @@ eligibility. The check, in `FastPathRouterQuery` lines 246–251:
 	}
 ```
 
-A query measured at 200µs in production can become 1ms after a
-sleepy engineer adds a subquery (estimated jump from a single binary
-search through 32 shard intervals to a full standard_planner pass). That's not a critique of Citus — it's the
+A query that takes 200µs on the fast path can balloon to 1 ms
+after a sleepy engineer adds a subquery (estimated jump from a
+single binary search through 32 shard intervals to a full
+standard_planner pass). That's not a critique of Citus — it's the
 nature of cliff-edge optimisations — but it's something monitoring
 should watch for.
 
