@@ -825,9 +825,12 @@ Commit `72bbcae` swapped `encoding/json` for `goccy/go-json`:
 
 ```go
 // internal/transform/parquet_writer.go
-import "github.com/goccy/go-json"
-
+"github.com/goccy/go-json"
+// ...
 beforeJson, err := json.Marshal(ev.Before)
+if err != nil {
+    return fmt.Errorf("marshal CDC before data to JSON: %w", err)
+}
 ```
 
 `encoding/json` uses reflection on every call, builds an internal
@@ -876,13 +879,14 @@ S3 keys carry the partition:
 
 ```go
 // internal/buffer/processor.go
-func (p *ParquetBatchProcessor) generateS3Key(ts time.Time) string {
-    return fmt.Sprintf("%s/%s/%d.%s.parquet",
-        p.config.Namespace,
-        ts.Format("2006/01/02"),
-        ts.UnixMicro(),
-        p.transformer.GetCompressionCodec(),
-    )
+func (p *ParquetBatchProcessor) generateS3Key(timestamp time.Time) string {
+	key := fmt.Sprintf("%s/%s/%d.%s.parquet",
+		p.config.Namespace,
+		timestamp.Format("2006/01/02"),
+		timestamp.UnixMicro(),
+		p.transformer.GetCompressionCodec(),
+	)
+	return key
 }
 ```
 

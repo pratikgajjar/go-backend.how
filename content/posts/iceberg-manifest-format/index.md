@@ -159,10 +159,10 @@ Iceberg is a tree of immutable files, plus one mutable pointer.
 catalog (Glue / REST / JDBC / Nessie / Hive)
         │  one row, atomically swapped at commit
         ▼
-v00042-<uuid>.metadata.json          ← table definition
+v<N>-<uuid>.metadata.json            ← table definition
         │  embeds list of snapshots
         ▼
-snap-<snapshot_id>-<uuid>.avro       ← manifest list
+snap-<snapid>-<attempt>-<uuid>.avro  ← manifest list
         │  one Avro record per manifest
         ▼
 <commit_uuid>-m0.avro  …  -mN.avro   ← manifests (data + delete)
