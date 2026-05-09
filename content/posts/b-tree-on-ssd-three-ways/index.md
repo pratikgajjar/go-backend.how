@@ -1,5 +1,5 @@
 +++
-title = "🐳 LMDB vs Pebble vs BoltDB - B-Tree on SSD, Three Ways"
+title = "🐳 LMDB vs Pebble vs BoltDB — B-Tree-on-SSD, Three Ways"
 description = "Three embedded KV stores, one workload, one machine. LMDB does 1.9M writes/sec in 11K LOC of C. Pebble's 160K LOC of Go shrinks the file 4×. BoltDB lands in between and stays simple."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
@@ -212,10 +212,10 @@ holding the old snapshot finishes. This is the entire MVCC scheme. No
 version vector. No undo log.
 
 When commit comes, the writer calls
-[`mdb_env_write_meta`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L4358):
+[`mdb_env_write_meta`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L4359):
 
 ```c
-// lmdb/libraries/liblmdb/mdb.c - mdb_env_write_meta (line 4358)
+// lmdb/libraries/liblmdb/mdb.c - mdb_env_write_meta (line 4359)
 toggle = txn->mt_txnid & 1;
 mp = env->me_metas[toggle];
 mapsize = env->me_metas[toggle ^ 1]->mm_mapsize;
@@ -455,31 +455,35 @@ linearly with `L`. That is the shape of LSM read amp.
 
 ## 5.2 Where do the on-disk sizes come from?
 
-For LMDB: `200,000 records × (8-byte key + 200-byte value + ~24-byte
-overhead) = 46.4 MiB`. With 4-KiB pages and `FillPercent ≈ 0.95` (LMDB
-default for sequential inserts) you'd expect `46.4 MiB / 0.95 ≈ 49 MiB`
-- close to the measured 42 MiB (the freelist hasn't allocated tail
-slack yet at this scale). The math is in
+All on-disk sizes below are MiB (binary megabytes); the bench prints
+`size / 1024 / 1024` and labels it `MB` for brevity but the value is
+MiB. Payload is `200,000 × (8-byte key + 200-byte value + ~16-byte
+leafPageElement overhead) = 44,800,000 bytes ≈ 42.7 MiB`.
+
+For LMDB: with 4-KiB pages and `FillPercent ≈ 0.95` (LMDB default for
+sequential inserts) you'd expect `42.7 / 0.95 ≈ 44.9 MiB` — within 7%
+of the measured 42 MiB (the freelist hasn't allocated tail slack yet
+at this scale). The math is in
 [`mdb_page_alloc`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L2501).
 
 For BoltDB: the **same** payload at `FillPercent = 0.5`
 ([bucket.go:27](https://github.com/etcd-io/bbolt/blob/main/bucket.go#L27))
-gives `46.4 MiB / 0.5 = 92.8 MiB ≈ measured 96 MiB`. The 4-MiB
-slack is the `mmapSize` doubling at
-[`db.go:mmapSize`](https://github.com/etcd-io/bbolt/blob/main/db.go#L519)
-that grows in 1×, 2×, 4×, ... powers of two until 1 GiB, then 1 GiB
-chunks. **Set `tx.Bucket("kv").FillPercent = 0.95` for sequential
-inserts and the file is ~49 MiB**, matching LMDB.
+gives `42.7 / 0.5 ≈ 85.4 MiB`. Add ~4 MiB of `mmapSize`-doubling slack
+at [`db.go:mmapSize`](https://github.com/etcd-io/bbolt/blob/main/db.go#L519)
+(the file grows 1×, 2×, 4×, ... in powers of two until 1 GiB, then
+1 GiB chunks) plus branch-page overhead and you reach the measured
+96 MiB. **Set `tx.Bucket("kv").FillPercent = 0.95` for sequential
+inserts and the file shrinks to ~45 MiB**, matching LMDB.
 
-For Pebble: `46.4 MiB` of payload, but values are constant `0xAB` ×
-200 bytes. snappy/zstd compresses that to a few percent - Pebble's
+For Pebble: `42.7 MiB` of payload, but values are constant `0xAB` ×
+200 bytes. snappy/zstd compresses that to a few percent — Pebble's
 default block size is 32 KiB
 ([sstable/options.go:147](https://github.com/cockroachdb/pebble/blob/master/sstable/options.go#L147))
 and these blocks compress catastrophically well. With genuinely random
-values (incompressible), the same workload produces roughly
-`46.4 / 1.0 ≈ 46.4 MiB` of sstable + ~10% bloom + ~2% index ≈ 52 MiB.
-**The 20 MB number is partly an artifact of constant values**; I'd not
-generalize it to "Pebble is always 4× smaller."
+values (incompressible), the same workload would produce roughly
+`42.7 × 1.0 ≈ 42.7 MiB` of sstable + ~10% bloom + ~2% index ≈ 48 MiB.
+**The 20 MiB measurement is partly an artifact of constant values**;
+I'd not generalize it to "Pebble is always 4× smaller."
 
 ## 5.3 strace one-liner
 
@@ -632,10 +636,11 @@ metadata floor *before* you store any blocks. That's a footgun for
 embedded users on big machines who don't want a 1 GB cache. Cost:
 one new `CacheShards` knob on `Options`, three lines in `NewWithShards`.
 
-## 7.1 50-line reproducer
+## 7.1 Minimal reproducer
 
-Copy-paste below. Add a `go.mod` with the `cockroachdb/pebble` and
-`go.etcd.io/bbolt` requires; run with `go run bench.go`.
+The Pebble path is below (~75 lines including imports). Add a
+`go.mod` with the `cockroachdb/pebble` and `go.etcd.io/bbolt` requires;
+run with `go run bench.go`.
 
 ```go
 // /tmp/btree-bench/bench.go (excerpt; 50-line reproducer of section 5)

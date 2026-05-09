@@ -508,9 +508,12 @@ source line, formatted here as written):
 
 This is the expression "how many `ItemPointerData`s fit on one page,
 divided by `m`, minus two". An element at level `L` needs
-`(L + 2) × M` TIDs in its neighbour tuple. The cap exists because the
-neighbour tuple has to fit in **one** Postgres page — pgvector
-deliberately refuses to split a tuple across pages. With `BLCKSZ =
+`(L + 2) × M` TIDs in its neighbour tuple. The cap exists because
+Postgres heap-style tuples [cannot span
+pages](https://www.postgresql.org/docs/current/storage-page-layout.html)
+— large vector payloads can be TOASTed externally, but the neighbour
+tuple itself must fit on a single 8 KB page. The level cap enforces
+exactly that constraint. With `BLCKSZ =
 8192` and `M = 16`, the integer arithmetic gives
 `(8192 − 24 − 8 − 4 − 4) / 6 / 16 − 2 = 82` — see the derivation
 below. The random level distribution will not reach this in
