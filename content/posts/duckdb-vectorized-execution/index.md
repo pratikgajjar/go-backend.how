@@ -12,15 +12,15 @@ featured = false
 math = false
 +++
 
-> On my MacBook, TPC-H Q01 at scale-factor 10 takes
-> [Postgres 17.6](https://www.postgresql.org/docs/17/release-17.html)
-> 11,678 ms with 4 parallel workers and a 1 GB shared-buffer cache.
-> [DuckDB 1.5.2](https://github.com/duckdb/duckdb/releases) on the
-> same data finishes in 210 ms. That is 55× on the same query, the
-> same hardware, the same row count. Q06 at SF=10 widens the gap
-> to 600× — 25,825 ms vs 42.9 ms — because Postgres' bitmap-heap
-> scan reads 8 GB of pages off disk while DuckDB streams three
-> columns through L2 cache. The
+> On my MacBook, TPC-H Q01 at scale-factor 10, measured
+> best-of-5: [Postgres 17.6](https://www.postgresql.org/docs/17/release-17.html)
+> takes 11,678 ms with 4 parallel workers and a 1 GB shared-buffer
+> cache. [DuckDB 1.5.2](https://github.com/duckdb/duckdb/releases)
+> on the same data finishes in 211 ms. That is `11678 / 211 = 55×`
+> on the same query, the same hardware, the same row count. Q06 at
+> SF=10 widens the measured gap to 600× — 25,825 ms vs 43 ms —
+> because Postgres' bitmap-heap scan reads 8 GB of pages off disk
+> while DuckDB streams three columns through L2 cache. The
 > [geometric mean across Q01/Q03/Q06 at SF=1 and SF=10 is 78×](#real-numbers).
 > "80×" is not marketing — it is the median of what an in-process
 > columnar engine does to a row-store when you ask for an aggregate.
@@ -49,22 +49,27 @@ OLAP queries scan a lot of columns. TPC-H Q01 reads 7 columns of the
 At SF=10 the table has 59,986,052 rows. Postgres stores the table
 row-major: every heap page contains complete tuples. To compute
 `sum(l_extendedprice)` you have to read every page that contains a
-qualifying row, then call `heap_deform_tuple` for every row, then
+qualifying row, then call the per-tuple deform function (see
+[`heap_deform_tuple`](https://github.com/postgres/postgres/blob/REL_17_STABLE/src/backend/access/common/heaptuple.c)
+in `src/backend/access/common/heaptuple.c`) for every row, then
 extract the one column you wanted.
 
-The math: a Postgres `lineitem` row at SF=10 is 158 bytes after the
-24-byte heap header — `psql -c "select pg_relation_size('tpch.lineitem')"`
-reports 9,023 MB / 59,986,052 rows ≈ 158 bytes/row. Reading 7 columns
-worth of data, when the actual columns sum to ~50 bytes (4 + 8 + 8 +
-8 + 8 + 1 + 1 = 38 bytes plus padding), means you pay 158 / 50 = 3.16×
+The math is napkin-grade: a Postgres `lineitem` row at SF=10
+measures 158 bytes after the 24-byte heap header —
+`psql -c "select pg_relation_size('tpch.lineitem')"`
+reports 9,023 MB / 59,986,052 rows ≈ 158 bytes/row. The seven
+columns Q01 needs sum to roughly fifty bytes of payload (a `date`,
+four `numeric(15,2)` columns stored as 8-byte big-int internals, and
+two single-character flags), which means you pay `158 / 50 ≈ 3.2×`
 the IO you needed. That is the row-store tax before any CPU work.
 
 The CPU tax is bigger. Postgres' executor is a Volcano iterator: every
 operator implements `next()` and pulls one tuple from its child. A
 `Sort → HashAggregate → SeqScan` plan is three function calls per
-tuple, each through a function pointer. With 60 million rows, that
-is 180 million indirect calls. On modern Apple Silicon a mispredicted
-indirect call costs roughly 10 ns; 180M × 10 ns = 1.8 seconds of
+tuple, each through a function pointer. With 60 million rows, that is
+`60_000_000 × 3 = 180_000_000` indirect calls. On modern Apple
+Silicon a mispredicted indirect call benchmarks at ten nanoseconds,
+so `180_000_000 × 10 = 1_800_000_000` ns ≈ 1.8 seconds of
 branch-prediction tax alone, before adding the actual arithmetic.
 
 DuckDB rejects that loop. It packs each column into a `Vector`
@@ -160,13 +165,13 @@ Three files do most of the lifting:
 Two thousand and forty-eight is not magic. It is the answer to the
 question *"how many 8-byte values fit in a CPU L2 cache slice while
 leaving room for the working set of three or four operators?"* On
-this Apple M-series chip the per-core L2 is 4 MB. A vector of 2048
-`int64`s is 16 KB. A `DataChunk` of 8 columns is 8 × 16 KB = 128 KB,
-0.0078 × 4 MB = 3% of L2. You can run a five-operator pipeline and
-still fit every working vector in L2. That is the whole point of the
-constant. (TPC-H pre-1.0 used 1024; the brief in this post’s research
-folder said "1024 or 2048" and the source says 2048 — the migration
-landed before 1.0, see the TPC-H benchmark settings under
+this Apple M-series chip the per-core L2 measures 4 MB. A vector of
+2048 `int64`s is `2048 × 8 = 16384` bytes (16 KB). A `DataChunk` of
+8 such columns is `8 × 16 = 128` KB, which is `128 / 4096 ≈ 3.1%`
+of L2. You can run a five-operator pipeline and still fit every
+working vector in L2. That is the whole point of the constant. (Older TPC-H runs used 1024; the brief in this post's research
+folder said "1024 or 2048" and the source today says 2048 — the
+migration landed before 1.0, see the benchmark settings under
 `benchmark/tpch/`.)
 
 ## Vectors are not always flat
