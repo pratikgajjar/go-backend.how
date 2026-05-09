@@ -41,9 +41,12 @@ Three things should bother you:
    of Go with a CockroachDB-funded engineering org behind it - at
    single-threaded random reads by ~13×.
 2. **BoltDB**'s on-disk file (96 MiB) is **2.3×** larger than LMDB's
-   (42 MiB) for byte-identical data, and both are B+trees on mmap with
-   the same default fill factor. The cost of being written in Go shows
-   up in the page allocator, not just the binary.
+   (42 MiB) for byte-identical data, even though both are B+trees on
+   mmap. The size delta is two pieces: LMDB packs new pages near full
+   (no per-bucket `FillPercent` knob), bbolt defaults to `FillPercent
+   = 0.5` (`bucket.go:27` — see §5.2). Plus bbolt's `node` cache pays
+   Go-runtime overhead per dirty page that LMDB's C `MDB_page` struct
+   doesn't.
 3. **Pebble**'s file is 20 MiB - 2.1× smaller than LMDB and 4.8× smaller
    than BoltDB - because it Snappy-compresses blocks before writing them,
    and that's the headline LSM win. Read latency p99 is 9× LMDB's,
