@@ -780,18 +780,13 @@ you could imagine making — none of them small, but all of them
 defensible.
 
 **1. Per-element compressed neighbour storage.** Right now every
-neighbour tuple is `(L + 2) × M × 6 bytes`, even if you have fewer
-than `M` neighbours at some layer (e.g., during early build) — the
-slots are pre-allocated. For an index built incrementally, the
-average level-0 neighbour count is `2M = 32` for `M = 16`, so the
-allocation matches usage closely; but at higher layers the array is
-sparse. Compressing the neighbour list with `varint` TIDs (4 vs 6
-bytes typical for sub-1B-row indexes) would shrink the neighbour
-bytes by ~30 %. For a `vector(128)` the neighbour bytes are about 25 % of the
-per-row total (200 of 808; see §5 decomposition), so end-to-end
-savings are around 7 %; for `vector(1536)`, neighbours are 3 % of
-bytes and varint saves under 1 % overall. Probably not worth it — buffer
-reads, not bytes, dominate.
+neighbour tuple is `(L + 2) × M × 6 bytes` of fixed-size TIDs.
+Varint encoding (4 instead of 6 bytes for typical sub-1B-row
+indexes) shrinks the neighbour bytes by ~30 %, but neighbours are
+only ~25 % of per-row bytes for `vector(128)` and ~3 % for
+`vector(1536)` — end-to-end savings 7 % and <1 % respectively
+(see §5's per-row decomposition). Probably not worth the
+per-traversal CPU; buffer reads, not bytes, dominate.
 
 **2. Separate the vector payload from the graph nodes.** pgvector
 stores the full vector in every element tuple. The L2-search
