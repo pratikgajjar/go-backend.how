@@ -452,7 +452,9 @@ Three changes I'd make to a real platform team's container baseline.
 [pie]: https://pkg.go.dev/cmd/go#hdr-Build_modes
 [gobench]: https://pkg.go.dev/testing#hdr-Benchmarks
 
-**3. Run a registry mirror on every node, not in the cluster**. `containerd` supports [registry mirrors][mirror] in `/etc/containerd/config.toml`. Run a `registry:2` on each kubelet node bound to `127.0.0.1`, with the cluster registry as upstream, and the per-pod pull becomes a localhost RTT. We measured this explicitly: localhost-registry pulls landed at 0.25–0.30 s, gcr.io pulls at 2.79–2.99 s — a per-pull saving of `~2.5 s`. At 1000 pods scaling in parallel, that saving is 2.5 s of wall-clock per pod (cumulative CPU savings: `1000 × 2.5 = 2500 s`). For a fleet hitting `--serialize-image-pulls` (kubelet's default before v1.27 on some distros), the wall-clock saving is the cumulative figure. Either way it dwarfs the base-image choice.
+**3. Run a registry mirror on every node, not in the cluster**. `containerd` supports [registry mirrors][mirror] in `/etc/containerd/config.toml`. Run a `registry:2` on each kubelet node bound to `127.0.0.1`, with the cluster registry as upstream, and the per-pod pull becomes a localhost RTT. We measured this explicitly: localhost-registry pulls landed at 0.25–0.30 s, gcr.io pulls at 2.79–2.99 s — a per-pull saving of `~2.5 s`. At 1000 pods scaling in parallel, that saving is 2.5 s of wall-clock per pod (cumulative CPU savings: `1000 × 2.5 = 2500 s`). For a fleet running with kubelet's [`--serialize-image-pulls=true`][serialize] flag (which many K8s distros leave on by default), pulls run one-at-a-time per node and the wall-clock saving is the cumulative figure. Either way it dwarfs the base-image choice.
+
+[serialize]: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/
 
 [mirror]: https://github.com/containerd/containerd/blob/main/docs/hosts.md
 
