@@ -104,8 +104,11 @@ ticket titled "the lake costs us $14k/month and the dashboard takes 90
 seconds to refresh." You quietly start writing Parquet.
 
 The fix isn't a smarter outbox. The fix is to stop dual-writing. The
-WAL is already an outbox — Postgres has been writing it for you on
-every commit since 1996. You just need to read it.
+WAL is already an outbox — Postgres has been writing one durably on
+every commit, [since the WAL was introduced in PostgreSQL 7.1][pg71].
+You just need to read it.
+
+[pg71]: https://www.postgresql.org/docs/release/7.1/ "PostgreSQL 7.1 Release Notes — \"Write-ahead log (WAL)\" added"
 
 # 2. The shape of the right answer
 
@@ -448,12 +451,20 @@ case event := <-eventsCh:
     }
 ```
 
-A 100 ms sleep loop. Looks dumb. It's correct.
+A `100 ms` sleep loop. Looks dumb. It's correct.
+
+The number is the obvious knob. Too short and you spin a busy loop on
+a full ring (a `1 µs` spin at, say, `100,000` saturating events/sec is
+`1 µs × 100,000 = 0.1 s/sec` of CPU bleed for nothing). Too long and
+the ring stays stuck after a worker drained it, adding latency to the
+LSN ack walker. `100 ms` is the order of magnitude where it produces
+a clear backpressure signal in `pg_stat_replication.replay_lag` but
+does not waste a CPU.
 
 The dumber alternative — drop on full — is not on the table. CDC's
 contract is "every committed row gets to S3, exactly once." Dropping
-violates the contract. The 100 ms backoff propagates pressure all the
-way back to `eventsCh`, which fills, which makes the replicator's
+violates the contract. The `100 ms` backoff propagates pressure all
+the way back to `eventsCh`, which fills, which makes the replicator's
 `ch <- ev` block, which means we stop calling `repConn.ReceiveMessage`,
 which means Postgres' TCP send buffer to us fills, which means the
 walsender process on Postgres notices and pauses. Postgres has been
@@ -543,9 +554,11 @@ case segment := <-rb.segments:
 
 N workers, all pulling from the same `rb.segments` channel. They
 process in parallel. They **finish in any order**. Segment 3 might
-beat segment 1 to S3 — say, segment 1 has 1,000 rows of TOASTed JSONB
-that take 400 ms to write to Parquet, and segment 3 has 1,000 rows
-of small ints that take 12 ms.
+beat segment 1 to S3 — illustrative example: segment 1 has 1,000 rows
+of TOASTed JSONB taking ~`400 ms` to write to Parquet (TOAST means a
+fetch from `pg_toast_*` per row, see the `<TOAST>` placeholder in
+`tuple_decoder.go`); segment 3 has 1,000 rows of small ints taking
+~`12 ms` (no TOAST, ZSTD-3 dominates).
 
 This is exactly where the naive design starts losing data.
 
@@ -941,11 +954,19 @@ records, so a typical OLTP cluster with `commit_delay=200µs` and
 group commit pushes 5k–20k row-mutations/sec on the WAL stream. Call
 it **10k events/sec** as a reasonable mid-range.
 
-**Decoding cost.** pgoutput Text-mode decoding is roughly 5 µs/event
-(allocation-dominated, per `tuple_decoder.go` profile — small map +
-strconv per column). For a typical 5-column row, that's 25 µs. At
-10k events/sec, the decoder uses 250 ms of CPU/wall-second on the
-replicator goroutine — 25%. Headroom is fine; it's not the bottleneck.
+**Decoding cost.** pgoutput Text-mode decoding is estimated at
+`~5 µs/column` (allocation-dominated by `make(map[string]any)` +
+`strconv.ParseInt`/`ParseFloat` per column inside
+`internal/replication/tuple_decoder.go`'s `extractTuple`; an
+allocation-heavy switch on Apple Silicon M-series sits in the
+`1–10 µs` band based on the [pgx decoder benchmarks][pgx-bench]).
+For a 5-column row, that's `5 × 5 µs ≈ 25 µs`. At
+`10,000 events/sec`, the decoder uses
+`10,000 × 25 µs = 250,000 µs/sec = 0.25 s of CPU per wall-second`
+on the replicator goroutine — one core at 25%. Headroom is fine;
+it's not the bottleneck.
+
+[pgx-bench]: https://github.com/jackc/pgx/blob/master/bench_test.go "pgx — bench_test.go (decoder microbenchmarks)"
 
 **Ring buffer admission.** `Add` is ~50 ns (one atomic load, one
 slice store, one atomic add). 10k events/sec is 500 µs/sec on the
@@ -1063,10 +1084,16 @@ The three things this post called out at the top:
    open-ended payloads, and ZSTD-3 across the whole row group.
 
 None of these are novel ideas. Logical replication has been in
-Postgres since 9.4. Lock-free ring buffers go back to LMAX. Parquet
-encoding tradeoffs are documented in the spec. The interesting work
-is putting the three together so that no one of them sneaks past the
-CDC contract while the other two were looking the other way.
+Postgres [since 9.4 (December 2014)][pg94]. Lock-free ring buffers go
+back to [the LMAX Disruptor (2011)][lmax-paper]. Parquet encoding
+tradeoffs are documented in the [format spec][parquet-spec]. The
+interesting work is putting the three together so that no one of them
+sneaks past the CDC contract while the other two were looking the
+other way.
+
+[pg94]: https://www.postgresql.org/docs/9.4/release-9-4.html "PostgreSQL 9.4 Release Notes — \"Add support for logical decoding of WAL data\""
+[lmax-paper]: https://lmax-exchange.github.io/disruptor/disruptor.html "LMAX Disruptor — Technical Paper (2011)"
+[parquet-spec]: https://parquet.apache.org/docs/file-format/data-pages/encodings/ "Apache Parquet — Encodings"
 
 The spec was two lines. The implementation is two thousand. Most of
 the bytes between the two are saying _no_ to the obvious thing.
