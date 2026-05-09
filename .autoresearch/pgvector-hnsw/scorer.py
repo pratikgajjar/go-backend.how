@@ -791,30 +791,19 @@ def commit_ref_defects(body: str, cached_repo: Path) -> int:
 
 
 def required_sections_defects(body: str, post_path: Path) -> int:
-    """Each post can declare structural section requirements via a sidecar
-    `required_sections.json` next to its autoresearch.sh. The sidecar is
-    a list of `[label, [keyword, ...]]` pairs; `any(keyword in heading)`
-    across all `# / ## / ###` headers satisfies a label.
-
-    Without a sidecar this check is a no-op — different posts have
-    different shapes and the scorer should not assume one of them.
-    """
-    autoresearch_dir = post_path.parent
-    # walk: autoresearch dir for this post lives under
-    # `<repo_root>/.autoresearch/<slug>/`. We pass `post_path` =
-    # content/posts/<slug>/index.md so derive slug from parent name.
-    slug = post_path.parent.name
-    sidecar = post_path.parent.parent.parent / ".autoresearch" / slug / "required_sections.json"
-    if not sidecar.exists():
-        return 0
-    try:
-        import json as _json
-        required = _json.loads(sidecar.read_text(encoding="utf-8"))
-    except Exception as e:
-        print(f"DEBUG sidecar parse error: {e}", file=sys.stderr)
-        return 0
+    """pgvector-HNSW brief specified 7 sections (rename allowed).
+    Match by keyword set within `# / ## / ###` headings."""
     headers = [
         h.lower() for h in re.findall(r"^#{1,3}\s+(.+?)\s*$", body, flags=re.MULTILINE)
+    ]
+    required = [
+        ("the hook / surprise", ["hook", "surprise", "contradiction"]),
+        ("the problem from first principles", ["problem", "first principle", "ann", "naive"]),
+        ("architecture in 200 words", ["architecture", "shape", "layout"]),
+        ("byte-by-byte / source walk", ["byte by byte", "byte-by-byte", "source", "walk", "single query"]),
+        ("real numbers / benchmark", ["real numbers", "benchmark", "measurement"]),
+        ("tradeoffs / limitations", ["tradeoff", "bad at", "limitation", "weakness"]),
+        ("what i'd build differently / change", ["differently", "build differently", "change"]),
     ]
     n = 0
     for label, keywords in required:

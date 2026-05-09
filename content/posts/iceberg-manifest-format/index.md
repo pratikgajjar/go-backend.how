@@ -362,15 +362,15 @@ static final long UNASSIGNED_SEQ = -1L;
 ```
 
 `UNASSIGNED_SEQ = -1` is the in-memory sentinel for "fill me in
-later"; on-disk the manifest-entry sequence-number column is
-written as Avro `null` (and the manifest-list's `sequence_number`
-column on the *manifest* row holds the same `-1` until commit
-succeeds). When `toManifestFile()` builds the wrapper at the end of
-`ManifestWriter`, it passes `UNASSIGNED_SEQ` for the
-`sequenceNumber` argument; the manifest-list writer then overwrites
-it once at commit with the snapshot's freshly-assigned sequence
-number. The same indirection is used for `first_row_id` in V3,
-which assigns `_row_id`s monotonically across the whole table.
+later"; it never reaches disk. Inside the manifest itself, every
+`manifest_entry`'s `sequence_number` column is written as Avro
+`null` for ADDED entries. At commit time, the `ManifestFile`
+wrapper that holds `-1` is overwritten with the snapshot's
+freshly-assigned sequence number before the manifest list is
+serialised. From `ManifestWriter.UNASSIGNED_SEQ`'s own javadoc:
+"this is replaced when writing a manifest list by the ManifestFile
+wrapper." The same indirection is used for `first_row_id` in V3,
+which assigns row IDs monotonically across the whole table.
 
 ## 4.4 Optimistic commit — what really happens on `INSERT`
 
