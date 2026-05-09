@@ -714,8 +714,9 @@ func (w *WALSubscriber) listenEventAck(ctx context.Context) {
 
 Note the design: the LSN is **not** flushed to Postgres on every Kafka
 ack. It's coalesced into a 1-second tick. At 10K events/sec, that
-collapses 10,000 ack writes into one `pg_send_standby_status_update`
-RPC — that is **four orders of magnitude** less ack traffic
+collapses 10,000 ack writes into one `pglogrepl.SendStandbyStatusUpdate`
+call (the wire-protocol message is called "Standby status update")
+— that is **four orders of magnitude** less ack traffic
 (`10,000 → 1` per second). We trade a 1-second window of replay-on-
 crash for it. Sensible default; tunable if your workload disagrees.
 
