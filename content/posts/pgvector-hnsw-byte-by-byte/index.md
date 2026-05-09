@@ -714,13 +714,13 @@ filters in `WHERE`-recheck after fetching each heap tuple — HNSW
 implements `amgettuple` only, not `amgetbitmap`
 ([hnsw.c L314–L315](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.c#L314-L315))
 — so it can't use bitmap intersection with a category index. If
-shoes are 0.1 % of your data, the default `ef_search = 40` returns
-roughly `40 × 0.001 = 0.04` matching rows on average — close to
-zero — and the executor either falls back to a sequential scan or
-returns < `LIMIT` rows. Pgvector v0.8 added `hnsw.iterative_scan`,
-which keeps walking the graph past `ef_search` until the filter
-yields enough rows, but it has to walk a lot of graph to find them
-when the filter is selective. There is active research on
+shoes are 0.1 % of your data and the filter is uncorrelated with
+embedding distance, the default `ef_search = 40` returns roughly
+`40 × 0.001 = 0.04` matching rows in expectation — close to zero
+— and the executor returns < `LIMIT` rows. Pgvector v0.8 added
+`hnsw.iterative_scan`, which keeps walking the graph past
+`ef_search` until the filter yields enough rows, but it has to
+walk a lot of graph to find them when the filter is selective. There is active research on
 [hybrid search](https://arxiv.org/abs/2403.01773) that handles this
 properly; pgvector handles it pragmatically.
 
