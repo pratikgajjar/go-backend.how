@@ -99,6 +99,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         with open(path) as f:
             html = f.read()
@@ -140,6 +141,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         with open(path) as f:
             html = f.read()
@@ -169,6 +171,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         with open(path) as f:
             html = f.read()
@@ -185,6 +188,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         with open(path) as f:
             html = f.read()
         m = re.search(r'<title>([^<]*)</title>', html)
@@ -200,6 +204,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         with open(path) as f:
             html = f.read()
@@ -212,8 +217,8 @@ for root, _, files in os.walk('public'):
     for fn in files:
         if not fn.endswith('.html'):
             continue
-        # Skip non-content pages
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         # Skip 404 page
         if fn == '404.html':
@@ -234,6 +239,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         with open(path) as f:
             html = f.read()
@@ -386,6 +392,9 @@ for root, _, files in os.walk('content/posts'):
         path = os.path.join(root, fn)
         with open(path) as f:
             content = f.read()
+        # Skip drafts — author still iterating on tag choices
+        if re.search(r'^\s*draft\s*[:=]\s*[\'"]?true', content, re.MULTILINE | re.IGNORECASE):
+            continue
         if content.startswith('+++'):
             try:
                 fm_end = content.index('+++', 3)
@@ -421,6 +430,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         with open(path) as f:
             html = f.read()
@@ -531,6 +541,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         with open(path) as f:
             html = f.read()
@@ -546,6 +557,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         with open(path) as f:
             html = f.read()
@@ -560,6 +572,7 @@ for root, _, files in os.walk('public'):
         if not fn.endswith('.html'):
             continue
         path = os.path.join(root, fn)
+        if skip_html(path): continue
         rel = os.path.relpath(path)
         with open(path) as f:
             html = f.read()

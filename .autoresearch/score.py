@@ -140,7 +140,12 @@ def codeblock_path_defects(body: str, cached_repo: Path) -> tuple[int, int, int]
                 line = raw.strip()
                 if len(line) < 25:
                     continue
-                # strip trailing comments after `//` for Go
+                # First try the full line (preserves trailing comments
+                # that are themselves in the source). Then fall back to
+                # comment-stripped form.
+                if line in src:
+                    line_hit = True
+                    break
                 stripped = re.sub(r"\s*//.*$", "", line).strip()
                 if len(stripped) < 25:
                     continue
@@ -367,9 +372,15 @@ def percent_no_math_defects(body: str) -> int:
     return n
 
 
-# Placeholder URLs that shouldn't ship in a published post
+# Placeholder URLs / values that shouldn't ship in a published post.
+# Note: `localhost:NNNN` is a real dev address (MinIO, Postgres, etc.),
+# not a placeholder, so it is intentionally excluded.
 PLACEHOLDER_URL_RE = re.compile(
-    r"https?://(?:example\.com|foo\.com|bar\.com|test\.com|localhost(?:[:/\b]|$)|todo\b)",
+    r"https?://(?:example\.com|foo\.com|bar\.com|test\.com|TODO\b|FIXME\b)"
+    r"|<your[- _][\w-]+>"
+    r"|YOUR_[A-Z_]{3,}"
+    r"|EXAMPLE_[A-Z_]{3,}"
+    r"|\bTODO\([^)]*\)|\bFIXME\([^)]*\)",
     re.IGNORECASE,
 )
 

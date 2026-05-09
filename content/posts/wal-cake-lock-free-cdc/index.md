@@ -163,8 +163,14 @@ ourselves.
 
 ```go
 // internal/replication/pg_replicator.go
-r.repConn,   _ = pgconn.Connect(ctx, r.cfg.PGConn+"?replication=database")
-r.queryConn, _ = pgx.Connect (ctx, r.cfg.PGConn)
+r.repConn, err = pgconn.Connect(ctx, r.cfg.PGConn+"?replication=database")
+if err != nil {
+    return fmt.Errorf("failed to connect to database for replication: %w", err)
+}
+defer r.repConn.Close(ctx)
+
+// Create a separate connection for regular queries
+r.queryConn, err = pgx.Connect(ctx, r.cfg.PGConn)
 ```
 
 The `?replication=database` suffix is the magic. It tells Postgres that
@@ -482,9 +488,9 @@ the ring:
 ```go
 // internal/buffer/ring_buffer.go
 type Segment struct {
-    StartIdx int64
-    EndIdx   int64
-    done     bool
+	StartIdx int64 // Start index in the ring buffer
+	EndIdx   int64 // End index in the ring buffer
+	done     bool
 }
 ```
 
@@ -801,9 +807,11 @@ real ~200 B/event CDC workload, not a single specific file from this
 exact codebase. The shape is right; treat the bytes as approximate.)
 
 Two columns dominate: `before` and `after`. Everything else is in the
-noise — `table` and `operation` together are 0.3% of the file. The
-moral: **stop optimizing the small columns and optimize your JSON**.
-Which leads to the next decision.
+noise — `table` and `operation` together are
+`(412 + 78) / 184,322 ≈ 0.3%` of the file's total bytes (computed
+from the illustrative `parquet-tools meta` row-group sizes above).
+The moral: **stop optimizing the small columns and optimize your
+JSON**. Which leads to the next decision.
 
 ## go-json over encoding/json
 
@@ -1058,8 +1066,10 @@ Two more I'd consider but probably wouldn't ship in v1:
   Parquet `BYTE_ARRAY`. A more efficient pipeline decodes pgoutput
   directly into Arrow column builders. The work is real (you'd
   re-implement most of `tuple_decoder.go` for every Arrow type) and
-  the throughput we have is already 20× the upstream WAL rate. File
-  it under "if profiling ever shows the JSON encoding as a bottleneck."
+  the throughput we measured (`200,000 events/sec` Parquet ceiling
+  vs `10,000 events/sec` mid-range upstream) is already
+  `200,000 / 10,000 = 20×` the upstream WAL rate. File it under "if
+  profiling ever shows the JSON encoding as a bottleneck."
 
 # Where this leaves us
 
