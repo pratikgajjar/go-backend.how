@@ -6,6 +6,7 @@
   "https://github.com/chainguard-images/images/tree/main/images/wolfi-base": 200,
   "https://github.com/containerd/containerd/blob/main/docs/hosts.md": 200,
   "https://github.com/containerd/containerd/blob/main/internal/cri/config/config.go": 200,
+  "https://github.com/containerd/containerd/blob/main/plugins/snapshots/overlay/overlay.go": 200,
   "https://github.com/containerd/containerd/tree/main/docs/snapshotters": 200,
   "https://github.com/opencontainers/image-spec/blob/main/manifest.md": 200,
   "https://github.com/uber-go/automaxprocs": 200,
