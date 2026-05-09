@@ -351,7 +351,7 @@ metrics.EventProcessingLatency.WithLabelValues(...).Observe(latency)
 ```
 
 The histogram is `factlib_event_processing_seconds`. The byte math
-in §8 derives an expected envelope of **80–250 µs p50** for sub-1KB
+in [§8](#8-ordering--throughput) derives an expected envelope of **80–250 µs p50** for sub-1KB
 events on a same-VPC pgx connection — most of which is the network
 round-trip, not the WAL append. We have not yet collected production
 percentiles to ship publicly, so resist the urge to read absolute
@@ -411,7 +411,7 @@ when OwlPost comes back it picks up exactly where it left off.
 
 Slots are also the operational footgun. If OwlPost dies and never
 comes back, the WAL grows until your disk fills. We will return to
-this in §7.
+this in [§7](#7-reliability-proof--the-lsn-dance).
 
 ## Starting replication
 
@@ -543,7 +543,7 @@ Three details:
 - **Key = aggregateId.** Kafka's sticky partitioner hashes this to
   pick a partition. All events for `aggregate_id = "user-12345"` land
   on the same partition, in WAL order. **Per-aggregate ordering is
-  preserved end-to-end.** Cross-aggregate ordering is not — see §8.
+  preserved end-to-end.** Cross-aggregate ordering is not — see [§8](#8-ordering--throughput).
 - **`headers["LSN"] = event.XLogPos.String()`.** The LSN rides with
   the message. The Kafka ack callback later strips it back out and
   feeds it to the LSN-ack pipeline. This is the trick that turns
@@ -930,14 +930,14 @@ WAL bytes   ≈ 600 B × 10,000  = 6 MB/sec
 A modern NVMe sustains 1–3 GB/sec sequential writes; we're using
 0.3% of that. The bottleneck for ten-thousand-events-per-second is
 network round-trips on the producer side, not the WAL itself. For
-hundred-thousand-per-second you start needing batched-emit (see §9
+hundred-thousand-per-second you start needing batched-emit (see [§9](#9-when-not-to-use-this)
 for "when not to use this") or a dedicated event store.
 
 ## How does this compare to a table-based outbox?
 
 | | Outbox table (poll) | factlib (logical msg) |
 |---|---:|---:|
-| Producer SQL | 1 INSERT (heap tuple ~24 B header + payload + 2 index entries) | 1 SELECT (~600 B WAL, derived in §8) |
+| Producer SQL | 1 INSERT (heap tuple ~24 B header + payload + 2 index entries) | 1 SELECT (~600 B WAL, derived in [§8](#8-ordering--throughput)) |
 | Producer round-trips | 1 | 1 |
 | Consumer query rate | 10/sec polls per worker | 0 (push via WAL) |
 | Index writes per event | 2 (heap + index) | 0 |
