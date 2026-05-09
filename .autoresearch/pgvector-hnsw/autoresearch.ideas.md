@@ -20,6 +20,17 @@ Last reviewed: 2026-05-09 (iter 18, defects 0 stable).
 - Iter 23: §6 'percentage-level disagreement' magnitude un-claimed (mechanism description retained).
 - Iter 24: IVFFlat tuning is `lists ≈ rows/1000` and `probes ≈ √lists`, not √N.
 - Iter 25: §7 closing taxonomy fixed (Vespa is a search engine, not a columnar store).
+- Iter 27: GetScanItems is 31 lines (verified by `awk '/^GetScanItems\(/,/^}$/' src/hnswscan.c | wc -l`).
+- Iter 28: §1 hot path describes generic 'distance computation' (L2/IP/cosine), not just 'inner-product'.
+- Iter 29: ml is the MEAN of the underlying continuous exponential, not its rate parameter.
+- Iter 30: §1 jargon fix — 'B-tree-shaped reltype' → 'plugs into IndexAmRoutine like B-tree and GIN do'.
+- Iter 31: §6 filter-recheck mechanism precise — without iterative_scan, HNSW just returns < LIMIT rows.
+- Iter 32: §6 napkin math decomposition uses 192 (matching prose), not 200.
+- Iter 33: PostgreSQL is 30 years old (1996 first release), not 25.
+- Iter 34: filtered-search expectation 0.04 is a worst case (uncorrelated filter); clarified.
+- Iter 35: §4.3 distance-work upper bound is `ef × 2M = 1280` candidates, not 528.
+- Iter 36: §4.4 derivation made integer-truncation explicit at each step (was `1358 / 16 - 2 = 82`, ambiguous).
+- Iter 37: §4.1 candidate-list ordering is furthest→nearest (drained from W max-heap); llast() is the nearest.
 
 ## Open / deferred
 
