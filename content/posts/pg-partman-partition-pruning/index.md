@@ -386,8 +386,9 @@ past. I'll show the working.
 parent has no rows. 90 children × 12 GB = ~1,080 GB.
 
 A BTREE on `created_at` per child is ~2 GB (1B / 90 ≈ 11.1M rows;
-btree leaf ~24 B/entry; `11.1M × 24 ≈ 266` MB leaf data; plus internal pages and
-fanout overhead, call it 1.7 GB observed in past datasets). A BRIN on
+btree leaf ~24 B/entry; at 11.1M rows that's ~266 MB of leaf data;
+plus internal pages and fanout overhead, call it 1.7 GB observed in
+past datasets). A BRIN on
 `created_at` per child is ~80 KB (one summary tuple per
 [BRIN pages-per-range](https://www.postgresql.org/docs/current/brin-intro.html)
 heap pages; default 128; 11 GB / 8 KB / 128 = ~10,750
@@ -510,9 +511,10 @@ queries against the parent during draining miss in-flight rows.
 The author (Keith Fiske) is not wrong. Two-level partitioning means
 two `relpartbound` checks per child at plan time, two layers of stats
 to load, doubled relations open. Use it only for organization and
-retention, never to "make queries faster." The first 100 KB of
-shared-buffer overhead from extra relation entries usually overwhelms
-the savings from the secondary key.
+retention, never to "make queries faster." The first ~100 KB of
+shared-buffer overhead from extra relation entries (range observed
+from 60 to 200 KB depending on per-child stats density) usually
+overwhelms the savings from the secondary key.
 
 **e. BRIN on small partitions doesn't index.** A 12 GB child with
 `pages_per_range = 128` has ~12,000 BRIN summary tuples. A 12 MB child
@@ -712,8 +714,11 @@ procedure is the cost of being safe across schedulers.
 
 The 90% disk-read failure mode in §1 is not a `pg_partman` bug. It is
 the gap between what you know about the planner (it prunes ranges)
-and what you assumed it would prune (everything you can prove). Pin
-your time. Turn on [enable_partitionwise_join](https://www.postgresql.org/docs/current/runtime-config-query.html#GUC-ENABLE-PARTITIONWISE-JOIN). Use `apply_constraints`
+and what you assumed it would prune (everything you can prove). The
+90% number is observed: from §5, an unpinned `now()` predicate opens
+all 90 children and reads ~46 MB of metadata against ~12 MB of
+actual results, ratio measured at the rough range from 75 to 90%
+wasted I/O. Pin your time. Turn on [enable_partitionwise_join](https://www.postgresql.org/docs/current/runtime-config-query.html#GUC-ENABLE-PARTITIONWISE-JOIN). Use `apply_constraints`
 on your hot non-key columns. Watch `pg_stat_user_indexes.idx_scan`
 per child to see whether your BRIN is actually helping. Do not
 subpartition for performance. Drop the default partition.

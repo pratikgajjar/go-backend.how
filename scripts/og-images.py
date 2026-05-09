@@ -451,6 +451,8 @@ MOTIFS = {
     "grid_cells":       motif_grid_cells,
     "radial_polygon":   motif_radial_polygon,
     "text_columns":     motif_text_columns,
+    "stacked_layers":   motif_stacked_layers,
+    "hnsw_layers":      motif_hnsw_layers,
 }
 
 
@@ -465,6 +467,18 @@ def pick_motif(slug: str, tags: list[str]) -> str:
         return "hex_shield"
     if "temporal" in text or "workflow" in text or "durable" in text:
         return "concentric_clock"
+    # Vector search / HNSW BEFORE postgres so pgvector→hnsw_layers (not grid_cells)
+    if "pgvector" in text or "hnsw" in text or "vector-search" in text or "ann" in text:
+        return "hnsw_layers"
+    # Containers / k8s — image layers
+    if "kubernetes" in text or "k8s" in text or "containers" in text or "distroless" in text or "wolfi" in text:
+        return "stacked_layers"
+    # Iceberg / data-lake / parquet / formats — tree of immutable files
+    if "iceberg" in text or "data-lake" in text or "parquet" in text or "snapshots" in text or "schema-evolution" in text:
+        return "branching_tree"
+    # Distributed databases / sharding — radial coordinator + workers
+    if "citus" in text or "scylla" in text or "seastar" in text or "shard" in text or "distributed-sql" in text or "cassandra" in text:
+        return "spoke_wheel"
     if "valkey" in text or "redis" in text or "cache" in text or "car" in text:
         return "nested_squares"
     if "stereogram" in text or "vision" in text or "dark-mode" in text:
@@ -480,7 +494,8 @@ def pick_motif(slug: str, tags: list[str]) -> str:
     # Learning / first-principles BEFORE the gyan/content fallback
     if "first-principles" in text or "learn" in text or "backend" in text:
         return "branching_tree"
-    if "postgres" in text or " db" in text or "query" in text:
+    # Postgres-specific (partitioning, partman, time-series, query optimization)
+    if "postgres" in text or " db" in text or "query" in text or "partition" in text or "time-series" in text or "brin" in text:
         return "grid_cells"
     if "creating" in text or "content" in text or "writing" in text:
         return "text_columns"

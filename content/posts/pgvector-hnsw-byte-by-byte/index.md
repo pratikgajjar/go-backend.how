@@ -15,8 +15,8 @@ math = false
 > A 1.4 MB shared object turns Postgres — a system that has spent
 > twenty-five years optimising B-trees over rows — into a vector
 > database that beats brute force by an order of magnitude. The
-> algorithmic core fits in 800 lines of the kind of C that mostly
-> manipulates 8 KB pages — measured below.
+> algorithmic core fits in 800 lines of C that mostly manipulates
+> 8 KB pages — measured below.
 
 I keep meeting teams who treat [pgvector](https://github.com/pgvector/pgvector)
 as if it were an external service: "the vector store." It isn't. It's
@@ -531,8 +531,10 @@ table size:        27.9 MB
 `128 × 4 = 512 B` plus a `Vector` header (28 B observed), the level-0
 neighbour tuple holds `2 × 16 = 32` TIDs at 6 B each, so
 `32 × 6 = 192 B`, plus an 8 B tuple header, plus the element tuple's
-per-page slot (`ItemIdData` is 4 B), plus alignment slack. The dominant term is the vector data; the index is only about
-60 % bigger than the table because each tuple lives in both.
+per-page slot (`ItemIdData` is 4 B), plus alignment slack. The dominant term is the vector data; the index size to
+table size ratio measured at `41,631,744 / 29,261,824 = 1.42`,
+which means the index ships 42 % more bytes than the heap because
+each element exists in both.
 
 Query latency at varying `ef_search`:
 
@@ -551,10 +553,11 @@ exact     │   1.0000  │    5,440 │   18,668
 Three things to read out of this table.
 
 **The recall curve has a knee.** Going from `ef_search = 40` to `80`
-buys you 2 percentage points of recall for 13 % more latency. Going
-from `80` to `320` buys you 0.18 percentage points for 19 % more
-latency. The default of 40 is well-chosen for `K = 10`; if you need
-≥ 99 % recall you are spending way more than 8× the latency.
+buys 2 percentage points of recall for 13 % more measured latency.
+Going from `80` to `320` buys 0.18 percentage points for 19 % more
+latency. The default of 40 is well-chosen for `K = 10`; pushing past
+95 % recall costs over 8× the latency at the same `K`, as the table
+above shows.
 
 **Latency is dominated by the random walk, not the math.** At
 `ef_search = 80`, each query reads on the order of `(ef × M / 2) ≈
@@ -691,10 +694,11 @@ HNSW for anything that needs deterministic ranking.
 **Build time scales worse than IVFFlat.** Build is `O(N × log N ×
 ef_construction)` graph operations. IVFFlat's build is `O(N × probes
 × iterations)` k-means work, which parallelises better and uses less
-memory. Extrapolating from this post's measured build (50k vectors
-in 6.0 s = 8.3 k vectors/s single-threaded), a 10M-row HNSW build
-at that rate is about 20 minutes; pgvector's parallel-build mode
-(see `HnswParallelBuildMain`) brings that down by `max_parallel_maintenance_workers`-fold in practice.
+memory. Extrapolating from this post's measured build
+(`50,000 / 6.0 = 8,333` vectors/s single-threaded), a 10M-row HNSW
+build at that rate is `10,000,000 / 8,333 / 60 ≈ 20` minutes;
+pgvector's parallel-build mode (see `HnswParallelBuildMain`) brings
+that down by `max_parallel_maintenance_workers`-fold in practice.
 
 # 7. What I'd build differently
 
@@ -773,8 +777,7 @@ respectively._
 
 # Further reading
 
-- [Malkov & Yashunin, "Efficient and robust approximate nearest neighbor
-  search using Hierarchical Navigable Small World graphs"](https://arxiv.org/abs/1603.09320) (2018)
+- [Malkov & Yashunin, the HNSW paper](https://arxiv.org/abs/1603.09320) (TPAMI, 2018)
 - [pgvector source v0.8.2](https://github.com/pgvector/pgvector/tree/v0.8.2)
 - [pgvector CHANGELOG](https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md)
 - [DiskANN: Fast Accurate Billion-point Nearest Neighbor Search](https://www.microsoft.com/en-us/research/publication/diskann-fast-accurate-billion-point-nearest-neighbor-search-on-a-single-node/) — what you'd do for working sets that don't fit in RAM

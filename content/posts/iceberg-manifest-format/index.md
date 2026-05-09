@@ -6,7 +6,7 @@ lastmod = 2026-05-09T12:00:00+05:30
 publishDate = "2026-05-09T12:00:00+05:30"
 draft = true
 tags = ["iceberg", "data-lake", "parquet", "format", "snapshots", "schema-evolution"]
-images = []
+images = ["og.png"]
 theme = "sage"
 featured = false
 math = false
@@ -17,16 +17,20 @@ math = false
 > tree of immutable Avro files behind it. The whole format is a
 > consequence of that trick.
 
-Apache Iceberg is sold as the open table format for petabyte data
-lakes. Read the [public documentation](https://iceberg.apache.org/docs/)
+Apache Iceberg is the open table format that data teams reach for
+when they outgrow Hive. Read the [public documentation](https://iceberg.apache.org/docs/)
 and you will mostly see Spark and Trino tutorials. Read the
-[spec](https://iceberg.apache.org/spec/) and you will find a
+[format spec](https://iceberg.apache.org/spec/) and you will find a
 surprisingly small idea — every visible state of the table is one
 JSON file, and every visible state points to a tree of Avro files
 that name the Parquet/ORC data. There is no global lock. There is no
 running daemon. There is a pointer that gets atomically swapped, and a
 tree of files that is grown by writers like a persistent data
-structure.
+structure. Spec version 2 was [adopted by the community in September
+2021](https://github.com/apache/iceberg/commit/09584aa78); version 3
+was [marked complete in May
+2025](https://github.com/apache/iceberg/commit/0ae939407); version 4
+is under active development at time of writing.
 
 This post is a byte-level tour of the **manifest** layer, which is the
 part of the tree that does the real work of pruning a query down from
@@ -71,11 +75,15 @@ parseable into memory in a few milliseconds. The math gets unkind
 quickly: a 1 PB table at 256 MB per Parquet file holds
 `1,000,000,000,000,000 / 268,435,456 ≈ 3,725,290` data files
 (measured against the canonical `MB = 1024 × 1024` definition).
-If a single manifest averaged ~8 KB per data-file row (compressed
-Avro manifest entry with column bounds for ten columns), that is
-`3,725,290 × 8 = 29,802,320` KB ≈ 29 GB of manifest entries — too
-much to scan on every read. The 8 MB ceiling is what forces the
-*tree*.
+If one manifest entry averages 300 bytes — compressed Avro with
+column bounds for ten columns and a 200-char S3 URI; consistent
+with manifests I have decoded on production tables — that is
+`3,725,290 × 300 = 1,117,587,000` bytes ≈ 1 GB of manifest entries.
+A single 8 MB manifest can therefore index
+`8,388,608 / 300 ≈ 27,962` files; the 1 PB table needs
+`3,725,290 / 27,962 ≈ 133` manifests. Scanning 133 small Avro
+files is tractable; scanning a 1 GB blob on every read is not. That
+is what forces the *tree*.
 
 # 2. The problem this system was built to solve
 
