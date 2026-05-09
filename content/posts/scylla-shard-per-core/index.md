@@ -506,7 +506,7 @@ Go 1.26.3. The two key variants are inlined here; the full program
 (five variants, ~145 lines) is the same in shape — each variant
 spawns four goroutines, each does 5,000,000 iterations of a single
 inner loop, and the wall-clock is the median of three runs. The full
-50-line cut-down is below in [Stretch](#stretch-see-it-for-yourself).
+compact reproducer is below in [Stretch](#stretch-see-it-for-yourself).
 
 ```go
 // Save and run with: go run .   (single-file benchmark, no module)
@@ -571,8 +571,8 @@ sharded_falseshare, and channel_hop — built the same way: each
 spawns four goroutines, each runs 5,000,000 iterations of the variant's
 inner loop, and the wall-clock is the median of three runs. Rather than
 bloat the post with all five, the [Stretch section
-below](#stretch-see-it-for-yourself) ships a 50-line reproducer for the
-two extremes.)
+below](#stretch-see-it-for-yourself) ships a compact 45-line
+reproducer for the two extremes.)
 
 Median-of-three results on the same 4 cores, same 20M total ops:
 
@@ -780,14 +780,14 @@ stays on the calling core. A non-diagonal-heavy distribution means
 your client driver is misrouting and you're paying the full
 cross-core tax.
 
-## 50-line reproducer
+## Compact reproducer
 
 Save the snippet as bench.go, run with `go run bench.go`. Should
 finish in under 2 seconds on any
 modern laptop:
 
 ```go
-// Save and run with: go run .   (50-line reproducer)
+// Save and run with: go run .   (45-line minimal reproducer)
 package main
 
 import (
@@ -836,7 +836,7 @@ func main() {
 ```
 
 Expected output on a modern laptop (M-series Apple, Zen 4, Ice Lake):
-ratio between 30 and 80. The 50-line variant tends to score higher
+ratio between 30 and 80. The compact variant tends to score higher
 than the main benchmark — both runs do the same work but the smaller
 binary starts with a colder OS scheduler and a warmer cache after the
 first variant runs (no preceding mutex/channel variants to dirty L1). If you see `≤ 5×`, your machine has fewer than 4 physical cores

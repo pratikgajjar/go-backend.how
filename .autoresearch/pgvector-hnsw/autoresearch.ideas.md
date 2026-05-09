@@ -35,6 +35,9 @@ Last reviewed: 2026-05-09 (iter 18, defects 0 stable).
 - Iter 40: §2 historical claim weakened ('a common pre-HNSW answer was IVFFlat' instead of 'the pre-2016 industry standard').
 - Iter 41-42: index size is 39.7 MiB (not 39.8 MB) — verified by `41631744 / 1048576`. KB notation kept for 8 KB pages (Postgres convention).
 - Iter 43: §5 reproducibility honesty — inline script doesn't reproduce `maintenance_work_mem` settings, noted to reader.
+- Iter 45-46: visited-set rationale clarified — TID is the persistent identifier within ONE HnswSearchLayer call's inner loop (not across layer descents).
+- Iter 47: HnswSearchLayer is best-first (Dijkstra-like priority queue), not breadth-first.
+- Iter 48: half-precision path hand-rolls F16C for runtime-dispatch reasons (cpuid fallback to scalar), not because auto-vectorizer 'doesn't know how' to use F16C.
 
 ## Open / deferred
 

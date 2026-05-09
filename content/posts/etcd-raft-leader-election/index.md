@@ -562,10 +562,11 @@ A leader has just died. Every follower started its election timer at the
 last heartbeat, so wall-clock-from-leader-loss to first MsgHup is
 **uniformly in `[1.0 s, 1.999 s]`** per follower, independent across
 followers. The fastest of `n − 1 = 2` followers fires at the order
-statistic min: expected wait = `1.0 s + (1.0 s)/3 ≈ 1.33 s`. Add ~one
-network round-trip (~1 ms LAN) for the vote round and ~one for the
-post-election heartbeat to settle, and you've spent **≈ 1.33 s on
-waiting and ≈ 2 ms on protocol work**.
+statistic min — for `k` iid `U(a, b)`, `E[min] = a + (b − a)/(k + 1)` —
+giving `1.0 s + 0.999 s / 3 ≈ 1.333 s`. Add ~one network round-trip
+(~1 ms LAN) for the vote round and ~one for the post-election heartbeat
+to settle, and you've spent **≈ 1.33 s on waiting and ≈ 2 ms on
+protocol work**.
 
 That's the headline of this whole post: the protocol *work* is
 microseconds; the protocol *waiting* is a half to two seconds, dictated

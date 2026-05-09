@@ -136,9 +136,9 @@ calls this "join order planning." The implementation lives in
 to be rewritten - the table OID in the parse tree refers to the
 unsharded table, which the worker doesn't have. Citus replaces the
 range table entry with a fake function call to
-`citus_extradata_container`, which encodes the shard ID into a
-parameter, and the deparser recognises this fake call and emits the
-shard name. The function itself, in
+`citus_extradata_container`, which encodes the original table ID
+and the shard ID into a parameter, and the deparser recognises this
+fake call and emits the shard name. The function itself, in
 `src/backend/distributed/utils/citus_nodefuncs.c` line 360, has a
 body that just throws:
 
