@@ -963,12 +963,14 @@ Back-of-envelope for a single wal-cake instance with default config
 (`batchSize=1000, concurrency=4, flushInterval=30s`):
 
 **Upstream ceiling.** Postgres' WAL flush rate is the upstream limit.
-The 1B-payments post measured ~600 µs for `fsync()` on Apple Silicon
-NVMe[^fsync] and ~1.2 ms on commodity AWS gp3. At 1 commit ≈ 1 fsync,
-that's 1.6k–800 commits/sec per cluster — but commits batch many WAL
-records, so a typical OLTP cluster with `commit_delay=200µs` and
-group commit pushes 5k–20k row-mutations/sec on the WAL stream. Call
-it **10k events/sec** as a reasonable mid-range.
+The 1B-payments post measured `~600 µs` for `fsync()` on Apple Silicon
+NVMe[^fsync] and `~1.2 ms` on commodity AWS gp3. At 1 commit ≈ 1
+fsync, that's `1 / 0.0012 s ≈ 833` to `1 / 0.0006 s ≈ 1,667`
+commits/sec, i.e. roughly the `833–1,667` band per cluster — but
+commits batch many WAL records, so a typical OLTP cluster with
+`commit_delay=200µs` and group commit pushes `5k–20k` row-mutations
+per second on the WAL stream. Call it **10k events/sec** as a
+reasonable mid-range.
 
 **Decoding cost.** pgoutput Text-mode decoding is estimated at
 `~5 µs/column` (allocation-dominated by `make(map[string]any)` +

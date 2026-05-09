@@ -470,6 +470,48 @@ def orders_of_magnitude_defects(body: str) -> int:
     return n
 
 
+SECTION_REF_RE = re.compile(r"§\s?(\d{1,2})\b")
+SECTION_HEADING_RE = re.compile(r"^#\s+(\d{1,2})\.\s+", re.MULTILINE)
+
+
+def section_xref_defects(body: str) -> int:
+    """Every §N reference in the body must resolve to a numbered # N. heading.
+    Skip §5.7 / §5.8 patterns — those are RFC sections, not in-doc."""
+    headings = {int(m.group(1)) for m in SECTION_HEADING_RE.finditer(body)}
+    n = 0
+    for m in SECTION_REF_RE.finditer(body):
+        # ignore RFC-style refs: § followed by N.M
+        s = m.start()
+        e = m.end()
+        if e < len(body) and body[e:e + 1] == ".":
+            # could be RFC §5.7 — ignore
+            continue
+        # also ignore if preceded by "RFC"
+        before = body[max(0, s - 12):s]
+        if "RFC" in before:
+            continue
+        sec = int(m.group(1))
+        if sec not in headings:
+            print(f"DEBUG bad_section_xref: §{sec} (have {sorted(headings)})", file=sys.stderr)
+            n += 1
+    return n
+
+
+def long_line_defects(body: str) -> int:
+    """Code-block lines wider than 100 chars overflow on mobile."""
+    n = 0
+    for m in CODEBLOCK_RE.finditer(body):
+        lang, code = m.group(1).strip().lower(), m.group(2)
+        # skip txt/text diagrams (often have wide ascii art) and tables
+        if lang in ("txt", "text", "ascii"):
+            continue
+        for line in code.splitlines():
+            if len(line.rstrip()) > 100:
+                print(f"DEBUG long_line ({len(line)}c, {lang}): {line[:80]!r}...", file=sys.stderr)
+                n += 1
+    return n
+
+
 def wal_record_overhead_defects(body: str) -> int:
     """
     Postgres XLogRecord header is 24 bytes (xlog_internal.h SizeOfXLogRecord).
@@ -539,6 +581,8 @@ def main() -> int:
     cats["fabricated_production"] = fabricated_production_defects(body)
     cats["loc_drift"] = loc_drift_defects(body, cached_repo)
     cats["orders_of_magnitude"] = orders_of_magnitude_defects(body)
+    cats["bad_section_xref"] = section_xref_defects(body)
+    cats["long_code_lines"] = long_line_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -558,6 +602,8 @@ def main() -> int:
         "fabricated_production": 4,
         "loc_drift": 3,
         "orders_of_magnitude": 3,
+        "bad_section_xref": 3,
+        "long_code_lines": 1,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
