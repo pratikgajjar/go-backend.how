@@ -553,8 +553,9 @@ partitioned by day for 365 days:
   Avro decompresses to roughly 30 MiB for numeric/binary-heavy
   manifests (snappy on 32-bit-int-heavy data is in the 3–4×
   expansion range; the
-  [snappy benchmarks](https://github.com/google/snappy)
-  reports ~3.5× on enwik9, which is mixed text+binary). The parse
+  [snappy README](https://github.com/google/snappy)
+  reports ~3.5× compression on enwik9, which is mixed
+  text+binary). The parse
   cost on Python with `fastavro` is roughly the disk-decode of
   that 30 MiB, which dominates over the network round-trip on
   small (single-day) queries. JVM clients are typically faster

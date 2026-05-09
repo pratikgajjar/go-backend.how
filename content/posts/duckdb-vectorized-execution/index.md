@@ -344,17 +344,20 @@ inline void IncrementAndWrap(idx_t &offset, const uint64_t &capacity_mask) {
 The probe loop is run once per chunk, in groups of `count` (which is
 at most 2048). Each iteration is independent, so on a wide-superscalar
 core the prefetcher can stream the entries array faster than the
-salt-compare branch can execute. On the SF=10 Q03 build side
-(15M `orders` rows after filter) the hash table sizes to roughly
-32M slots × 8 bytes ≈ 256 MB. That doesn't fit in L2 (the M3 Max
-P-cluster L2 is 16 MB); what fits is the *probe-side* working set —
-one `DataChunk` of 2048 × 8 columns × 8 bytes = 128 KB plus the
-2048 × 128 B = 256 KB of hash-entry cache-lines touched per chunk
-(`(2048 × 8) + (2048 × 128) = 16384 + 262144 = 278528` bytes,
-about 8% of the 3.2 MB per-thread L2 slice). Per-chunk the probe
-streams through L2; per-query, ~1.4 GiB of probe data and ~256 MB
-of hash entries pass through (`60_000_000 × 24 = 1_440_000_000`
-bytes of probe vectors).
+salt-compare branch can execute. For an illustrative SF=10 Q03 join,
+the lineitem-side probe streams ~60M rows; the build sides after
+filtering are about 300K (customer with `c_mktsegment='BUILDING'`)
+and several million (orders pre-`1995-03-15`). At those sizes, the
+hash tables don't fit in L2 — the M3 Max P-cluster L2 is 16 MB,
+and a 2M-row hash table at 8 bytes/slot rounded to next power of
+two is roughly `4M × 8 = 32 MB`. What does fit is the *probe-side*
+working set — one `DataChunk` of `2048 × 8 columns × 8 bytes
+= 16384 × 8 = 131072` bytes plus the `2048 × 128 = 262144` bytes
+of hash-entry cache lines touched per chunk, totalling ~384 KiB
+≈ 12% of the 3.2 MB per-thread L2 slice. Per-chunk the probe runs
+hot in L2; per-query the engine streams `60_000_000 × 24 =
+1_440_000_000` bytes (1.44 GiB) of probe vectors plus the hash
+table through.
 
 ## Pipeline glue: hash-join Sink, Combine, Finalize
 
