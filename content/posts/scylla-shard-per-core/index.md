@@ -769,13 +769,16 @@ func main() {
 }
 ```
 
-Expected output on an M3 / Zen 4 / Ice Lake laptop: a ratio between 25
-and 40. If you see ≤ 5×, your machine has fewer than 4 physical cores
-and the contention path collapses to in-core which is genuinely
-cheaper. If you see ≥ 50×, you're on a NUMA box with cross-socket cores
-in the same GOMAXPROCS set and the bouncing line is crossing a socket
-boundary — try `taskset -c 0-3` to keep them on one socket and the gap
-will normalise.
+Expected output on a modern laptop (M-series Apple, Zen 4, Ice Lake):
+ratio between 30 and 80. The 50-line variant tends to score higher
+than the main benchmark — it has a cleaner cache state and the
+compiler can inline more aggressively when only two loops live in the
+binary. If you see `≤ 5×`, your machine has fewer than 4 physical cores
+and the contention collapses to in-core (genuinely cheaper). If you see
+something extreme like `≥ 200×`, you're on a NUMA box with
+cross-socket cores in the same GOMAXPROCS set and the bouncing line
+is crossing a socket boundary — try `taskset -c 0-3` to keep them on
+one socket and the gap will normalise.
 
 That two-line output is, in microcosm, the entire reason a Cassandra
 fork that does nothing fundamentally different on the read path was

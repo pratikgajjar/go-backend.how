@@ -438,6 +438,37 @@ def ground_truth_drift_defects(body: str) -> int:
     return n
 
 
+# First-person measurement claims must be paired with citation/script/data
+UNBACKED_RE = re.compile(
+    r"\b(I (?:measured|ran|saw|timed|traced|profiled|observed|benchmarked))\b",
+    re.IGNORECASE,
+)
+
+
+def unbacked_claims_defects(body: str) -> int:
+    """Each first-person measurement must share a paragraph with evidence:
+    an inline number, a code-block reference, a script path, or a hyperlink.
+    """
+    paragraphs = re.split(r"\n\s*\n", body)
+    n = 0
+    for p in paragraphs:
+        # Skip code blocks and tables
+        if p.strip().startswith("```") or "|" in p[:5]:
+            continue
+        for m in UNBACKED_RE.finditer(p):
+            # evidence: a number, a backtick code, a hyperlink, or "ms"/"MB"-units
+            has_num = bool(re.search(r"\d", p))
+            has_link = bool(re.search(r"\[[^\]]+\]\([^)]+\)|https?://", p))
+            has_code = bool(re.search(r"`[^`]+`", p))
+            if not (has_num or has_link or has_code):
+                print(
+                    f"DEBUG unbacked_claim: {m.group(0)!r}: {p[:100]!r}",
+                    file=sys.stderr,
+                )
+                n += 1
+    return n
+
+
 def heading_skip_defects(body: str) -> int:
     """Markdown headings must increase by at most +1 level at a time."""
     n = 0
@@ -573,6 +604,7 @@ def main() -> int:
     cats["heading_skip"] = heading_skip_defects(body)
     cats["footnote_balance"] = footnote_balance_defects(body)
     cats["fence_balance"] = fence_balance_defects(body)
+    cats["unbacked_claims"] = unbacked_claims_defects(body)
     if os.environ.get("SCORE_LIVE_URLS"):
         cats["url_live"] = url_live_defects(body)
     else:
@@ -601,6 +633,7 @@ def main() -> int:
         "footnote_balance": 3,
         "fence_balance": 5,
         "url_live": 3,
+        "unbacked_claims": 2,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 

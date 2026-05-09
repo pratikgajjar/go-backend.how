@@ -31,8 +31,8 @@ data-lake pipeline to be _actually_ correct, not just plausibly correct:
    order** even when downstream writes complete out of order.
 3. The Parquet that's actually small and queryable, not just "Parquet."
 
-The code is [`fampay-inc/wal-cake`][repo]. ~2,000 lines of Go, one
-binary, four moving parts. Built it because I needed to spool a busy
+The code is [`fampay-inc/wal-cake`][repo]. ~1,800 lines of Go (`wc -l`
+of `.go` files in the repo), one binary, four moving parts. Built it because I needed to spool a busy
 Postgres into a data lake without the dual-write fallacy and without
 the warehouse team filing tickets every Monday about "missing rows from
 Saturday." Numbers and protocol traces below.

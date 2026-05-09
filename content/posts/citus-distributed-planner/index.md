@@ -292,7 +292,7 @@ header is explicit about the trade-off:
 
 ```c
 // src/backend/distributed/planner/shard_pruning.c
- * However, we do not distribute nested
+ * to "child" pruning instances. However, we do not distribute nested
  * expressions. While (P OR Q) AND (R OR S) is logically equivalent to (P AND
  * R) OR (P AND S) OR (Q AND R) OR (Q AND S), in our implementation it becomes
  * P OR Q OR R OR S. This is acceptable since this will always result in a
