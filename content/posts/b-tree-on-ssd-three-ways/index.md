@@ -176,7 +176,7 @@ it allocates a new page id and copies. From
 (`mdb_page_touch`):
 
 ```c
-// libraries/liblmdb/mdb.c — mdb_page_touch (line 2785)
+// lmdb/libraries/liblmdb/mdb.c — mdb_page_touch (line 2785)
 static int
 mdb_page_touch(MDB_cursor *mc)
 {
@@ -214,7 +214,7 @@ When commit comes, the writer calls
 [`mdb_env_write_meta`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L4358):
 
 ```c
-// libraries/liblmdb/mdb.c — mdb_env_write_meta (line 4358)
+// lmdb/libraries/liblmdb/mdb.c — mdb_env_write_meta (line 4358)
 toggle = txn->mt_txnid & 1;
 mp = env->me_metas[toggle];
 mapsize = env->me_metas[toggle ^ 1]->mm_mapsize;
@@ -242,7 +242,7 @@ BoltDB's commit is the same idea in Go.
 makes the meta page id depend on `txid`:
 
 ```go
-// internal/common/meta.go (line 48)
+// bbolt/internal/common/meta.go (line 48)
 // Page id is either going to be 0 or 1 which we can determine by the transaction ID.
 p.id = Pgid(m.txid % 2)
 p.SetFlags(MetaPageFlag)
@@ -259,7 +259,7 @@ meta page on open
 The other half of bbolt's commit is the [node.go spill](https://github.com/etcd-io/bbolt/blob/main/node.go#L295):
 
 ```go
-// node.go — spill (line 295)
+// bbolt/node.go — spill (line 295)
 // Spill child nodes first.
 sort.Sort(n.children)
 for i := 0; i < len(n.children); i++ {
@@ -293,7 +293,7 @@ The single-writer constraint is encoded at
 [`db.go:1143`](https://github.com/etcd-io/bbolt/blob/main/db.go#L1143):
 
 ```go
-// db.go (around line 1143)
+// bbolt/db.go (around line 1143)
 // on mmap() and we do fsync() on every write.
 ```
 
@@ -309,7 +309,7 @@ fsyncing the WAL. From the architecture comment in
 [`internal/cache/cache.go:23-30`](https://github.com/cockroachdb/pebble/blob/master/internal/cache/cache.go#L23-L30):
 
 ```go
-// internal/cache/cache.go (line 23)
+// pebble/internal/cache/cache.go (line 23)
 // Cache implements Pebble's sharded block cache. The Clock-PRO algorithm is
 // used for page replacement
 // (http://static.usenix.org/event/usenix05/tech/general/full_papers/jiang/jiang_html/html.html). In
@@ -326,7 +326,7 @@ A read consults the cache *first*. From
 [`internal/cache/clockpro.go:142`](https://github.com/cockroachdb/pebble/blob/master/internal/cache/clockpro.go#L142):
 
 ```go
-// internal/cache/clockpro.go — shard.get (line 142)
+// pebble/internal/cache/clockpro.go — shard.get (line 142)
 func (c *shard) get(k key, level base.Level, category Category, peekOnly bool) *Value {
 	c.mu.RLock()
 	if e, _ := c.blocks.Get(k); e != nil {
