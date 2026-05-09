@@ -132,10 +132,10 @@ build or a sort buffer). The unit flowing through the pipeline is a
 at `STANDARD_VECTOR_SIZE = 2048`. The control plane is *pull*: the
 sink calls into the pipeline executor, which calls down to the source.
 The data plane is *push*: each chunk is shoved through every operator
-in order before the next chunk is fetched. That is the "pull-based
-push" hybrid that the team’s
-[CIDR 2024 paper](https://www.cidrdb.org/cidr2024/papers/p86-kohn.pdf)
-describes.
+in order before the next chunk is fetched. That hybrid is described
+in the [DuckDB SIGMOD 2019 system paper](https://hannes.muehleisen.org/publications/SIGMOD2019-demo-duckdb.pdf)
+by Raasveldt & Mühleisen, and the implementation lives in
+`src/parallel/pipeline_executor.cpp`.
 
 # Source dive: how a vector flows through a pipeline
 
