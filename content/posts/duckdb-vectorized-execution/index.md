@@ -104,28 +104,27 @@ the same Boncz lab from CWI Amsterdam.
 # The architecture in 200 words
 
 ```
-                 ┌────────────────────────────────────────┐
-   SELECT ...    │  Parser → Binder → Planner → Optimiser │
-                 └────────────────┬───────────────────────┘
+                 ┌─────────────────────────────────────────┐
+   SELECT ...    │  Parser → Binder → Planner → Optimiser  │
+                 └────────────────┬────────────────────────┘
                                   ↓ logical plan
-                 ┌────────────────────────────────────────┐
-                 │      Physical plan = pipeline graph    │
-                 └────────────────┬───────────────────────┘
+                 ┌─────────────────────────────────────────┐
+                 │      Physical plan = pipeline graph     │
+                 └────────────────┬────────────────────────┘
                                   ↓ DataChunks of 2048 rows
    Storage:      ┌─────────┐  ┌─────────┐  ┌─────────┐
-   row group     │ Vector  │  │ Vector  │  │ Vector  │     ← l_returnflag
+   row group     │ Vector  │  │ Vector  │  │ Vector  │       ← l_returnflag
    = 60 vectors  │  2048   │  │  2048   │  │  2048   │
    = 122,880     ├─────────┤  ├─────────┤  ├─────────┤
-   rows on disk  │ Vector  │  │ Vector  │  │ Vector  │     ← l_extendedprice
+   rows on disk  │ Vector  │  │ Vector  │  │ Vector  │       ← l_extendedprice
                  ├─────────┤  ├─────────┤  ├─────────┤
-                 │ Vector  │  │ Vector  │  │ Vector  │     ← l_discount
+                 │ Vector  │  │ Vector  │  │ Vector  │       ← l_discount
                  └────┬────┘  └────┬────┘  └────┬────┘
-                      ↓           ↓             ↓
-                 ┌─────────────────────────────────────┐
-                 │   Filter ───→ Project ───→ Group    │   each operator
-                 │  (vector-in,    vector-in,  vector-in)│  takes & emits
-                 │   vector-out)   vector-out) vector-out)│  whole vectors
-                 └────────────────┬───────────────────┘
+                      ↓             ↓             ↓
+                 ┌─────────────────────────────────────────┐
+                 │      Filter  →  Project  →  Group       │
+                 │      vector-in / vector-out, per stage  │
+                 └────────────────┬────────────────────────┘
                                   ↓
                             Result chunks
 ```
