@@ -600,7 +600,7 @@ makes worse than alternatives.
 | Random row updates                 | No primary key index — equality deletes scan all manifests            | DuckDB local, OLTP                       |
 | Streaming aggregates over the data | No materialised view; every query re-scans                            | Druid, Pinot, ClickHouse                 |
 | Thousands of partitions            | Manifest-list summaries grow linearly with partition cardinality      | Hash bucketing or `truncate(N)`          |
-| Schema-on-read                     | Schema is mandatory, with field IDs assigned forever                  | Plain Parquet directories                |
+| Loose / inferred schemas           | Iceberg requires explicit schema-on-write with permanent field IDs    | Plain Parquet directories or DuckDB on `*.parquet` |
 | Browsable storage                  | Files are uuid-named under a partition path; the metadata tree is the only authoritative listing | Hive-style partitioned directories       |
 
 A few of these need elaboration.

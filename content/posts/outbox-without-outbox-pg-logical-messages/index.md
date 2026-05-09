@@ -727,11 +727,10 @@ producer        Postgres
                      │ → no message delivered
 ```
 
-Because `transactional=true`, the `pg_logical_emit_message` write is
-*conceptually* part of the transaction. Logical decoding only emits
-a transaction's records when it sees the COMMIT. No COMMIT, no
-delivery. **Zero events leak.** This is the property that the
-table-based pattern also has, achieved here for free.
+Because `transactional=true`, the message is part of the txn.
+Logical decoding emits a txn's records only on COMMIT. No COMMIT,
+no delivery, **zero events leak** — the same property the table-
+based pattern has, free.
 
 ## Scenario 3: consumer crash post-Kafka, pre-LSN-ack
 
@@ -760,33 +759,30 @@ OwlPost                Kafka         Postgres
 ```
 
 The same event is produced to Kafka twice. By design — this is
-at-least-once. Deduplication is the consumer's job. `event.Id` is a
-UUIDv7, so the consumer can dedupe on it. **Don't reach for a Bloom
-filter here**: a Bloom-filter false positive would silently *skip* an
-unseen event, which is the wrong direction of error. Use a fixed-
-window `LRU` of recent IDs in memory plus, for sensitive flows, an
-`INSERT ... ON CONFLICT DO NOTHING` against a `processed_events(id
-uuid PRIMARY KEY, processed_at timestamptz)` table that you partition
-or TTL-prune yourself.
+at-least-once; dedup is the consumer's job. `event.Id` is a UUIDv7,
+so dedupe on it. **Don't reach for a Bloom filter**: a false positive
+would silently *skip* an unseen event, the wrong direction of error.
+Use an in-memory LRU of recent IDs plus, for sensitive flows,
+`INSERT ... ON CONFLICT DO NOTHING` against a
+`processed_events(id uuid PRIMARY KEY, processed_at timestamptz)`
+table you TTL-prune yourself.
 
-This is one of the cases the
+Per the
 [`feat(kafka ack): Reliability 100%`](https://github.com/fampay-inc/factlib/commit/45f9f13)
-commit explicitly addresses. The earlier version of OwlPost flushed
-LSN ahead of Kafka acks; if a Kafka produce later failed the message
-was lost. The 1-second-tick design means the LSN never advances past
-a Kafka write whose callback hasn't fired.
+commit: the earlier OwlPost flushed LSN ahead of Kafka acks; if a
+produce later failed, the message was lost. The 1-second-tick design
+ensures the LSN never advances past a Kafka write whose callback
+hasn't fired.
 
-> **Sharp edge worth naming.** Today
+> **Sharp edge worth naming.**
 > [`listenEventAck`](https://github.com/fampay-inc/factlib/blob/main/pkg/postgres/wal.go#L381-L398)
-> just does `w.xLogPos = *ackPos` (line 390) on every received ack.
-> Kafka ack
-> callbacks fire in per-partition order, but across partitions
-> (across aggregate IDs) they can interleave. So if event A (LSN_a)
-> goes to partition 1 and event B (LSN_b > LSN_a) goes to partition
-> 2, and B's broker is faster, the consumer can advance to LSN_b
-> while A is still in flight. Crash now and we replay from `>=
-> LSN_b`, skipping A. The fix is to track a contiguous-acked
-> high-water mark instead of a last-write-wins cursor; until that
+> does `w.xLogPos = *ackPos` (line 390) on every ack. Kafka callbacks
+> fire in-order per partition but across partitions interleave: if
+> event A (LSN_a) is on partition 1 and event B (LSN_b > LSN_a) on
+> partition 2 acks first, the consumer advances to LSN_b while A is
+> in flight. Crash now and we replay from `>= LSN_b`, skipping A.
+> The fix is a contiguous-acked high-water mark instead of last-
+> write-wins; until that
 > ships, factlib's "at-least-once" guarantee is effectively
 > "at-least-once *per Kafka partition*". For most aggregate-keyed
 > workloads (which is what factlib is designed for) the per-aggregate
