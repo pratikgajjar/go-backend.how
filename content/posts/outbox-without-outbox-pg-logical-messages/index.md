@@ -199,16 +199,18 @@ sound. The implementation is just heavier than it needs to be.
 
 # 3. The forgotten Postgres feature: `pg_logical_emit_message`
 
-From the [Postgres 17 documentation](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-REPLICATION):
+Function signature, paraphrased from the
+[Postgres 17 docs](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-REPLICATION):
 
-> `pg_logical_emit_message(transactional boolean, prefix text, content text) → pg_lsn`
-> `pg_logical_emit_message(transactional boolean, prefix text, content bytea) → pg_lsn`
->
-> Emit a logical decoding message. This can be used to pass generic
-> messages to logical decoding plugins through WAL. The
-> `transactional` parameter specifies if the message should be part of
-> the current transaction, or if it should be written immediately and
-> decoded as soon as the logical decoder reads the record.
+> `pg_logical_emit_message(transactional boolean, prefix text, content text [, flush boolean]) → pg_lsn`
+> `pg_logical_emit_message(transactional boolean, prefix text, content bytea [, flush boolean]) → pg_lsn`
+
+The upstream description (lightly compressed): emit a text or binary
+logical decoding message that logical decoding plugins receive
+through WAL. With `transactional = true` the message becomes visible
+to decoders only when the surrounding transaction commits; with
+`false`, it's written immediately and decoded as soon as the decoder
+reads the WAL record.
 
 Read that twice. Three properties matter:
 
@@ -890,12 +892,12 @@ for "when not to use this") or a dedicated event store.
 
 | | Outbox table (poll) | factlib (logical msg) |
 |---|---:|---:|
-| Producer SQL | 1 INSERT (~5 KB tuple + index) | 1 SELECT (~600 B WAL) |
+| Producer SQL | 1 INSERT (heap tuple ~24 B header + payload + 2 index entries) | 1 SELECT (~600 B WAL, derived in §8) |
 | Producer round-trips | 1 | 1 |
 | Consumer query rate | 10/sec polls per worker | 0 (push via WAL) |
 | Index writes per event | 2 (heap + index) | 0 |
 | Vacuum cost | proportional to event rate | none |
-| End-to-end latency | poll interval (100 ms–5 s) | ~tens of ms |
+| End-to-end latency | poll interval (100 ms–5 s) | WAL flush + Kafka produce (single-digit ms on a same-VPC pgx connection, derived) |
 
 The producer cost is roughly the same. The **consumer** cost is where
 you get back hours of vacuum-tuning life and several Postgres-CPU
