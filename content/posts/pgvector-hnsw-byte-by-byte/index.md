@@ -595,15 +595,15 @@ bookkeeping and cache fetches. That means the index is sensitive to
 `shared_buffers` sizing — if your hot graph evicts to disk, every
 query takes the SSD hit on every neighbour.
 
-**The exact baseline is 5.4 ms for 50,000 rows.** That's
-`5440 / 50000 ≈ 109` ns per row[^bench], which decomposes as a
-SIMD-accelerated L2 over 128 floats (`128 / 8 = 16` AVX2 FMA cycles
-plus ~5 reduction cycles, `21 × 0.33 ≈ 7` ns) plus the per-row
+**The exact baseline is 5.4 ms for 50,000 rows**, or about 109 ns
+per row (`5440 µs` divided by `50000`)[^bench]. That decomposes as a
+SIMD-accelerated L2 over 128 floats — `128 / 8 = 16` AVX2 FMA cycles
+plus ~5 reduction cycles, so `21 × 0.33 ≈ 7` ns — plus the per-row
 overhead of walking heap tuples (tuple deformation, varlena unpacking,
-qualifier check), which is the bulk of the 109 ns. The math is the
-small term. At 10M rows, exact-scan would be `10,000,000 × 109 ns ≈
-1,090` ms; at 100M it's `100,000,000 × 109 ns ≈ 10.9` seconds, which
-is when "approximate is fine" stops being a debate.
+qualifier check). The math is the small term; the heap-walk is most
+of the 109 ns. Linearly extrapolating: 10M rows takes about 1.1 s of
+exact scan, 100M rows takes about 11 s. That is when "approximate is
+fine" stops being a debate.
 
 A 50-line reproduction is at the bottom of this post; the key shape:
 

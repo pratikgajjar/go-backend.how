@@ -530,12 +530,14 @@ A predicate over `day(ts)` with one matching day, on a table
 partitioned by day for 365 days:
 
 * Manifest-list GET — 1 round-trip. EC2-to-S3 same-region
-  measurements typically land at P50 = 30 ms / P99 = 200 ms
-  (this is the rough envelope reported by community
-  benchmarks like [Vantage's S3 throughput
-  page](https://www.vantage.sh/blog/s3-cost-and-performance);
-  do not take 30 ms as an SLA — it is a measurement, not a
-  guarantee).
+  measurements published in [AWS's own performance
+  guidelines](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance-guidelines.html)
+  describe "first-byte latency in the order of 100–200 ms" for
+  small objects; community benchmarks typically see lower P50s
+  on warm connections. I will use 30 ms as a *lower bound* the
+  rest of this section can be skeptical about; if your network
+  is actually 100 ms, scale all the latency numbers below up by
+  the same factor.
 * Manifests intersecting the day: assuming evenly distributed,
   `150 / 365 ≈ 0.41`, so 1 manifest with high probability.
 * Manifest GET — 1 round-trip, again ~30 ms. 8 MiB of compressed

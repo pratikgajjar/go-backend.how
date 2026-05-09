@@ -692,8 +692,10 @@ example, the bgworker overlapping a backup — this is the cheapest
 way to confirm:
 
 ```bash
-# observe LWLOCK acquisitions named 'PartitionLock' inside the postgres
-# backend running run_maintenance, sampled at 99 Hz for 30 seconds.
+# Sample every LWLockAcquire call in the postgres backend for 30 s,
+# bucketing by user-stack so you can see which paths take which locks.
+# Adjust the binary path: /usr/lib/postgresql/17/bin/postgres on Debian,
+# /usr/pgsql-17/bin/postgres on RHEL, /opt/homebrew/.../postgres on Mac.
 sudo bpftrace -e '
   uprobe:/usr/lib/postgresql/17/bin/postgres:LWLockAcquire {
     @[comm, ustack(perf, 5)] = count();
@@ -701,9 +703,8 @@ sudo bpftrace -e '
 ' &
 BPID=$!
 sleep 30; kill $BPID
-# Then in psql, run:
+# In a parallel psql session, run during the sample window:
 #   SELECT partman.run_maintenance_proc();
-# while bpftrace is sampling.
 ```
 
 Look for lock-acquire stacks rooted in [RangeVarGetRelid](https://github.com/postgres/postgres/blob/REL_17_STABLE/src/backend/catalog/namespace.c)
