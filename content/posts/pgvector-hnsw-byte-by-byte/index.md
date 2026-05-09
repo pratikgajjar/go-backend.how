@@ -504,11 +504,20 @@ divided by `m`, minus two". An element at level `L` needs
 `(L + 2) × M` TIDs in its neighbour tuple. The cap exists because the
 neighbour tuple has to fit in **one** Postgres page — pgvector
 deliberately refuses to split a tuple across pages. With `BLCKSZ =
-8192` and `M = 16`, `maxLevel` evaluates to 40, which the random level
-distribution will not reach in practice — the probability of an element
-rolling above level 8 with `M = 16` is `1/16⁸ ≈ 5.4 × 10⁻¹⁰` (computed
-from the geometric tail). The `255` cap is to ensure `level` fits in a
-`uint8`.
+8192` and `M = 16`, the integer arithmetic gives
+`(8192 − 24 − 8 − 4 − 4) / 6 / 16 − 2 = 82` — see the derivation
+below. The random level distribution will not reach this in
+practice: the probability of an element rolling above level 8 with
+`M = 16` is `1/16⁸ ≈ 2.3 × 10⁻¹⁰` (geometric tail). The `255` cap
+is to ensure `level` fits in a `uint8`.
+
+Derivation: page-header and opaque overhead total
+`24 + 8 = 32 B`; `ItemIdData` is 4 B; `offsetof(HnswNeighborTupleData,
+indextids)` is 4 B (`uint8 type + uint8 version + uint16 count`). So
+the space available for TIDs on a one-tuple page is
+`8192 − 32 − 4 − 4 = 8152 B`, which holds `8152 / 6 = 1358` TIDs
+at 6 bytes each. Dividing by `M = 16` and subtracting 2 (the `+2`
+on layer 0) gives `1358 / 16 − 2 = 82`.
 
 # 5. Real numbers from a 50,000-vector benchmark
 
@@ -535,12 +544,18 @@ index size / row:  833 B
 table size:        27.9 MB
 ```
 
-`833 B / row` decomposes by napkin math: the vector itself is
-`128 × 4 = 512 B` plus a `Vector` header (28 B from
-`offsetof(Vector, x)` in `src/vector.h`), the level-0 neighbour
-tuple holds `2 × 16 = 32` TIDs at 6 B each, so `32 × 6 = 192 B`,
-plus an 8 B tuple header, plus the element tuple's per-page slot
-(`ItemIdData` is 4 B), plus alignment slack. The dominant term is
+`833 B / row` decomposes by napkin math. The vector payload is
+`128 × 4 = 512 B` plus the `Vector` header from `src/vector.h`
+(`int32 vl_len_ + int16 dim + int16 unused = 8 B`), so the
+`HnswElementTuple` is `4 B (uint8 type/level/deleted/version) + 60 B
+(10 × 6 B heaptids) + 6 B (neighbortid) + 2 B (unused) + 8 B Vector
+header + 512 B floats = 592 B`, MAXALIGN'd to 600. The level-0
+neighbour tuple holds `2 × 16 = 32` TIDs at 6 B each, so
+`32 × 6 = 192 B` plus a 4 B header, MAXALIGN'd to 200. Add two
+`ItemIdData` slots (4 B each) for 8 B more, and the per-row total
+lands at `600 + 208 = 808` bytes. The measured 833 B/row is the 25 B
+gap from per-page header amortisation and a small fraction of
+elements at level > 0 (whose neighbour tuples are `m` TIDs longer). The dominant term is
 the vector data; the index-to-table size ratio came out at
 `41,631,744 / 29,261,824 ≈ 1.42`[^bench], which means the index ships
 about 40 % more bytes than the heap because each element exists in

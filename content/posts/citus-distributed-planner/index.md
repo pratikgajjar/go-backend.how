@@ -197,7 +197,8 @@ early; expensive paths fall through.
                            │      │
                            │      ▼
                            │   Physical planner: MultiNode → Job tree
-                           │   of (FilterTask, MapMergeJob, MergeTask)
+                           │   of MapMergeJob nodes whose TaskType is
+                           │   READ_TASK / MAP_TASK / MERGE_TASK
                            ▼
                        PlannedStmt with a CustomScan node "Citus Adaptive"
                        wrapping a list of per-shard SQL strings
