@@ -238,7 +238,7 @@ The WiscKey decision creates a specific shape of system. It's worth being explic
 
 [txn]: https://github.com/dgraph-io/badger/blob/main/txn.go
 
-**Single-writer goroutine.** All `db.Update` calls funnel through one `doWrites` goroutine that batches up to `3 × kvWriteChCapacity` requests per loop [(`db.go:915`)][dbgo]. Concurrent writers fan in via the unbuffered `writeCh`. This is *good* — it avoids cross-goroutine memtable contention — but means Badger doesn't scale write throughput past one core's worth of memtable insertion. On the M3 Max benchmarks above, the peak run of 1,047,920 ops/s on 10M × 128 B implies `10^9 / 1047920 = 954` ns per memtable insert + per-WAL append — close to a single-core ceiling for this hardware. There is no multi-writer mode; a workload that needs 4× this on a single Badger instance has to look elsewhere.
+**Single-writer goroutine.** All `db.Update` calls funnel through one `doWrites` goroutine that batches up to `3 × kvWriteChCapacity` requests per loop [(`db.go:915`)][dbgo]. Concurrent writers fan in via the unbuffered `writeCh`. This is *good* — it avoids cross-goroutine memtable contention — but means Badger doesn't scale write throughput past one core's worth of memtable insertion. On the M3 Max benchmarks above, the peak run of 1,047,920 ops/s on 10M × 128 B implies `1,000,000,000 ns / 1,047,920 ≈ 954` ns per memtable insert + per-WAL append — close to a single-core ceiling for this hardware. There is no multi-writer mode; a workload that needs 4× this on a single Badger instance has to look elsewhere.
 
 # What I'd build differently
 
