@@ -181,14 +181,12 @@ extra alerts, extra runbooks.
 
 ## Polling vs change-data-capture
 
-The other escape hatch is to put **Debezium** in front of the outbox
-table. Debezium tails the WAL, watches for `INSERT`s on `outbox`,
-emits to Kafka. This is genuinely good — you stop polling, the latency
-drops to ~10 ms, and you keep the row-level table semantics. But you
-now operate Debezium, which is a JVM process with Kafka Connect, a
-schema registry, a JMX dashboard nobody knows how to read, and the
-operational footprint of a small Hadoop cluster. For an organisation
-already running Kafka Connect, fine. For a team of four, it is a tax.
+The other escape hatch is **Debezium** tailing the WAL for `INSERT`s
+on `outbox`. Genuinely good — no polling, ~10 ms latency, keeps
+row-level semantics. The cost is operating Debezium itself: a JVM
+process with Kafka Connect + schema registry, the operational
+footprint of a small Hadoop cluster. Fine if you're already running
+Kafka Connect; a tax for a team of four.
 
 So the outbox pattern is *almost* right. The atomicity argument is
 sound. The implementation is just heavier than it needs to be.
