@@ -553,15 +553,30 @@ quiet one falls back to time-triggered.
 ```go
 // internal/buffer/ring_buffer.go (worker, abridged)
 case segment := <-rb.segments:
-    events := make([]*model.CDCEvent, 0, rb.batchSize)
-    for i := segment.StartIdx; i < segment.EndIdx; i++ {
-        if e := rb.buffer[i%rb.size]; e != nil { events = append(events, e) }
-    }
-    for retry := 0; retry < 3; retry++ {
-        if err := rb.processor.Process(ctx, events); err == nil { break }
-        time.Sleep(time.Second * (2 << retry))
-    }
-    rb.ackSeg <- segment
+	events := make([]*model.CDCEvent, 0, rb.batchSize)
+	start := segment.StartIdx
+	for start < segment.EndIdx {
+		idx := start % rb.size
+		if rb.buffer[idx] != nil {
+			events = append(events, rb.buffer[idx])
+		}
+		start++
+	}
+
+	if len(events) > 0 {
+		for i := range 3 {
+			err := rb.processor.Process(ctx, events)
+			if err == nil {
+				break
+			}
+			log.Error().Err(err).Int("retry", i+1).Msg("Error processing segment")
+			if i == 2 {
+				log.Fatal().Err(err).Msg("Failed to process segment")
+			}
+			time.Sleep(time.Second * (2 << i))
+		}
+	}
+	rb.ackSeg <- segment
 ```
 
 N workers, all pulling from the same `rb.segments` channel. They

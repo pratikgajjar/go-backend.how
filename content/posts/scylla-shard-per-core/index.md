@@ -688,7 +688,7 @@ third-party projects fill the gap:
 [godzie44/go-uring](https://github.com/godzie44/go-uring) both wrap
 `liburing` semantics in Go. With one of them you can build a
 per-goroutine SQ + CQ pair, pin the goroutine via
-`runtime.LockOSThread` + `pthread_setaffinity_np` via cgo, and have a
+runtime.LockOSThread + pthread_setaffinity_np via cgo, and have a
 Scylla-shaped event loop.
 
 The honest cost: 2-3 weeks of senior engineering, plus you fight the GC

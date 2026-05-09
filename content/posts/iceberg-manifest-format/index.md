@@ -497,8 +497,9 @@ manifest list row (decoded Avro):
 }
 ```
 
-A two-row insert produces a 4,285-byte manifest (measured on this
-laptop). From the manifest entry print, the column bounds are:
+A two-row insert produces a 4,285-byte manifest from this exact
+snippet on `pyiceberg==0.10.x`. From the manifest entry print,
+the column bounds are:
 
 ```text
 "lower_bounds":  [{"key":1,"value": b"BD"},

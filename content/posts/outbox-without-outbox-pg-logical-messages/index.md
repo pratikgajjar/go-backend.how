@@ -805,10 +805,12 @@ After ~hours, two things start to break:
   FROM pg_replication_slots;
   ```
 
-  In Prometheus terms: scrape this, alert when `lag_bytes > 1 GiB`,
-  page. If it grows past your reserved disk, Postgres goes
-  read-only — and *every* writer in your fleet stops, not just the
-  consumer.
+  In Prometheus terms: scrape this, alert at `> 1 GiB`. If it grows
+  past your reserved disk, Postgres goes read-only and *every*
+  writer in your fleet stops. Postgres 13+ has
+  `max_slot_wal_keep_size` (default `-1` / no limit) that
+  invalidates a slot before disk fills — set it (e.g. `10GB`) so a
+  stuck slot loses its WAL retention rather than wedging the cluster.
 
 - **The producer's WAL emit latency stays unchanged.** This is good.
   The producer doesn't care that the consumer is slow. The dual-write

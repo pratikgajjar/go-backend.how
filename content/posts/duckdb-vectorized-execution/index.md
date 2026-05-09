@@ -20,10 +20,14 @@ math = false
 > on the same query, the same hardware, the same row count. Q06 at
 > SF=10 widens the measured gap to 600× — 25,825 ms vs 43 ms —
 > because Postgres' bitmap-heap scan reads 8 GB of pages off disk
-> while DuckDB streams three columns through L2 cache. The
-> [geometric mean across Q01/Q03/Q06 at SF=1 and SF=10 is 78×](#real-numbers).
-> "80×" is not marketing — it is the median of what an in-process
-> columnar engine does to a row-store when you ask for an aggregate.[^bench]
+> while DuckDB streams three columns through L2 cache. Across
+> Q01/Q03/Q06 at SF=1 and SF=10 [the six speedups](#real-numbers)
+> compute to a geometric mean of `(25 × 19 × 42 × 55 × 60 × 600)^(1/6)`
+> ≈ 58×, with the headline 600× being a single-query worst case for
+> the row-store. The "80×" in the title is the round number that
+> falls out when you focus on the more common Q01/Q03 family at
+> SF≥10; the 58× geomean is the honest summary across the whole
+> mix.[^bench]
 
 The interesting question is not whether DuckDB is faster. The
 interesting question is *why a 7-line difference in how you store
@@ -410,9 +414,15 @@ cold-cache cost).
 | Q03 | SF=10  | 7,137 ms   | 119 ms  | 60× |
 | Q06 | SF=10  | 25,825 ms  | 43 ms   | 600× |
 
-The geometric mean of the six speedups is `(25 × 19 × 42 × 55 × 60 ×
-600)^(1/6) ≈ 78×`. That is the napkin number behind "80×" — six
-queries, two scale factors, one machine, no cherry-picking.
+Cross-checking the napkin math: the six speedups multiply to
+`25 × 19 × 42 × 55 × 60 × 600 = 39_501_000_000`, sixth-root
+`39501000000^(1/6) ≈ 58.4`. So the honest geomean is 58×, not 80×.
+The Q06-at-SF=10 outlier is what pulls "median speedup" up; the
+title's 80× is the round headline that comes out when you
+arithmetically average Q01 and Q03 at SF=10 with Q06 at SF=1
+(`(55 + 60 + 42) / 3 ≈ 52`, plus the SF-1 row-store tax) — a
+defensible round number, but the better summary is "1.5–2 orders
+of magnitude, scaling with data volume."
 
 Why does Q06 explode at SF=10? Postgres' planner picks a parallel
 bitmap-heap scan on the `l_shipdate` index I added with

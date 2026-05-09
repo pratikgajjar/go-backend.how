@@ -521,11 +521,13 @@ Any rows that fall outside existing children land there. When the
 next maintenance run wants to make a new child whose range overlaps
 data sitting in the default, the operation fails with `partition with
 the same range already exists` after a slow scan of the default. The
-`partition_data_async` procedure (added in 5.3.0,
-[CHANGELOG][pg-partman-changelog]) was added in part to drain the
-default in batches without blocking, but the `WARNING: data is NOT
-visible to users of the partition table during transit` is real — read
-queries against the parent during draining miss in-flight rows.
+`partition_data_async` procedure (added in 5.3.0 per
+[CHANGELOG][pg-partman-changelog], time-based only — ID/integer
+support is still in development as of 5.4.3) was added in part to
+drain the default in batches without blocking, but the `WARNING:
+data is NOT visible to users of the partition table during transit`
+(verbatim from CHANGELOG.md) is real — read queries against the
+parent during draining miss in-flight rows.
 
 [pg-partman-changelog]: https://github.com/pgpartman/pg_partman/blob/master/CHANGELOG.md
 

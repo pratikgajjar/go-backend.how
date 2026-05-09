@@ -725,9 +725,12 @@ The second argument to `distributed_planner` is the query string
 the cluster plans, with PID, with no Postgres-side instrumentation.
 On a workload where `pg_stat_statements` doesn't tell you which
 queries hit which planner path, this is the cheapest way to find
-out. (Cost on `bpftrace`: ~200ns per probe hit, well under any
-useful query time. Source: BPF JIT benchmarks; the probe itself is a
-software trap into kernel-space.)
+out. The userspace probe (`uprobe`) overhead is roughly 1–2 µs per
+hit on Linux x86_64 — measurably more than a kernel-only `kprobe`
+because each `uprobe` event traps to the kernel via the breakpoint
+mechanism and back. That's still small compared to a 200 µs+ Citus
+fast-path query, so it's safe to leave running on production
+sampling, but loud enough to budget for on a 100k-QPS workload.
 
 # Stretch — repro snippet
 

@@ -476,8 +476,8 @@ HnswInitElement(char *base, ItemPointer heaptid, int m, double ml,
 }
 ```
 
-`-log(uniform) * ml` is the inverse-CDF sample of an exponential, and
-floor-ing it gives a geometric. The mean is `ml`. The choice of
+`-log(uniform) * ml` is the inverse-CDF sample of an exponential
+with mean `ml`; flooring it gives an integer geometric. The choice of
 `ml = 1 / ln(M)` is in `hnsw.h`:
 
 ```c
