@@ -202,8 +202,10 @@ hnswgettuple(IndexScanDesc scan, ScanDirection dir)
 ```
 
 On the first call, all of HNSW happens. `GetScanItems` returns a
-`List *` of search candidates already sorted by distance. Subsequent
-calls just `llast()` the next one. The `HNSW_SCAN_LOCK` is a Postgres
+`List *` of search candidates ordered furthest-first (because the
+inner max-heap was drained furthest-first into the list). Subsequent
+calls take the last element via `llast()`, which is the nearest
+unvisited neighbour. The `HNSW_SCAN_LOCK` is a Postgres
 [heavyweight page-level
 lock](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L41-L43)
 (via `LockPage`, not the lighter `LWLockAcquire` used for the
