@@ -847,7 +847,7 @@ before:      REQUIRED BYTE_ARRAY (JSON)        ENCODING:PLAIN
 after:       REQUIRED BYTE_ARRAY (JSON)        ENCODING:PLAIN
 sort cols:   timestamp ASC, lsn ASC
 row group 0: RC:1000  TS:184_322
-  table:        SIZE:412      (-99% vs uncompressed via dict+ZSTD)
+  table:        SIZE:412      (dict+ZSTD reduces 1000 short-string column to <1 KB)
   operation:    SIZE:78
   timestamp:    SIZE:1_842    (DELTA_BINARY_PACKED + ZSTD)
   lsn:          SIZE:1_904

@@ -134,8 +134,10 @@ send" outputs.
             └───────────────────────────────────────────────────┘
 ```
 
-`Tick`, `Step`, `Propose` are pure functions of the input plus
-local state. The library is intentionally deterministic so the
+`Tick`, `Step`, `Propose` are deterministic w.r.t. the state machine
+— same input plus state always produces the same outcome (modulo the
+crypto/rand timer reset, which is the *only* nondeterminism in the
+library). The library is intentionally built this way so the
 [interaction-driven tests](https://github.com/etcd-io/raft/blob/main/interaction_test.go)
 can replay sequences and the [TLA+ trace validation
 machinery](https://github.com/etcd-io/raft/blob/main/tla/Traceetcdraft.tla)

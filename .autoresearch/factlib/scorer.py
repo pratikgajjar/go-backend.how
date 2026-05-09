@@ -658,6 +658,29 @@ FILLER_RE = re.compile(
 )
 
 
+def code_path_exact_defects(body: str, cached_repo: Path) -> int:
+    """For every `// pkg/.../file.go` style path in a code block, the EXACT
+    relative path must exist in the cached repo. Catches the regression where
+    someone moves a file but the path comment in the post stays stale."""
+    n = 0
+    for m in CODEBLOCK_RE.finditer(body):
+        lang, code = m.group(1).strip().lower(), m.group(2)
+        if lang in ("", "txt", "text", "diff", "ascii", "bash", "sh", "shell", "protobuf"):
+            continue
+        for path_str, _ext in PATH_COMMENT_RE.findall(code):
+            # demo paths are intentional
+            if re.search(r"\b(demo|example|sample|appendix)\b", path_str, re.IGNORECASE):
+                continue
+            # non-pkg / non-cmd / non-python paths skip (could be illustrative)
+            if not path_str.startswith(("pkg/", "cmd/", "python/")):
+                continue
+            if not (cached_repo / path_str).exists():
+                print(f"DEBUG code_path_exact: '{path_str}' not at exact location",
+                      file=sys.stderr)
+                n += 1
+    return n
+
+
 def trailing_whitespace_defects(body: str) -> int:
     """Lines with trailing whitespace are an editor-config nit but signal
     sloppiness. Catches the regression class."""
@@ -964,6 +987,7 @@ def main() -> int:
     cats["filler_phrases"] = filler_phrase_defects(body)
     cats["para_terminator"] = paragraph_terminator_defects(body)
     cats["trailing_ws"] = trailing_whitespace_defects(body)
+    cats["code_path_exact"] = code_path_exact_defects(body, cached_repo)
 
     weights = {
         "build_warnings": 1,
@@ -997,6 +1021,7 @@ def main() -> int:
         "filler_phrases": 2,
         "para_terminator": 1,
         "trailing_ws": 1,
+        "code_path_exact": 4,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
