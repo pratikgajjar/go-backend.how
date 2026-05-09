@@ -899,12 +899,13 @@ same binary.
 
 The thing the source code teaches that the [Raft
 paper](https://raft.github.io/raft.pdf) glosses over is **how much of a
-production election is structured waiting**. The protocol does a couple
-of microseconds of work, then waits a second so it can be sure another
-candidate isn't doing the same thing at the same time. If your service
-can't survive a one-to-two second leader gap, the answer isn't to
-optimise `becomeCandidate` — it's to revisit whether you need a single
-leader at all.
+production election is structured waiting**. The protocol does roughly
+two microseconds of state-machine work, then waits an expected 1.33
+seconds (with default `ElectionTick = 10` and a 100 ms tick interval)
+so it can be sure another candidate isn't doing the same thing at the
+same time. If your service can't survive a one-to-two second leader
+gap, the answer isn't to optimise `becomeCandidate` — it's to revisit
+whether you need a single leader at all.
 
 The other thing reading this code teaches: **defaults are policy.**
 `PreVote: false` is the wrong default; `CheckQuorum: false` is the wrong
