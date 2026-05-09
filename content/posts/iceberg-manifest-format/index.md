@@ -691,12 +691,13 @@ but the planning side has not adopted it yet. The cost is real:
 indexes drift with data, must be invalidated on rewrite, and write
 amplification goes up. Concretely, on a UPI-shaped workload where
 one account generates 10⁴ rows per day and a 30-day query needs
-`30 × 10000 = 300000` rows total: at typical row counts of `10^7`
-per 256 MiB Parquet file, those rows live in 1–3 data files. The
-planner today must open all 150 manifests because the partition
-spec (likely `day(ts)`) cannot prune by `account_id`; an inverted
-index would point straight at the 1–3 files. That cuts manifest
-reads from `O(manifests) = 150` to `O(1)` per query.
+`30 × 10000 = 300000` rows total: assuming roughly 10⁷ rows per
+256 MiB data file (typical for narrow rows in
+[Parquet](https://parquet.apache.org/)), those rows live in 1–3
+data files. The planner today must open all 150 manifests because
+the partition spec (likely `day(ts)`) cannot prune by `account_id`;
+an inverted index would point straight at the 1–3 files. That cuts
+manifest reads from `O(manifests) = 150` to `O(1)` per query.
 
 The Iceberg manifest, viewed at byte level, is one of the
 better-engineered formats in modern data infrastructure. It is also

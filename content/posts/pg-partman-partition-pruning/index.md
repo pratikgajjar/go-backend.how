@@ -39,9 +39,11 @@ The code is at [`pgpartman/pg_partman`][repo] (version 5.4.3, July 2025
 PL/pgSQL across `sql/functions/` and `sql/procedures/` (range
 from 6,400 to 6,700 across recent 5.x point releases as measured
 from the source by `find sql -name '*.sql' -exec wc -l {} +`[^bench]).
-Plus a 200-line C background worker (`src/pg_partman_bgw.c`) that
-does nothing but call the procedure on a timer. The interesting
-parts are in PL/pgSQL.
+Plus a ~540-line C background worker (`src/pg_partman_bgw.c`,
+`wc -l` reports 537 on 5.4.3) that does nothing but spawn a dynamic
+worker per database listed in `pg_partman_bgw.dbname`, wait for each
+to finish, then sleep until the next interval. The interesting parts
+are in PL/pgSQL.
 
 [repo]: https://github.com/pgpartman/pg_partman
 

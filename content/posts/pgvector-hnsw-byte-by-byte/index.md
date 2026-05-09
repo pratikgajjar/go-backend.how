@@ -252,8 +252,9 @@ with `ef = 1` walking down the layers, then one final call at layer
 0 with `ef = hnsw_ef_search`.
 
 If you've read the
-[paper](https://arxiv.org/pdf/1603.09320v4.pdf), this is Algorithm 5
-verbatim, including the comment in `hnswutils.c`:
+[paper](https://arxiv.org/pdf/1603.09320v4.pdf), `GetScanItems` is
+Algorithm 5 (K-NN-SEARCH) and the inner `HnswSearchLayer` is
+Algorithm 2 (SEARCH-LAYER) — the source acknowledges as much:
 
 ```c
 // src/hnswutils.c
@@ -687,13 +688,16 @@ ORDER BY e <-> $1
 LIMIT 10;
 ```
 
-The index walks the graph in `e`-distance order. The category filter
-is checked _after_ the graph step, in the bitmap heap re-check phase.
-If shoes are 0.1 % of your data, the index has to walk and discard
-the other 99.9 %, blowing the latency budget. Pgvector v0.8 added
+The index walks the graph in `e`-distance order and the executor
+filters in `WHERE`-recheck after fetching each heap tuple — HNSW
+implements `amgettuple` only, not `amgetbitmap`
+([hnsw.c L314–L315](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.c#L314-L315))
+— so it can't use bitmap intersection with a category index. If
+shoes are 0.1 % of your data the index has to walk and discard the
+other 99.9 %, blowing the latency budget. Pgvector v0.8 added
 `hnsw.iterative_scan` which keeps walking past `ef_search` results
 until the filter is satisfied, but iterative scan is not the same as
-a true filter-aware index. There is active research on
+a filter-aware index. There is active research on
 [hybrid search](https://arxiv.org/abs/2403.01773) that handles this
 properly; pgvector handles it pragmatically.
 
