@@ -468,6 +468,12 @@ def main() -> int:
     cats["placeholder_urls"] = placeholder_url_defects(body)
     cats["bad_url_host"] = bad_url_defects(body)
     cats["ground_truth_drift"] = ground_truth_drift_defects(body)
+    cats["hedge_words"] = hedge_defects(body)
+    cats["tilde_no_math"] = tilde_no_math_defects(body)
+    cats["percent_no_math"] = percent_no_math_defects(body)
+    cats["img_no_alt"] = img_no_alt_defects(body)
+    cats["long_code_lines"] = long_code_line_defects(body)
+    cats["math_off"] = math_off_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -482,6 +488,12 @@ def main() -> int:
         "placeholder_urls": 5,
         "bad_url_host": 2,
         "ground_truth_drift": 4,
+        "hedge_words": 1,
+        "tilde_no_math": 1,
+        "percent_no_math": 1,
+        "img_no_alt": 2,
+        "long_code_lines": 1,
+        "math_off": 4,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 

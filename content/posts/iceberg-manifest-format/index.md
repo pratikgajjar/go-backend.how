@@ -683,19 +683,20 @@ this would standardise that.
 
 **3. First-class secondary indexes.** Iceberg planning today is
 "what files might match"; it has nothing to say about *which row*.
-Even an inverted index over a high-cardinality key (`account_id`,
+An inverted index over a high-cardinality key (`account_id`,
 `user_id`) would let merge-on-read deletes avoid full-manifest
 scans. Puffin (the V2 statistics blob) is the natural carrier
 ([puffin spec](https://github.com/apache/iceberg/blob/main/format/puffin-spec.md)),
 but the planning side has not adopted it yet. The cost is real:
 indexes drift with data, must be invalidated on rewrite, and write
-amplification goes up. The win on UPI-shaped workloads where one
-account generates 10⁴ rows in a day and a query asks for that
-account's last 30 days is `O(rows ÷ files) ≈ 10^4 ÷ 2.5×10^4 = 0.4`
-files per manifest scanned today, vs ~1 candidate file with an
-index. That saves the cost of opening Parquet footers, which is
-the next layer below the manifest and the next one to dominate
-planning latency.
+amplification goes up. Concretely, on a UPI-shaped workload where
+one account generates 10⁴ rows per day and a 30-day query needs
+`30 × 10000 = 300000` rows total: at typical row counts of `10^7`
+per 256 MiB Parquet file, those rows live in 1–3 data files. The
+planner today must open all 150 manifests because the partition
+spec (likely `day(ts)`) cannot prune by `account_id`; an inverted
+index would point straight at the 1–3 files. That cuts manifest
+reads from `O(manifests) = 150` to `O(1)` per query.
 
 The Iceberg manifest, viewed at byte level, is one of the
 better-engineered formats in modern data infrastructure. It is also

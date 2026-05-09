@@ -14,11 +14,12 @@ math = false
 
 # The hook
 
-A modern Apple Silicon laptop has 14 cores. Pin a tight Go loop to four
-of them, have each goroutine do `atomic.AddInt64(&counter, 1)` against
-a single shared int. On an M3 Max ([reproducer below](#stretch-see-it-for-yourself)),
-that loop tops out at **~87 million ops/sec**. Wall time per op:
-~11.5 ns.
+A modern Apple Silicon laptop has 14 cores. Run a tight Go loop with
+`GOMAXPROCS=4`, four goroutines each calling
+`atomic.AddInt64(&counter, 1)` against a single shared int (the macOS
+kernel decides which cores; we just bound the parallelism). On an M3
+Max ([reproducer below](#stretch-see-it-for-yourself)), that loop tops
+out at **~87 million ops/sec**. Wall time per op: ~11.5 ns.
 
 Now repaint the same workload: every goroutine increments its own
 cache-line-padded counter (no atomic, no lock, no shared bytes). The
@@ -570,8 +571,9 @@ partition is a hot spot — but the constraint is hard.
 workload that needs a 12 GB working set on one specific shard cannot
 borrow from the other 15 (12 > 4 so the shard spills to disk while
 neighbours sit on `15 × 4 = 60 GB` of unused RAM). Cassandra's shared
-JVM heap can. Scylla provides `--reactor-backend=io_uring` and per-shard
-memory tuning, but you can't escape the partition.
+JVM heap can. Scylla's `--memory N` flag sets the total per-process
+budget that gets divided equally across shards — no amount of tuning
+lets you escape the partition.
 
 **3. It owns the box.** Co-tenancy is hostile to shard-per-core. If
 another process on the same machine starts using CPUs that Scylla has

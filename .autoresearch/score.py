@@ -136,23 +136,43 @@ def codeblock_path_defects(body: str, cached_repo: Path) -> tuple[int, int, int]
                 src = full.read_text(encoding="utf-8", errors="replace")
             except Exception:
                 src = ""
-            line_hit = False
+            # Require ≥2 distinct ≥25-char body lines to substring-match
+            # the source. Catches snippets where exactly one line is real
+            # and the rest is paraphrased.
+            matched_lines = 0
+            need = 2
+            seen_match: set[str] = set()
             for raw in code.splitlines():
                 line = raw.strip()
                 if len(line) < 25:
                     continue
+                key = line
+                hit = False
                 # First try the full line (preserves trailing comments
                 # that are themselves in the source). Then fall back to
                 # comment-stripped form.
                 if line in src:
-                    line_hit = True
-                    break
-                stripped = re.sub(r"\s*//.*$", "", line).strip()
-                if len(stripped) < 25:
-                    continue
-                if stripped in src:
-                    line_hit = True
-                    break
+                    hit = True
+                else:
+                    stripped = re.sub(r"\s*//.*$", "", line).strip()
+                    if len(stripped) >= 25 and stripped in src:
+                        hit = True
+                        key = stripped
+                if hit and key not in seen_match:
+                    seen_match.add(key)
+                    matched_lines += 1
+                    if matched_lines >= need:
+                        break
+            line_hit = matched_lines >= need
+            # If snippet has < `need` distinct ≥25-char lines, accept any single
+            # match (e.g. a 3-line struct with comments).
+            total_long = sum(
+                1
+                for raw in code.splitlines()
+                if len(raw.strip()) >= 25
+            )
+            if total_long < need and matched_lines >= 1:
+                line_hit = True
             if not line_hit:
                 weak += 1
                 print(
