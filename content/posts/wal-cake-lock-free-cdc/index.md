@@ -313,7 +313,8 @@ genuinely need column-level deltas.
 wrong. pgoutput emits each column as one of four `TupleDataType`s:
 `Null`, `Toast` (the value was de-TOASTed and not present in this
 message), `Text` (a UTF-8 textual representation), or `Binary`. The
-decoder dispatches on a `pgtype.OID`-keyed handler registry:
+decoder dispatches on a `pgtype.Int2OID`/`pgtype.Int4OID`/...-keyed
+handler registry:
 
 ```go
 // internal/replication/tuple_decoder.go
@@ -914,7 +915,8 @@ multipart threshold is 5 MB; nothing we write hits it. Multipart
 would add three round trips (init, parts, complete) for negligible
 parallelism gain on a sub-MB upload.
 
-Idempotency comes from the key. `ts.UnixMicro()` is monotonic per
+Idempotency comes from the key. The `Timestamp.UnixMicro()` of the
+last event in the batch is monotonic per
 worker (it's the timestamp of the last event in the batch, which by
 contiguous-LSN ordering is monotonic across all batches). If a PUT
 fails and the worker retries via the worker-level retry-with-backoff

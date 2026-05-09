@@ -420,6 +420,12 @@ PG_ALLOWLIST = {
     "S3 PUT", "S3 Standard", "S3-Express",
     # Misc
     "p99", "p50", "OLTP", "TPS",
+    # Go stdlib reference types (mentioned in prose for comparison)
+    "sync.Mutex", "sync.Map", "sync.Pool", "sync.WaitGroup",
+    "sync.RWMutex", "sync.Once", "sync.Cond",
+    "atomic.Int64", "atomic.Int32", "atomic.Uint64", "atomic.Pointer",
+    # Postgres protocol commands (verifiable in postgresql docs, not wal-cake source)
+    "START_REPLICATION", "IDENTIFY_SYSTEM", "CREATE_REPLICATION_SLOT",
 }
 
 
@@ -446,6 +452,9 @@ def identifier_consistency_defects(body: str, cached_repo: Path) -> int:
     """Each distinctive `IDENT` in prose must appear in cached source or allowlist."""
     # Strip code fences first; we only check prose.
     prose = re.sub(r"```[^\n]*\n.*?```", "", body, flags=re.DOTALL)
+    # Build set of file basenames in the cached repo (so prose can name them
+    # without a self-referential code search hit).
+    file_basenames = {p.name for p in cached_repo.rglob("*") if p.is_file()}
     seen: dict[str, bool] = {}
     candidates: list[str] = []
     for m in PROSE_IDENT_RE.finditer(prose):
@@ -472,6 +481,11 @@ def identifier_consistency_defects(body: str, cached_repo: Path) -> int:
         candidates.append(tok)
     n = 0
     for tok in candidates:
+        # accept if the token is a real filename in the cached repo
+        # (e.g., prose may mention `tuple_decoder.go` even though no
+        # source file literally references the filename string)
+        if tok in file_basenames:
+            continue
         # cheap grep — fixed-string for safety
         try:
             r = subprocess.run(
