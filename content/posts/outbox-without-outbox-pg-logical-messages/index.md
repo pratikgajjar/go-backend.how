@@ -201,34 +201,26 @@ Function signature, paraphrased from the
 > `pg_logical_emit_message(transactional boolean, prefix text, content text  [, flush boolean DEFAULT false]) → pg_lsn`
 > `pg_logical_emit_message(transactional boolean, prefix text, content bytea [, flush boolean DEFAULT false]) → pg_lsn`
 
-The upstream description (lightly compressed): emit a text or binary
-logical decoding message that logical decoding plugins receive
-through WAL. With `transactional = true` the message becomes visible
-to decoders only when the surrounding transaction commits; with
-`false`, it's written immediately and decoded as soon as the decoder
-reads the WAL record. The optional `flush` parameter
+Paraphrased: emit a text or binary logical-decoding message that
+plugins receive through WAL. `transactional = true` makes it visible
+to decoders only when the surrounding txn commits; `false` writes
+immediately. The optional `flush` parameter
 ([added in Postgres 16](https://www.postgresql.org/docs/release/16.0/))
-forces a `XLogFlush` on the emitted record before returning, so the
-caller can be sure the bytes are durable on disk before the
-transaction commits — useful for non-transactional emits, irrelevant
-for the `transactional=true` path factlib takes (the COMMIT itself
-flushes). Pre-16 Postgres has only the 3-parameter form.
+forces an `XLogFlush` before returning — useful for non-transactional
+emits, irrelevant for the `transactional=true` path factlib takes
+(the COMMIT flushes). Pre-16 Postgres has only the 3-parameter form.
 
-Read that twice. Three properties matter:
+Three properties matter:
 
-1. **It writes to the WAL atomically with the surrounding transaction.**
-   `transactional = true` means the message becomes visible to
-   logical-decoding consumers only if the transaction commits. If
-   you `ROLLBACK`, the message is gone. This is the same atomicity
-   guarantee as the outbox table. It comes for free, no table needed.
-2. **Logical decoding plugins (`pgoutput`, `wal2json`) deliver the
-   message to subscribers** the same way they deliver row changes.
-   Same protocol, same `START_REPLICATION` connection, same
-   `confirmed_flush_lsn` book-keeping.
-3. **It has zero on-disk table footprint** after WAL recycling. The
-   bytes live in the WAL until every replication slot has acked past
-   that LSN, then they are recycled like any other WAL record. No
-   vacuum. No bloat. No cleanup job.
+1. **Atomic with the surrounding transaction.** If you `ROLLBACK`,
+   the message is gone. Same guarantee as the outbox table, no table
+   needed.
+2. **Decoded by `pgoutput` / `wal2json` like any row change.** Same
+   `START_REPLICATION` connection, same `confirmed_flush_lsn`.
+3. **Zero on-disk table footprint after WAL recycling.** Bytes live
+   in WAL until every replication slot has acked past that LSN, then
+   recycle like any other WAL record. No vacuum, no bloat, no
+   cleanup job.
 
 > The WAL **is** the outbox.
 
@@ -294,7 +286,7 @@ func (a *PostgresAdapter) WithTxn(txn postgres.SQLExecutor) (postgres.OutboxProd
 }
 ```
 
-The application code looks like this:
+Application code:
 
 ```go
 func CreateUser(ctx context.Context, db *pgxpool.Pool, u User) error {

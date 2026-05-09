@@ -172,8 +172,8 @@ Pinning eliminates the entire category.
 
 ## 2. The `submit_to` fast path
 
-`smp::submit_to` is the thing every cross-shard call goes through. The
-key inlined check:
+`smp::submit_to` is the thing every cross-shard call goes through.
+Abridged to the structure (full version in `include/seastar/core/smp.hh`):
 
 ```cpp
 // include/seastar/core/smp.hh
@@ -186,6 +186,15 @@ static futurize_t<std::invoke_result_t<Func>> submit_to(unsigned t, smp_submit_t
                 // Non-deferring function, so don't worry about func lifetime
                 return futurize<ret_type>::invoke(std::forward<Func>(func));
             } else if (std::is_lvalue_reference_v<Func>) {
+                /* ... lvalue and rvalue futurize paths, all inline ... */
+            }
+        } catch (...) {
+            return futurize<std::invoke_result_t<Func>>::make_exception_future(std::current_exception());
+        }
+    } else {
+        return _qs[t][this_shard_id()].submit(t, options, std::forward<Func>(func));
+    }
+}
 ```
 
 When the target shard is the calling shard — the overwhelmingly common
@@ -193,14 +202,8 @@ case for token-aware clients — the lambda runs *inline*. No queue, no
 atomic, no future overhead beyond the inevitable allocation if the
 return type defers. Zero coordination cost.
 
-When the target is remote, it falls through to:
-
-```cpp
-// include/seastar/core/smp.hh, same function, else branch
-        } else {
-            return _qs[t][this_shard_id()].submit(t, options, std::forward<Func>(func));
-        }
-```
+When the target is remote, the `else` branch hits the SPSC queue at
+`_qs[t][this_shard_id()]`.
 
 `_qs` is a 2-D array of `smp_message_queue` — exactly N × N of them,
 one per (sender, receiver) pair. Each queue is owned by exactly one

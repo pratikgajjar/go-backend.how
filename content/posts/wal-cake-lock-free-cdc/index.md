@@ -222,10 +222,12 @@ if err == nil {
 }
 ```
 
-If the slot has never been used, fall back to `pg_current_wal_lsn()` via
-`pglogrepl.IdentifySystem`. Either way: **the next message we receive
-is the next byte after the last one we durably wrote to S3**, never the
-byte after the last one we _read_.
+If the slot has never been used, fall back to the cluster's current
+WAL position reported by the replication-protocol `IDENTIFY_SYSTEM`
+command, surfaced in Go as `pglogrepl.IdentifySystem(...).XLogPos`.
+Either way: **the next message we receive is the next byte after
+the last one we durably wrote to S3**, never the byte after the last
+one we _read_.
 
 That guarantee is the entire job.
 

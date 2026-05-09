@@ -126,29 +126,29 @@ ships at.
 shared_buffers (8 KB pages)
 ┌──────────────────────────────────────────────────────────────┐
 │ block 0  HnswMetaPageData                                    │
-│            magic 0xA953A953 │ M │ efConstruction │           │
-│            entryBlkno  ─────────────────┐ entryLevel         │
-│            insertPage  ────────────┐    │                    │
-├────────────────────────────────────┼────┼────────────────────┤
+│   magic 0xA953A953 │ version │ dimensions │ m │ efConstr.    │
+│   entryBlkno  ─────────────────────────┐ entryLevel          │
+│   insertPage  ───────────────────┐     │                     │
+├──────────────────────────────────┼─────┼─────────────────────┤
 │ block 1+ element/neighbor tuples on the same MAIN_FORKNUM    │
-│                                    │    │                    │
-│   ┌─ HnswElementTuple ──┐          │    │                    │
-│   │ type=ELEMENT level  │          │    └─► entry point      │
-│   │ heaptids[10]        │          │                         │
-│   │ neighbortid ────────┼──┐       │                         │
-│   │ Vector data         │  │       │                         │
-│   └─────────────────────┘  │       │                         │
-│   ┌─ HnswNeighborTuple ─┐  │       │                         │
-│   │ type=NEIGHBOR       │◄─┘       │                         │
-│   │ count               │          │                         │
-│   │ indextids[(L+2)·M]  │          │                         │
-│   └─────────────────────┘          │                         │
-│                                    ▼                         │
+│                                  │     │                     │
+│   ┌─ HnswElementTuple ──┐        │     │                     │
+│   │ type=ELEMENT level  │        │     └─► entry point       │
+│   │ heaptids[10]        │        │                           │
+│   │ neighbortid ────────┼──┐     │                           │
+│   │ Vector data         │  │     │                           │
+│   └─────────────────────┘  │     │                           │
+│   ┌─ HnswNeighborTuple ─┐  │     │                           │
+│   │ type=NEIGHBOR       │◄─┘     │                           │
+│   │ count               │        │                           │
+│   │ indextids[(L+2)·M]  │        │                           │
+│   └─────────────────────┘        │                           │
+│                                  ▼                           │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 The whole index is one Postgres relation. Block 0 is the meta page
-([`HnswMetaPageData`](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L259-L270)).
+([`HnswMetaPageData`](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L314-L325)).
 Every other block contains a mix of two tuple types — element tuples
 and neighbour tuples — laid out exactly the way Postgres lays out heap
 tuples, with `ItemId`s in the page header and the data growing from

@@ -211,12 +211,12 @@ Three guards, each a real bug fixed long after Raft's first publication:
    removal would keep bumping terms.
 3. **Pending-conf-change check.** A new candidate that has uncommitted
    conf changes in its log might campaign with a config the cluster
-   already left, splitting the vote between joint configs. Pavel
-   Kalinnikov's
-   [TODO](https://github.com/etcd-io/raft/blob/main/raft.go) on
-   `hasUnappliedConfChanges` ("find a way to budget memory/bandwidth
-   for this scan outside the raft package") shows the cost: scanning
-   the unapplied tail can be expensive on a node that's been silent.
+   already left, splitting the vote between joint configs. The
+   [in-source comment on
+   `hasUnappliedConfChanges`](https://github.com/etcd-io/raft/blob/main/raft.go)
+   flags the cost: scanning the unapplied tail can be expensive on a
+   node that's been silent for a while, which is why the check is gated
+   behind the elapsed-timeout test in the first place.
 
 ## Step 3: campaign() does the math, sends the votes
 
@@ -263,7 +263,6 @@ eventually terminate.
 ```go
 // raft.go
 func (r *raft) becomeCandidate() {
-	// TODO(xiangli) remove the panic when the raft implementation is stable
 	if r.state == StateLeader {
 		panic("invalid transition [leader -> candidate]")
 	}
@@ -414,7 +413,6 @@ committed:
 ```go
 // raft.go
 func (r *raft) becomeLeader() {
-	// TODO(xiangli) remove the panic when the raft implementation is stable
 	if r.state == StateFollower {
 		panic("invalid transition [follower -> leader]")
 	}

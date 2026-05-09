@@ -61,10 +61,10 @@ files are not Parquet.
 
 That is the first contradiction. The second is the size:
 
-> A manifest file in Iceberg defaults to **8 MB
+> A manifest file in Iceberg defaults to **8 MiB
 > = 8 × 1,048,576 = 8,388,608 bytes** of compressed Avro.
 
-Not gigabytes. Not megabytes-with-a-capital-M. 8 MB, set at
+Not gigabytes. Not even tens of megabytes. 8 MiB, set at
 [`MANIFEST_TARGET_SIZE_BYTES_DEFAULT = 8 * 1024 * 1024`](https://github.com/apache/iceberg/blob/main/core/src/main/java/org/apache/iceberg/TableProperties.java)
 in `core/src/main/java/org/apache/iceberg/TableProperties.java`.
 That single number controls how many data files one manifest can
