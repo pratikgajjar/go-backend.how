@@ -378,7 +378,7 @@ openat(AT_FDCWD, "/sys/fs/cgroup/cpu.max", O_RDONLY|O_CLOEXEC) = 3
 [pid 13] listen(4, 4096) = 0
 ```
 
-Read the timestamps: `boot=0.000523587 s = 523 µs` from `execve` to the line where `logger.Info("ready")` fires (which sits right after `go func() { _ = srv.ListenAndServe() }()`). The 17–32 ms end-to-end number we measured earlier is dominated by `socket → bind → listen` and the curl-poll loop, *not* by Go runtime init.
+The zap line is the punchline: `boot=0.000523587 s ≈ 523 µs` from `execve` to the moment `logger.Info("ready")` fires (which sits right after `go func() { _ = srv.ListenAndServe() }()` at line 66 of `main.go`). The 17–32 ms end-to-end number we measured earlier is dominated by `socket → bind → listen` and the curl-poll loop, *not* by Go runtime init. The runtime itself is ~30× faster than the listener-accept-curl chain.
 
 Four observations the real trace makes obvious:
 

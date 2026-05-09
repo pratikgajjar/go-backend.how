@@ -553,10 +553,10 @@ Best-of-three results on the same 4 cores, same 20M total ops:
 
 | Variant                                    | ops/sec     | ns/op | Notes                                 |
 | ------------------------------------------ | ----------- | ----- | ------------------------------------- |
-| shared atomic (CAS on one int64)           | **88 M**    | 11.3  | What naive multi-threaded code does   |
-| shared mutex (sync.Mutex)                  | **18 M**    | 55.3  | What naive idiomatic Go code does     |
-| channel hop (cross-core handoff)           | **15 M**    | 67.8  | Closest analog to submit_to cost      |
-| sharded false-share (4 ints/line)          | **2 037 M** | 0.5   | No sync, but lines still bouncing     |
+| shared atomic (CAS on one int64)           | **88 M**    | 11.3  | What a shared counter actually costs  |
+| shared mutex (sync.Mutex)                  | **18 M**    | 55.3  | The default in most Go services       |
+| channel hop (cross-core handoff)           | **15 M**    | 67.8  | Closest Go analog to submit_to        |
+| sharded false-share (4 ints/line)          | **2 037 M** | 0.5   | One per goroutine, but same line      |
 | sharded padded (1 line per shard)          | **2 832 M** | 0.4   | Scylla-style: zero coherence traffic  |
 
 Compute it: `2832 M / 88 M ≈ 32×`. That is the structural ceiling

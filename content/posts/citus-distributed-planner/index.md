@@ -75,9 +75,8 @@ that prunes to a single shard and runs in 200µs on the worker, the
 coordinator's `standard_planner` round-trip is measurable. Napkin
 estimate (no measurement on this machine, derived from planner-step
 complexity): a simple SELECT walks something like 100,000–300,000
-tree-walker nodes through the optimizer at ~1 ns per step, putting
-single-table planning in the 100–300 µs range (100,000 × 1 ns =
-100 µs, 300,000 × 1 ns = 300 µs — math shown). To pin down the actual
+tree-walker nodes through the optimizer at ~1 ns per step, which
+multiplies out to roughly 100–300 µs of single-table planning time. To pin down the actual
 number on a real cluster, the canonical tool is
 [`pg_stat_statements`](https://www.postgresql.org/docs/current/pgstatstatements.html),
 which exposes per-query plan-time totals directly. On the fast path,

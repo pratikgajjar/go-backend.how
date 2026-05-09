@@ -17,11 +17,15 @@ math = false
 > calendar isn't. `pg_partman` is the calendar.
 
 You partition `events` by `created_at`, daily, ninety days of data.
-Ninety partitions, each ~12 GB. You run the obvious dashboard query —
-"events in the last hour" — and `EXPLAIN (ANALYZE, BUFFERS)` reports
-**1,080 GB scanned** to return 12 MB of rows. Ninety partitions, every
-single one of them touched. You partitioned the table to make this
-query fast. It got slower than the un-partitioned version because the
+Ninety partitions, each ~12 GB, ~1,080 GB on disk. You run the obvious
+dashboard query — "events in the last hour" — and `EXPLAIN (ANALYZE,
+BUFFERS)` shows the dashboard's p95 has gotten _slower_, not faster.
+Plan time alone is in the hundreds of milliseconds. Postgres 12+'s
+executor partition pruning still kicks in and skips 89 of the 90
+`Seq Scan` nodes — the actual data scan is small — but every one of
+the 90 children is opened, locked, and its statistics loaded into the
+planner before pruning runs. You partitioned the table to make this
+query fast. It got worse than the un-partitioned version because the
 planner now has 90 child relations to plan against and the BRIN index
 on each child has the same cardinality it had when the table was one
 giant slab.
@@ -63,20 +67,21 @@ WHERE created_at >= now() - interval '1 hour';
 ```text
 Aggregate  (cost=...)
   ->  Append
-        ->  Seq Scan on events_pYYYYMMDD       (rows=1)   # today
+        ->  Seq Scan on events_pYYYYMMDD                    # today
               Filter: (created_at >= (now() - '01:00:00'::interval))
-        ->  Seq Scan on events_pYYYYMMDD_t1    (rows=0)   # yesterday
-        ->  Seq Scan on events_pYYYYMMDD_t2    (rows=0)   # 2 days ago
-        ...  (87 more children, every one opened)
-Planning Time: hundreds of ms
-Execution Time: many seconds (range from past benchmarks[^bench])
+        ->  Seq Scan on events_pYYYYMMDD_t1   (never executed)  # yesterday
+        ->  Seq Scan on events_pYYYYMMDD_t2   (never executed)  # 2 days ago
+        ...  (87 more children, every one in the plan tree)
+Planning Time: hundreds of ms (range from past benchmarks[^bench])
+Execution Time: dominated by plan time, not by data scan
 ```
 
-Two things are wrong. The query touched every child even though 89 of
-them cannot contain rows newer than `now() - 1 hour`. And the planner
-spent the bulk of the wall on _planning_, before reading the first
-useful row. You did not partition the table to read every partition
-more slowly than reading none of them.
+Two things are wrong here. The plan tree contains every child even
+though 89 of them cannot contain rows newer than `now() - 1 hour`
+(notice the `(never executed)` annotations — that's runtime partition
+pruning saving the data scan). And the planner spent the bulk of the
+wall on _planning_, before the first row was read. You did not
+partition the table to make plan time bigger than execution time.
 
 The cause is `now()`. [Postgres marks `now()`](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT) (and current_timestamp,
 statement_timestamp, etc.) as `STABLE`, not `IMMUTABLE`.
