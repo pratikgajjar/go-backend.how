@@ -415,12 +415,12 @@ err = pglogrepl.StartReplication(ctx, w.replConn, w.cfg.ReplicationSlotName, w.x
     })
 ```
 
-`messages 'true'` is a `pgoutput` plugin arg added in Postgres 14
-that tells the plugin: "yes, please decode logical-decoding
-messages, not just row changes." Without it, our
-`pg_logical_emit_message` calls would be silently dropped on the
-subscriber side and you'd waste an afternoon staring at WAL traces.
-Ask me how I know.
+`messages 'true'` is a `pgoutput` plugin arg added in
+[Postgres 14](https://www.postgresql.org/docs/release/14.0/) that
+tells the plugin: "yes, please decode logical-decoding messages,
+not just row changes." Without it, our `pg_logical_emit_message`
+calls would be silently dropped on the subscriber side and you'd
+waste an afternoon staring at WAL traces. Ask me how I know.
 
 `w.xLogPos` is where to start streaming from. On first boot it's the
 slot's `confirmed_flush_lsn`; on subsequent boots, same thing — the
@@ -731,9 +731,13 @@ OwlPost                Kafka         Postgres
 
 The same event is produced to Kafka twice. By design — this is
 at-least-once. Deduplication is the consumer's job. `event.Id` is a
-UUIDv7, so the consumer can keep a small "seen IDs" Bloom filter (or,
-for sensitive flows, an `INSERT ... ON CONFLICT DO NOTHING` against a
-`processed_events(id)` table).
+UUIDv7, so the consumer can dedupe on it. **Don't reach for a Bloom
+filter here**: a Bloom-filter false positive would silently *skip* an
+unseen event, which is the wrong direction of error. Use a fixed-
+window `LRU` of recent IDs in memory plus, for sensitive flows, an
+`INSERT ... ON CONFLICT DO NOTHING` against a `processed_events(id
+uuid PRIMARY KEY, processed_at timestamptz)` table that you partition
+or TTL-prune yourself.
 
 This is one of the cases the
 [`feat(kafka ack): Reliability 100%`](https://github.com/fampay-inc/factlib/commit/45f9f13)
@@ -949,11 +953,17 @@ worse.
 
 ### Long Postgres transactions
 
-Logical decoding does not see a transaction's records until COMMIT.
-A 30-second transaction blocks your event delivery for 30 seconds.
-Same problem the outbox-table pattern has. The advice is the same:
-keep transactions short, hoist long-running work outside the
-transaction.
+With the `proto_version '1'` plugin arg factlib uses today, logical
+decoding does not see a transaction's records until COMMIT — a 30-
+second transaction blocks event delivery for 30 seconds. Same
+problem the outbox-table pattern has. The advice is the same: keep
+transactions short, hoist long-running work outside the transaction.
+
+Newer pgoutput protocols (`proto_version '2'`, added in Postgres 14;
+`proto_version '4'` adds two-phase commit support) can stream
+in-progress transactions, which would unblock long-runners. Switching
+factlib to v2 is on the deferred list — it requires care around
+rolled-back streamed messages on the consumer side.
 
 # 10. The Python client (and polyglot fan-in)
 
