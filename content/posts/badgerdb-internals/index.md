@@ -134,7 +134,7 @@ Read it twice. Two effects, one loop:
 1. **If the level below me is over its target**, divide my score by theirs. My priority goes *down*. The intuition: don't push more data into a level that's already overflowing — that just creates work for two compactors.
 2. **If the level below me is well under its target**, divide my score by a small number. My priority goes *up*. We want to feed the empty bottom levels.
 
-This is lifted from [PebbleDB's compaction picker][pebble] (Cockroach DB's RocksDB replacement) and it makes a measurable difference on bursty workloads — the unadjusted greedy version oscillates between L0 and L1, leaving deep levels starving while L0 backs up.
+This is lifted from [Pebble's compaction picker][pebble] (CockroachDB's RocksDB replacement, written in Go) and it makes a measurable difference on bursty workloads — the unadjusted greedy version oscillates between L0 and L1, leaving deep levels starving while L0 backs up.
 
 [pebble]: https://github.com/cockroachdb/pebble/blob/master/compaction_picker.go
 

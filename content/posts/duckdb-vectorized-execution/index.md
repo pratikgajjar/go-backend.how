@@ -278,10 +278,13 @@ parallelism are all expressed as transitions in this state machine.
 
 ## Hash join: linear probing with an embedded salt
 
-TPC-H Q03 joins `customer`, `orders`, and `lineitem`. Two of those
-joins are hash joins (DuckDB picks merge join only when sortedness is
-free). The build side of the hash join is interesting because the
-hash entry is 8 bytes — exactly one pointer.
+TPC-H Q03 joins `customer`, `orders`, and `lineitem`. Both joins are
+equality joins, so DuckDB picks hash join unconditionally — see
+`src/execution/physical_plan/plan_comparison_join.cpp` where the
+hash-join branch fires for any equality condition; the
+piecewise-merge join only kicks in for *range* conditions like
+`a < b`. The build side of the hash join is interesting because
+the hash entry is 8 bytes — exactly one pointer.
 
 ```cpp
 // src/include/duckdb/execution/ht_entry.hpp

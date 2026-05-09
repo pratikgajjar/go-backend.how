@@ -516,18 +516,21 @@ Two paths cut segments:
 `writeIdx - lastSegIdx >= batchSize`:
 
 ```go
-// internal/buffer/ring_buffer.go
+// internal/buffer/ring_buffer.go (safety check + log elided)
 func (rb *RingBuffer) checkForNewSegment() bool {
-    writePos   := rb.writeIdx.Load()
-    lastSegPos := rb.lastSegIdx.Load()
-    if int(writePos-lastSegPos) >= rb.batchSize {
-        segment := Segment{StartIdx: lastSegPos, EndIdx: writePos}
-        rb.lastSegIdx.Store(writePos)
-        rb.tracker.Set(segment.StartIdx, &segment)
-        rb.segments <- segment
-        return true
-    }
-    return false
+	writePos := rb.writeIdx.Load()
+	lastSegPos := rb.lastSegIdx.Load()
+	if int(writePos-lastSegPos) >= rb.batchSize {
+		segment := Segment{
+			StartIdx: lastSegPos,
+			EndIdx:   writePos,
+		}
+		rb.lastSegIdx.Store(writePos)
+		rb.tracker.Set(segment.StartIdx, &segment)
+		rb.segments <- segment
+		return true
+	}
+	return false
 }
 ```
 
