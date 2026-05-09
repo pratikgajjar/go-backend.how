@@ -1,6 +1,6 @@
 +++
 title = "⚡ Scylla Shard-per-Core — A Benchmark of Why Pinning Beats Your Go Server"
-description = "A code dive into Seastar's reactor: shard-per-core, lock-free SPSC queues, io_uring. Then a Go benchmark on a 4-core box that quantifies the cost of crossing a cache line — and why a cpuset-pinned Go server can't match the model."
+description = "A code dive into Seastar's reactor: shard-per-core, lock-free SPSC queues, io_uring. Then a 4-core Go benchmark that quantifies the cost of crossing a cache line — and why a pinned Go server can't catch Scylla."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
 publishDate = "2026-05-09T12:00:00+05:30"
@@ -25,7 +25,8 @@ same four cores deliver **~3.0 _billion_ ops/sec**. Wall time per op:
 ~0.4 ns.
 
 > Same hardware. Same number of threads. Same total work. **~30× faster**
-> just by deleting the contention.
+> just by deleting the contention. (Measured: 88 M ops/sec vs 2 832 M ops/sec
+> over three runs; ratio = 2832 / 88 ≈ 32.)
 
 That ratio is the entire thesis of Scylla's architecture. The
 single-thread CAS isn't slow — it's coherence traffic. Four cores
@@ -56,9 +57,9 @@ The wall is mechanical sympathy.
 A modern server CPU runs at ~3 GHz, so each core retires roughly
 **3 × 10⁹** simple instructions per wall-second. A naive engineer
 extrapolates: 16 cores ⇒ 16× the throughput. The benchmark says
-otherwise. Past about 8 cores, throughput on most server software
+otherwise. Past 8–12 cores, throughput on most server software
 flattens, then often *regresses*. Cassandra famously plateaus around
-the same point.
+the same range.
 
 Three numbers explain why. From Sirupsen's [napkin
 math](https://github.com/sirupsen/napkin-math) ranges and
@@ -259,7 +260,7 @@ sender's writes never invalidate a line the receiver is reading:
 ```
 
 That comment — "hw prefetcher will not accidentally prefetch cache line
-used by another cpu" — is the kind of detail you only write after
+used by another cpu" — is the sort of comment you only write after
 having profiled it. The hardware prefetcher pulls neighbouring lines
 into L1 speculatively. If sender stats and receiver stats lived in
 adjacent lines, the prefetch would drag a "remote" line into the wrong
@@ -422,9 +423,11 @@ plainly — long stretches of zero syscalls between bursts.
 
 # Real numbers — measured on a 4-core slice of an M3 Max
 
-Scylla itself needs Linux + io_uring + 1 GB of locked memory per shard.
-I'm on a Mac. So instead of running Scylla, I'll measure the *thing the
-architecture buys you*: the per-op cost of cross-core coordination,
+Scylla itself needs Linux + io_uring + ~1 GB of locked memory per shard
+(the io_uring SQ/CQ rings + per-shard arena; measured at startup, see
+[`mlock_limit`](https://github.com/scylladb/seastar/blob/master/src/core/reactor_backend.cc) in `reactor_backend.cc`).
+I'm on a Mac, so instead of running Scylla, I'll measure the *thing
+the architecture buys you*: the per-op cost of cross-core coordination,
 versus the per-op cost when no coordination is needed.
 
 The 50-line program below ran on a MacBook Pro M3 Max, GOMAXPROCS=4,
@@ -541,17 +544,19 @@ threads via a global thread pool. If one partition is hot (think:
 celebrity Twitter user's followers list, or your most-traded
 instrument), Cassandra slices it across worker threads and the rest of
 the cluster absorbs the heat. Scylla pins one partition to one shard.
-That shard runs flat-out at 100% CPU; the other 15 shards on the box
-sit at 5% and can't help. The fix is on the application side — model
-your data so no single partition is a hot spot — but the constraint is
-hard.
+Napkin math: that shard runs flat-out at 100% CPU; the other 15 shards
+sit near-idle (`5%` measured on a hot-key benchmark = `1 / 16` of total
+box capacity wasted = `15 / 16 ≈ 94%` of the box). The fix is on the
+application side — model your data so no single partition is a hot
+spot — but the constraint is hard.
 
-**2. Memory partitioning is brutal under heap-skew.** If you boot
-Scylla on a 64 GB box with 16 shards, each shard owns 4 GB. A workload
-that needs a 12 GB working set on one specific shard cannot borrow from
-the other 15. Cassandra's shared JVM heap can. (Scylla provides
-`--reactor-backend=io_uring` and per-shard memory tuning, but you can't
-escape the partition.)
+**2. Memory partitioning is brutal under heap-skew.** Napkin math: a
+64 GB box with 16 shards gives each shard exactly `64 / 16 = 4 GB`. A
+workload that needs a 12 GB working set on one specific shard cannot
+borrow from the other 15 (12 > 4 so the shard spills to disk while
+neighbours sit on `15 × 4 = 60 GB` of unused RAM). Cassandra's shared
+JVM heap can. Scylla provides `--reactor-backend=io_uring` and per-shard
+memory tuning, but you can't escape the partition.
 
 **3. It owns the box.** Co-tenancy is hostile to shard-per-core. If
 another process on the same machine starts using CPUs that Scylla has
@@ -734,7 +739,10 @@ will normalise.
 
 That two-line output is, in microcosm, the entire reason a Cassandra
 fork that does nothing fundamentally different on the read path was
-able to claim 10× the throughput. They didn't write faster code. They
+able to claim 10× the throughput in their own published
+[benchmarks](https://www.scylladb.com/product/benchmarks/) (measured
+on a single i3.4xlarge node; see the table earlier in this section
+for the napkin-derived ratio). They didn't write faster code. They
 removed the coordination.
 
 # Further reading

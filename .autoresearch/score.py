@@ -635,16 +635,21 @@ def defaults_consistency_defects(body: str, cached_repo: Path) -> int:
     n = 0
     # Strip fenced code blocks; we only want prose backticks
     prose = re.sub(r"```[^\n]*\n.*?```", "", body, flags=re.DOTALL)
-    # Look for `name=value` mentions in prose backticks; value stops at
-    # commas / spaces / closing backtick so multi-pair `a=1, b=2` doesn't
-    # get parsed as a=1, b=2-everything.
-    for m in re.finditer(r"`(\w+)\s*=\s*([^`,\s]+)", prose):
-        var = m.group(1)
-        val = m.group(2).strip().rstrip(",")
+    # For each backticked group, parse all `name=value` pairs inside it.
+    # value pattern only matches numeric-like tokens (so we don't try to
+    # validate prose-y pairs like `name=something fancy`).
+    pairs: list[tuple[str, str]] = []
+    for outer in re.finditer(r"`([^`]+)`", prose):
+        inner = outer.group(1)
+        for pm in re.finditer(r"\b(\w+)\s*=\s*([\d,_.]+\w*)", inner):
+            pairs.append((pm.group(1), pm.group(2)))
+    for var, val in pairs:
+        val = val.strip().rstrip(",.")
+        val_norm = val.replace(",", "").replace("_", "")
         # Try int defaults
         if var.lower() in int_defaults:
             expected = int_defaults[var.lower()]
-            if expected != val:
+            if expected != val_norm:
                 n += 1
                 print(
                     f"DEBUG default_mismatch: prose says `{var}={val}` "

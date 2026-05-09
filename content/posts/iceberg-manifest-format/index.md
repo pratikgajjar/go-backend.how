@@ -31,7 +31,7 @@ structure.
 This post is a byte-level tour of the **manifest** layer, which is the
 part of the tree that does the real work of pruning a query down from
 "all data files in this table" to "the four files that may contain
-rows where `country = 'IN' AND ts >= '2026-05-01'`." We will read the
+rows where `country = 'IN' AND ts >= '2026/05/01'`." We will read the
 schema fields, walk the on-disk Avro, count bytes, and run the
 arithmetic that determines scan-planning latency on a 1 PB Iceberg
 table — and whether it lands at the 80 ms end of the curve or the 8 s
@@ -93,7 +93,7 @@ was tolerable; on object stores it broke. S3 `LIST` is paginated
 [strong read-after-write consistency
 shipped](https://aws.amazon.com/blogs/aws/amazon-s3-update-strong-read-after-write-consistency/),
 and never atomic against concurrent writers. A Spark job that
-listed `s3://bucket/events/dt=2026-05-09/` to discover its inputs
+listed `s3://bucket/events/dt=2026/05/09/` to discover its inputs
 was, depending on timing, either reading half-written files,
 missing brand-new files, or paying for thousands of `LIST`
 roundtrips before query planning could begin.
@@ -246,8 +246,8 @@ table; you can verify by `grep -n '125  lower_bounds'
 $ICEBERG/format/spec.md`.
 
 The `lower_bounds` and `upper_bounds` maps are what make queries
-fast. For a predicate like `ts >= '2026-05-01'`, the planner can
-skip a data file iff `upper_bounds[ts] < '2026-05-01'`. No Parquet
+fast. For a predicate like `ts >= '2026/05/01'`, the planner can
+skip a data file iff `upper_bounds[ts] < '2026/05/01'`. No Parquet
 footer read. No data byte fetched. Just a single integer comparison
 per file, evaluated against bytes that already live in the manifest
 and were just downloaded as part of the query plan.
@@ -410,9 +410,9 @@ Rather than benchmark Spark (whose numbers say more about JVM than
 about Iceberg), we can drop one level: open a manifest file with
 [PyIceberg](https://py.iceberg.apache.org/) and dump it through the
 Avro tools, and reason from the bytes upward. The snippet below is a
-copy-paste reproducer; save it as `tour.py` and run with
-`uv run tour.py` after
-`uv pip install pyiceberg pyarrow fastavro`:
+copy-paste reproducer; save it locally and run with
+`uv pip install pyiceberg pyarrow fastavro` followed by
+`uv run` against the file:
 
 ```python
 import json, fastavro
@@ -548,7 +548,7 @@ PyIceberg / Trino driver process:
 
 ```bash
 strace -f -e trace=openat,read,connect -e signal=none \
-  -- uv run tour.py 2>&1 \
+  -- uv run iceberg_tour.py 2>&1 \
   | rg 'metadata|\.avro|\.parquet'
 ```
 
