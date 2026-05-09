@@ -339,7 +339,7 @@ The math at fleet scale (one node, 50 services, 100 % cold cache, 1 Gbps network
 - wolfi:      `5.77 MB + 50 × 3.98 MB = 204.77 MB ≈ 1.6 s`
 - scratch:    `0 + 50 × 3.98 MB     = 199.00 MB ≈ 1.6 s`
 
-These all round to within 30 ms of each other when you're bandwidth-bound. **The 5 MB difference between bases vanishes the moment you have any binary at all.** The only image-size axis that *still* matters at scale is registry storage cost (Wolfi's bulkier base eats more of your ECR/Artifact Registry quota), and that's a billing concern, not a latency one.
+At 1 Gbps these are 1.598 s, 1.638 s, 1.592 s respectively \u2014 distroless and scratch round to within 6 ms of each other (`(199.79 - 199.00) MB / 125 MB/s = 6.3 ms`), wolfi-vs-scratch sits at 46 ms (`(204.77 - 199.00) / 125`). **The 5 MB base-image difference is two-orders-of-magnitude smaller than the 1.6 s of binary-layer pulls every node has to do anyway.** The only image-size axis that *still* matters at scale is registry storage cost (Wolfi's bulkier base eats more of your ECR/Artifact Registry quota), and that's a billing concern, not a latency one.
 
 But there's a place where the 5 MB *does* matter: when the registry caps per-IP throughput. AWS ECR private has a documented [pull-rate limit][ecr-limit] that throttles when a node tries to fetch many manifests in a few seconds. At 1000 pods landing on 100 nodes simultaneously, hitting the per-IP throttle pushes p99 pull-time from 1.6 s into the 5–10 s tail, and the larger your base layer, the more bytes you waste re-fetching when the throttle resets.
 

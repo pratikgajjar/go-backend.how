@@ -781,7 +781,7 @@ Each line is a tradeoff. Walked one by one:
 | Setting | Choice | Why |
 |---|---|---|
 | Codec | ZSTD level 3 | Sweet spot for CDC payloads. Per [zstd benchmarks](https://github.com/facebook/zstd#benchmarks): several times faster than gzip at a comparable ratio, and tighter than snappy. Higher ZSTD levels (10+) trade order-of-magnitude more CPU for single-digit-percent size gains. |
-| Dict for `table`, `operation` | yes | Both have low cardinality (10s of tables, 3 ops in Parquet — `insert`/`update`/`delete`; `commit` is filtered out by `transformer.AddFilter`). Dict cuts those columns dramatically vs storing the full string per row. |
+| Dict for `table`, `operation` | yes | Low cardinality on both (10s of tables; 3 ops in Parquet — `insert`/`update`/`delete`; `commit` is filter-excluded). Dict beats per-row string storage decisively. |
 | Dict default | OFF | Avoids overhead for high-cardinality JSON/timestamp/LSN columns where dict would just bloat the file. |
 | `timestamp` encoding | DELTA_BINARY_PACKED | Microsecond timestamps are monotonic in WAL order. DELTA_BINARY_PACKED stores `t[0]`, then `(t[i] - t[i-1])` packed at the minimum bit-width — typically 1–2 bytes/row instead of 8. |
 | `lsn` encoding | DELTA_BINARY_PACKED | LSN is also monotonic. Same trick, same ~75% savings on the column. |

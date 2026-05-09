@@ -27,9 +27,9 @@ key-value stores on the same M2 MacBook, same APFS filesystem, same Go
 
 | engine | LOC[^loc] | write ops/s | read p50 | read p99 | on-disk |
 |---|---:|---:|---:|---:|---:|
-| **LMDB**   | 13,754 (C)  | 1,932,276 | 430 ns | 970 ns | 42 MB |
-| **BoltDB** | 11,477 (Go) |    72,702 | 459 ns | 1.4 μs | 96 MB |
-| **Pebble** | 159,642 (Go)|   635,351 | 5.4 μs | 8.7 μs | 20 MB |
+| **LMDB**   | 13,754 (C)  | 1,932,276 | 430 ns | 970 ns | 42 MiB |
+| **BoltDB** | 11,477 (Go) |    72,702 | 459 ns | 1.4 μs | 96 MiB |
+| **Pebble** | 159,642 (Go)|   635,351 | 5.4 μs | 8.7 μs | 20 MiB |
 
 [^loc]: `wc -l` on each repo, excluding tests. LMDB is `libraries/liblmdb/{mdb,midl}.{c,h}`; BoltDB is `find . -name "*.go" -not -name "*_test.go"`; Pebble is the same with `metamorphic/` and `replay/` excluded.
 
@@ -40,12 +40,12 @@ Three things should bother you:
    of C, beats Pebble - [159,642 lines](https://github.com/cockroachdb/pebble)
    of Go with a CockroachDB-funded engineering org behind it - at
    single-threaded random reads by ~13×.
-2. **BoltDB**'s on-disk file (96 MB) is **2.3×** larger than LMDB's
-   (42 MB) for byte-identical data, and both are B+trees on mmap with
+2. **BoltDB**'s on-disk file (96 MiB) is **2.3×** larger than LMDB's
+   (42 MiB) for byte-identical data, and both are B+trees on mmap with
    the same default fill factor. The cost of being written in Go shows
    up in the page allocator, not just the binary.
-3. **Pebble**'s file is 20 MB - 2.1× smaller than LMDB and 4.8× smaller
-   than BoltDB - because it gzips/snappies blocks before writing them,
+3. **Pebble**'s file is 20 MiB - 2.1× smaller than LMDB and 4.8× smaller
+   than BoltDB - because it Snappy-compresses blocks before writing them,
    and that's the headline LSM win. Read latency p99 is 9× LMDB's,
    which is the headline LSM cost.
 
@@ -283,7 +283,7 @@ for _, node := range nodes {
 `split` at [node.go:206](https://github.com/etcd-io/bbolt/blob/main/node.go#L206)
 splits a node into pages of size `tx.db.pageSize × FillPercent`.
 `FillPercent` defaults to `0.5` ([bucket.go:27](https://github.com/etcd-io/bbolt/blob/main/bucket.go#L27)).
-That single number is *why* my BoltDB file was 96 MB: 200,000 ×
+That single number is *why* my BoltDB file was 96 MiB: 200,000 ×
 208-byte records ≈ 41.6 MiB of payload, but with `FillPercent = 0.5`
 the file roughly doubles. Set `Bucket.FillPercent = 0.95` before bulk
 inserts and the file shrinks. The 0.5 default exists because bbolt

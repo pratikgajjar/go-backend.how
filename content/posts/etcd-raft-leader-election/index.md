@@ -599,10 +599,10 @@ leader's heartbeats fire every `HeartbeatTick × tick interval` whether
 or not `CheckQuorum` is enabled, so no extra wire traffic is added.
 What `CheckQuorum` does add is *active* leader-step-down on the
 leader side: every `electionTimeout`, the leader runs `MsgCheckQuorum`
-and demotes itself if a quorum hasn't been recently active. The cost
-is one extra map walk over the progress tracker per election timeout —
-napkin math: `n` map entries × ~10 ns hash lookup `≈ n × 10 ns`,
-or 50 ns per second on a 5-node cluster.
+and walks `r.trk.Voters` to count `RecentActive == true`. The cost is
+napkin: `n` map entries × ~30 ns Go-map iter step `≈ n × 30 ns`. On a
+5-node cluster that's `5 × 30 ns = 150 ns` once per `electionTimeout`,
+i.e. `150 ns / 1 s ≈ 0.000015 %` of one core. Round to "free."
 
 Pre-Vote eliminates the term bump entirely (the partitioned node never
 gets a quorum to advance to the next term, so it doesn't), at the cost
