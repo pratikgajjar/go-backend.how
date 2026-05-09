@@ -494,12 +494,15 @@ you're migrating an existing table, you do that with
 `partition_data_proc` after the parent is partitioned, in batches.
 
 **b. Constraint exclusion on non-partition columns blocks edits.**
-`apply_constraints` writes a CHECK on the literal current min/max. A
-later `UPDATE` that pushes a value outside the recorded range fails
-with a constraint violation. The function `drop_constraints` is
-provided for the case where you need to mutate; the workflow is
-`drop_constraints → mutate → apply_constraints` and that's a
-multi-statement dance you have to drive yourself.
+When `constraint_cols` is set on the parent, `apply_constraints`
+writes a CHECK constraint of the form `col >= min AND col <= max` on
+each non-recent child (older than `optimize_constraint`, default 30
+intervals back), with literal min/max values pulled from the child's
+current data. Once written, a later `UPDATE` that pushes a value
+outside the recorded range fails with a constraint violation. The
+function `drop_constraints` is provided for the case where you need
+to mutate; the workflow is `drop_constraints → mutate → apply_constraints`
+and that's a multi-statement dance you have to drive yourself.
 
 **c. The default partition is a footgun.** `create_partition` will
 make a default partition unless you pass `p_default_table := false`.

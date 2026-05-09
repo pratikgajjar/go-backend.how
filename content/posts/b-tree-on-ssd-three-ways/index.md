@@ -14,7 +14,7 @@ math = false
 
 > Three engines, one workload, one laptop. LMDB measured 26× faster
 > writes than BoltDB and 13× faster reads than Pebble (see
-> [section 5](#5-real-numbers-same-machine-same-workload)) — but
+> [section 5](#5-real-numbers---same-machine-same-workload)) — but
 > Pebble's file is 4.8× smaller. None of the three dominates all three
 > axes. The shape of the tradeoff is the post.
 

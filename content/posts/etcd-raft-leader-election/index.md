@@ -479,13 +479,17 @@ of:
 | 2× `Step(MsgVoteResp)` in candidate | ≈ 400 ns | record vote, tally |
 | `becomeLeader` + `appendEntry` | ≈ 500 ns | one log append, no fsync |
 
-That's roughly 1.8 µs of state-machine work — the same order as the
+The numbers in that table are napkin math, anchored to
+`BenchmarkOneNode` 1,491 ns/op for the full `Propose → Ready → fsync →
+Advance` round-trip — each row is a fraction of that benchmark in
+proportion to the field-write / map-walk count visible in the source.
+Sum: roughly 1.8 µs of state-machine work — the same order as the
 single-node benchmark above, with one `Propose` swapped out for two
-vote round-trips. Everything else in a wall-clock election is **wait
-time** between these events: the disk persisting `HardState`, the network
-delivering messages, and `Tick()` ticks accumulating. Multiply 1.8 µs by
-the 1+ second of waiting and you get the 6-orders-of-magnitude gap from
-the hook.
+vote round-trips. The rest of a wall-clock election is **wait time**
+between these events: the disk persisting `HardState`, the network
+delivering messages, and `Tick` ticks accumulating. Multiply 1.8 µs by
+the 1+ second of waiting and you get the 6-orders-of-magnitude gap
+from the hook.
 
 ## How long the wait actually is
 

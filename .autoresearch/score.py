@@ -448,6 +448,10 @@ PG_ALLOWLIST = {
     "atomic.Int64", "atomic.Int32", "atomic.Uint64", "atomic.Pointer",
     # Postgres protocol commands (verifiable in postgresql docs, not wal-cake source)
     "START_REPLICATION", "IDENTIFY_SYSTEM", "CREATE_REPLICATION_SLOT",
+    # AWS S3 API method names (referenced in prose for context; not in app source)
+    "CreateMultipartUpload", "UploadPart", "CompleteMultipartUpload",
+    "PutObject", "GetObject", "DeleteObject", "ListObjectsV2",
+    "AbortMultipartUpload", "CopyObject", "HeadObject",
 }
 
 

@@ -410,10 +410,12 @@ Each attempt does:
 3. Build new metadata.json with the new snapshot's `manifest-list`
    pointer.
 4. `taskOps.commit(base, updated.withUUID())` — a single conditional
-   write against the catalog. Glue's `UpdateTable` with
-   `versionId`, JDBC `UPDATE … WHERE current_version = V`, REST
-   catalog's `UpdateTableRequest` with an `assertCurrentSchemaId`
-   pre-condition, or HDFS atomic rename.
+   write against the catalog. Glue's `UpdateTable` with `VersionId`,
+   JDBC `UPDATE … WHERE metadata_location = ?` (the CAS predicate
+   is the previous metadata-file location, not a counter — see
+   `V1_DO_COMMIT_TABLE_SQL` in `JdbcUtil.java`), REST catalog's
+   `UpdateTableRequest` with an `assert-current-schema-id`-style
+   precondition in its `requirements` array, or HDFS atomic rename.
 
 The single conditional write is the entire concurrency story. There
 is no two-phase commit, no consensus protocol, no leader election.
