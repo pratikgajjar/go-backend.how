@@ -489,16 +489,16 @@ compression families live under `src/storage/compression/` —
 
 ## Why the gap is exactly this big
 
-Napkin math for Q01 at SF=10. Postgres reads 9.02 GiB of heap + 60M
-× indirect call × 3 operators × ~5 ns of dispatch (per the
+Napkin math for Q01 at SF=10. Postgres reads 9023 MiB of heap +
+60M × indirect call × 3 operators × ~5 ns of dispatch (per the
 [branch-mispredict derivation](#the-problem-this-engine-was-built-to-solve)
 above) = ~900 ms of CPU dispatch tax single-thread, ~225 ms across
 4 parallel workers. The remaining wall clock is IO. Postgres'
 parallel-bitmap-heap-scan effectively pushes ~340 MiB/s end-to-end on
-this NVMe (derived from the 8.22 GiB read in the 25 s Q06 run:
-`8420 / 25 ≈ 337` MiB/s — the bound is Postgres' per-page
+this NVMe (derived from the 8423 MiB read in the 25 s Q06 run:
+`8423 / 25 ≈ 337` MiB/s — the bound is Postgres' per-page
 bookkeeping, not the SSD's raw read which is closer to 2 GiB/s).
-Applying the same throughput to Q01: `9240 / 340 ≈ 27` s of IO
+Applying the same throughput to Q01: `9023 / 337 ≈ 27` s of IO
 upper-bound, parallelised across 4 workers gives `27 / 4 ≈ 6.8` s
 of IO + ~5 s of CPU work + planner ≈ 11.7 s. Matches the
 [reported](#real-numbers) measurement.
