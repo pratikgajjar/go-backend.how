@@ -237,7 +237,7 @@ The WiscKey decision creates a specific shape of system. It's worth being explic
 [vgc]: https://github.com/dgraph-io/badger/blob/main/value.go
 [disc]: https://github.com/dgraph-io/badger/blob/main/discard.go
 
-**No bloom filter on the vlog.** SSTables carry per-table bloom filters sized by `BloomBitsPerKey(numEntries, BloomFalsePositive)` [(`y/bloom.go:51`)][bloom] — default false-positive rate 1%. The vlog has none. A `Get(key)` that misses the LSM doesn't pay vlog cost (the LSM tells you "not present"). But a `Get(key)` that *hits* the LSM and returns a vptr always pays one vlog seek + one mmap page-in, even when the key was overwritten and the vptr is to a stale entry that compaction hasn't yet GC'd. The fix is "wait for compaction to discard the stale entry," which loops back to the GC tradeoff above.
+**No bloom filter on the vlog.** SSTables carry per-table bloom filters sized by `BloomBitsPerKey(numEntries, BloomFalsePositive)` [(`y/bloom.go:51`)][bloom] — default false-positive rate 1%. The vlog has none. A `Get(key)` that misses the LSM doesn't pay vlog cost (the LSM tells you "not present"). But a `Get(key)` that *hits* the LSM and returns a vptr always pays one vlog dereference: a memory access to the mmap'd region that either hits the OS page cache (a few hundred nanoseconds) or page-faults from disk (`~50 µs` on SSD, `~10 ms` on HDD). The expensive case happens even when the key was overwritten and the vptr is to a stale entry compaction hasn't yet GC'd. The fix is "wait for compaction to discard the stale entry," which loops back to the GC tradeoff above.
 
 [bloom]: https://github.com/dgraph-io/badger/blob/main/y/bloom.go
 

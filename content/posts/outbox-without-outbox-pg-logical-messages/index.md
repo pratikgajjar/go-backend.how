@@ -126,11 +126,10 @@ side-effect.
 
 ## MVCC update churn on `processed = true`
 
-`UPDATE outbox SET processed = true ...` is an MVCC update — and
-because the partial index from §2.3 below has `processed = false` in
-its predicate, this *can't* be a HOT update (predicate change kicks
-the row out of the index). New heap tuple, old tuple dead, partial-
-index entry deleted on the next index scan. At 10K events/sec, that's:
+`UPDATE outbox SET processed = true ...` writes a new row version;
+the old tuple dies and waits for autovacuum. The partial index below
+(`WHERE processed = false`) makes this not-HOT — predicate change
+kicks the row out of the index. At 10K events/sec:
 
 ```txt
 10,000 inserts/sec      → 10K live rows added per second
