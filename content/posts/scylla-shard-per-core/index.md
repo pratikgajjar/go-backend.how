@@ -387,14 +387,17 @@ The receiving reactor processes the batch:
     } while(i <= nr);
 ```
 
-The receiver pops one item, issues a prefetch hint for it (`prefetch<2>`,
-the `2` is the L2-cache hint level), then pops the rest of the batch
-into a local stack array. Inside the loop, `prefetch_n<2>` walks ahead
-by `PrefetchCnt` items, so by the time `process(wi)` runs the next two
-work-items are already being pulled into L2 from the producer's L1.
-Read-amplifying memory access overlaps with useful work. On a
-Cassandra-equivalent workload of small reads, this is the difference
-between L2-bound (`~3 ns` per pop) and L3/RAM-bound (`~30 ns` to `~100 ns`).
+The receiver pops one item and issues a prefetch (`prefetch<2>`, where
+`2` means "fetch 2 cache lines starting at this pointer" — see the
+`template<size_t L, int LOC = 3>` overload in
+[`include/seastar/core/prefetch.hh`](https://github.com/scylladb/seastar/blob/master/include/seastar/core/prefetch.hh)).
+Then it pops the rest of the batch into a local stack array. Inside
+the loop, `prefetch_n<2>` walks ahead by `PrefetchCnt` items, so by
+the time `process(wi)` runs the next two work-items are already being
+pulled into the calling core's caches. Read-amplifying memory access
+overlaps with useful work. On a Cassandra-equivalent workload of small
+reads, this is the difference between L2-bound (`~3 ns` per pop) and
+L3/RAM-bound (`~30 ns` to `~100 ns`).
 
 ## 6. Where it ties to io_uring
 
