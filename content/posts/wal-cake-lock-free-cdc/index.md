@@ -879,18 +879,25 @@ The processor splits each batch by `Date()` (truncated to UTC day):
 
 ```go
 // internal/buffer/processor.go
+// Events are from the same day
 if events[0].Date().Equal(events[len(events)-1].Date()) {
-    return p.Upload(ctx, events)            // fast path, all same day
+	return p.Upload(ctx, events)
 }
-// slow path: split contiguous same-day runs and Upload each
-curDate, left := events[0].Date(), 0
+
+curDate := events[0].Date()
+left, right := 0, 0
 for right, e := range events {
-    if !e.Date().Equal(curDate) {
-        if err := p.Upload(ctx, events[left:right]); err != nil { return err }
-        curDate, left = e.Date(), right
-    }
+	nextDate := e.Date()
+	if !nextDate.Equal(curDate) {
+		if err := p.Upload(ctx, events[left:right]); err != nil {
+			return err
+		}
+		curDate = nextDate
+		left = right
+	}
 }
-return p.Upload(ctx, events[left:])
+
+return p.Upload(ctx, events[left:right+1])
 ```
 
 The fast-path same-day check (commit `f3a95a7`, "Avoid partition logic

@@ -462,8 +462,9 @@ a similar drain, ≈ 12 ns. The total query time of 382 µs at default
 `ef_search` (see the table below) is dominated by the buffer-read
 random walk through the graph, not the math. `EXPLAIN (BUFFERS,
 ANALYZE)` on this post's benchmark[^bench] shows each search at
-`ef_search = 40` touches 528 shared-buffer pages, a measured
-`528 × 8 = 4224` KB of warm cache. The distance-computation work
+`ef_search = 40` registers 528 shared-buffer hits (page accesses,
+including repeated visits to the same page),
+`528 × 8 = 4224` KB of warm-cache touch. The distance-computation work
 is bounded above by `ef_search × 2M = 40 × 32 = 1280` candidates —
 or at 7 ns per distance, under 9 µs total. That's roughly 2 % of
 the query's 382 µs; buffer-pool bookkeeping and cache fetches are
