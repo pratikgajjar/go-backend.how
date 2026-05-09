@@ -393,11 +393,12 @@ The defaults from `core/src/main/java/org/apache/iceberg/TableProperties.java`
 are `COMMIT_NUM_RETRIES_DEFAULT = 4`,
 `COMMIT_MIN_RETRY_WAIT_MS_DEFAULT = 100`,
 `COMMIT_MAX_RETRY_WAIT_MS_DEFAULT = 60_000`, and
-`COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT = 30 * 60 * 1000`. Five tries
-total, exponential backoff base 2, capped at 60 s per attempt and
-30 minutes overall. That is enough to ride out a noisy-neighbour
-catalog without giving up, and short enough that a wedged commit
-fails fast.
+`COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT = 30 * 60 * 1000`. So: 1
+initial attempt + 4 retries = 5 total tries; sleep starts at
+100 ms and doubles (`base = 2`), capped at 60 s between attempts;
+total wall-clock retry budget 30 minutes. That is enough to ride
+out a noisy-neighbour catalog without giving up, and short enough
+that a wedged commit fails fast.
 
 Each attempt does:
 

@@ -1066,6 +1066,7 @@ def main() -> int:
     cats["broken_rendered_links"] = rendered_html_link_defects(
         repo_root, post_path.parent.name
     )
+    cats["loc_drift"] = loc_drift_defects(body, cached_repo)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
@@ -1098,6 +1099,7 @@ def main() -> int:
         "bad_commit_refs": 4,
         "dupe_words": 2,
         "broken_rendered_links": 5,
+        "loc_drift": 3,
         "wordcount_off": 1,
         "frontmatter": 2,
     }

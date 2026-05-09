@@ -697,8 +697,10 @@ way to confirm:
 ```bash
 # Sample every LWLockAcquire call in the postgres backend for 30 s,
 # bucketing by user-stack so you can see which paths take which locks.
-# Adjust the binary path: /usr/lib/postgresql/17/bin/postgres on Debian,
-# /usr/pgsql-17/bin/postgres on RHEL, /opt/homebrew/.../postgres on Mac.
+# Adjust the binary path for your distro:
+#   Debian/Ubuntu: /usr/lib/postgresql/17/bin/postgres
+#   RHEL/CentOS:   /usr/pgsql-17/bin/postgres
+# bpftrace is Linux-only; on macOS/BSD use dtrace + the equivalent probe.
 sudo bpftrace -e '
   uprobe:/usr/lib/postgresql/17/bin/postgres:LWLockAcquire {
     @[comm, ustack(perf, 5)] = count();

@@ -281,14 +281,14 @@ sudo bpftrace -e '
 tracepoint:syscalls:sys_enter_openat /comm == "containerd"/ {
   @opens[str(args->filename)] = count();
 }
-tracepoint:syscalls:sys_exit_read /@reads_bytes/ {
+tracepoint:syscalls:sys_exit_read /comm == "containerd"/ {
   @bytes_read = sum(args->ret);
 }
 interval:s:5 { print(@opens); print(@bytes_read); clear(@opens); }
 '
 ```
 
-Run it during a `crictl pull` and you'll see roughly N×(open+stat+mkdir+unlink+rename+chown) per layer regardless of layer size. The fixed cost dominates for layers under ~50 KB.
+Run it during a `crictl pull` and you'll see the open/stat/mkdir/unlink/rename/chown calls bunch up per-layer regardless of layer size. The fixed cost dominates for layers under ~50 KB (where `bytes_read` per layer is small relative to the syscall count).
 
 ## Container-start overhead (the ceiling nobody talks about)
 

@@ -68,11 +68,23 @@ def hugo_build_defects(repo_root: Path) -> int:
 
 
 def word_count(body: str) -> int:
-    body_stripped = re.sub(r"```[^`]*```", "", body, flags=re.DOTALL)
+    # Use line-by-line fence tracking instead of regex so we don't choke
+    # on code blocks containing backticks (e.g. Go raw string literals).
+    out_lines = []
+    in_fence = False
+    for line in body.splitlines():
+        s = line.lstrip()
+        if s.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        out_lines.append(line)
+    body_stripped = "\n".join(out_lines)
     return len(re.findall(r"\b[\w'-]+\b", body_stripped))
 
 
-def wordcount_defects(words: int, lo: int = 3000, hi: int = 5500) -> int:
+def wordcount_defects(words: int, lo: int = 3000, hi: int = 5000) -> int:
     if words < lo:
         return (lo - words) // 500
     if words > hi:
