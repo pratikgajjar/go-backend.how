@@ -42,7 +42,8 @@ that anchor everything come from reading
 running `go test -bench` against the same tree.
 
 > Single-node `Propose → Ready → Append → Advance` round-trip:
-> **1,491 ns/op** on an Apple M1 (`BenchmarkOneNode`,
+> **1,360 ns/op** on an Apple M3 Max MacBook Pro
+> (median of 3 runs, ±5%; `BenchmarkOneNode`,
 > [`node_bench_test.go`](https://github.com/etcd-io/raft/blob/main/node_bench_test.go)).
 >
 > The election path is shorter than that — it doesn't propose a user
@@ -450,21 +451,24 @@ answered.
 I avoided synthesising election timings against a ticking simulated
 network — the harness gets fragile fast. Instead, here are the four
 numbers a careful reading of the source plus one micro-benchmark on an
-Apple M1 give us. All numbers are derived, not waved.
+Apple M3 Max give us. All numbers are derived, not waved.
 
 ## How long the state-machine work takes
 
 `BenchmarkOneNode` exercises a *fuller* path than a leader election —
-propose entry → Ready → fsync → Advance — and reports **1,491 ns/op**:
+propose entry → Ready → fsync → Advance — and reports a median
+**1,360 ns/op** across three runs:
 
 ```text
-$ go test -bench=BenchmarkOneNode -run=^$ -benchtime=2s
+$ go test -bench=BenchmarkOneNode -run=^$ -benchtime=3s -count=3
 goos: darwin
 goarch: arm64
 pkg: go.etcd.io/raft/v3
-BenchmarkOneNode-8     1671619     1491 ns/op
+cpu: Apple M3 Max
+BenchmarkOneNode-16    2445968     1333 ns/op
+BenchmarkOneNode-16    2641879     1369 ns/op
+BenchmarkOneNode-16    2506566     1360 ns/op
 PASS
-ok  go.etcd.io/raft/v3   4.312s
 ```
 
 Source:
@@ -473,7 +477,7 @@ Source:
 A leader election on a 3-node cluster, in pure CPU terms, is the cost
 of:
 
-| Step | Cost (estimated, M1) | Source |
+| Step | Cost (estimated, M3 Max) | Source |
 |---|---:|---|
 | `becomeCandidate` (state + reset) | ≈ 200 ns | one map walk, three field writes |
 | Build + send 2 `MsgVote` messages | ≈ 600 ns | append to `r.msgs`, copy header |
@@ -482,7 +486,7 @@ of:
 | `becomeLeader` + `appendEntry` | ≈ 500 ns | one log append, no fsync |
 
 The numbers in that table are napkin math, anchored to
-`BenchmarkOneNode` 1,491 ns/op for the full `Propose → Ready → fsync →
+`BenchmarkOneNode`'s 1,360 ns/op for the full `Propose → Ready → fsync →
 Advance` round-trip — each row is a fraction of that benchmark in
 proportion to the field-write / map-walk count visible in the source.
 Sum: roughly 1.8 µs of state-machine work — the same order as the
@@ -491,7 +495,7 @@ vote round-trips. The rest of a wall-clock election is **wait time**
 between these events: the disk persisting `HardState`, the network
 delivering messages, and `Tick` ticks accumulating. Multiply 1.8 µs by
 the 1+ second of waiting and you get the 6-orders-of-magnitude gap
-from the hook.
+from the hook (`1.5 s / 1.8 µs ≈ 833,333`).
 
 ## How long the wait actually is
 
@@ -818,13 +822,14 @@ time you wire `etcd-raft` into something new.
 
 ---
 
-_Numbers cited as "M1" came from a single Apple M1 laptop running
-`go1.26.3` against [the etcd-io/raft tree at commit
+_Numbers cited as "M3 Max" came from a single Apple M3 Max MacBook Pro
+running `go1.26.3` against [the etcd-io/raft tree at commit
 `26c2367`](https://github.com/etcd-io/raft/commit/26c2367), via
-`go test -bench=BenchmarkOneNode -run=^$ -benchtime=2s` from the
-top-level package. The 1,491 ns/op figure is reproducible to ±5%
-across three runs; the per-step micro-estimates in the table above
-are derived from reading the code, not measured individually._
+`go test -bench=BenchmarkOneNode -run=^$ -benchtime=3s -count=3` from
+the top-level package. The three runs reported 1,333 / 1,369 /
+1,360 ns/op — within ±3% of the 1,360 ns/op median I quote in the body.
+The per-step micro-estimates in the cost table are derived from reading
+the code, not measured individually._
 
 ## Colophon
 
