@@ -353,13 +353,9 @@ numbers off this paragraph.
 
 # 5. How OwlPost consumes
 
-OwlPost is the consumer side — the binary in `cmd/owlpost/`. It
-opens a logical-replication connection to the same Postgres, filters
-the WAL stream for our prefix, deserialises the protobuf, and ships
-to Kafka.
-
-The connection is the part most people get wrong, so let's start
-there:
+OwlPost (`cmd/owlpost/`) opens a logical-replication connection,
+filters the WAL for our prefix, deserialises the protobuf, ships to
+Kafka. The connection setup is the part most people get wrong:
 
 ```go
 // pkg/postgres/wal.go — NewWALSubscriber
@@ -367,19 +363,12 @@ replUrl := fmt.Sprintf("%s?replication=database", cfg.DatabaseURL)
 replConn, err := pgconn.Connect(ctx, replUrl)
 ```
 
-`?replication=database` is the magic suffix. Without it, Postgres
-hands you a normal connection that cannot run `START_REPLICATION` or
-`CREATE_REPLICATION_SLOT`. With it, the connection enters
-replication mode (it can still run regular SQL because we used
-`replication=database` rather than `replication=true`). So why does
-factlib open **two** connections? Once you fire `START_REPLICATION`
-on a connection, that connection is dedicated to the streaming
-sub-protocol — receiving CopyData frames forever — and can no
-longer be used for regular queries. The cleanest fix is to keep the
-two responsibilities on separate sockets: `replConn` runs
-`START_REPLICATION` and stays in stream-receive mode; `queryConn`
-handles the boring `SELECT EXISTS(SELECT 1 FROM pg_replication_slots ...)`
-bookkeeping.
+`?replication=database` enters replication mode (it can still run
+regular SQL, unlike `replication=true`). factlib opens **two**
+connections because once you fire `START_REPLICATION`, that socket
+is dedicated to streaming CopyData forever — no more queries.
+`replConn` does streaming; `queryConn` does the boring
+`SELECT EXISTS(SELECT 1 FROM pg_replication_slots ...)` bookkeeping.
 
 ## Setting up the slot
 
@@ -392,20 +381,17 @@ CREATE PUBLICATION %s
 SELECT pg_create_logical_replication_slot('%s', 'pgoutput')
 ```
 
-A **publication** in Postgres is a set of tables whose row changes
-will be streamed. We don't actually care about row changes here —
-we want the logical-decoding messages — but `pgoutput` requires a
-publication to exist before it'll start. We create an empty one.
+A **publication** is a set of tables whose row changes get streamed;
+we don't care about row changes, just logical-decoding messages, but
+`pgoutput` requires a publication to exist before it starts. We make
+an empty one.
 
-A **replication slot** is the durability primitive. Once created, it
-holds onto WAL until the consumer acknowledges it has flushed past
-that LSN. *This is what gives you at-least-once delivery for free*:
-if OwlPost crashes for an hour, the WAL accumulates for an hour, and
-when OwlPost comes back it picks up exactly where it left off.
-
-Slots are also the operational footgun. If OwlPost dies and never
-comes back, the WAL grows until your disk fills. We will return to
-this in [§7](#7-reliability-proof--the-lsn-dance).
+A **replication slot** is the durability primitive. It holds WAL
+until the consumer acks past that LSN. *This is at-least-once for
+free*: if OwlPost crashes for an hour, WAL accumulates for an hour
+and we resume exactly where we left off. Operational footgun: a
+slot whose consumer never returns pins WAL until the disk fills —
+see [§7](#7-reliability-proof--the-lsn-dance).
 
 ## Starting replication
 
@@ -421,16 +407,14 @@ err = pglogrepl.StartReplication(ctx, w.replConn, w.cfg.ReplicationSlotName, w.x
     })
 ```
 
-`messages 'true'` is a `pgoutput` plugin arg added in
-[Postgres 14](https://www.postgresql.org/docs/release/14.0/) that
-tells the plugin: "yes, please decode logical-decoding messages,
-not just row changes." Without it, our `pg_logical_emit_message`
-calls would be silently dropped on the subscriber side and you'd
-waste an afternoon staring at WAL traces. Ask me how I know.
+`messages 'true'` is a `pgoutput` plugin arg
+([added in PG 14](https://www.postgresql.org/docs/release/14.0/))
+that tells it to decode logical-decoding messages alongside row
+changes. Without it, `pg_logical_emit_message` calls are silently
+dropped on the subscriber side. (Ask me how I know.)
 
-`w.xLogPos` is where to start streaming from. On first boot it's the
-slot's `confirmed_flush_lsn`; on subsequent boots, same thing — the
-slot remembers. The implementation is in `getxLogPos()`:
+`w.xLogPos` is the start position. On every boot it's the slot's
+`confirmed_flush_lsn`:
 
 ```sql
 SELECT confirmed_flush_lsn FROM pg_replication_slots WHERE slot_name = $1;
