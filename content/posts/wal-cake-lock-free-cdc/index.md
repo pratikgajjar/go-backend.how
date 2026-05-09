@@ -129,18 +129,22 @@ graceful HTTP server shutdown). It's worth reading verbatim:
 ```go
 // cmd/cake/main.go (abridged)
 eventsCh := make(chan *model.CDCEvent, cfg.BatchSize*cfg.Concurrency)
-ackCh    := make(chan uint64, cfg.Concurrency*2)
+ackCh := make(chan uint64, cfg.Concurrency*2)
 
-repl       := replication.NewPGReplicator(cfg)
-transformer:= transform.NewParquetWriter()
-uploader   := storage.NewS3Uploader(cfg)
-processor  := buffer.NewParquetBatchProcessor(transformer, uploader, &buffer.BatchProcessorConfig{
-    Namespace: cfg.Namespace,
-})
+repl := replication.NewPGReplicator(cfg)
+transformer := transform.NewParquetWriter()
+uploader := storage.NewS3Uploader(cfg)
+processor := buffer.NewParquetBatchProcessor(
+	transformer,
+	uploader,
+	&buffer.BatchProcessorConfig{
+		Namespace: cfg.Namespace,
+	},
+)
 rb := buffer.NewRingBuffer(cfg.BatchSize, cfg.Concurrency, cfg.FlushInterval, processor, ackCh)
 
-go repl.Start(ctx, eventsCh, ackCh)         // → events, ← LSN acks
-_ = rb.Start(ctx, eventsCh)                  // ← events, → ackCh writes
+go repl.Start(ctx, eventsCh, ackCh)  // → events, ← LSN acks
+_ = rb.Start(ctx, eventsCh)          // ← events, → ackCh writes
 ```
 
 Two channels. One direction of data: WAL → events → ring → Parquet → S3.

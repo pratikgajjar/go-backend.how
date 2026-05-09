@@ -560,8 +560,10 @@ file *grows*. The
 mechanism gives some spill-to-disk relief inside long writers, but
 it doesn't help long readers. Etcd ships
 [`go.etcd.io/bbolt`](https://github.com/etcd-io/etcd/blob/main/go.mod)
-as a direct dependency for tooling reasons - same single-writer
-constraint shape, easier ops in the Go ecosystem.
+as its on-disk store: same single-writer constraint shape as LMDB,
+but staying in pure Go avoids cgo and gives etcd's operators a
+self-contained binary that ships, fuzzes, and migrates inside the
+Go toolchain.
 
 ## 6.2 BoltDB - write throughput, file size, no compression
 
