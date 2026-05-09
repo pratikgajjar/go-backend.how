@@ -709,15 +709,15 @@ the partition spec (likely `day(ts)`) cannot prune by `account_id`;
 an inverted index would point straight at the 1–3 files. That cuts
 manifest reads from `O(manifests) = 150` to `O(1)` per query.
 
-The Iceberg manifest, viewed at byte level, is one of the
-better-engineered formats in modern data infrastructure. It is also
-optimised for the workload it was born into — Netflix-shaped batch
-analytics on S3 — and the constraints are starting to show under
-streaming, OLTP-shaped, and high-cardinality workloads that the
-2017 design did not target. The format will keep iterating; v3 is
-already adopted, v4 is on the horizon, and the bones of v5 are
-visible in current debates. The pointer-and-tree architecture is
-not going anywhere — but the leaf format almost certainly is.
+The Iceberg manifest, viewed at byte level, is a tightly-engineered
+format. It is also optimised for the workload it was born into —
+Netflix-shaped batch analytics on S3, [open-sourced in December
+2017](https://github.com/apache/iceberg/commit/a5eb3f6ba) — and the
+constraints are starting to show under streaming, OLTP-shaped, and
+high-cardinality workloads that the original design did not target.
+The format keeps iterating; v3 was marked complete in May 2025 and
+v4 is under active development. The pointer-and-tree architecture
+is not going anywhere — but the leaf format almost certainly is.
 
 ---
 
@@ -737,10 +737,11 @@ not going anywhere — but the leaf format almost certainly is.
 
 Drafted while reading
 `~/.cache/checkouts/github.com/apache/iceberg` at commit
-`e7a5a87f2`. Numbers were either measured on an M2 laptop with a
-local SQLite catalog and `fastavro` (labelled where so) or
-derived inline with arithmetic visible in the surrounding paragraph.
-The draft was sharpened by an autoresearch loop — a scorer that
-flags vague claims, missing citations, marketing words, and code
-blocks whose path comments do not resolve to real files in the
-cached repo.
+`e7a5a87f2`. Numbers in this post were either derived inline with
+arithmetic visible in the surrounding paragraph, quoted from a
+linked AWS / Apache / Snappy source, or labelled as
+small-laptop measurements. The draft was sharpened by an
+autoresearch loop — a scorer that flags vague claims, missing
+citations, marketing words, math equations that do not balance,
+and code blocks whose path comments do not resolve to real files
+in the cached repo.
