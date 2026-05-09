@@ -208,7 +208,8 @@ allocator and per-element locks); held in shared mode by readers,
 exclusive by vacuum's repair phase. So the index doesn't block reads
 against each other, only against vacuum.
 
-`GetScanItems` is the entire algorithm in 30 lines:
+`GetScanItems` is the entire algorithm in 31 lines (counted via
+`awk '/^GetScanItems\(/,/^}$/' src/hnswscan.c | wc -l`):
 
 ```c
 // src/hnswscan.c
