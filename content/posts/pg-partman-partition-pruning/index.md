@@ -448,10 +448,10 @@ This is why time-series tables with PK lookups want the `id` to
 include the timestamp in the partition key (or use UUIDv7).
 
 The fourth row is the case `apply_constraints` exists for. Without
-the constraint, a query like `WHERE created_at = X AND user_id = 42`
-prunes by `created_at` (fine) but then has to scan all 11M rows in the
-target child for `user_id = 42` because there's no per-child index
-on the user-ID column. With `apply_constraints` adding a CHECK
+the constraint, a query like `WHERE created_at >= 'D' AND created_at < 'D+1' AND user_id = 42`
+prunes by `created_at` (fine, one child) but then has to seq-scan all
+11M rows in that day's child for `user_id = 42` because there's no
+per-child index on the user-ID column. With `apply_constraints` adding a CHECK
 constraint of (e.g.) `user_id >= 17 AND user_id <= 14823` to old
 children, the planner can skip an estimated 80% of the older
 children at plan time when querying `user_id = 42` without a time

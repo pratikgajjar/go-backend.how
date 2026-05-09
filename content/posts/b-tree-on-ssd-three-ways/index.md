@@ -476,10 +476,11 @@ at [`db.go:mmapSize`](https://github.com/etcd-io/bbolt/blob/main/db.go#L519)
 inserts and the file shrinks to ~45 MiB**, matching LMDB.
 
 For Pebble: `42.7 MiB` of payload, but values are constant `0xAB` ×
-200 bytes. snappy/zstd compresses that to a few percent — Pebble's
-default block size is 32 KiB
-([sstable/options.go:147](https://github.com/cockroachdb/pebble/blob/master/sstable/options.go#L147))
-and these blocks compress catastrophically well. With genuinely random
+200 bytes. snappy compresses that to a few percent — Pebble's
+default block size is 4 KiB and `Compression = SnappyCompression`
+([sstable/options.go:147](https://github.com/cockroachdb/pebble/blob/master/sstable/options.go#L147),
+[sstable/block/compression.go:92](https://github.com/cockroachdb/pebble/blob/master/sstable/block/compression.go#L92)),
+and these blocks of repeated bytes compress catastrophically well. With genuinely random
 values (incompressible), the same workload would produce roughly
 `42.7 × 1.0 ≈ 42.7 MiB` of sstable + ~10% bloom + ~2% index ≈ 48 MiB.
 **The 20 MiB measurement is partly an artifact of constant values**;
