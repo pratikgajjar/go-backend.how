@@ -487,38 +487,38 @@ def pick_motif(slug: str, tags: list[str]) -> str:
     if has("pgvector", "hnsw", "ann", "vector"):
         return "hnsw_layers"
     # Containers / k8s — image layers
-    if "kubernetes" in text or "k8s" in text or "containers" in text or "distroless" in text or "wolfi" in text:
+    if has("kubernetes", "k8s", "containers", "distroless", "wolfi"):
         return "stacked_layers"
     # Iceberg / data-lake / parquet / formats — tree of immutable files
-    if "iceberg" in text or "data-lake" in text or "parquet" in text or "snapshots" in text or "schema-evolution" in text:
+    if has("iceberg", "snapshots") or "data-lake" in " ".join(tags).lower():
         return "branching_tree"
-    # Distributed databases / sharding — radial coordinator + workers
-    if "citus" in text or "scylla" in text or "seastar" in text or "shard" in text or "distributed-sql" in text or "cassandra" in text:
+    # Distributed DBs / sharding — radial coordinator + workers
+    if has("citus", "scylla", "seastar", "shard", "cassandra") or "shard-per-core" in " ".join(tags).lower() or "distributed-sql" in " ".join(tags).lower():
         return "spoke_wheel"
-    if "valkey" in text or "redis" in text or "cache" in text or "car" in text:
+    if has("valkey", "redis", "cache", "car"):
         return "nested_squares"
-    if "stereogram" in text or "vision" in text or "dark-mode" in text:
+    if has("stereogram", "vision") or "dark-mode" in " ".join(tags).lower():
         return "dotted_field"
-    if "ssh" in text or "ec2" in text or "aws" in text or "devops" in text:
+    if has("ssh", "ec2", "aws", "devops"):
         return "keyhole"
-    if "running" in text or "health" in text:
+    if has("running", "health"):
         return "dune_ridges"
-    if "tiger-style" in text or "tiger style" in text or "repost" in text:
+    if has("repost") or "tiger-style" in " ".join(tags).lower():
         return "spoke_wheel"  # tiger-beetle adjacent
-    if "psycholog" in text or "help" in text:
+    if has("psychology", "help"):
         return "concentric_clock"
     # Learning / first-principles BEFORE the gyan/content fallback
-    if "first-principles" in text or "learn" in text or "backend" in text:
+    if has("backend") or "first-principles" in " ".join(tags).lower():
         return "branching_tree"
-    # Postgres-specific (partitioning, partman, time-series, query optimization)
-    if "postgres" in text or " db" in text or "query" in text or "partition" in text or "time-series" in text or "brin" in text:
+    # Postgres-specific (partitioning, partman, time-series, query optimization, BRIN)
+    if has("postgres", "db", "query", "partitioning", "brin", "partman") or "time-series" in " ".join(tags).lower():
         return "grid_cells"
-    if "creating" in text or "content" in text or "writing" in text:
+    if has("creating", "content", "writing"):
         return "text_columns"
-    if "system design" in text or "system-design" in text or "hld" in text or "geospatial" in text or "dating" in text:
+    if has("hld", "geospatial", "dating") or "system-design" in " ".join(tags).lower() or "system design" in " ".join(tags).lower():
         return "radial_polygon"
     # Generic fallback for `gyan`/`engineering` posts that didn't match above
-    if "gyan" in text or "engineering" in text:
+    if has("gyan", "engineering"):
         return "concentric_clock"
     return "radial_polygon"
 

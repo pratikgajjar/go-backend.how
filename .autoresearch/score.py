@@ -704,6 +704,40 @@ def range_bounds_defects(body: str) -> int:
     return n
 
 
+CLAIM_RE = re.compile(
+    r"\b(measured|observed|benchmarked|profiled|empirically)\b",
+    re.IGNORECASE,
+)
+
+
+def claim_audit_defects(body: str) -> int:
+    """Words like 'measured/observed/benchmarked' assert first-hand evidence —
+    they must be backed by a hyperlink, footnote ref, or `commit <hash>`
+    within the same paragraph (or in a quoted/cited surrounding sentence)."""
+    paragraphs = re.split(r"\n\s*\n", body)
+    n = 0
+    for p in paragraphs:
+        if p.strip().startswith("```") or "|" in p[:5]:
+            continue
+        hits = CLAIM_RE.findall(p)
+        if not hits:
+            continue
+        # accept any of: hyperlink, footnote ref, "commit <hex>", "in <ref-post>"
+        if re.search(
+            r"\[[^\]]+\]\([^)]+\)|https?://|\[\^[\w-]+\]|commit\s+`?[\dA-Fa-f]{6,}|"
+            r"\bbench/|\bautoresearch\b",
+            p,
+        ):
+            continue
+        n += len(hits)
+        for h in hits:
+            print(
+                f"DEBUG unbacked_claim: '{h}' in paragraph without citation",
+                file=sys.stderr,
+            )
+    return n
+
+
 def footnote_balance_defects(body: str) -> int:
     """Every [^name] reference must have a matching [^name]: definition."""
     refs = set(re.findall(r"\[\^([\w-]+)\](?!:)", body))
@@ -754,6 +788,7 @@ def main() -> int:
     cats["bad_anchors"] = anchor_check_defects(body)
     cats["defaults_mismatch"] = defaults_consistency_defects(body, cached_repo)
     cats["range_inverted"] = range_bounds_defects(body)
+    cats["unbacked_claims"] = claim_audit_defects(body)
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish

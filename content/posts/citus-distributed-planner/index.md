@@ -380,18 +380,17 @@ column at execution time, picks the shard, and dispatches.
 
 ## Path 2 — multi-shard router (UPDATE)
 
-User query (modify path):
+User query (modify path), verbatim from
+`src/test/regress/expected/multi_explain.out` line 1128:
 
 ```sql
 -- src/test/regress/expected/multi_explain.out
-DELETE FROM lineitem_hash_part lh
-WHERE EXISTS (
-  SELECT 1 FROM orders_hash_part oh
-  WHERE oh.o_orderkey = lh.l_orderkey AND oh.o_orderkey > 100
-);
+DELETE FROM lineitem_hash_part
+USING orders_hash_part
+WHERE orders_hash_part.o_orderkey = lineitem_hash_part.l_orderkey;
 ```
 
-EXPLAIN output (slightly trimmed for the page):
+EXPLAIN output, also from the same file lines 1131–1142:
 
 ```text
 Custom Scan (Citus Adaptive)
@@ -402,9 +401,9 @@ Custom Scan (Citus Adaptive)
         ->  Delete on lineitem_hash_part_360041 lineitem_hash_part
               ->  Hash Join
                     Hash Cond: (lineitem_hash_part.l_orderkey = orders_hash_part.o_orderkey)
-                    ->  Seq Scan on lineitem_hash_part_360041
+                    ->  Seq Scan on lineitem_hash_part_360041 lineitem_hash_part
                     ->  Hash
-                          ->  Seq Scan on orders_hash_part_360045
+                          ->  Seq Scan on orders_hash_part_360045 orders_hash_part
 ```
 
 `Task Count: 4` — Citus dispatched the same query, with shard names
