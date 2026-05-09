@@ -1,6 +1,6 @@
 +++
 title = "🐳 LMDB vs Pebble vs BoltDB - B-Tree-on-SSD, Three Ways"
-description = "Three embedded KV stores, one workload, one machine. LMDB does 1.9M writes/sec in 11K LOC of C. Pebble's 160K LOC of Go shrinks the file 4×. BoltDB lands in between and stays simple."
+description = "Three embedded KV stores, one workload, one machine. LMDB does 1.9M writes/sec in 14K lines of C. Pebble's 160K-line Go codebase shrinks the file 4×. BoltDB lands in between and stays simple."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
 publishDate = "2026-05-09T12:00:00+05:30"

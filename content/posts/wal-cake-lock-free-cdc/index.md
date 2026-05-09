@@ -947,16 +947,18 @@ N × `UploadPart`, `CompleteMultipartUpload`) for no parallelism gain
 at this size.
 
 Idempotency comes from the key. The `Timestamp.UnixMicro()` of the
-last event in the batch is monotonic — by contiguous-LSN ordering,
-no later-LSN batch is uploaded before any earlier-LSN batch. A PUT
-retry uses the same key; S3 PUT is last-write-wins, so identical
-key + identical bytes is a no-op. If the process crashes mid-PUT and
-restarts, the LSN walker hasn't acked yet — on resume the same events
-are replayed under a **different** key (the ts is now slightly
-later). So we do double-write data, but **read-side dedup** is
-trivial: rows are uniquely identified by `(table, lsn, operation)`.
-For exactly-once on the lake side instead, the upgrade path is
-Apache Iceberg with `(min_lsn, max_lsn)` per-file metadata.
+last event in the batch (set in the replicator at decode time) is
+near-monotonic in practice — modulo wall-clock adjustments — and
+contiguous-LSN ordering guarantees no later-LSN batch is uploaded
+before any earlier-LSN batch. A PUT retry uses the same key; S3 PUT
+is last-write-wins, so identical key + identical bytes overwrites
+with the same content. If the process crashes mid-PUT and restarts,
+the LSN walker hasn't acked yet — on resume the same events are
+replayed under a **different** key (the ts is now slightly later).
+So we do double-write data, but **read-side dedup** is trivial: rows
+are uniquely identified by `(table, lsn, operation)`. For exactly-once
+on the lake side instead, the upgrade path is Apache Iceberg with
+`(min_lsn, max_lsn)` per-file metadata.
 
 ## MinIO for local dev
 

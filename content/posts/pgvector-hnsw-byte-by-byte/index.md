@@ -562,9 +562,9 @@ Index build:
 ```text
 m = 16, ef_construction = 64
 build wall time:    6.0 s
-index size:        39.8 MB    (5,082 × 8 KB pages)
+index size:        39.7 MiB   (5,082 × 8 KiB pages)
 index size / row:  833 B
-table size:        27.9 MB
+table size:        27.9 MiB
 ```
 
 `833 B / row` decomposes by napkin math. The vector payload is

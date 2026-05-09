@@ -642,11 +642,16 @@ coupling than a SQL-on-anything system would be.
 **Aggregates that don't decompose.** Order-statistics aggregates
 (median, mode, the `percentile_cont` / `percentile_disc` family) in
 their exact form cannot be split into worker-side + coordinator-side
-without re-collecting all the data. Citus uses `tdigest`
-(an entire C file, `tdigest_extension.c`) for approximate quantiles,
-but exact percentiles over a multi-shard query require pulling rows
-to the coordinator. There's no free lunch on summary statistics that
-aren't monoidal.
+without re-collecting all the data. Citus integrates with the
+standalone `tdigest` extension for approximate quantiles via the
+helper module `tdigest_extension.c` (250 lines that look up the
+`tdigest` extension's aggregate Oids and recognise them in the
+multi-logical optimizer's aggregate-split logic). When the
+extension is installed, queries using `tdigest_percentile(col, q)`
+get a worker-side partial-aggregate plus a coordinator-side
+combine. But exact `percentile_cont` over a multi-shard query
+still requires pulling rows to the coordinator. There's no free
+lunch on summary statistics that aren't monoidal.
 
 **Cluster topology baked into table creation.** When you run
 `create_distributed_table('orders', 'customer_id')`, Citus picks the
