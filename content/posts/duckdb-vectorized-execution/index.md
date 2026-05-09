@@ -72,8 +72,9 @@ operator implements `next()` and pulls one tuple from its child. A
 `Sort → HashAggregate → SeqScan` plan is three function calls per
 tuple, each through a function pointer. With 60 million rows, that is
 `60_000_000 × 3 = 180_000_000` indirect calls. On modern Apple
-Silicon a mispredicted indirect call benchmarks at ten nanoseconds
-([Anandtech M1 microbench](https://www.anandtech.com/show/16252/mac-mini-apple-m1-tested/3)),
+Silicon a mispredicted indirect call benchmarks at roughly ten
+nanoseconds (the Firestorm front-end recovery cost, observed in the
+[Anandtech M1 microbench](https://www.anandtech.com/show/16252/mac-mini-apple-m1-tested/3)),
 so `180000000 × 10 = 1800000000` ns ≈ 1.8 seconds of
 branch-prediction tax alone, before adding the actual arithmetic.
 
@@ -555,6 +556,26 @@ The `pread64` count is the number of column-block reads — usually
 in the low thousands for a query that reads one column out of 60M
 rows, because each row group is one IO. On Postgres the same query
 issues hundreds of thousands of `pread64`s for the heap pages.
+
+If you want a per-syscall histogram instead of the aggregate that
+`strace -c` gives you, the bpftrace one-liner that turned out to be
+the most useful was:
+
+```sh
+sudo bpftrace -e 'tracepoint:syscalls:sys_enter_pread64
+                  /comm == "duckdb" || comm == "postgres"/
+                  { @[comm, args->fd] = hist(args->count); }
+                  interval:s:5 { exit(); }'
+```
+
+That gives you "for this 5-second window, how many `pread64` calls
+of each size class did each `comm` issue, bucketed per file
+descriptor?" In practice DuckDB shows up with a tight pile of
+8-KiB-to-256-KiB reads (one per column block per row group) on a
+small set of fds, and Postgres shows up with a wide histogram of
+8 KiB reads (one per heap page) across hundreds of fds (one per
+relation segment file). Two distributions, same query, different
+storage models.
 
 # Tradeoffs
 

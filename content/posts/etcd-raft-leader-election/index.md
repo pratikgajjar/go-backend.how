@@ -819,8 +819,9 @@ goroutines waking up on `recvc` to receive `MsgVote`. The total
 wall-clock from the first `Step(MsgHup)` to the last `becomeLeader`
 log line is the localhost-wall-clock the title's 200 µs refers to.
 On Linux you can get the same data via `bpftrace` uprobes on the
-`raft.test` binary; on macOS, `dtrace -n 'pid$target::*becomeCandidate*:entry'`
-works once you've built the test binary with `go test -c`.
+test binary you built with `go test -c`; on macOS,
+`dtrace -n 'pid$target::*becomeCandidate*:entry'` works against the
+same binary.
 
 # Closing
 

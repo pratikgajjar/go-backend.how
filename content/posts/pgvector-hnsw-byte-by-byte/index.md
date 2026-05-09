@@ -730,13 +730,15 @@ those pages for the duration. If your workload is delete-heavy, this
 is the part you will feel.
 
 **MVCC on neighbour structure is eventual.** I mentioned the `version`
-check earlier — when vacuum repairs a neighbour, it bumps the version
-and any in-flight scan that was halfway through that neighbour list
-silently bails on it. This is correct in the
-"approximate-is-fine" sense (recall stays high in practice) but it
-means **two queries with the same `ef_search` against the same data
-can disagree at the percentage level after a vacuum**. Don't rely on
-HNSW for anything that needs deterministic ranking.
+check earlier — when vacuum repairs a neighbour tuple it bumps the
+version, and any in-flight scan reading that tuple's older version
+silently bails on it (`HnswLoadNeighborTids` returns `false`). This
+is correct in the approximate-search sense (the search just skips
+that branch), but it means **two queries with the same `ef_search`
+against the same data can disagree on which nearest neighbours they
+return after a vacuum**, since the bailing scan misses candidates
+the post-vacuum scan would expand. Don't rely on HNSW for anything
+that needs deterministic ranking.
 
 **Build time scales worse than IVFFlat.** Build is `O(N × log N ×
 ef_construction)` graph operations. IVFFlat's build is `O(N × probes

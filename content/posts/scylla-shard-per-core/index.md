@@ -664,20 +664,24 @@ Three buckets. The cost estimates assume an experienced Go team.
 
 ## a) Don't fight the runtime — give Go a sharded runtime layer
 
-Keep using Go. Don't try to pin OS threads (Go's runtime fights you;
-runtime.LockOSThread works but Go's GC and scheduler still preempt
-across P's, so the pinning leaks). Instead, build per-shard
+Keep using Go. The deepest copy of Scylla's model is unrealistic in
+Go: runtime.LockOSThread pins a goroutine to its OS thread, but the OS
+thread can still migrate cores (Go has no built-in
+`pthread_setaffinity_np`); and Go's stop-the-world GC pauses every
+goroutine including your "pinned" ones. So drop that aspiration. What
+you can copy cheaply is the *no-shared-state* property: build per-shard
 *owned* state and route requests to the goroutine that owns the right
 shard via a small request channel.
 
-A per-shard owner means there is one goroutine per element of the GOMAXPROCS
-set (P, in Go's runtime terminology), and that goroutine alone holds the
-mutable state for its shard.
+A per-shard owner means one goroutine per element of the
+`GOMAXPROCS` set (P, in Go's runtime terminology), and that goroutine
+alone holds the mutable state for its shard. Other goroutines send
+work to it via channel; the owner is the only writer.
 
-The honest cost: per-shard ownership eliminates the 12 ns atomic. It
-*does not* eliminate the 68 ns channel-hop tax for misrouted requests.
-A token-aware client gets you ~80% of Scylla's gains in maybe 1 week
-of work.
+The honest cost: per-shard ownership eliminates the `12 ns` atomic
+on the hot path. It *does not* eliminate the `68 ns` channel-hop tax
+for misrouted requests. A token-aware client gets you ~80% of Scylla's
+gains in maybe 1 week of work.
 
 ## b) Custom polling with a third-party io_uring binding
 

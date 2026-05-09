@@ -751,15 +751,16 @@ scheduler instead.
 # 10. Closing
 
 Partitioning in Postgres is a planner feature with a DDL costume.
-`pg_partman` is the calendar that keeps the costume fitting. Most of
-the source is plumbing — make tomorrow's child, drop last month's,
-cope with DST and leap seconds and timezones. The interesting parts
-are the spots where its decisions interact with the planner: the
-`apply_constraints` window (default 30) is constraint exclusion's
-fuel; the `optimize_constraint` knob picks the readiness threshold;
-the `LOCK TABLE ... ACCESS EXCLUSIVE` in `create_partition.sql` is
-the cost of getting started; the `pg_try_advisory_lock` in the
-procedure is the cost of being safe across schedulers.
+`pg_partman` is the calendar that keeps the costume fitting. Most
+of the source is plumbing — make tomorrow's child, drop last
+month's, cope with DST and leap seconds and timezones. The
+interesting parts are the spots where its decisions interact with
+the planner: `apply_constraints` is constraint exclusion's fuel;
+`optimize_constraint` (default 30) is the knob that decides which
+children are old enough to be eligible; the `LOCK TABLE ... ACCESS
+EXCLUSIVE` in `create_partition.sql` is the cost of getting started;
+the `pg_try_advisory_lock` in the procedure is the cost of being
+safe across schedulers.
 
 The pruning failure mode in §1 is not a `pg_partman` bug. It is
 the gap between what you know about the planner (it prunes ranges)
