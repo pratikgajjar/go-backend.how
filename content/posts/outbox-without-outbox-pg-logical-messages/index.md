@@ -239,7 +239,9 @@ recipe.
 
 factlib's producer is the smaller half: `pkg/outbox/producer/producer.go`
 is **99 lines** end-to-end (`wc -l`), and the hot-path `Emit()`
-function is the bottom 50. Lifted verbatim:
+function is the bottom 50. Reproduced below with the metric-counter
+increments collapsed for narrative — the actual source increments
+`metrics.EmitFailures.WithLabelValues(...)` on each early-return:
 
 ```go
 // pkg/outbox/producer/producer.go
@@ -452,10 +454,14 @@ for {
 
 Two message types matter:
 
-- **PrimaryKeepalive.** Postgres sends one every few seconds even when
-  the WAL is idle. The server can request a reply, in which case
-  OwlPost echoes back its current `WALWritePosition` so the server
-  doesn't think the consumer is dead.
+- **PrimaryKeepalive.** Postgres sends one on a cadence governed by
+  `wal_sender_timeout` (default 60 s, keepalive interval = timeout/2 =
+  30 s) even when the WAL is idle. The server can request a reply, in
+  which case OwlPost echoes back its current `WALWritePosition` so the
+  server doesn't tear down the connection. OwlPost's *own* tick is
+  faster — `standbyMessageTimeout := time.Second * 5` in
+  `pkg/postgres/wal.go` — so we send a status update every 5 s
+  regardless.
 - **XLogData.** Real WAL bytes. We parse them, hand the resulting
   message to `processLogicalMessage`, and remember the LSN.
 
