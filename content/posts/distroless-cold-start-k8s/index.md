@@ -380,13 +380,14 @@ openat(AT_FDCWD, "/sys/fs/cgroup/cpu.max", O_RDONLY|O_CLOEXEC) = 3
 
 Read the timestamps: `boot=0.000523587 s = 523 µs` from `execve` to the line where `logger.Info("ready")` fires (which sits right after `go func() { _ = srv.ListenAndServe() }()`). The 17–32 ms end-to-end number we measured earlier is dominated by `socket → bind → listen` and the curl-poll loop, *not* by Go runtime init.
 
-Three observations the trace makes obvious:
+Four observations the real trace makes obvious:
 
-1. **The Go runtime allocates 64 MiB of address space immediately** — the `mmap(NULL, 67108864, PROT_NONE)` is the heap arena. This is virtual reservation, not RSS — it does not affect cold-start time, but it does mean Go containers look bigger than they are in `top`.
-2. **The CA-bundle read happens lazily** at first `tls.Dial` — not at boot. If you're on scratch and forgot to ship a CA bundle, the bug doesn't appear until your first HTTPS call. The error is `x509: certificate signed by unknown authority`. Distroless includes the bundle at the canonical Linux path, so `crypto/x509` finds it without env-var gymnastics.
-3. **`time.LoadLocation("Asia/Kolkata")` opens `/usr/share/zoneinfo/Asia/Kolkata`**. On scratch that file does not exist; Go falls back to the embedded `tzdata` package only if you imported `time/tzdata` (which adds 448 KB to the binary, measured: 1,638,562 → 2,097,314 B on Go 1.26 arm64-linux). Distroless ships the OS zoneinfo so you don't have to.
+1. **Go reserves > 1 GiB of virtual address space at boot** — the `PROT_NONE` mmaps for the heap arena (64 MiB), two 512 MiB regions for stack pools, plus several smaller ones. This is virtual reservation, not RSS; the kernel doesn't allocate physical pages. It does mean Go containers look bigger than they are in `top -o RSIZE`.
+2. **Go probes container limits at boot** — `/proc/self/cgroup`, `/proc/self/mountinfo`, `/sys/fs/cgroup/cpu.max` are all read in the first millisecond. Go 1.21+ uses these to auto-set `GOMAXPROCS` against the cgroup CPU quota instead of the host CPU count. Helpful when your pod has `cpu: 500m`; surprising if you'd set `GOMAXPROCS=4` manually and didn't notice the override.
+3. **The CA-bundle read happens lazily** at first `tls.Dial` — not at boot. If you're on scratch and forgot to ship a CA bundle, the bug doesn't appear until your first HTTPS call. The error is `x509: certificate signed by unknown authority`. Distroless includes the bundle at the canonical Linux path, so `crypto/x509` finds it without env-var gymnastics.
+4. **`time.LoadLocation("Asia/Kolkata")` opens `/usr/share/zoneinfo/Asia/Kolkata`**. On scratch that file does not exist; Go falls back to the embedded `tzdata` package only if you imported `time/tzdata` (which adds 448 KB to the binary, measured: 1,638,562 → 2,097,314 B on Go 1.26 arm64-linux). Distroless ships the OS zoneinfo so you don't have to.
 
-These three are the "scratch surprises" that bite payments services when one engineer in Bangalore opens an OutboxItem, calls `time.LoadLocation`, and the test pod returns HTTP 500 in the staging cluster.
+These four are the "scratch surprises" that bite payments services when one engineer in Bangalore opens an OutboxItem, calls `time.LoadLocation`, and the test pod returns HTTP 500 in the staging cluster.
 
 ## A 50-line repro
 
