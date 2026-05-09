@@ -674,7 +674,7 @@ you can copy cheaply is the *no-shared-state* property: build per-shard
 shard via a small request channel.
 
 A per-shard owner means one goroutine per element of the
-`GOMAXPROCS` set (P, in Go's runtime terminology), and that goroutine
+GOMAXPROCS set (P, in Go's runtime terminology), and that goroutine
 alone holds the mutable state for its shard. Other goroutines send
 work to it via channel; the owner is the only writer.
 
