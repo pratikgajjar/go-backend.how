@@ -850,8 +850,9 @@ shouldn't.
 Each `Emit` call is exactly one extra `SELECT pg_logical_emit_message(...)`
 on top of the business transaction. Cost components:
 
-- **Function call overhead.** ~10–20 µs for the function dispatch
-  itself, ignoring the bytea payload.
+- **Function call overhead.** A few µs for the C function dispatch
+  inside Postgres (`pg_logical_emit_message_bytea` is a built-in,
+  not a SQL or PL/pgSQL function), ignoring the payload.
 - **`bytea` argument copy.** The protobuf payload is bound as a
   parameter; pgx copies it once into the network buffer. For a 500 B
   payload, ~hundreds of nanoseconds.
