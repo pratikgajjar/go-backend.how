@@ -506,32 +506,41 @@ def identifier_consistency_defects(body: str, cached_repo: Path) -> int:
 
 
 _NUM_PAT = r"\d[\d,_]*(?:\.\d+)?"
+_SUF_PAT = r"(?:K|M|G|B|Mi|Gi|Ki)?"  # SI/binary multipliers on result
 
 # A <op> B [= ≈] C, where each side may be wrapped in backticks and may have
 # trailing units. Captures the *bare numbers* and verifies they balance.
 MATH_EQ_RE = re.compile(
     r"(?<![\w.])"                                # left boundary
-    rf"({_NUM_PAT})\s*"                          # A
+    rf"({_NUM_PAT})({_SUF_PAT})\s*"              # A, A_suf
     r"([×x*/+\-])\s*"                            # op
-    rf"({_NUM_PAT})\s*"                          # B
+    rf"({_NUM_PAT})({_SUF_PAT})\s*"              # B, B_suf
     r"(?:µs|us|ms|ns|s|MB|GB|KB|TB|GiB|MiB|KiB|×|x)?\s*"  # opt unit
     r"(=|≈)\s*"                                  # eq / approx
-    rf"({_NUM_PAT})"                             # C
-    r"(?![\d,])"                                 # right boundary
+    rf"({_NUM_PAT})({_SUF_PAT})"                 # C, C_suf
+    r"(?![\d,.])"                                # right boundary
 )
+
+_SCALE = {"": 1, "K": 1e3, "M": 1e6, "G": 1e9, "B": 1e9, "Ki": 1024, "Mi": 1024**2, "Gi": 1024**3}
 
 
 def _parse_num(s: str) -> float:
     return float(s.replace(",", "").replace("_", ""))
 
 
+def _scale(s: str) -> float:
+    return _SCALE.get(s, 1.0)
+
+
 def math_equality_defects(body: str) -> int:
     """Verify A op B = C / ≈ C inside the post."""
     n = 0
     for m in MATH_EQ_RE.finditer(body):
-        a, op, b, eq, c = m.group(1), m.group(2), m.group(3), m.group(4), m.group(5)
+        a, asu, op, b, bsu, eq, c, csu = m.groups()
         try:
-            A, B, C = _parse_num(a), _parse_num(b), _parse_num(c)
+            A = _parse_num(a) * _scale(asu)
+            B = _parse_num(b) * _scale(bsu)
+            C = _parse_num(c) * _scale(csu)
         except ValueError:
             continue
         if op in ("×", "x", "*"):

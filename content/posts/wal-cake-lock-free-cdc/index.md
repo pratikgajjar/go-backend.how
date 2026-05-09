@@ -988,38 +988,63 @@ it's not the bottleneck.
 slice store, one atomic add). 10k events/sec is 500 µs/sec on the
 receiver goroutine — 0.05%. Free.
 
-**Parquet+ZSTD writes.** Empirically on a single core, ZSTD-3 +
-arrow-go writes 1,000-event batches in 8–25 ms depending on JSON
-size. With concurrency 4, that's 4 × ~50 batches/sec = ~200
-batches/sec ceiling = **200,000 events/sec** of Parquet capacity.
-Wildly over-provisioned for the upstream rate. Parquet is not the
+**Parquet+ZSTD writes.** Estimated on a single core, ZSTD-3 +
+arrow-go writes 1,000-event batches in `~10–25 ms` depending on JSON
+size (allocation-dominated; assumes `~30–50 KB` post-compress per
+batch and ZSTD-3 single-thread throughput in the
+[~500–700 MB/s range](https://github.com/facebook/zstd#benchmarks)).
+With concurrency 4 and a per-batch wall time of `~20 ms`, the
+upper bound is `4 / 0.020 s = 200 batches/sec`, i.e.
+`200 × 1,000 = 200,000 events/sec` of Parquet capacity. Comfortably
+over-provisioned for the upstream rate; Parquet is not the
 bottleneck.
 
-**S3 PUTs/min.** With `flushInterval=30s` and a 30-s busy interval
-yielding ~10 ring batches (300 KB events × concurrency=4 dispatched
-sequentially over the wall window — actual dispatch is concurrency-
-bound rather than time-bound when busy), wal-cake uploads roughly
-**40–80 PUTs/minute** at default config under steady 10k events/sec
-load. S3 PUT is $5 per million, so:
+**S3 PUTs/min — busy case.** At sustained `10,000 events/sec`, the
+size trigger fires at every `1,000`-event boundary, i.e. every
+`1,000 / 10,000 = 0.1 s`. That's `1 / 0.1 = 10 batches/sec` of cuts,
+each a separate PUT. The 30-s ticker is *the cap on quiet-time
+delay*, not the busy-case cadence — when a size cut happens it
+resets the ticker (see `rb.ticker.Reset(rb.tickInterval)` in
+`internal/buffer/ring_buffer.go`). So the busy steady-state is:
 
 ```
-80 PUT/min × 60 min/hr × 24 hr/day × 30 day/mo
-  = 80 × 43,200 = 3,456,000 PUT/mo  ≈ 3.5M PUT/mo
-3.5M PUT × ($5 / 1M PUT)   ≈ $17.50/month
+10 PUT/sec × 60 sec/min                = 600 PUT/min
+600 × 60 min/hr × 24 hr/day × 30 day/mo
+   = 600 × 43,200 = 25,920,000 PUT/mo  ≈ 26M PUT/mo
+26M × ($5 / 1M PUT)                    ≈ $130/month  (PUT cost)
 ```
 
-Plus storage. At 30 KB/Parquet × 3.5M files = ~100 GB/month new
-data → ~$2.30/month at S3 Standard. Total: **~$20/month** in S3 cost
-for a 10k events/sec sustained CDC stream off one Postgres instance.
+Plus storage. Estimated `~30 KB/Parquet × 26M files = 780 GB/month`
+of new data — at the S3 Standard
+[$0.023/GB-month](https://aws.amazon.com/s3/pricing/) tier, the
+month-1 storage delta is `780 × $0.023 ≈ $18/month` of *new* bytes
+(cumulative storage grows month-over-month). Steady-state monthly
+S3 spend at `10k events/sec` sustained: `~$148/month new`
+(`$130` PUT + `$18` storage delta). Half the cost is reducible by
+larger `batchSize`: bumping `batchSize` from `1,000` to `10,000`
+cuts PUT count by `10×` and per-month PUT spend to `~$13`, at the
+price of `10×` worst-case batching latency.
 
-**Where the upper limit lives.** Push events/sec to 100k and the
-Parquet+ZSTD math still works (4 cores × ~50 batches/sec is enough),
-but the WAL itself becomes the issue: at 100k row-mutations/sec on
-typical OLTP rows, you're generating ~200 MB/sec of WAL, which means
-your `pg_wal/` is recycling segments every ~1.3 seconds (16 MB
-segments) and your `wal_writer` is fully saturated. That's the
-upstream wall, not anything wal-cake can do about. The 1B-payments
-post discusses this floor in detail.
+**S3 PUTs/min — quiet case.** At `100 events/sec` the size trigger
+never fires within a 30-s window (`100 × 30 = 3,000` events <
+`batchSize=1,000 × concurrency=4 = 4,000` ring capacity, but the
+trigger compares to `batchSize` only). The 30-s ticker takes over,
+producing `60 / 30 = 2 PUT/min`. Per-month: `2 × 43,200 ≈ 86K PUT
+≈ $0.43/month`. Floor cost is dominated by storage, not PUTs.
+
+**Where the upper limit lives.** Push events/sec to `100,000` and
+the Parquet+ZSTD math still works (`4 × 50 = 200 batches/sec` of
+ceiling), but the WAL itself becomes the issue. At `100,000`
+row-mutations/sec on typical OLTP rows of `~120` bytes-per-mutation
+in pgoutput's wire format, you're generating
+`100,000 × 120 = 12,000,000 B/sec ≈ 12 MB/sec` of WAL. Postgres'
+default WAL segment size is `16 MB` (see
+[`pg_controldata`](https://www.postgresql.org/docs/current/app-pgcontroldata.html)
+and `wal_segment_size`), so `pg_wal/` recycles segments every
+`16 / 12 ≈ 1.3 s`. The `wal_writer` saturates; `fdatasync()` on the
+WAL becomes the floor. That's the upstream wall, not anything
+wal-cake can do about. The 1B-payments post discusses this floor in
+detail.
 
 [^fsync]: [1B Payments/Day — fsync floor](https://backend.how/posts/1b-payments-per-day#the-fsync-floor) — measured 600 µs `fsync()` on Apple Silicon NVMe and ~4.17M fsync calls for 10M Postgres inserts.
 
