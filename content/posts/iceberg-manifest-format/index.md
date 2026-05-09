@@ -603,7 +603,7 @@ makes worse than alternatives.
 | Iceberg is bad at                  | Why                                                                   | Better alternative                       |
 |------------------------------------|-----------------------------------------------------------------------|------------------------------------------|
 | Many small commits per second      | A non-empty commit writes ≥4 files (data + manifest + manifest list + metadata.json) + 1 catalog CAS | Stream-friendly: Apache Hudi (MoR), Delta Lake with deletion vectors |
-| Random row updates                 | No primary key index — equality deletes scan all manifests            | DuckDB local, OLTP                       |
+| Random row updates                 | No primary-key index; equality deletes apply by column-bound pruning, not by key — every update writes a new delete file | DuckDB locally / a real OLTP database    |
 | Streaming aggregates over the data | No materialised view; every query re-scans                            | Druid, Pinot, ClickHouse                 |
 | Thousands of partitions            | Manifest-list summaries grow linearly with partition cardinality      | Hash bucketing or `truncate(N)`          |
 | Loose / inferred schemas           | Iceberg requires explicit schema-on-write with permanent field IDs    | Plain Parquet directories or DuckDB on `*.parquet` |

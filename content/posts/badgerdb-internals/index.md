@@ -323,7 +323,7 @@ For an in-process view of the stall, there's no need for `bpftrace`; Badger's ow
 
 The "1M writes/sec without compaction stalls" headline is real for the workload Badger was designed for: small keys, an LSM that stays small relative to total data, value bytes flowing through the WiscKey vlog. It's just not the *default* shape, and the system never told you that. Walking the source — `pickCompactLevels` for the scoring, `addLevel0Table` for the stall point, `runCompactor` for the worker-zero L0 specialist — is what makes the gap between headline and default behavior obvious. Once you see it, the tuning is a 5-flag search over `MemTableSize`, `NumLevelZeroTablesStall`, `NumCompactors`, `ValueThreshold`, `VLogPercentile`, and you can pick which trade you want to pay.
 
-That, more than the WiscKey separation itself, is the lesson. Storage engines are a few hundred well-named knobs sitting on top of a couple of hard ideas. Reading the source and watching the engine break under load is faster than reading the docs.
+That, more than the WiscKey separation itself, is the lesson. Storage engines are a few dozen well-named knobs (Badger has 38 `WithX` methods on `Options`) sitting on top of a couple of hard ideas. Reading the source and watching the engine break under load is faster than reading the docs.
 
 # Further reading
 
