@@ -460,11 +460,13 @@ already-merged result. Pushing `ORDER BY` to the worker is wasted
 work because the coordinator has to re-sort anyway.
 
 Third, `Task Count: 2`, not 32. Why? Because in the regression test
-fixture, `lineitem` was created with `citus.shard_count = 2`. That's
-not a Citus default — it's a test setting (visible in
-`src/test/regress/sql/multi_load_data.sql` and its peers). In
-production, `Task Count` would equal whatever `citus.shard_count`
-was set to at `create_distributed_table()` time, default 32.
+fixture, `lineitem` was created with `shard_count := 2` — verbatim
+from `src/test/regress/sql/multi_create_table.sql` line 30:
+`SELECT create_distributed_table('lineitem', 'l_orderkey', 'hash', shard_count := 2);`.
+That's not a Citus default — it's a test setting. In production,
+`Task Count` would equal whatever shard count was passed to
+`create_distributed_table()`, falling back to the
+`citus.shard_count` GUC (default 32, max 64,000).
 
 ## Path 4 — the repartition
 
