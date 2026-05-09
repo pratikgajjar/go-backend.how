@@ -579,14 +579,16 @@ Expected output on a recent x86-64 laptop or Apple Silicon Mac:
 ## Bonus: bpftrace-style observability via DuckDB itself
 
 `PRAGMA enable_profiling = 'json'; PRAGMA profile_output =
-'/tmp/duck.json';` will dump per-operator timings, row counts, and
+'/tmp/duck.json';` dumps per-operator timings, row counts, and
 output sizes for the next query. On my actual Q01 SF=10 run the
-profile reports `SEQ_SCAN: 1.044 s`, `PERFECT_HASH_GROUP_BY:
-1.056 s`, four `PROJECTION` nodes summing to 0.185 s, and
+profile reports `SEQ_SCAN: 1044 ms`, `PERFECT_HASH_GROUP_BY:
+1056 ms`, four `PROJECTION` nodes summing to 185 ms, and
 `ORDER_BY: 1 ms` — these are aggregate operator times across all
-8 threads, so dividing by 8 gives ~263 ms per thread which lines up
-with the 211 ms wall clock plus overhead. This is the "what is the
-slowest operator" question answered without a kernel probe.
+8 threads, so `(1044 + 1056 + 185 + 1) / 8 = 285.75` ms per thread,
+the upper bound on per-thread work; the 210.5 ms wall clock is
+shorter because some operators run in parallel pipelines and the
+scheduler keeps the pipeline barriers tight. This is the "what is
+the slowest operator" question answered without a kernel probe.
 
 For an actual syscall trace, on Linux:
 

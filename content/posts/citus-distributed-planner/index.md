@@ -269,7 +269,7 @@ Anything else - `customer_name LIKE 'A%'`, function calls,
 correlated subquery references - gets summarised as "X" (the
 unrecognised-constraints flag).
 
-The header comment captures the simplification, lines 16-24:
+The header comment captures the simplification, lines 15-23:
 
 ```c
 // src/backend/distributed/planner/shard_pruning.c
