@@ -813,6 +813,7 @@ def main() -> int:
         "bad_anchors": 3,
         "defaults_mismatch": 5,
         "range_inverted": 3,
+        "unbacked_claims": 2,
         "wordcount_off": 1,
         "frontmatter": 2,
     }
