@@ -1126,11 +1126,12 @@ is one workable shape.
 
 **Schema registry for `before`/`after`.** JSON-as-bytes makes every
 reader pay JSON-parse per row. A typed schema (Avro or Confluent
-Schema Registry + Parquet `LIST<STRUCT<...>>` columns) would let
-warehouses scan typed columns directly with predicate pushdown.
-Cost: schema evolution is now a coordination problem between
-Postgres DDL and the registry. Worth it for high-value tables; for
-"change log of everything," JSON-as-bytes is pragmatic.
+Schema Registry + per-table Parquet `STRUCT<col1: type1, ...>`
+columns) would let warehouses scan typed columns directly with
+predicate pushdown. Cost: schema evolution is now a coordination
+problem between Postgres DDL and the registry. Worth it for
+high-value tables; for "change log of everything," JSON-as-bytes
+is pragmatic.
 
 Two more I'd consider but probably wouldn't ship in v1:
 

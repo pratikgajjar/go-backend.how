@@ -954,8 +954,8 @@ something new.
 _Numbers cited as "M3 Max" came from a single Apple M3 Max MacBook Pro
 running `go1.26.3` against [the etcd-io/raft tree at commit
 `26c2367`](https://github.com/etcd-io/raft/commit/26c2367), via
-`go test -bench=BenchmarkOneNode -run=^$ -benchtime=3s -count=3` from
-the top-level package. The three runs reported 1,326 / 1,342 /
+`go test -v -bench=BenchmarkOneNode -run=^$ -benchtime=3s -count=3`
+from the top-level package. The three runs reported 1,326 / 1,342 /
 1,373 ns/op — within ±3% of the 1,342 ns/op median I quote in the body.
 The per-step micro-estimates in the cost table are derived from reading
 the code, not measured individually._

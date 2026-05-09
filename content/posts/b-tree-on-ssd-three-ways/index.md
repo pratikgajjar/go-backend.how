@@ -382,8 +382,10 @@ Get(k)
   → return value
 ```
 
-That's 1 skiplist probe + N bloom probes + at most M block decompresses
-where M is the number of levels the key actually lives in. Pebble's
+That's 1-3 skiplist probes (typically one mutable memtable + 0-2
+immutable awaiting flush) + N bloom probes + at most M block
+decompresses where M is the number of levels the key actually lives
+in. Pebble's
 out-of-the-box default is actually
 [`NoFilterPolicy`](https://github.com/cockroachdb/pebble/blob/master/options.go#L68)
 (no bloom at any level) - CockroachDB and other production users opt

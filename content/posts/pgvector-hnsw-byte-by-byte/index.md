@@ -746,7 +746,7 @@ as a "ghost" that contributes neighbour structure but is filtered at
 scan time when `heaptidsLength` reaches 0. Vacuum walks the entire
 index, removes ghosts, and re-knits the neighbours of every node
 that pointed at a deleted ghost. The repair takes
-`BUFFER_LOCK_EXCLUSIVE` (and `LockBufferForCleanup` in places \u2014 see
+`BUFFER_LOCK_EXCLUSIVE` (and `LockBufferForCleanup` in places — see
 [hnswvacuum.c L484](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnswvacuum.c#L484))
 on every neighbour-tuple page it edits, blocking concurrent reads on
 those pages for the duration. If your workload is delete-heavy, this
