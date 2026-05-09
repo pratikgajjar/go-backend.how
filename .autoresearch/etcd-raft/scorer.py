@@ -984,7 +984,7 @@ def main() -> int:
         section("defects", 100)
         return 1
 
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parent.parent.parent
     fm, body, _full = read_post(post_path)
 
     cats: dict[str, int] = {}

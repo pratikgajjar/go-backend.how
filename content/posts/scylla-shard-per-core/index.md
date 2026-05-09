@@ -268,6 +268,19 @@ sender's writes never invalidate a line the receiver is reading:
     };
 ```
 
+In memory, the layout looks like this:
+
+```text
+       ┌───────────────────────────────┐  cache line N (sender writes only)
+0x000  │ _sent  _compl  _last_snt_batch│
+0x000  │ _last_cmpl_batch  _cur_qlen   │
+       ├───────────────────────────────┤  cache line N+1 (HW prefetcher spacer)
+0x040  │ metric_groups _metrics        │
+       ├───────────────────────────────┤  cache line N+2 (receiver writes only)
+0x080  │ _received  _last_rcv_batch    │
+       └───────────────────────────────┘
+```
+
 That comment — "hw prefetcher will not accidentally prefetch cache line
 used by another cpu" — is the type of comment you only write after
 a perf counter spikes. The hardware prefetcher pulls neighbouring lines
