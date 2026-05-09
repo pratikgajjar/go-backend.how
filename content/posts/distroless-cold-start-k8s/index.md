@@ -270,7 +270,7 @@ That's *not a typo*. Wolfi (2.5× the wire bytes) pulled the **fastest**. Scratc
 
 2. **Single-layer images can't parallelise.** Containerd's default `MaxConcurrentDownloads = 3` means scratch's lone layer fetches on one TCP connection, gzip-decompresses on one CPU. Distroless's 13-and-Wolfi's-11 spread across 3 parallel connections, so the 10 MB binary layer (which both images carry on top) overlaps with all the small base layers.
 
-3. **Gzip decompression is the long pole, and it's single-threaded per blob.** A 10 MB gzipped tar takes ~50 ms to decompress on an M3 P-core. With one-layer-per-CPU, scratch eats that 50 ms serially; Wolfi eats it overlapped with apk-DB layer decompression on a sibling core.
+3. **Gzip decompression is the long pole, and it's single-threaded per blob.** I measured `gunzip` on the 3.74 MB binary blob → 10.16 MB tar at 20–30 ms across five runs on an M3 P-core; the gunzip-vs-CPU envelope is roughly 200 MB/s on this hardware. With one-layer-per-CPU, scratch eats those 20–30 ms serially; Wolfi eats them overlapped with apk-DB layer decompression on a sibling core.
 
 If you wanted to *prove* this on Linux and are not on macOS, the one-liner is:
 
@@ -313,7 +313,7 @@ The measured 17–32 ms internal boot is itself worth tracing. A 10 MB stripped 
 | `http.ListenAndServe` — `socket+bind+listen` | ~1 ms |
 | First accept + JSON encode           | ~2 ms        |
 
-Math: `0.5 + 3 + 5 + 10 + 1 + 2 ≈ 21.5 ms`, which is in the band measured. The `mmap` cost stays roughly proportional to binary size (Linux maps demand-paged, so ~256 KB of resident at first 4-page-fault) — Go's static link of `net/http`, `crypto/tls`, prometheus and zap is what pads that 21 ms. Strip those imports and you're at 8 ms cold-start. Add `database/sql` + a Postgres driver and you're at 30 ms.
+Math: `0.5 + 3 + 5 + 10 + 1 + 2 ≈ 21.5 ms`, which is in the measured 17–32 ms band. The `mmap` cost is bounded by binary size only at the page-fault tail — Linux maps an ELF demand-paged, so the kernel reads the 32-byte header plus the program-header table at exec time and faults in code pages on first reference. Go's static link of `net/http`, `crypto/tls`, prometheus and zap is what pads that 21 ms; strip those imports and you're closer to 8 ms (`runtime` + `os` + `fmt` only). Add `database/sql` + a Postgres driver and the package-init cost rises to 30–40 ms.
 
 ## Image-pull at scale-from-zero
 
@@ -328,7 +328,7 @@ For a fleet with diverse binaries:
 | 1 binary × 1000 pods, 100 nodes                 | 100 pulls | 100 pulls | 100 pulls |
 | 50 binaries × 20 pods each, 100 nodes           | 100 × 0.79 MB base + 1000 × 3.98 MB binary | 100 × 5.77 MB base + 1000 × 3.98 MB binary | 1000 × 3.98 MB |
 
-Reading row two: distroless saves 100 × 5 MB ≈ 500 MB of node-cold pulls compared to scratch in the diverse-binary case, because the `ca-certificates`/`tzdata`/`/etc/passwd` layers dedupe across all 50 services. Wolfi saves the same dedup but pays 5.77 MB per node-cold-base. Scratch can't dedupe at all because there's nothing to dedupe.
+Reading row two: distroless's base costs 0.79 MB per node, shared across all 50 services on that node; wolfi pays 5.77 MB. The dedup gap is `(5.77 − 0.79) × 100 nodes = 498 MB ≈ 500 MB` of cold pulls saved by distroless vs wolfi at fleet scale. Both still pay 1000 × 3.98 MB for the binary layers, because each binary is unique. Scratch shaves the 79 MB base entirely — its `1000 × 3.98 = 3980 MB` total is 79 MB lighter than distroless and 577 MB lighter than wolfi. But scratch has nothing to dedupe in the first place: every pod's image *is* its binary, so the per-pod cost is linear no matter how many services share a node.
 
 The math at fleet scale (one node, 50 services, 100 % cold cache, 1 Gbps network, ignoring TCP slow-start):
 

@@ -883,6 +883,7 @@ def main() -> int:
         "unbacked_claims": 2,
         "http_not_https": 2,
         "heading_skip": 2,
+        "broken_post_links": 4,
         "wordcount_off": 1,
         "frontmatter": 2,
     }
