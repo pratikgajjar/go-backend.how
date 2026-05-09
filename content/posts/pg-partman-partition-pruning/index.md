@@ -279,6 +279,8 @@ the partition interval:
 ```sql
 -- sql/functions/run_maintenance.sql
 v_premade_count = round(EXTRACT('epoch' FROM age(v_last_partition_timestamp, v_current_partition_timestamp)) / EXTRACT('epoch' FROM v_row.partition_interval::interval));
+-- ... a few lines later, the catch-up loop:
+WHILE (v_premade_count < v_row.premake) LOOP
 ```
 
 `round()` over `extract(epoch from ...)` is what bites you on DST
@@ -339,6 +341,8 @@ turns a regular table into a partitioned-children parent. From
 ```sql
 -- sql/functions/create_partition.sql
 EXECUTE format('LOCK TABLE %I.%I IN ACCESS EXCLUSIVE MODE', v_parent_schemaname, v_parent_tablename);
+-- earlier, the partitioning-strategy guard:
+IF v_partstrat NOT IN ('r', 'l') OR v_partstrat IS NULL THEN
 ```
 
 `ACCESS EXCLUSIVE` blocks every reader and every writer of that parent

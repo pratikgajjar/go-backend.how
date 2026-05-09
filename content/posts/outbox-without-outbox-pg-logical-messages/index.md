@@ -1122,7 +1122,9 @@ notice.
   [`pg_logical_emit_message`](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-REPLICATION),
   [logical decoding](https://www.postgresql.org/docs/17/logicaldecoding.html),
   [`pg_replication_slots`](https://www.postgresql.org/docs/17/view-pg-replication-slots.html).
-- factlib source: <https://github.com/fampay-inc/factlib> (Apache-2.0).
+- factlib source: <https://github.com/fampay-inc/factlib> (no
+  declared LICENSE file at the time of writing — check upstream
+  before depending on it in production).
 - The classic outbox-pattern essay by Chris Richardson:
   [microservices.io/patterns/data/transactional-outbox.html](https://microservices.io/patterns/data/transactional-outbox.html).
 - Debezium's incremental snapshots and outbox-router (the

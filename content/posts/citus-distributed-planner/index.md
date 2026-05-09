@@ -544,10 +544,10 @@ time; the deparse happens later in the execution pipeline.
 Napkin math, no benchmark machine but the components are independent.
 
 A single fast-path router query has the shape:
-- coordinator: 1 binary search over 32 shard intervals = 5 comparisons ≈ 50ns
-- network round-trip to one worker = 100µs (LAN p50, [Latency Numbers Every Engineer Should Know](https://gist.github.com/jboner/2841832))
-- worker: index lookup + return = 100–500µs
-- **Total: ~200–600µs.**
+- coordinator: 1 binary search over 32 shard intervals = 5 comparisons ≈ 50 ns (computed from log2(32)=5 × ~10 ns per comparison on a hot cache line)
+- network round-trip to one worker, rack-local 10 GbE = 50–100 µs p50; cross-rack within a DC closer to 500 µs per the [Latency Numbers gist](https://gist.github.com/jboner/2841832)
+- worker: index lookup + return = 100–500 µs (estimated, indexed scan over a single shard)
+- **Total: ~250–1100 µs.**
 
 A repartition join over 32 shards × 4 nodes × 6 merge buckets has the shape:
 - coordinator: build `Job` tree with `BuildMapMergeJob` and friends ≈ 1–2ms

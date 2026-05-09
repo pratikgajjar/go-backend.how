@@ -740,6 +740,31 @@ def http_not_https_defects(body: str) -> int:
     return len(HTTP_RE.findall(body))
 
 
+def required_sections_defects(body: str) -> int:
+    """Brief specified 8 sections that must be present (renamed allowed).
+    Match by keyword set within section headings."""
+    headers = [
+        h.lower() for h in re.findall(r"^#{1,3}\s+(.+?)\s*$", body, flags=re.MULTILINE)
+    ]
+    required = [
+        # (label, list of keywords; any keyword match in any header is OK)
+        ("naive answer / failure modes", ["naive", "fails", "failure"]),
+        ("shape of the right answer", ["shape", "right answer", "wiring"]),
+        ("replication loop / pgoutput", ["replication", "pgoutput", "byte by byte"]),
+        ("ring buffer / lock-free", ["ring buffer", "lock-free", "doesn't lock", "lockfree"]),
+        ("parquet encoding", ["parquet", "zstd"]),
+        ("s3 upload", ["s3", "upload"]),
+        ("throughput math", ["throughput", "napkin", "math"]),
+        ("what i'd change / tradeoffs", ["change", "tradeoff", "limitation"]),
+    ]
+    n = 0
+    for label, keywords in required:
+        if not any(any(k in h for k in keywords) for h in headers):
+            n += 1
+            print(f"DEBUG missing_section: {label!r}", file=sys.stderr)
+    return n
+
+
 def cross_post_link_defects(body: str, repo_root: Path) -> int:
     """Verify https://backend.how/posts/SLUG/[#anchor] links against the actual
     post files in content/posts/."""
