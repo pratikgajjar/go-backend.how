@@ -582,14 +582,12 @@ manifest, and only then `openat` of the data Parquet. Four metadata
 reads to get one Parquet path. This is the depth your queries pay
 regardless of table size.
 
-For S3, the equivalent observability is bucket access logs, where
-the four-deep tree is plainly visible by file extension. A
-[bpftrace](https://github.com/bpftrace/bpftrace) one-liner that
-emits a histogram of S3-GET latencies grouped by extension is left
-as an exercise — the kernel sees `recvmsg` syscalls on the
-HTTPS connection and the user-space iceberg client tags each
-fetch with the extension in trace context (`spanKind=client`,
-`http.url=…`).
+For S3, the equivalent observability is bucket access logs:
+each query produces three GETs with distinct prefixes — one
+`metadata/v*.metadata.json`, one `metadata/snap-*.avro`, one
+`metadata/<commit_uuid>-m*.avro` — followed by data-file GETs
+under the data prefix. Filtering S3 logs by `key LIKE 'metadata/%'`
+gives you the planning hot path; the rest is the actual scan.
 
 # 6. Tradeoffs — what Iceberg is bad at, named explicitly
 
