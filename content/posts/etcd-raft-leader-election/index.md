@@ -635,12 +635,20 @@ slow disk fsync, a long GC pause, a stop-the-world rebalance), ticks
 down by `CheckQuorum`. The library's defence is a single warning:
 
 ```go
-// raft.go
-default:
-	r.rn.raft.logger.Warningf("%x A tick missed to fire. Node blocks too long!", r.rn.raft.id)
+// node.go
+// Tick increments the internal logical clock for this Node. Election timeouts
+// and heartbeat timeouts are in units of ticks.
+func (n *node) Tick() {
+	select {
+	case n.tickc <- struct{}{}:
+	case <-n.done:
+	default:
+		n.rn.raft.logger.Warningf("%x A tick missed to fire. Node blocks too long!", n.rn.raft.id)
+	}
+}
 ```
 
-That `default` branch in `node.Tick()` is the only signal the
+That `default` branch in `node.Tick` is the only signal the
 application gets that its consensus loop is starving. The cost of
 ignoring it is a spurious leader election. This is the type of bug that
 shows up only under sustained pressure — exactly when a leader change

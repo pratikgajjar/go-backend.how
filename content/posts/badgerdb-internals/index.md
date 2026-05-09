@@ -14,13 +14,13 @@ math = false
 
 # The 1M-writes/sec headline isn't a lie. It's a configuration.
 
-Run BadgerDB out of the box on a Mac M3 Max, ten million 128-byte writes through `WriteBatch`, and you measure **1,030,194 ops/s sustained** with **zero L0 stall time**. That's the famous Badger headline. Real. Reproducible. Default options.
+Run BadgerDB out of the box on a Mac M3 Max, ten million 128-byte writes through `WriteBatch`, and three runs land in `821 K`, `891 K`, `1,048 K` ops/s with **zero L0 stall time** in every run. The famous Badger headline — a million writes per second on a laptop — is real, sometimes even on the median.
 
 Now change one thing — make the values `1 KB` instead of `128 B`.
 
-The same code path on the same machine drops to **201,262 ops/s with 8.92 seconds of L0 stall** out of 24.84 seconds wall time. 36% of wall-clock spent waiting on the L0 backpressure latch in [`addLevel0Table`][addl0]. The headline number is gone.
+The same code path on the same machine drops to a median **245 K ops/s with 13.8 s of L0 stall** out of 20.4 s wall time on five million writes (range over three runs: `215 K`, `245 K`, `257 K` ops/s; stalls `12.7 s`, `13.8 s`, `14.2 s`). 67% of wall-clock spent waiting on the L0 backpressure latch in [`addLevel0Table`][addl0]. The headline number is gone.
 
-> The 8× collapse isn't a regression. It's the LSM's structural cost surfacing the moment values get too small for the WiscKey value-log split to help.
+> The 3.6× collapse from `891 K` to `245 K` ops/s isn't a regression. It's the LSM's structural cost surfacing the moment values get too small for the WiscKey value-log split to help.
 
 The interesting part of BadgerDB isn't whether it does or doesn't hit a million writes per second. It's *which workloads earn the headline* and which ones quietly shed an order of magnitude. This post traces the writer path through `memtable → flush → L0 → compactions`, dissects the compaction-priority calculation that decides which level to drain first, and shows on real measurements where the stalls live.
 
@@ -191,21 +191,21 @@ for !s.levels[0].tryAddLevel0Table(t) {
 }
 ```
 
-This is the `Lifetime L0 stalled for: 8.921s` that the badger close logs print at the end of a run. It's the simplest possible backpressure: poll-and-wait on a 10 ms tick. When this loop runs hot, the flusher goroutine is asleep, the immutable-memtable list grows toward `NumMemtables = 5`, and the moment that list is full the *writer's* `ensureRoomForWrite` returns `errNoRoom`, which makes the writer goroutine's loop sleep 10 ms and try again [(`db.go:861`)][dbgo]. That's how the stall reaches user latency: not a single big lock, but a chain of three 10 ms-tick polls — flusher → memtable list → writer.
+This is the `Lifetime L0 stalled for: 13.8s` that the badger close logs print at the end of a run on the 5M × 1 KB default workload. It's the simplest possible backpressure: poll-and-wait on a 10 ms tick. When this loop runs hot, the flusher goroutine is asleep, the immutable-memtable list grows toward `NumMemtables = 5`, and the moment that list is full the *writer's* `ensureRoomForWrite` returns `errNoRoom`, which makes the writer goroutine's loop sleep 10 ms and try again [(`db.go:861`)][dbgo]. That's how the stall reaches user latency: not a single big lock, but a chain of three 10 ms-tick polls — flusher → memtable list → writer.
 
 [dbgo]: https://github.com/dgraph-io/badger/blob/main/db.go
 
 # Real numbers, on a MacBook M3 Max
 
-All runs were on a Mac M3 Max (12-core, 36 GB), Go 1.26.3, [`badger v4.9.1`](https://github.com/dgraph-io/badger/releases/tag/v4.9.1), APFS on internal NVMe. Workload: `db.NewWriteBatch()` looping over N synthetic 32-byte keys + V-byte values, no concurrent reads. The harness lives at `/tmp/badger-blog-bench/wb.go` (60 lines, listed at the end). Each row is the median of three runs.
+All runs were on a Mac M3 Max (12-core, 36 GB), Go 1.26.3, [`badger v4.9.1`](https://github.com/dgraph-io/badger/releases/tag/v4.9.1), APFS on internal NVMe. Workload: `db.NewWriteBatch()` looping over N synthetic 32-byte keys + V-byte values, no concurrent reads. The harness lives at `/tmp/badger-blog-bench/wb.go` (50 lines, listed at the end). Each row is the median of three runs; the L0-stall column is the `Lifetime L0 stalled for:` value badger logs on `db.Close()`.
 
-| Workload                   | Config       | ops/s     | L0 stalls | Wall   | LSM size  |
-|----------------------------|--------------|-----------|-----------|--------|-----------|
-| 10M × 128 B (val→LSM)      | default      | 1,030,194 | 0 ms      | 9.7 s  | 250 MiB   |
-| 10M × 1 KB (val→LSM)       | default      | 685,234   | ~3 s      | 14.6 s | 1.6 GiB   |
-| 5M × 1 KB (val→LSM)        | default      | 201,262   | 8,921 ms  | 24.8 s | 1.7 GiB   |
-| 5M × 1 KB (val→LSM)        | mem=256 MB, NumLevelZeroTablesStall=30, NumCompactors=8 | 689,538 | 0 ms | 7.3 s | 1.7 GiB |
-| 5M × 1 KB (val→vlog,thr=64)| default + vthr=64 | 269,647 | 0 ms | 18.5 s | 60 MiB LSM + vlog |
+| Workload                   | Config       | ops/s (median) | L0 stalls | Wall (median) |
+|----------------------------|--------------|---------------:|----------:|--------------:|
+| 10M × 128 B                | default      | 891,103        | 0 s       | 11.2 s        |
+| 10M × 1 KB                 | default      | 151,872        | 44.4 s    | 65.8 s        |
+| 5M  × 1 KB                 | default      | 245,369        | 13.8 s    | 20.4 s        |
+| 5M  × 1 KB                 | mem=256 MB, zstall=30, comp=8 | 590,355 | 0 s | 8.5 s |
+| 5M  × 1 KB                 | default + ValueThreshold=64    | 525,909 | 0 s | 9.5 s |
 
 Three observations the table doesn't explain on its own:
 
@@ -213,9 +213,9 @@ Three observations the table doesn't explain on its own:
 
 **2. L0 stalls scale super-linearly with value bytes-in-LSM.** Doubling values from 128 B to 1 KB at the same key count quadruples the bytes that flow through every L0 → Lbase compaction. Memtables roll over more often, L0 fills faster than L0→L4 drains, the picker oscillates between L0→L0 self-merges and L0→Lbase pushes, and the per-record stall jumps from 0 to ~9 seconds for 5 M records.
 
-**3. Tuning fixes the stalls without changing the algorithm.** Bumping `NumLevelZeroTablesStall` from 15 to 30 raises the stall ceiling. Doubling `MemTableSize` from 64 MiB to 256 MiB drops L0-table-creation rate by ~4×. Doubling `NumCompactors` to 8 doubles the drain rate at the cost of CPU during heavy churn. The 5M × 1 KB workload goes from 201 K ops/s to 690 K ops/s on the same disk with the same data — entirely a scheduling change.
+**3. Tuning fixes the stalls without changing the algorithm.** Bumping `NumLevelZeroTablesStall` from 15 to 30 raises the stall ceiling. Doubling `MemTableSize` from 64 MiB to 256 MiB drops L0-table-creation rate by `256 / 64 = 4×`. Doubling `NumCompactors` to 8 doubles the drain rate at the cost of CPU during heavy churn. The 5M × 1 KB workload goes from `245 K` ops/s on default to `590 K` ops/s on tuned — same disk, same data, entirely a scheduling change. The same workload with `ValueThreshold=64` (forcing values to vlog) lands at `526 K` ops/s; the win comes from the LSM no longer carrying the value bytes through compaction.
 
-The disk numbers behind these throughput numbers are the napkin half. M3 Max APFS sustains roughly 4 GB/s sequential write to internal storage. At 689 K ops/s × 1 KB user data ≈ **`689,538 × 1024 / 1e6 = 706 MB/s` of user data**. With write amplification roughly bounded by `LevelSizeMultiplier × log(dbSize/L0)`, expect ~3–5× at this dataset size: **~2–3 GB/s of disk write**, well under the 4 GB/s ceiling. Disk is not the bottleneck. Compaction scheduling is. (See `Lifetime L0 stalled for: 8.921s` — the engine reports its own bottleneck.)
+The disk numbers behind these throughput numbers are the napkin half. M3 Max APFS sustains roughly 4 GB/s sequential write to internal storage. At 590 K ops/s × 1 KB user data ≈ **`590,355 × 1024 / 1e6 = 605 MB/s` of user data**. With write amplification roughly bounded by `LevelSizeMultiplier × log(dbSize/L0)`, expect ~3–5× at this dataset size: **~1.8–3 GB/s of disk write**, well under the 4 GB/s ceiling. Disk is not the bottleneck. Compaction scheduling is. (See `Lifetime L0 stalled for: 13.8s` on the default-options 5M × 1 KB row — the engine reports its own bottleneck.)
 
 # Tradeoffs — what BadgerDB is bad at, named
 
@@ -238,7 +238,7 @@ The WiscKey decision creates a specific shape of system. It's worth being explic
 
 [txn]: https://github.com/dgraph-io/badger/blob/main/txn.go
 
-**Single-writer goroutine.** All `db.Update` calls funnel through one `doWrites` goroutine that batches up to `3 × kvWriteChCapacity` requests per loop [(`db.go:915`)][dbgo]. Concurrent writers fan in via the unbuffered `writeCh`. This is *good* — it avoids cross-goroutine memtable contention — but means Badger doesn't scale write throughput past one core's worth of memtable insertion. On the M3 Max benchmarks above, peak ops/s of 1.03 M corresponds to ~1.0 µs per memtable insert + per-WAL append — close to a single-core ceiling for this hardware. There is no multi-writer mode; a workload that needs 4× this on a single Badger instance has to look elsewhere.
+**Single-writer goroutine.** All `db.Update` calls funnel through one `doWrites` goroutine that batches up to `3 × kvWriteChCapacity` requests per loop [(`db.go:915`)][dbgo]. Concurrent writers fan in via the unbuffered `writeCh`. This is *good* — it avoids cross-goroutine memtable contention — but means Badger doesn't scale write throughput past one core's worth of memtable insertion. On the M3 Max benchmarks above, the peak run of `1,047,920` ops/s on 10M × 128 B corresponds to `1 / 1,047,920 ≈ 0.95 µs` per memtable insert + per-WAL append — close to a single-core ceiling for this hardware. There is no multi-writer mode; a workload that needs 4× this on a single Badger instance has to look elsewhere.
 
 # What I'd build differently
 
@@ -248,7 +248,7 @@ A few specific things, rough cost in parens.
 
 **Per-block, not per-table, bloom filters on the vlog.** Even a coarse bloom on every 4 MiB vlog chunk would let `Get` short-circuit the vlog read on stale-version misses. The vlog is append-only and immutable per-fid, so the bloom can be built when the file rolls and stored in a sidecar. Storage cost via [`y.BloomBitsPerKey`][bloom] at 1% FPR is `9.6 bits/key`; for 1 KB avg entries that's `4 MiB / 1 KB = 4096` entries, and `4096 × 9.6 ≈ 39322` bits ≈ 4.9 KiB per chunk — `0.12%` of vlog footprint. (cost: 1–2 weeks)
 
-**Adaptive `NumLevelZeroTablesStall`.** The default 15 was set when memtables were 64 MiB. At 256 MiB memtables, 15 L0 tables is *4 GiB of L0 backpressure* — enormous, with the same 10 ms-tick wait loop. A formula like `min(15, max(8, BaseLevelSize/MemTableSize × 5))` would push back earlier on big-memtable configs and harder on small-memtable configs. Cost is minimal — one line in `Open` validation — but it reduces tail latency by collapsing the burst zone. (cost: a few days, but require a benchmark sweep first)
+**Adaptive `NumLevelZeroTablesStall`.** The default 15 was set when memtables were 64 MiB. At 256 MiB memtables, `15 × 256 MiB = 3840 MiB` of L0 backpressure — enormous, with the same 10 ms-tick wait loop. A formula like `min(15, max(8, BaseLevelSize/MemTableSize × 5))` would push back earlier on big-memtable configs and harder on small-memtable configs. Cost is minimal — one line in `Open` validation — but it reduces tail latency by collapsing the burst zone. (cost: a few days, but require a benchmark sweep first)
 
 **An ingest mode that bypasses the oracle.** `WriteBatch` already batches inserts, but you still pay the watermark + readTs dance to assign each entry a commit ts. For pure ingest (no concurrent reads) the `WriteBatch` is a glorified `for { txn.Set; txn.Commit }` loop, paying the SSI overhead for nothing. A managed-mode batch ingest that takes the writer lock once and short-circuits the [`oracle`](https://github.com/dgraph-io/badger/blob/main/txn.go) would push the 1.03 M ops/s headline closer to the memtable insert ceiling — and stop people from using `WriteBatch` for things it wasn't designed for. (cost: ~300 LOC, but careful invariants)
 
@@ -308,9 +308,9 @@ func main() {
 }
 ```
 
-`go run wb.go -n 10000000 -v 128` reproduces the **1,030,194 ops/s** row. Bump `-v` to `1024` to watch the same code drop into the stalls.
+`go run wb.go -n 10000000 -v 128` reproduces the headline ops/s row (we saw `821 K`, `891 K`, `1048 K` across three runs on a freshly-removed data dir). Bump `-v` to `1024` to watch the same code drop into the L0 stalls.
 
-For an in-process view of the stall, there's no need for `bpftrace`; Badger's own logger prints `L0 was stalled for X` at the end of every stall window > 1 s. Pipe a run through `grep stalled` and you get the per-window timing without any kernel tooling. If you want a syscall-level view, the relevant calls are `pwrite64` (SST flush) and `madvise` (block-cache eviction); a simple `dtruss -e -t pwrite -p $BADGER_PID` on macOS gives you the per-flush byte count without instrumentation overhead.
+For an in-process view of the stall, there's no need for `bpftrace`; Badger's own logger prints `L0 was stalled for X` at the end of every stall window > 1 s. Pipe a run through `grep stalled` and you get the per-window timing without any kernel tooling. If you want a syscall-level view, the relevant calls are `pwrite` / `pwrite_nocancel` (SST flush) and `madvise` (block-cache eviction); a simple `sudo dtruss -e -t pwrite -p $BADGER_PID` on macOS gives you the per-flush byte count without instrumentation overhead. On Linux substitute `pwrite64` and `bpftrace -e 'tracepoint:syscalls:sys_enter_pwrite64 /comm == "badger"/ { @[args->count] = count(); }'`.
 
 # Closing
 

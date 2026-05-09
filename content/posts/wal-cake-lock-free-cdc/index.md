@@ -1028,12 +1028,18 @@ larger `batchSize`: bumping `batchSize` from `1,000` to `10,000`
 cuts PUT count by `10×` and per-month PUT spend to `~$13`, at the
 price of `10×` worst-case batching latency.
 
-**S3 PUTs/min — quiet case.** At `100 events/sec` the size trigger
-never fires within a 30-s window (`100 × 30 = 3,000` events <
-`batchSize=1,000 × concurrency=4 = 4,000` ring capacity, but the
-trigger compares to `batchSize` only). The 30-s ticker takes over,
-producing `60 / 30 = 2 PUT/min`. Per-month: `2 × 43,200 ≈ 86K PUT
-≈ $0.43/month`. Floor cost is dominated by storage, not PUTs.
+**S3 PUTs/min — quiet case.** The crossover where the ticker beats
+the size trigger is `batchSize / flushInterval = 1,000 / 30 ≈ 33
+events/sec`. Below that, the ticker drives cuts:
+`60 sec/min / 30 sec = 2 PUT/min`. Per-month:
+`2 × 43,200 ≈ 86K PUT ≈ $0.43/month` PUT cost. Floor cost is
+dominated by storage, not PUTs.
+
+At an in-between rate like `100 events/sec`, the size trigger fires
+every `1,000 / 100 = 10 sec`, so the cadence is `60 / 10 = 6 PUT/min`
+(`8.6K PUT/day ≈ 260K PUT/mo ≈ $1.30/month`). The size trigger is
+also the ticker-resetter, so wal-cake never cuts twice within a
+single batch's worth of events.
 
 **Where the upper limit lives.** Push events/sec to `100,000` and
 the Parquet+ZSTD math still works (`4 × 50 = 200 batches/sec` of
