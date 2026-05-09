@@ -784,11 +784,13 @@ The improvement: have a leader that's about to fail (hit a fatal
 internal error, lose its disk, etc.) emit `MsgTimeoutNow` to the
 healthiest follower as part of its shutdown sequence. Cost: ~50 lines.
 Benefit: bounded failover instead of waiting one full election timeout.
-There's a
-correctness footgun — if the "failing" leader is just slow, it could
-double-elect — but `MsgTimeoutNow` already encodes the candidate type,
-and the receiving follower can drop it unless it's still in the
-leader's lease.
+There's a correctness footgun — if the "failing" leader is just slow
+or merely partitioned from the application's monitor, it could
+double-elect (the receiving follower's `stepFollower` calls
+`r.hup(campaignTransfer)` *unconditionally*, with no lease check). The
+defence has to live above the library: the application must be sure
+the leader is actually going down before sending the message, e.g. by
+holding a fenced lease that the failing leader can't refresh.
 
 ## 3. Async vote responses with a stable index
 
