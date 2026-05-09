@@ -785,9 +785,13 @@ than `M` neighbours at some layer (e.g., during early build) — the
 slots are pre-allocated. For an index built incrementally, the
 average level-0 neighbour count is `2M = 32` for `M = 16`, so the
 allocation matches usage closely; but at higher layers the array is
-sparse. Compressing the neighbour list with `varint` TIDs would
-shrink the graph by ~20 % at the cost of CPU on every traversal.
-Probably not worth it — buffer reads, not bytes, dominate.
+sparse. Compressing the neighbour list with `varint` TIDs (4 vs 6
+bytes typical for sub-1B-row indexes) would shrink the neighbour
+bytes by ~30 %. For a `vector(128)` the neighbour bytes are about
+`200 / 808 ≈ 25 %` of the per-row total, so end-to-end savings are
+around 7 %; for `vector(1536)`, neighbours are 3 % of bytes and
+varint saves under 1 % overall. Probably not worth it — buffer
+reads, not bytes, dominate.
 
 **2. Separate the vector payload from the graph nodes.** pgvector
 stores the full vector in every element tuple. The L2-search
