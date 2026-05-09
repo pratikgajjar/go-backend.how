@@ -756,7 +756,7 @@ ensures the LSN never advances past a Kafka write whose callback
 hasn't fired.
 
 > **Sharp edge worth naming.**
-> [`listenEventAck`](https://github.com/fampay-inc/factlib/blob/main/pkg/postgres/wal.go#L381-L398)
+> [`listenEventAck`](https://github.com/fampay-inc/factlib/blob/main/pkg/postgres/wal.go#L381-L396)
 > does `w.xLogPos = *ackPos` (line 390) on every ack. Kafka callbacks
 > fire in-order per partition but across partitions interleave: if
 > event A (LSN_a) is on partition 1 and event B (LSN_b > LSN_a) on

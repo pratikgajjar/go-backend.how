@@ -126,7 +126,9 @@ send" outputs.
                         │                     │
             ┌───────────▼─────────────────────┴─────────────────┐
             │            raft.raft (state machine)              │  raft.go
-            │  Term, Vote, lead, state ∈ {F, C, PC, L}          │
+            │  Term uint64; Vote, lead uint64;                  │
+            │  state ∈ {Follower, Candidate, PreCandidate,      │
+            │           Leader}                                 │
             │  step(message) → state', []Message                │
             └───────────────────────────────────────────────────┘
 ```
