@@ -317,10 +317,10 @@ fsyncing the WAL. From the architecture comment in
 [`internal/cache/cache.go:23-30`](https://github.com/cockroachdb/pebble/blob/master/internal/cache/cache.go#L23-L30):
 
 ```go
-// pebble/internal/cache/cache.go (line 23)
+// pebble/internal/cache/cache.go (line 24, USENIX URL elided)
 // Cache implements Pebble's sharded block cache. The Clock-PRO algorithm is
-// used for page replacement.
-// In
+// used for page replacement
+// (...). In
 // order to provide better concurrency, 4 x NumCPUs shards are created, with
 // each shard being given 1/n of the target cache size. The Clock-PRO algorithm
 // is run independently on each shard.

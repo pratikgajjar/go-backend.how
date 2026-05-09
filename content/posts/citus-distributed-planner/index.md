@@ -1,5 +1,5 @@
 +++
-title = "🦅 Citus Distributed Planner — The 4 SQL Transforms It Does"
+title = "🦅 Citus Distributed Planner - The 4 SQL Transforms It Does"
 description = "How Citus turns one Postgres SQL query into a fan-out plan: the four planner paths (fast-path router, router, multi-shard, repartition), a line-by-line walk through shard pruning, and the EXPLAIN trees they emit."
 date = 2026-05-09T12:00:00+05:30
 lastmod = 2026-05-09T12:00:00+05:30
@@ -21,7 +21,7 @@ When you run `SELECT * FROM orders WHERE customer_id = 42` on a Citus
 cluster, the SQL string never crosses a network until after the
 planner has already decided which one of 32 shards holds customer 42.
 Pruning happens on the coordinator, in C, against in-memory metadata.
-The shard query that lands on the worker is the same SQL — with
+The shard query that lands on the worker is the same SQL - with
 `orders` rewritten to a per-shard table name (e.g. `lineitem_360000`
 in the regression test fixtures, where 360000 is a globally-unique
 shard ID) and a planner-private function call holding the shard ID.
@@ -39,14 +39,14 @@ PostgreSQL 17/18 support). Everything below references real symbols in
 `src/backend/distributed/planner/`. Where I cite a line number, you
 can `git show` it yourself.
 
-# 1. The hook — Postgres' planner runs twice and one of them throws away the answer
+# 1. The hook - Postgres' planner runs twice and one of them throws away the answer
 
 Here is the surprise. A Citus query that touches a distributed table
 goes through Postgres' `standard_planner` once, _just to populate the
 restriction info_, and then Citus throws away the resulting plan tree
 and builds its own. The cost estimates Postgres computed are
 irrelevant. The path-with-the-best-index decisions are irrelevant. The
-restriction info is the only thing that survived — quals attached to
+restriction info is the only thing that survived - quals attached to
 each range table entry, parsed and constant-folded.
 
 The price tag for this round-trip is visible in the fast-path
@@ -66,39 +66,39 @@ optimisation. From the file header in
 
 For a `SELECT ... FROM single_table WHERE dist_key = X` query, Citus
 recognises the shape of the parse tree directly and skips the
-`standard_planner` call entirely — that's the "fast path." Everything
+`standard_planner` call entirely - that's the "fast path." Everything
 else pays the cost of planning a query against the unsharded table on
-the coordinator. The output is mostly thrown away — `FinalizeRouterPlan`
+the coordinator. The output is mostly thrown away - `FinalizeRouterPlan`
 keeps the targetlist (column metadata) from the standard plan but
 replaces the execution tree with a `CustomScan` ("Citus Adaptive")
 that dispatches to workers.
 
 This sits behind every "Citus latency overhead" benchmark. On a query
-that prunes to a single shard and runs in 200µs on the worker, the
+that prunes to a single shard and runs in 200μs on the worker, the
 coordinator's `standard_planner` round-trip is measurable. Napkin
 estimate (no measurement on this machine, derived from planner-step
-complexity): a simple SELECT walks something like 100,000–300,000
+complexity): a simple SELECT walks something like 100,000-300,000
 tree-walker nodes through the optimizer at ~1 ns per step, which
-multiplies out to roughly 100–300 µs of single-table planning time. To pin down the actual
+multiplies out to roughly 100-300 μs of single-table planning time. To pin down the actual
 number on a real cluster, the canonical tool is
 [`pg_stat_statements`](https://www.postgresql.org/docs/current/pgstatstatements.html),
 which exposes per-query plan-time totals directly. On the fast path,
-that 200µs of planning becomes overhead the cluster pays for nothing.
+that 200μs of planning becomes overhead the cluster pays for nothing.
 The fast-path code path was added precisely to avoid it.
 
 The contradiction is intentional. Citus needs Postgres' planner to
 constant-fold expressions, resolve `now()` to a value, evaluate
-`array_position(...)` on the literals — all of which feed shard
+`array_position(...)` on the literals - all of which feed shard
 pruning. But the _plan tree_ Postgres returns assumes the table is
 local. So Citus runs the planner for its side effects.
 
-# 2. The problem — sharded SQL is two languages awkwardly stapled together
+# 2. The problem - sharded SQL is two languages awkwardly stapled together
 
 A distributed database has two query languages whether you admit it
 or not.
 
-The first language is the user-facing SQL: `SELECT … FROM orders
-WHERE …`. The second is the per-shard SQL — same query against
+The first language is the user-facing SQL: `SELECT ... FROM orders
+WHERE ...`. The second is the per-shard SQL - same query against
 `lineitem_360000` (or whatever the shard table happens to be named)
 instead of the logical table. The planner's job is to translate the
 first into a _set_ of the second, plus a coordinator-side merge
@@ -109,7 +109,7 @@ Naïve translation is wrong on three axes.
 **The cardinality axis.** A query of the form `SELECT count(*) FROM
 orders` cannot be answered by sending the same `count(*)` to each
 shard and concatenating. The merge step has to sum the counts.
-`AVG(x)` is worse — you cannot average pre-computed averages. The
+`AVG(x)` is worse - you cannot average pre-computed averages. The
 planner has to rewrite `AVG(x)` to `SUM(x) / COUNT(x)` _before_
 pushing each side down, and re-compose on the coordinator. The same
 logic applies to standard-deviation and variance aggregates, and to
@@ -124,14 +124,14 @@ depending on whether `customers` is co-located with `orders` (same
 table (full copy on every node), or is independently sharded by
 `name`. The first case is a parallel local join. The second is a
 parallel local join with bigger memory pressure. The third needs to
-shuffle one of the two tables across the network — repartitioning. The
+shuffle one of the two tables across the network - repartitioning. The
 SIGMOD '21 Citus paper (referenced in `README.md`,
 [Citus: Distributed PostgreSQL for Data-Intensive Applications](https://doi.org/10.1145/3448016.3457551))
 calls this "join order planning." The implementation lives in
 `multi_join_order.c`, 1,448 lines.
 
 **The merge axis.** Even the trivial `WHERE dist_key = X` cases need
-to be rewritten — the table OID in the parse tree refers to the
+to be rewritten - the table OID in the parse tree refers to the
 unsharded table, which the worker doesn't have. Citus replaces the
 range table entry with a fake function call to
 `citus_extradata_container`, which encodes the shard ID into a
@@ -178,7 +178,7 @@ early; expensive paths fall through.
                 └──────────┬─────────────────────────┘      │
                            │                  ┌─────────────┘
                            │                  ▼
-                           │         CreateDistributedPlan(planId, …)
+                           │         CreateDistributedPlan(planId, ...)
                            │                  │
                            │      ┌───────────┼───────────┬────────────┐
                            │      ▼           ▼           ▼            ▼
@@ -217,7 +217,7 @@ splitting). Each path produces SQL strings that go to workers, plus a
 coordinator-side combine query. The deparser is what stitches them
 together.
 
-# 4. Source dive — `PruneShards` is the function the rest of the planner is built around
+# 4. Source dive - `PruneShards` is the function the rest of the planner is built around
 
 If you only read one function in the Citus source tree, read
 `PruneShards` in `src/backend/distributed/planner/shard_pruning.c`. It
@@ -226,12 +226,12 @@ of 32 shards to talk to." The other planner paths are wrappers around
 its return value.
 
 The header comment lays out the algorithm in four "increasingly
-expensive" steps (lines 47–58 of `shard_pruning.c`). I'll follow them
+expensive" steps (lines 47-58 of `shard_pruning.c`). I'll follow them
 and quote the source, with one pre-step (the reference-table
 short-circuit, which lives earlier in `PruneShards` itself) added at
 the front because it explains a class of joins.
 
-## Step 0 — short-circuit non-distributed tables
+## Step 0 - short-circuit non-distributed tables
 
 ```c
 // src/backend/distributed/planner/shard_pruning.c
@@ -249,18 +249,18 @@ is one shard and it lives on every node. The router can pick any
 worker. Reference tables collapse a category of joins from
 "repartition required" to "directly co-located on every node."
 
-## Step 1 — build a logical pruning tree
+## Step 1 - build a logical pruning tree
 
 The `WHERE` clause is an arbitrary tree of `AND`s, `OR`s, `OpExpr`s,
 `NullTest`s, etc. `BuildPruningTree` walks it and produces a flatter
 tree where each node is `AND_EXPR` or `OR_EXPR` and the leaves are
 the constraints Citus actually understands (equality on the
 distribution column, range constraints on the distribution column).
-Anything else — `customer_name LIKE 'A%'`, function calls,
-correlated subquery references — gets summarised as "X" (the
+Anything else - `customer_name LIKE 'A%'`, function calls,
+correlated subquery references - gets summarised as "X" (the
 unrecognised-constraints flag).
 
-The header comment captures the simplification, lines 16–24:
+The header comment captures the simplification, lines 16-24:
 
 ```c
 // src/backend/distributed/planner/shard_pruning.c
@@ -277,10 +277,10 @@ The header comment captures the simplification, lines 16–24:
 
 The key insight: an `AND` of (recognised constraint, unknown) is the
 recognised constraint. An `OR` of (recognised constraint, unknown) is
-unknown — because the unknown half might match shards the recognised
+unknown - because the unknown half might match shards the recognised
 half rules out.
 
-## Step 2 — distribute `OR`s upward into pruning instances
+## Step 2 - distribute `OR`s upward into pruning instances
 
 Once the pruning tree is built, `PrunableExpressions` walks it
 top-down and produces a list of `PruningInstance` structures. Each
@@ -289,7 +289,7 @@ tree. An `OR` produces multiple instances. The pruner runs each
 instance independently and unions the resulting shard lists.
 
 This is exactly the distributive-law trick: `P AND (Q OR R)` becomes
-`(P AND Q) OR (P AND R)`. Citus only distributes one level — _not_
+`(P AND Q) OR (P AND R)`. Citus only distributes one level - _not_
 the full DNF expansion, because that would blow up exponentially. The
 header is explicit about the trade-off:
 
@@ -306,7 +306,7 @@ Returning a superset is safe. Returning a subset is wrong. The
 planner deliberately leaves correctness-preserving accuracy on the
 table to keep the algorithm linear.
 
-## Step 3 — pick a pruning strategy per instance
+## Step 3 - pick a pruning strategy per instance
 
 `PruneShards` then picks the cheapest strategy that fits each
 instance, in order:
@@ -319,16 +319,16 @@ instance, in order:
 | Exhaustive scan | Overlapping shards (range partitioning, weird) | O(shards) per shard, can be slow |
 
 Each step is "increasingly expensive" per the header. In the common
-case — hash-distributed table, equality predicate — it's a single
+case - hash-distributed table, equality predicate - it's a single
 binary search.
 
 The shard count is `cacheEntry->shardIntervalArrayLength` and the
 default for `citus.shard_count` is 32 (configurable up to 64,000 per
 `src/include/distributed/shared_library_init.h` line 17). So the
-binary search is over 32 entries — five comparisons in the typical
+binary search is over 32 entries - five comparisons in the typical
 configuration.
 
-## Step 4 — hand back to the router
+## Step 4 - hand back to the router
 
 The router's job (`RouterJob` in
 `multi_router_planner.c` line 1896) calls `PlanRouterQuery`, which
@@ -346,25 +346,25 @@ under `client_min_messages = DEBUG2`). When colocation is satisfied
 but placements still don't intersect on a single node, the router
 falls through to the logical planner.
 
-If a table prunes to multiple shards — which happens for queries
+If a table prunes to multiple shards - which happens for queries
 like `WHERE dist_key IN (1, 2, 3)` where the three values hash to
-three different shards — and the query is a `SELECT`, that also
+three different shards - and the query is a `SELECT`, that also
 falls through to the logical planner. Multi-shard `UPDATE` /
 `DELETE` is handled directly by the router via `QueryPushdownSqlTaskList`,
 because the merge step is trivial (concatenate `RETURNING` rows).
 
-# 5. Real numbers — what the four paths look like in `EXPLAIN`
+# 5. Real numbers - what the four paths look like in `EXPLAIN`
 
-I cannot bring up a fresh Citus cluster on this machine — the laptop
+I cannot bring up a fresh Citus cluster on this machine - the laptop
 runs PostgreSQL 17.6 stock with no `citus` extension installed, and
 the published Citus 14.0 packages target Linux distributions, not
-NixOS — but the regression tests are exhaustive and the EXPLAIN
+NixOS - but the regression tests are exhaustive and the EXPLAIN
 output is reproducible. Below is real output from
 `src/test/regress/expected/multi_router_planner_fast_path.out` and
 `src/test/regress/expected/multi_explain.out` against the standard
 `articles_hash` and `lineitem`/`orders` test fixtures (TPC-H derived).
 
-## Path 1 — fast-path router
+## Path 1 - fast-path router
 
 User query (from the regression test, line 67 of
 `multi_router_planner_fast_path.out`):
@@ -378,11 +378,11 @@ DEBUG:  query has a single distribution column value: 10
 ```
 
 Three DEBUG lines. The first is from `distributed_planner.c`
-line 266 (`if (fastPathRouterQuery) result = PlanFastPathDistributedStmt(&planContext);` — verified at
+line 266 (`if (fastPathRouterQuery) result = PlanFastPathDistributedStmt(&planContext);` - verified at
 commit `a3d5708a6`). The second is from the router. The
 third comes from
 `src/backend/distributed/executor/multi_server_executor.c` line 97
-(quoted earlier) — Citus printing the literal value of the
+(quoted earlier) - Citus printing the literal value of the
 distribution column it pruned on, for diagnostics.
 
 The plan generated is a `PlannedStmt` whose `planTree` is a
@@ -393,7 +393,7 @@ sequential scan is run on the coordinator. The `CustomScan` is the
 hook where Citus' executor takes over, evaluates the distribution
 column at execution time, picks the shard, and dispatches.
 
-## Path 2 — multi-shard router (UPDATE)
+## Path 2 - multi-shard router (UPDATE)
 
 User query (modify path), verbatim from
 `src/test/regress/expected/multi_explain.out` line 1128:
@@ -405,7 +405,7 @@ USING orders_hash_part
 WHERE orders_hash_part.o_orderkey = lineitem_hash_part.l_orderkey;
 ```
 
-EXPLAIN output, also from the same file lines 1131–1142:
+EXPLAIN output, also from the same file lines 1131-1142:
 
 ```text
 Custom Scan (Citus Adaptive)
@@ -421,9 +421,9 @@ Custom Scan (Citus Adaptive)
                           ->  Seq Scan on orders_hash_part_360045 orders_hash_part
 ```
 
-`Task Count: 4` — Citus dispatched the same query, with shard names
+`Task Count: 4` - Citus dispatched the same query, with shard names
 substituted, to 4 workers (or to 4 shards on however many workers).
-`Tasks Shown: One of 4` is just an EXPLAIN affordance — the other
+`Tasks Shown: One of 4` is just an EXPLAIN affordance - the other
 three plan trees are isomorphic. The join works because `lineitem`
 and `orders` are co-located on the join key (`o_orderkey` =
 `l_orderkey`), so each worker only ever joins its own pair of shards.
@@ -431,7 +431,7 @@ This is the critical optimization. If the two tables were _not_
 co-located, Citus would either error out (if forced via the join
 order planner) or fall through to repartitioning.
 
-## Path 3 — multi-shard SELECT with aggregate split
+## Path 3 - multi-shard SELECT with aggregate split
 
 User query:
 
@@ -458,29 +458,29 @@ Sort
                           ->  Seq Scan on lineitem_360000 lineitem
 ```
 
-Three things to notice. First, `count(*)` was split — each shard runs
+Three things to notice. First, `count(*)` was split - each shard runs
 `HashAggregate ... count(*) AS count_quantity`, and the coordinator
 runs `pg_catalog.sum(remote_scan.count_quantity)` to add them up.
-That's the "extended op node split" — `COUNT` becomes `SUM` of partial
+That's the "extended op node split" - `COUNT` becomes `SUM` of partial
 counts. The `pg_catalog.sum` is qualified because Citus injected a
 specific aggregate (vs whatever overload search finds), guaranteeing
 correctness even if a user-defined `sum` exists.
 
-Second, the worker query has `ORDER BY` stripped — the worker
+Second, the worker query has `ORDER BY` stripped - the worker
 returns unsorted partial groups, and the coordinator sorts the
 already-merged result. Pushing `ORDER BY` to the worker is wasted
 work because the coordinator has to re-sort anyway.
 
 Third, `Task Count: 2`, not 32. Why? Because in the regression test
-fixture, `lineitem` was created with `shard_count := 2` — verbatim
+fixture, `lineitem` was created with `shard_count := 2` - verbatim
 from `src/test/regress/sql/multi_create_table.sql` line 30:
 `SELECT create_distributed_table('lineitem', 'l_orderkey', 'hash', shard_count := 2);`.
-That's not a Citus default — it's a test setting. In production,
+That's not a Citus default - it's a test setting. In production,
 `Task Count` would equal whatever shard count was passed to
 `create_distributed_table()`, falling back to the
 `citus.shard_count` GUC (default 32, max 64,000).
 
-## Path 4 — the repartition
+## Path 4 - the repartition
 
 This is the path that hides the most work. User query:
 
@@ -515,7 +515,7 @@ Aggregate
 ```
 
 Read it bottom-up. The bottom `MapMergeJob` (`Map Task Count: 1`) is
-`supplier_single_shard` — one map task, six merge buckets. The
+`supplier_single_shard` - one map task, six merge buckets. The
 six-bucket count comes from `HashPartitionCount()` in
 `multi_physical_planner.c` line 2046:
 
@@ -534,24 +534,24 @@ HashPartitionCount(void)
 
 The default `citus.repartition_join_bucket_count_per_node` is 4
 (`shared_library_init.c` line 2456). The 6-bucket count in this
-specific EXPLAIN doesn't fall out of the default formula —
+specific EXPLAIN doesn't fall out of the default formula -
 `pg_regress_multi.pl` (the citus regression-test framework) sets
 `citus.repartition_join_bucket_count_per_node=2` and uses 2 worker
-nodes, which would naively give 4 — but for non-dual-hash partition
+nodes, which would naively give 4 - but for non-dual-hash partition
 types (`SINGLE_HASH_PARTITION_TYPE`, `RANGE_PARTITION_TYPE`) the
 bucket count is taken from the shard array length of the relevant
 partition target instead, so the exact number depends on which
 partition type the join planner picked. In a production cluster the
 arithmetic is simpler: `groupCount × RepartitionJoinBucketCountPerNode`
 on dual-hash, shard count on single-hash. The comment in the source
-attributes the formula to Hadoop's reducer-count heuristic — there
+attributes the formula to Hadoop's reducer-count heuristic - there
 is a real lineage from MapReduce in here, and it shows up at the
 boundary where Citus
 stops being a Postgres extension and starts being a shuffle engine.
 
 The `MapMergeJob` reads each shard, hashes the join column, writes
 to one of 6 buckets, and ships the buckets across the network. Then
-Citus runs another query — this time joining the per-bucket data —
+Citus runs another query - this time joining the per-bucket data -
 against the merged buckets. The "Tasks Shown: None, not supported
 for re-partition queries" line means EXPLAIN can't easily show the
 sub-tasks because they don't yet have a fixed query string at plan
@@ -563,16 +563,16 @@ Napkin math, no benchmark machine but the components are independent.
 
 A single fast-path router query has the shape:
 - coordinator: 1 binary search over 32 shard intervals = 5 comparisons ≈ 50 ns (computed from log2(32)=5 × ~10 ns per comparison on a hot cache line)
-- network round-trip to one worker, rack-local 10 GbE = 50–100 µs p50; cross-rack within a DC closer to 500 µs per the [Latency Numbers gist](https://gist.github.com/jboner/2841832)
-- worker: index lookup + return = 100–500 µs (estimated, indexed scan over a single shard)
-- **Total: ~250–1100 µs.**
+- network round-trip to one worker, rack-local 10 GbE = 50-100 μs p50; cross-rack within a DC closer to 500 μs per the [Latency Numbers gist](https://gist.github.com/jboner/2841832)
+- worker: index lookup + return = 100-500 μs (estimated, indexed scan over a single shard)
+- **Total: ~250-1100 μs.**
 
 A repartition join over a production-shape cluster (32 shards × 4
-nodes × 16 merge buckets — 4 nodes × 4 buckets/node default) has the
+nodes × 16 merge buckets - 4 nodes × 4 buckets/node default) has the
 shape:
-- coordinator: build `Job` tree with `BuildMapMergeJob` and friends ≈ 1–2 ms (estimated)
+- coordinator: build `Job` tree with `BuildMapMergeJob` and friends ≈ 1-2 ms (estimated)
 - 32 map tasks running in parallel (8 per node), each scanning one shard and writing 16 partition files (one per bucket) ≈ shard scan time + disk write
-- shuffle: 32 map tasks × 16 buckets = 512 partition files total cluster-wide; each of the 16 merge tasks reads 32 files (one from each map task), of which roughly ¾ live on remote nodes (8 local + 24 remote per merge task on a 4-node cluster, since 32/4 = 8)
+- shuffle: 32 map tasks × 16 buckets = 512 partition files total cluster-wide; each of the 16 merge tasks reads 32 files (one from each map task), of which roughly 3⁄4 live on remote nodes (8 local + 24 remote per merge task on a 4-node cluster, since 32/4 = 8)
 - merge tasks: 16 in parallel (4 per node), each running the join SQL against the materialised partitions
 
 For a `lineitem` × `orders` × `customer` join with each table at
@@ -582,14 +582,14 @@ shuffle alone moves ≈ 32 GB across the network. At a typical
 puts effective sustained throughput at ≈ 1 GB/s after framing
 overhead), that's 32 seconds of network time before the merge tasks
 even start. The fast-path router is four to five orders of
-magnitude faster: 32 s / 250 µs ≈ 1.3 × 10⁵× at the optimistic end,
-32 s / 1100 µs ≈ 2.9 × 10⁴× at the pessimistic end. The gap is _why_
+magnitude faster: 32 s / 250 μs ≈ 1.3 × 105× at the optimistic end,
+32 s / 1100 μs ≈ 2.9 × 104× at the pessimistic end. The gap is _why_
 co-locating tables on the join column matters more than any other
 tuning knob.
 
 The point of the planner is to keep you in the cheap path as much as
 possible. Single-table dist-key-equality queries stay in path 1
-(fast-path). Co-located multi-table joins stay in path 2 (router) —
+(fast-path). Co-located multi-table joins stay in path 2 (router) -
 fast-path is gated to one range table by `FastPathRouterQuery`'s
 `numFromRels != 1` check, so adding a second table always pulls you
 out of path 1. Reference tables collapse path 4 into path 3.
@@ -597,7 +597,7 @@ Recursive planning collapses non-pushdownable subqueries into an
 intermediate result that then behaves like a reference table. Every
 layer is "how do I avoid the shuffle."
 
-# 6. Tradeoffs — what this is bad at, named
+# 6. Tradeoffs - what this is bad at, named
 
 I've spent five sections on what Citus does well. Here's where it
 cracks.
@@ -605,7 +605,7 @@ cracks.
 **Two-distribution-column joins.** A query like `SELECT * FROM orders
 JOIN lineitem ON orders.o_orderkey = lineitem.l_orderkey` where
 `orders` is distributed by `o_orderkey` and `lineitem` is distributed
-by `l_orderkey` — those _must_ be co-located in the same colocation
+by `l_orderkey` - those _must_ be co-located in the same colocation
 group at table creation time. Citus does not silently rewrite the join. If you
 forgot to colocate, you get either a repartition (slow) or an error
 (`complex joins are only supported when all distributed tables are
@@ -613,7 +613,7 @@ joined on their distribution columns with equal operator`,
 `multi_join_order.c` line 308).
 
 **Cross-shard transactions.** Citus supports 2PC for multi-shard
-modifications, but the price is real — once a transaction touches more
+modifications, but the price is real - once a transaction touches more
 than one shard, Citus runs the prepare/commit dance and writes to the
 `pg_dist_transaction` catalog (`LogTransactionRecord` in
 `transaction_recovery.c`), and coordinator failures can leave prepared
@@ -623,18 +623,18 @@ includes commits like `d3330fdfe` ("Shard move in block_writes mode
 fails with idle_in_transaction_session_timeout on metadata workers
 (#8484)") that hint at the type of edge cases that show up in this
 layer. Distributed transaction handling is where Citus' bug surface
-is highest — not the planner, the executor.
+is highest - not the planner, the executor.
 
 **Anything Postgres' planner sees but Citus' planner doesn't.**
 Citus runs `standard_planner` and uses _its_ restriction info. If a
-Postgres planner version changes how it stores quals — say, the PG 16
-`permInfos` rework or the PG 18 GROUP-RTE change — Citus has to be
+Postgres planner version changes how it stores quals - say, the PG 16
+`permInfos` rework or the PG 18 GROUP-RTE change - Citus has to be
 patched. `git log --oneline -- src/backend/distributed/planner/distributed_planner.c`
 on the cached repo shows two "PG16 compatibility" commits (`b36c431ab`,
 `6056cb2c2`) and three explicit `PG18:` commits (`7cc0bb27c`,
 `002046b87`, `5d71fca3b`); the broader codebase has dozens more
 across `git log --all | grep -iE "PG ?1[5-8]"`. That's structural
-debt — Citus is bound to Postgres' internals at a much tighter
+debt - Citus is bound to Postgres' internals at a much tighter
 coupling than a SQL-on-anything system would be.
 
 **Aggregates that don't decompose.** Order-statistics aggregates
@@ -650,17 +650,17 @@ aren't monoidal.
 `create_distributed_table('orders', 'customer_id')`, Citus picks the
 shard placement at that moment and the shard count stays fixed.
 Adding nodes later requires `rebalance_table_shards`, which is an
-operational event — not something a SQL query can trigger
+operational event - not something a SQL query can trigger
 transparently. Compare this to systems where the data unit is
 auto-split: CockroachDB calls them "ranges" and rebalances them
 continuously across nodes; Spanner calls them "splits" and the
 TabletServer/Spanner placement layer auto-redistributes. Citus has
-explicit boundaries — fewer surprises on a quiet cluster, more
+explicit boundaries - fewer surprises on a quiet cluster, more
 operator work on a growing one.
 
 **The fast path is fragile.** Adding a join, a CTE, a sublink, a
-volatile function — any of these knock you out of fast-path
-eligibility. The check, in `FastPathRouterQuery` lines 246–251:
+volatile function - any of these knock you out of fast-path
+eligibility. The check, in `FastPathRouterQuery` lines 246-251:
 
 ```c
 // src/backend/distributed/planner/fast_path_router_planner.c
@@ -672,11 +672,12 @@ eligibility. The check, in `FastPathRouterQuery` lines 246–251:
 	}
 ```
 
-A query that takes 200µs on the fast path can balloon to 1 ms
-after a sleepy engineer adds a subquery (estimated jump from a
-single binary search through 32 shard intervals to a full
-standard_planner pass). That's not a critique of Citus — it's the
-nature of cliff-edge optimisations — but it's something monitoring
+A query that lives in the 250–1100 µs fast-path envelope (§5
+napkin: rack-local RTT + worker exec + binary search) can balloon
+into the 1–2 ms range after a sleepy engineer adds a subquery — a
+full standard_planner pass replaces the binary search through 32
+shard intervals. That's not a critique of Citus - it's the
+nature of cliff-edge optimisations - but it's something monitoring
 should watch for.
 
 # 7. What I'd build differently
@@ -686,7 +687,7 @@ change three things.
 
 **1. Make `Tasks Shown: None` actually show something.** The
 repartition EXPLAIN output is a black box at the moment that matters
-most. The planner _knows_ what query each map task will execute —
+most. The planner _knows_ what query each map task will execute -
 the deparse just happens late. Pre-computing one representative map
 query and one representative merge query, even with placeholder
 shard names, would turn an opaque "MapMergeJob" line into something
@@ -712,13 +713,13 @@ parsing but before `standard_planner`. PostgreSQL has a hook that
 fires after parse-analysis but before any planning (the
 parse-analyze hook in `src/include/parser/analyze.h`). Moving the check earlier means Citus could
 short-circuit before any of `eval_const_expressions`,
-`pull_var_clause`, etc. runs. Marginal — saves maybe 50µs per query
-on the fast path — but on a workload of 100k QPS, 50µs × 10^5 = 5
+`pull_var_clause`, etc. runs. Marginal - saves maybe 50μs per query
+on the fast path - but on a workload of 100k QPS, 50μs × 10^5 = 5
 core-seconds per second, i.e., 5 cores of headroom. Cost: high,
 because it changes the contract with Postgres and risks fighting
 future PG planner refactors.
 
-# Stretch — observability one-liner
+# Stretch - observability one-liner
 
 If you have a Citus cluster and want to see the planner's path
 selection in real time, set `client_min_messages = DEBUG2` and watch
@@ -726,7 +727,7 @@ the per-query DEBUG output. The fast-path queries print three lines
 (quoted in section 5, including "Distributed planning for a
 fast-path router query"); the router prints "Creating router plan";
 the multi-shard / logical planner doesn't emit a single canonical
-banner — at `DEBUG2` you'll catch the `multi_logical_optimizer.c`
+banner - at `DEBUG2` you'll catch the `multi_logical_optimizer.c`
 output ("push down of limit count: *N*", emitted at `DEBUG1` and
 therefore visible at `DEBUG2`), but the per-shard pruning detail
 ("shard count after pruning for *table*: *N*" in `shard_pruning.c`)
@@ -750,14 +751,14 @@ The second argument to `distributed_planner` is the query string
 the cluster plans, with PID, with no Postgres-side instrumentation.
 On a workload where `pg_stat_statements` doesn't tell you which
 queries hit which planner path, this is the cheapest way to find
-out. The userspace probe (`uprobe`) overhead is roughly 1–2 µs per
-hit on Linux x86_64 — measurably more than a kernel-only `kprobe`
+out. The userspace probe (`uprobe`) overhead is roughly 1-2 μs per
+hit on Linux x86_64 - measurably more than a kernel-only `kprobe`
 because each `uprobe` event traps to the kernel via the breakpoint
-mechanism and back. That's still small compared to a 200 µs+ Citus
+mechanism and back. That's still small compared to a 200 μs+ Citus
 fast-path query, so it's safe to leave running on production
 sampling, but loud enough to budget for on a 100k-QPS workload.
 
-# Stretch — repro snippet
+# Stretch - repro snippet
 
 If you have a working Citus cluster, this ~40-line bash + SQL
 snippet (37 lines of body, verified by `wc -l`) reproduces the four
@@ -765,7 +766,7 @@ planner paths on a fresh schema. No fixtures,
 just `createdb citus_demo` first.
 
 ```bash
-# scripts/four_paths.sh — reproduce the four Citus planner paths
+# scripts/four_paths.sh - reproduce the four Citus planner paths
 psql citus_demo <<'SQL'
 CREATE EXTENSION IF NOT EXISTS citus;
 SET citus.shard_count = 4;
@@ -821,17 +822,17 @@ took. That's about as honest as a distributed SQL system can be.
 
 - The Citus SIGMOD '21 paper, [Citus: Distributed PostgreSQL for
   Data-Intensive Applications](https://doi.org/10.1145/3448016.3457551).
-  Cited from `README.md` of the repo itself — the paper covers the
+  Cited from `README.md` of the repo itself - the paper covers the
   planner architecture with figures that are useful complements to
   reading the C source.
 - `src/backend/distributed/planner/README.md` in the repo is the
   most up-to-date design doc and is checked in alongside the code.
-- The PostgreSQL planner source — `src/backend/optimizer/plan/planner.c`
-  in the postgres tree — is what `standard_planner` resolves to; if
+- The PostgreSQL planner source - `src/backend/optimizer/plan/planner.c`
+  in the postgres tree - is what `standard_planner` resolves to; if
   you want to see what restriction info Citus is reading, that's
   where it gets generated.
 - Citus' regression test corpus
-  (`src/test/regress/expected/multi_explain.out` and friends — 833
+  (`src/test/regress/expected/multi_explain.out` and friends - 833
   `.out` files, ~925 `EXPLAIN` invocations across 182,602 lines of
   test SQL, counted with `wc -l src/test/regress/sql/*.sql`) is the
   largest repository of "what should the planner do" examples
@@ -842,5 +843,5 @@ took. That's about as honest as a distributed SQL system can be.
 _Read the source from `git clone https://github.com/citusdata/citus.git`,
 checkout `a3d5708a6` (Citus 14.0). Every line number cited above
 resolves there. If something doesn't line up, file an issue against
-this post — I'd rather fix the post than hand-wave around the
+this post - I'd rather fix the post than hand-wave around the
 mismatch._

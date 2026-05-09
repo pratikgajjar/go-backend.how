@@ -154,8 +154,10 @@ The whole index is one Postgres relation. Block 0 is the meta page
 ([`HnswMetaPageData`](https://github.com/pgvector/pgvector/blob/v0.8.2/src/hnsw.h#L314-L325)).
 Every other block contains a mix of two tuple types — element tuples
 and neighbour tuples — laid out exactly the way Postgres lays out heap
-tuples, with `ItemId`s in the page header and the data growing from
-the bottom of the page upwards.
+tuples: a 24-byte
+[page header](https://www.postgresql.org/docs/current/storage-page-layout.html),
+then a growing-down array of 4-byte `ItemIdData` entries pointing at
+the actual tuples, which grow up from the bottom of the 8 KB page.
 
 An **element tuple** is one node of the graph: a vector payload, up
 to 10 heap TIDs (so byte-identical duplicate vectors share the same
