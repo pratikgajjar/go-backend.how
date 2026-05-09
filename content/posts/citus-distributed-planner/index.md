@@ -161,9 +161,14 @@ SQL system.
 
 # 3. Architecture in 200 words
 
-Citus' planner is a switch with four arms, descending in order of how
-much work the planner has to do. Cheaper paths short-circuit out
-early; expensive paths fall through.
+Citus' planner has two top-level branches (fast-path eligible vs
+not), then a switch in `CreateDistributedPlan` with arms for each
+query kind (Router for SELECT / Modify / INSERT-SELECT / MERGE),
+each of which can fall through into recursive planning + the
+logical/physical pipeline if the simpler path errors. The diagram
+keeps to the four cases that actually produce per-shard SQL and
+omits `REPLAN_WITH_BOUND_PARAMETERS` (which just bounces back to
+PG) and the unified INSERT_SELECT subcases.
 
 ```
                             distributed_planner()

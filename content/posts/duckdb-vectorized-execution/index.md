@@ -512,16 +512,24 @@ is smaller because many blocks are partially filled, and column
 compression like BitPacking + DELTA_FOR brings real bytes down
 further). Best-of-5 means the file is in OS page cache, so the
 read happens at ~10 GiB/s effective; `539 / 10000 ≈ 0.054` s of
-"IO" wall-clock single-thread, divided across 8 threads gives a
-few ms each. Then 60M rows × ~5 ns/row of
-vectorized aggregation totals `60000000 × 5 = 300000000` ns of
-single-thread work; spreading that across 8 cores gives
-`300000000 / 8 = 37500000` ns ≈ 37 ms. Add ~50 ms of group-by
-finalisation and result materialisation (the `PERFECT_HASH_GROUP_BY`
-operator alone shows 1.056 s aggregate-across-threads in the
-profile, ÷8 ≈ 132 ms per thread). Total ≈ 200 ms; the
-[reported](#real-numbers) wall-clock is 210.5 ms. The remaining
-~10 ms is plan setup and inter-pipeline coordination.
+"IO" wall-clock single-thread, parallelised across 8 threads ≈ 7 ms
+each. The scan operator does more than read though — it
+decompresses bitpacked integers and applies the `l_shipdate`
+filter, so the profile reports `SEQ_SCAN: 1044` ms aggregate
+across-threads, which is `1044 / 8 ≈ 130` ms per thread.
+`PERFECT_HASH_GROUP_BY` adds another `1056 / 8 = 132` ms per
+thread. The 5 ns/row hot-loop estimate at the start of this post
+applies to *one* of the eight aggregations Q01 performs (sum/avg/
+count over six measure expressions plus count_order plus
+count(*)); each is ~5 ns/row independently, summing to roughly
+`6 × 5 × 60_000_000 / 8 = 225_000_000` ns ≈ 23 ms per thread of
+hot inner loop, comfortably inside the 132 ms of HASH_GROUP_BY
+which also pays for the group-key hash, the perfect-hash slot
+calculation, and final state copy. Wall clock is 210.5 ms because
+SEQ_SCAN and HASH_GROUP_BY pipeline through chunks rather than
+running back-to-back — 130 + 132 = 262 ms per thread is the upper
+bound of work, and parallel pipelines compress that toward the
+210.5 ms observed.
 
 # Stretch: a 50-line snippet you can run
 
