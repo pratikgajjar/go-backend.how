@@ -649,6 +649,29 @@ DIGIT_CLAIM_RE = re.compile(
 )
 
 
+FILLER_RE = re.compile(
+    # voice rule: no "in this post", "let's dive in", "as we'll see", etc.
+    r"\b(in this (?:blog )?post[, ]|let'?s (?:dive|explore|take a look)|as we'?ll (?:see|explore)"
+    r"|in conclusion|in summary|to wrap (?:up|things up)|stay tuned|without further ado"
+    r"|to recap|happy (?:coding|reading))\b",
+    re.IGNORECASE,
+)
+
+
+def filler_phrase_defects(body: str) -> int:
+    n = 0
+    for m in FILLER_RE.finditer(body):
+        # skip if inside a code block
+        # (cheap: assume inline-code or fenced block lines start with ```/`)
+        before = body[:m.start()]
+        # count fences before this position; if odd, we're inside a fence
+        if before.count("```") % 2 == 1:
+            continue
+        print(f"DEBUG filler: {m.group(0)!r}", file=sys.stderr)
+        n += 1
+    return n
+
+
 def digit_claim_consistency_defects(body: str) -> int:
     """If a paragraph says 'single-digit % overhead', the nearby percentages
     must actually be 1-9. Catches the iter-49 self-contradiction."""
@@ -894,6 +917,7 @@ def main() -> int:
     cats["numbered_list_gap"] = numbered_list_gap_defects(body)
     cats["github_line_ref"] = github_line_ref_defects(body, cached_repo)
     cats["digit_claim"] = digit_claim_consistency_defects(body)
+    cats["filler_phrases"] = filler_phrase_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -924,6 +948,7 @@ def main() -> int:
         "numbered_list_gap": 2,
         "github_line_ref": 3,
         "digit_claim": 3,
+        "filler_phrases": 2,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 

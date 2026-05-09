@@ -16,9 +16,9 @@ math = false
 > best-of-5: [Postgres 17.6](https://www.postgresql.org/docs/17/release-17.html)
 > takes 11,678 ms with 4 parallel workers and a 1 GB shared-buffer
 > cache. [DuckDB 1.5.2](https://github.com/duckdb/duckdb/releases)
-> on the same data finishes in 211 ms. That is `11678 / 211 ≈ 55×`
+> on the same data finishes in 210.5 ms. That is `11678 / 210.5 ≈ 55×`
 > on the same query, the same hardware, the same row count. Q06 at
-> SF=10 widens the measured gap to 600× — 25,825 ms vs 43 ms —
+> SF=10 widens the measured gap to 600× — 25,825 ms vs 42.9 ms —
 > because Postgres' bitmap-heap scan reads 8.2 GiB of pages off
 > disk while DuckDB streams three columns through L2 cache. Across
 > Q01/Q03/Q06 at SF=1 and SF=10 [the six speedups](#real-numbers)
@@ -513,8 +513,8 @@ single-thread work; spreading that across 8 cores gives
 finalisation and result materialisation (the `PERFECT_HASH_GROUP_BY`
 operator alone shows 1.056 s aggregate-across-threads in the
 profile, ÷8 ≈ 132 ms per thread). Total ≈ 200 ms; the
-[reported](#real-numbers) wall-clock is 211 ms. The remaining ~10
-ms is plan setup and inter-pipeline coordination.
+[reported](#real-numbers) wall-clock is 210.5 ms. The remaining
+~10 ms is plan setup and inter-pipeline coordination.
 
 # Stretch: a 50-line snippet you can run
 
