@@ -169,16 +169,16 @@ Three files do most of the lifting:
 
 Two thousand and forty-eight is not magic. It is the answer to the
 question *"how many 8-byte values fit in a CPU L2 cache slice while
-leaving room for the working set of three or four operators?"* On
-this Apple M-series chip the P-cores share a 16 MB L2 cache cluster
-(see [the Anandtech M1 microbench](https://www.anandtech.com/show/16252/mac-mini-apple-m1-tested/3)
-for the cluster topology and the Firestorm latency tables); call it
-~4 MB of L2 budget per active P-core thread. A vector of 2048
-`int64`s computes to `2048 × 8 = 16384` bytes (16 KB). A `DataChunk`
-of 8 such columns is `8 × 16 = 128` KB. That fits in the per-thread
-L2 budget with room to spare — about 3.1% of the 4 MB slice. A
-five-operator pipeline still fits every working vector in L2. That
-is the whole point of the constant. (Older TPC-H runs used 1024; the brief in this post's research
+leaving room for the working set of three or four operators?"* On the
+M3 Max in this machine, `sysctl hw.perflevel0` reports five P-cores
+sharing a 16 MB L2 cluster, so each active P-core thread sees about
+`16 / 5 ≈ 3.2` MB of L2 budget (per-core L1D is 128 KB; cache line is
+128 bytes, double the x86 64). A vector of 2048 `int64`s computes
+to `2048 × 8 = 16384` bytes (16 KB). A `DataChunk` of 8 such columns
+is `8 × 16 = 128` KB. That fits in the per-thread L2 budget with
+room to spare — about 4% of the 3.2 MB slice. A five-operator
+pipeline still fits every working vector in L2. That is the whole
+point of the constant. (Older TPC-H runs used 1024; the brief in this post's research
 folder said "1024 or 2048" and the source today says 2048 — the
 migration landed before 1.0, see the benchmark settings under
 `benchmark/tpch/`.)
