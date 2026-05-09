@@ -519,8 +519,9 @@ producer.Produce(ctx, topic, key, value, headers)
 
 Three details:
 
-- **Topic = `prefix.aggregateType`.** All `user.*` events for the
-  `payments` service land in the `payments.user` topic. Topic
+- **Topic = `prefix.aggregateType`.** All `user.*` events emitted
+  with prefix `payments-user` land in the `payments-user.user`
+  topic (consistent with the worked byte-math example in [§8](#8-ordering--throughput)). Topic
   proliferation is bounded by aggregate type, not event type; you
   filter individual event types on the consumer side.
 - **Key = aggregateId.** Kafka's sticky partitioner hashes this to

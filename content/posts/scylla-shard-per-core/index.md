@@ -291,17 +291,19 @@ sender's writes never invalidate a line the receiver is reading:
     };
 ```
 
-In memory, the layout looks like this:
+In memory, the three cache lines look like this:
 
 ```text
-       ┌───────────────────────────────┐  cache line N (sender writes only)
-0x000  │ _sent  _compl  _last_snt_batch│
-0x000  │ _last_cmpl_batch  _cur_qlen   │
-       ├───────────────────────────────┤  cache line N+1 (HW prefetcher spacer)
-0x040  │ metric_groups _metrics        │
-       ├───────────────────────────────┤  cache line N+2 (receiver writes only)
-0x080  │ _received  _last_rcv_batch    │
-       └───────────────────────────────┘
+        ┌───────────────────────────────────────┐
+line N  │ sender stats (5 × size_t = 40 bytes)  │  written by producer
+        │ + 24 bytes of alignas padding         │
+        ├───────────────────────────────────────┤
+line N+1│ metric_groups _metrics                │  spacer; HW prefetcher
+        │                                       │  cannot pull a remote line
+        ├───────────────────────────────────────┤
+line N+2│ receiver stats (2 × size_t = 16 bytes)│  written by consumer
+        │ + 48 bytes of alignas padding         │
+        └───────────────────────────────────────┘
 ```
 
 That comment — "hw prefetcher will not accidentally prefetch cache line

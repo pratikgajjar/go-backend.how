@@ -158,7 +158,7 @@ for _, p := range prios {
 }
 ```
 
-Out of the four default `NumCompactors = 4` workers, **one is permanently scheduled to drain L0**, and the other three pick whatever has the highest adjusted score. The split is deliberate. L0 stall is the only stall the user sees as visible latency — backpressure into `addLevel0Table` blocks the memtable flusher, which blocks the next mutation. Deep-level compaction lag is invisible until the LSM gets pathologically tall.
+Out of the four default `NumCompactors = 4` workers, **worker zero preferentially drains L0** (the `id == 0 && p.level == 0` branch above bypasses the usual `adjusted >= 1.0` floor), and the other three pick whatever has the highest adjusted score, falling out when nothing crosses 1.0. The split is deliberate. L0 stall is the only stall the user sees as visible latency — backpressure into `addLevel0Table` blocks the memtable flusher, which blocks the next mutation. Deep-level compaction lag is invisible until the LSM gets pathologically tall.
 
 The fallback when the picker can't find a target is `fillTablesL0ToL0`. If the writer is producing L0 tables faster than L0→Lbase can drain, Badger will compact L0 *into more L0 tables* — merging 4+ small tables into one larger one — so the L0 table count goes down even when Lbase is too overloaded to accept. The trick:
 

@@ -204,9 +204,11 @@ early; expensive paths fall through.
                            │   below MultiCollect; split aggregates
                            │      │
                            │      ▼
-                           │   Physical planner: MultiNode → Job tree
-                           │   of MapMergeJob nodes whose TaskType is
-                           │   READ_TASK / MAP_TASK / MERGE_TASK
+                           │   Physical planner: MultiNode → Job tree.
+                           │   Plain Jobs hold READ_TASK lists for the
+                           │   common case; MapMergeJob shows up only
+                           │   on the repartition path with MAP_TASK +
+                           │   MERGE_TASK plus dependent Jobs.
                            ▼
                        PlannedStmt with a CustomScan node "Citus Adaptive"
                        wrapping a list of per-shard SQL strings

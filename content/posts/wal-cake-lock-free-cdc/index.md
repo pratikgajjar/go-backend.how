@@ -536,15 +536,20 @@ func (rb *RingBuffer) checkForNewSegment() bool {
 `writeIdx`, cut a segment regardless of size:
 
 ```go
-// internal/buffer/ring_buffer.go
+// internal/buffer/ring_buffer.go (safety checks elided)
 func (rb *RingBuffer) createTickerSegment() {
-    writePos   := rb.writeIdx.Load()
-    lastSegPos := rb.lastSegIdx.Load()
-    if writePos <= lastSegPos { return }       // nothing pending
-    segment := Segment{StartIdx: lastSegPos, EndIdx: writePos}
-    rb.lastSegIdx.Store(writePos)
-    rb.tracker.Set(segment.StartIdx, &segment)
-    rb.segments <- segment
+	writePos := rb.writeIdx.Load()
+	lastSegPos := rb.lastSegIdx.Load()
+	if writePos <= lastSegPos {
+		return
+	}
+	segment := Segment{
+		StartIdx: lastSegPos,
+		EndIdx:   writePos,
+	}
+	rb.lastSegIdx.Store(writePos)
+	rb.tracker.Set(segment.StartIdx, &segment)
+	rb.segments <- segment
 }
 ```
 
@@ -643,17 +648,18 @@ When the walker advances, the LSN to ack is the LSN of the **last
 event in the contiguous prefix**:
 
 ```go
-// internal/buffer/ring_buffer.go (handleSegmentAck)
+// internal/buffer/ring_buffer.go (handleSegmentAck, log lines elided)
 if highContiguous > previousReadIdx {
-    rb.readIdx.Store(highContiguous)
-    lastEvent := rb.buffer[(highContiguous-1) % rb.size]
-    if lastEvent != nil {
-        select {
-        case rb.ackCh <- lastEvent.LSN: // → replicator → Postgres
-        default:
-            log.Warn().Msg("Ack channel is full")
-        }
-    }
+	rb.readIdx.Store(highContiguous)
+	idx := (highContiguous - 1) % rb.size
+	lastEvent := rb.buffer[idx]
+	if lastEvent != nil {
+		select {
+		case rb.ackCh <- lastEvent.LSN:
+		default:
+			log.Warn().Msg("Ack channel is full, could not send LSN after contiguous advancement")
+		}
+	}
 }
 ```
 
