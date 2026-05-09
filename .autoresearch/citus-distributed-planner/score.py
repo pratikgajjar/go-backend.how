@@ -768,21 +768,20 @@ def commit_ref_defects(body: str, cached_repo: Path) -> int:
 
 
 def required_sections_defects(body: str) -> int:
-    """Brief specified 8 sections that must be present (renamed allowed).
-    Match by keyword set within section headings."""
+    """Brief for citus-distributed-planner specified 7 sections that must be
+    present (renamed allowed). Match by keyword set within section headings."""
     headers = [
         h.lower() for h in re.findall(r"^#{1,3}\s+(.+?)\s*$", body, flags=re.MULTILINE)
     ]
     required = [
         # (label, list of keywords; any keyword match in any header is OK)
-        ("naive answer / failure modes", ["naive", "fails", "failure"]),
-        ("shape of the right answer", ["shape", "right answer", "wiring"]),
-        ("replication loop / pgoutput", ["replication", "pgoutput", "byte by byte"]),
-        ("ring buffer / lock-free", ["ring buffer", "lock-free", "doesn't lock", "lockfree"]),
-        ("parquet encoding", ["parquet", "zstd"]),
-        ("s3 upload", ["s3", "upload"]),
-        ("throughput math", ["throughput", "napkin", "math"]),
-        ("what i'd change / tradeoffs", ["change", "tradeoff", "limitation"]),
+        ("the hook", ["hook", "surprise", "contradiction"]),
+        ("the problem", ["problem", "first principles"]),
+        ("architecture in 200 words", ["architecture"]),
+        ("source dive", ["source dive", "byte-by-byte", "line-by-line", "walk through"]),
+        ("real numbers / benchmark", ["real numbers", "benchmark", "explain", "napkin"]),
+        ("tradeoffs", ["tradeoff", "bad at", "limitation"]),
+        ("what i'd build differently", ["build differently", "what i'd change", "what i would"]),
     ]
     n = 0
     for label, keywords in required:

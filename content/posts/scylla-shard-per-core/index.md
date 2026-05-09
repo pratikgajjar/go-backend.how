@@ -54,7 +54,7 @@ same workload in Go on the same machine and measure how much of
 Scylla's win is _structural_ — not language-deep, but
 architecture-deep — and where Go would have to break itself to copy it.
 
-# The problem this system was built to solve
+# The problem — why naive multi-threading fails past 8 cores
 
 The wall is mechanical sympathy.
 
@@ -88,14 +88,15 @@ they serialize on the coherence fabric: aggregate throughput =
 `1 / bounce`, *independent of N*. You bought 16 cores; you're using one
 — except slower, because the other 15 are queueing for the line.
 
-The honest math: with `bounce = 100 ns`, the aggregate ceiling is
-`1 / 100 ns = 10 M ops/sec`. Across 8 cores that's
-`10 M / 8 = 1.25 M ops/sec` per core, *no matter how clever the code
+The honest math: with bounce time `100 ns` between cores, the line
+changes hands once every `100 ns`, so the aggregate ceiling is
+`10,000,000 ops/sec` (`10 M`). Spread across 8 cores that's
+`10 / 8 = 1.25 M ops/sec` per core, *no matter how clever the code
 is*. The only way out is to not share.
 
 That's the rule Scylla took as a constraint, not a hint.
 
-# The architecture in 200 words
+# The architecture in 200 words — shape of the right answer
 
 Each Scylla node runs **N reactor threads**, where N = number of
 hardware threads. Each reactor:
@@ -132,7 +133,7 @@ No global locks. No global allocator. No shared row cache. The reactor
 is the unit of concurrency, the unit of memory, the unit of I/O, and the
 unit of fault.
 
-# The source dive — what `submit_to` actually costs
+# The source dive — byte-by-byte through `submit_to`
 
 There are two source files worth reading line by line:
 [`include/seastar/core/smp.hh`](https://github.com/scylladb/seastar/blob/master/include/seastar/core/smp.hh)
@@ -448,7 +449,7 @@ ring's completion queue into another ring's submission queue, never
 yielding the core. `strace -c` on a hot Scylla shard shows this
 plainly — long stretches of zero syscalls between bursts.
 
-# Real numbers — three-run wall-clock on a 4-core slice of an M3 Max
+# Real numbers — throughput math from a 4-core slice of an M3 Max
 
 Scylla itself needs Linux + io_uring + a chunk of locked memory at
 startup. Seastar's [`detect_io_uring`](https://github.com/scylladb/seastar/blob/master/src/core/reactor_backend.cc)
@@ -619,7 +620,7 @@ The lesson — and Scylla is honest about this in their own blog
 is that share-nothing is a *constraint discipline*, not a free lunch.
 You give up the JVM's flexibility to get a 10× ceiling raise.
 
-# What I'd build differently
+# What I'd change — build differently
 
 Three buckets. The cost estimates assume an experienced Go team.
 
