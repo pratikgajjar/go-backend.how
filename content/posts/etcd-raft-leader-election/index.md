@@ -189,6 +189,11 @@ func (r *raft) resetRandomizedElectionTimeout() {
 
 Every state transition that calls `r.reset(term)` re-rolls the timeout.
 That re-roll is what eventually breaks split votes.
+`globalRand.Intn` here is backed by `crypto/rand` rather than
+`math/rand` — defensive against adversarial environments where a
+predictable PRNG could let an attacker force split votes. The cost is
+~one syscall per state transition (a getentropy/getrandom call); not
+hot enough to matter against the 1-second timeout it's randomising.
 
 The default etcd configuration uses `HeartbeatTick: 1` and
 `ElectionTick: 10` (see
