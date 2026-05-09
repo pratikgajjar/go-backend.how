@@ -377,8 +377,8 @@ typedef union
 }			visited_hash;
 ```
 
-A breadth-first graph search needs to remember which nodes it has
-already touched. The naive choice is "a `set<TID>`". pgvector keeps
+A best-first graph search (priority-queue-driven, like Dijkstra)
+needs to remember which nodes it has already touched. The naive choice is "a `set<TID>`". pgvector keeps
 three hash tables and picks one at runtime:
 
 - `tids` (keyed by `ItemPointerData`) for on-disk traversals: each
