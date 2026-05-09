@@ -305,7 +305,7 @@ After the pull, `podman run` to first 200 OK on `/healthz`. Same harness, three 
 
 `app-uptime` is read from the JSON response: how many ms the Go process had been alive when it answered the curl. That difference (`end-to-end - app-uptime`) is the *non-app* cost — namespace creation, bridge networking, OCI hook execution, image-mount, kubelet readiness probing in production. It's **6–10 ms for every 1 ms** of app boot.
 
-> Measured: the Go runtime + listener-ready chain takes 17–56 ms inside any of these three images (median ~20 ms; one scratch run hit 56 ms as an outlier). The container runtime spends ~200 ms on plumbing whether you ship 4 MB or 10 MB. Optimising the binary past stripped-and-trimpath does nothing for this number.
+> Measured: the Go runtime + listener-ready chain takes 17–56 ms inside any of these three images (median ~20 ms; one scratch run hit 56 ms as an outlier). The container runtime spends ~200 ms on plumbing whether you ship 4 MB or 10 MB on the wire. Optimising past `-s -w -trimpath` does nothing.
 
 The measured 17–56 ms internal boot is worth decomposing. With the actual `boot=0.000523587 s` zap line as one anchor (which captures only main-package init + main() user code through the goroutine spawn — NOT the Go runtime/scheduler init that runs before `bootedAt`, NOR the listener bind or first accept that runs after), a 10 MB stripped Go binary in this Linux VM breaks down to:
 
