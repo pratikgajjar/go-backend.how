@@ -12,6 +12,7 @@
   "https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/": 200,
   "https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container": 200,
   "https://pkg.go.dev/cmd/go#hdr-Build_modes": 200,
+  "https://pkg.go.dev/net#hdr-Name_Resolution": 200,
   "https://pkg.go.dev/os/user": 200,
   "https://pkg.go.dev/testing#hdr-Benchmarks": 200,
   "https://www.pcisecuritystandards.org/document_library/?category=pcidss": 200

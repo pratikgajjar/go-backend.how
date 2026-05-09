@@ -550,9 +550,9 @@ A single fast-path router query has the shape:
 - **Total: ~250–1100 µs.**
 
 A repartition join over 32 shards × 4 nodes × 6 merge buckets has the shape:
-- coordinator: build `Job` tree with `BuildMapMergeJob` and friends ≈ 1–2ms
-- 32 map tasks running in parallel, each scanning a shard and writing 6 partition files ≈ shard scan time + disk write
-- shuffle: every node writes 6 × 32 = 192 partition files, reads 6 × 4 = 24 files from each peer
+- coordinator: build `Job` tree with `BuildMapMergeJob` and friends ≈ 1–2 ms (estimated)
+- 32 map tasks running in parallel (8 per node), each scanning one shard and writing 6 partition files (one per bucket) ≈ shard scan time + disk write
+- shuffle: 32 map tasks × 6 buckets = 192 partition files total cluster-wide; each of the 6 merge tasks reads 32 files (one from each map task), of which roughly ¾ live on remote nodes (8 local + 24 remote per merge task on a 4-node cluster, since 32/4 = 8)
 - merge tasks: 6 in parallel, each running the join SQL against the materialised partitions
 
 For a `lineitem` × `orders` × `customer` join with each table at
