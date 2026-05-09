@@ -903,9 +903,10 @@ The other thing reading this code teaches: **defaults are policy.**
 default; `ReadOnlySafe` is the right default. Each of these has shipped
 this way for years, in a library that runs Kubernetes' control plane,
 CockroachDB, TiDB, and a long list of other systems. The library's
-correctness story is solid — that's what 12 years of CI and TLA+ checks
-buy you. The defaults story is less solid, and worth examining the next
-time you wire `etcd-raft` into something new.
+correctness story is solid — that's what a decade of CI plus the more
+recent TLA+ trace-validation work buys you. The defaults story is less
+solid, and worth examining the next time you wire `etcd-raft` into
+something new.
 
 # Further reading
 
