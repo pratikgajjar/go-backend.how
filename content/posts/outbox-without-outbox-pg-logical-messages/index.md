@@ -476,7 +476,11 @@ Two message types matter:
 filtering:
 
 ```go
-func (w *WALSubscriber) processLogicalMessage(ctx context.Context, msg pglogrepl.Message, xLogPos pglogrepl.LSN) {
+func (w *WALSubscriber) processLogicalMessage(
+    ctx context.Context,
+    msg pglogrepl.Message,
+    xLogPos pglogrepl.LSN,
+) {
     if ldm, ok := msg.(*pglogrepl.LogicalDecodingMessage); ok {
         if ldm.Prefix == w.cfg.OutboxPrefix {
             w.handleMessage(ctx, ldm.Content, xLogPos)
