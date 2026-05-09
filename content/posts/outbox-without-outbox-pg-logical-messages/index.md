@@ -224,8 +224,10 @@ Three properties matter:
 
 > The WAL **is** the outbox.
 
-The function has been there since 9.6 (logical replication itself
-went GA in 10). It was added specifically so applications could
+The function has been there since 9.6. (Pedantic ordering: the
+underlying logical-decoding framework went GA in 9.4; the `pgoutput`
+plugin factlib's consumer relies on landed in 10 alongside built-in
+logical replication.) It was added specifically so applications could
 co-opt the WAL stream as a generic event bus, then sat unused for
 nearly a decade while every event-driven-architecture post kept
 teaching the table-and-poller recipe.
