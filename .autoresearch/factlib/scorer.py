@@ -658,6 +658,21 @@ FILLER_RE = re.compile(
 )
 
 
+def trailing_whitespace_defects(body: str) -> int:
+    """Lines with trailing whitespace are an editor-config nit but signal
+    sloppiness. Catches the regression class."""
+    n = 0
+    for line in body.splitlines():
+        # ignore code blocks (we don't want to flag whitespace-significant code)
+        if line.endswith(" ") or line.endswith("\t"):
+            n += 1
+    if n > 5:
+        print(f"DEBUG trailing_whitespace: {n} lines with trailing whitespace",
+              file=sys.stderr)
+        return 1
+    return 0
+
+
 def paragraph_terminator_defects(body: str) -> int:
     """A prose paragraph (>40 chars, not a list/heading/code) should end with
     sentence punctuation, not a stray comma or word fragment."""
@@ -948,6 +963,7 @@ def main() -> int:
     cats["digit_claim"] = digit_claim_consistency_defects(body)
     cats["filler_phrases"] = filler_phrase_defects(body)
     cats["para_terminator"] = paragraph_terminator_defects(body)
+    cats["trailing_ws"] = trailing_whitespace_defects(body)
 
     weights = {
         "build_warnings": 1,
@@ -980,6 +996,7 @@ def main() -> int:
         "digit_claim": 3,
         "filler_phrases": 2,
         "para_terminator": 1,
+        "trailing_ws": 1,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
