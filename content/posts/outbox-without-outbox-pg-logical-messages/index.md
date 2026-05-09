@@ -669,9 +669,9 @@ func (w *WALSubscriber) listenEventAck(ctx context.Context) {
 Note the design: the LSN is **not** flushed to Postgres on every Kafka
 ack. It's coalesced into a 1-second tick. At 10K events/sec, that
 collapses 10,000 ack writes into one `pg_send_standby_status_update`
-RPC. We trade a 1-second window of replay-on-crash for two orders of
-magnitude less ack traffic. Sensible default; tunable if your
-workload disagrees.
+RPC — that is **four orders of magnitude** less ack traffic
+(`10,000 → 1` per second). We trade a 1-second window of replay-on-
+crash for it. Sensible default; tunable if your workload disagrees.
 
 ### Scenario 2: producer crash mid-transaction
 
@@ -845,10 +845,11 @@ on top of the business transaction. Cost components:
   total                          567 B per emit
   ```
 
-  Plus the surrounding `xl_xact_commit` record at COMMIT, which
-  the same headers put at `24 (XLogRecord) + 5 (data header) + 8
-  (TimestampTz xact_time)` = **37 B** in its minimal form. Round
-  the per-event amortised WAL footprint up to **~600 B**.
+  Plus the surrounding `xl_xact_commit` record at COMMIT. Its
+  minimal payload is just `TimestampTz xact_time` (8 B), small
+  enough to use `XLogRecordDataHeaderShort` (2 B), so the COMMIT
+  itself costs `24 + 2 + 8` = **34 B**. Round the per-event amortised
+  WAL footprint up to **~600 B** (567 + 34 = 601).
 
 - **Total round-trip.** We have not run the rig that would let us
   publish a measured p50 for `Emit()` honestly, so derive it from
