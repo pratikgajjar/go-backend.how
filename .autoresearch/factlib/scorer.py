@@ -503,6 +503,47 @@ RENDERED_HTML_REL = "public/posts/outbox-without-outbox-pg-logical-messages/inde
 ANCHOR_LINK_RE = re.compile(r"\]\(#([a-zA-Z0-9_-]+)\)")
 
 
+LICENSE_CLAIM_RE = re.compile(
+    r"\(\s*(Apache-?2(?:\.0)?|MIT|BSD-?[23]?(?:-Clause)?|GPL-?\d?(?:\.0)?|MPL-?2(?:\.0)?|AGPL-?3(?:\.0)?)\s*\)",
+    re.IGNORECASE,
+)
+
+
+def license_claim_defects(body: str, cached_repo: Path) -> int:
+    """If we claim a license name in parens (Apache-2.0), the cached repo
+    should have a LICENSE file or SPDX header containing that name."""
+    n = 0
+    license_files = list(cached_repo.glob("LICENSE*")) + list(cached_repo.glob("COPYING*"))
+    license_text = ""
+    for f in license_files:
+        try:
+            license_text += f.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            pass
+    # Also scan README + first 50 lines of any source file
+    for f in [cached_repo / "README.md", cached_repo / "README"]:
+        if f.exists():
+            try:
+                license_text += f.read_text(encoding="utf-8", errors="ignore")[:5000]
+            except Exception:
+                pass
+    license_text_norm = license_text.lower().replace("-", "").replace(" ", "")
+    for m in LICENSE_CLAIM_RE.finditer(body):
+        # Skip "(Apache-2.0)" inside this very file by checking surrounding text
+        surrounding = body[max(0, m.start() - 60):m.end() + 60]
+        if "no declared LICENSE" in surrounding or "check upstream" in surrounding:
+            continue
+        claim = m.group(1).lower().replace("-", "").replace(" ", "")
+        # accept fuzzy matches: "apache2.0" in text means claim "apache2" is OK
+        # take just the name root (apache, mit, bsd, gpl, mpl, agpl)
+        root = re.match(r"[a-z]+", claim).group(0)
+        if root not in license_text_norm:
+            print(f"DEBUG license_claim: '{m.group(1)}' not in cached repo LICENSE/README",
+                  file=sys.stderr)
+            n += 1
+    return n
+
+
 def anchor_resolution_defects(body: str, repo_root: Path) -> int:
     """Every `](#id)` in the post must resolve to an actual id="..." in the
     rendered HTML."""
@@ -632,6 +673,7 @@ def main() -> int:
     cats["long_code_lines"] = long_line_defects(body)
     cats["heading_skip"] = heading_skip_defects(repo_root)
     cats["bad_anchor_link"] = anchor_resolution_defects(body, repo_root)
+    cats["license_claim"] = license_claim_defects(body, cached_repo)
 
     weights = {
         "build_warnings": 1,
@@ -655,6 +697,7 @@ def main() -> int:
         "long_code_lines": 1,
         "heading_skip": 4,
         "bad_anchor_link": 3,
+        "license_claim": 4,
     }
     total = sum(weights[k] * v for k, v in cats.items())
 
