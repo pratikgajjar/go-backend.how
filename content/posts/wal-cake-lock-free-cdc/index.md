@@ -620,20 +620,24 @@ segments only:
 ```go
 // internal/buffer/ring_buffer.go
 func (rb *RingBuffer) findHighestContiguous(segStartIdx, curReadIdx int64) int64 {
-    s, ok := rb.tracker.Get(segStartIdx)
-    if !ok { return curReadIdx }
-    s.done = true
-    if s.StartIdx == curReadIdx {
-        cur := s
-        for cur.done {
-            rb.tracker.Del(cur.StartIdx)
-            curReadIdx = cur.EndIdx
-            next, ok := rb.tracker.Get(cur.EndIdx)
-            if !ok { break }
-            cur = next
-        }
-    }
-    return curReadIdx
+	s, ok := rb.tracker.Get(segStartIdx)
+	if !ok {
+		return curReadIdx
+	}
+	s.done = true
+	if s.StartIdx == curReadIdx {
+		cur := s
+		for cur.done {
+			rb.tracker.Del(cur.StartIdx)
+			curReadIdx = cur.EndIdx
+			next, ok := rb.tracker.Get(cur.EndIdx)
+			if !ok {
+				break
+			}
+			cur = next
+		}
+	}
+	return curReadIdx
 }
 ```
 
