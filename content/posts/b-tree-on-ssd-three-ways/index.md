@@ -440,11 +440,12 @@ With `FillPercent = 0.5`, a leaf holds about
 `(4096 × 0.5 - 16) / (16 + 8 + 200) ≈ 9` records - so 200,000 records
 spread across ≈ 22,000 leaves. Branch pages have a 16-byte
 `branchPageElement` ([page.go:14](https://github.com/etcd-io/bbolt/blob/main/internal/common/page.go#L14))
-+ 8-byte key ≈ 24 bytes per entry → fanout ≈ `4080 / 24 = 170`. Tree
-depth = `ceil(log_170(22000)) = 2` (root → leaf), so each Get is
-**2 page walks ≈ 2 cache-line fetches into mmap'd memory ≈ ~430 ns p50**,
-matching the measured 430 ns / 459 ns. This is napkin-math:
-`2 × ~150 ns/L3-pageref + ~100 ns binary-search ≈ 400 ns ≈ measured`.
++ 8-byte key ≈ 24 bytes per entry → fanout ≈ `4080 / 24 = 170`. Need
+`ceil(log_170(22000)) = 2` levels of branches above the leaves, so
+each Get is `root → branch → leaf` = **3 page accesses** through the
+mmap. That's `3 × ~100 ns/cache-line + ~100 ns total binary-search ≈
+400 ns`, matching the measured 430 ns / 459 ns within napkin
+tolerance.
 
 LMDB and BoltDB diverge on writes because BoltDB pays Go-runtime
 overhead per page - every dirty `node` is a Go heap allocation,
