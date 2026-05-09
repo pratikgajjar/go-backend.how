@@ -784,7 +784,7 @@ import (
 
 type padded struct {
 	v int64
-	_ [56]byte
+	_ [56]byte // 64B per entry; for Apple Silicon (128B lines) bump to [120]byte
 }
 
 func main() {

@@ -635,14 +635,18 @@ I'd build none of these from scratch. The interesting question is
 
 Three concrete things I'd change:
 
-**LMDB** - let me query and resize `mapsize` while live, like Linux
+**LMDB** - let me resize `mapsize` *while transactions are live*.
+Today `mdb_env_set_mapsize`
+([mdb.c:4651](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L4651))
+returns `EINVAL` if any txn is active (the comment at line 4653 says
+"caller is responsible for making sure there are no active txns").
+For a long-lived process this means resize requires a quiescent point,
+which forces a service blip. Linux
 [`mremap(MREMAP_MAYMOVE)`](https://man7.org/linux/man-pages/man2/mremap.2.html)
-permits. The current "set it once at open" rule is a relic of how
-`mmap` worked on the platforms LMDB targeted in 2011. Modern Linux
-+ macOS could grow the mapping without invalidating reader pointers
-if LMDB used a free-list-of-mmap-segments instead of a single
-contiguous map. Cost: maybe 200 lines in `mdb_env_open` + careful
-testing against the reader-pinning code.
+permits live grow. LMDB could grow the mapping without invalidating
+reader pointers by using a free-list-of-mmap-segments instead of a
+single contiguous map. Cost: maybe 200 lines in `mdb_env_set_mapsize`
++ careful testing against the reader-pinning code.
 
 **BoltDB** - add a write-ahead log for the page allocator so writes
 don't have to be synchronous-fsync per tx. Today, every `db.Update`

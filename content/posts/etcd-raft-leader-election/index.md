@@ -870,6 +870,10 @@ time you wire `etcd-raft` into something new.
   storage).
 - [`design.md`](https://github.com/etcd-io/raft/blob/main/design.md) —
   the library's own design notes, especially on the Ready/Advance loop.
+- [`etcd-io/etcd/contrib/raftexample`](https://github.com/etcd-io/etcd/tree/main/contrib/raftexample)
+  — a runnable 3-node KV store built on this library, kill-the-leader
+  demos included. The reference for "what does a user of this code
+  actually look like".
 - [TigerBeetle's deterministic
   simulation](https://backend.how/posts/the-tiger-style/) — same idea,
   different domain. Reading the etcd-raft test infra after TigerBeetle's
