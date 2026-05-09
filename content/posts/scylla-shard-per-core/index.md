@@ -668,12 +668,13 @@ the Java fork) all support routing on the client side, but you have
 to *use* a recent shard-aware driver and configure it correctly. A
 misconfigured client turns Scylla into a worse Cassandra.
 
-**6. Tail latency under spillover is worse, not better.** When a shard
-saturates, queue depth on its `smp_message_queue` rises and other
-shards' requests for that partition wait in line. Cassandra's request
-spreads across the whole pool; Scylla's request waits for its shard. P99
-under saturation is sharper for Scylla. P50 is much better. You pick
-your poison.
+**6. Tail latency at a hot partition is sharper, not flatter.** When
+one shard saturates, queue depth on its `smp_message_queue` rises and
+the other 15 shards can't drain it. Cassandra's request spreads across
+the whole pool; Scylla's request waits for its shard. The tradeoff is
+real and well-known: Scylla's P50 typically wins (no shared-pool
+overhead), Scylla's P99 against a hot key can lose (no other shard can
+help). You pick your poison.
 
 The lesson — and Scylla is honest about this in their own engineering
 [blog](https://www.scylladb.com/blog/) — is that share-nothing is a
