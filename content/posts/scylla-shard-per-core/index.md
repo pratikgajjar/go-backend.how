@@ -495,9 +495,11 @@ Scylla, I'll measure the *thing the architecture buys you*: the per-op
 cost of cross-core coordination, versus the per-op cost when no
 coordination is needed.
 
-The 50-line program below ran on a MacBook Pro M3 Max, GOMAXPROCS=4,
-Go 1.26.3. Each variant runs four goroutines, each does 5,000,000
-increments, and we measure wall time:
+The benchmark below ran on a MacBook Pro M3 Max with GOMAXPROCS=4,
+Go 1.26.3. The two key variants are inlined here; the full program
+(five variants in roughly 150 lines) lives in scylla-post-bench. Each
+variant runs four goroutines, each does 5,000,000 increments, and we
+measure wall time:
 
 ```go
 // Save and run with: go run .   (single-file benchmark, no module)
