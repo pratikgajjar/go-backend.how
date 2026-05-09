@@ -715,10 +715,10 @@ procedure is the cost of being safe across schedulers.
 The 90% disk-read failure mode in §1 is not a `pg_partman` bug. It is
 the gap between what you know about the planner (it prunes ranges)
 and what you assumed it would prune (everything you can prove). The
-90% number is observed: from §5, an unpinned `now()` predicate opens
+90% number derives from §5: an unpinned `now()` predicate opens
 all 90 children and reads ~46 MB of metadata against ~12 MB of
-actual results, ratio measured at the rough range from 75 to 90%
-wasted I/O. Pin your time. Turn on [enable_partitionwise_join](https://www.postgresql.org/docs/current/runtime-config-query.html#GUC-ENABLE-PARTITIONWISE-JOIN). Use `apply_constraints`
+actual results, ratio in the rough range from 75 to 90% wasted I/O
+(napkin estimate from the table[^bench]). Pin your time. Turn on [enable_partitionwise_join](https://www.postgresql.org/docs/current/runtime-config-query.html#GUC-ENABLE-PARTITIONWISE-JOIN). Use `apply_constraints`
 on your hot non-key columns. Watch `pg_stat_user_indexes.idx_scan`
 per child to see whether your BRIN is actually helping. Do not
 subpartition for performance. Drop the default partition.
@@ -734,3 +734,18 @@ older versions differ in details (especially trigger-based partitioning
 in 4.x, removed in 5.0). Numbers here are derived from past benchmarks
 on 1B-row time-series tables on a 1.5 GB/s NVMe host plus napkin math
 from the source — your mileage will vary; please share if it does._
+
+[^bench]: Numbers in this post that quote a wall-clock figure or a
+range ("observed," "measured," "range from X to Y") are derived from
+a mix of (a) past `EXPLAIN (ANALYZE, BUFFERS)` runs against partitioned
+time-series tables in the 100 GB to 2 TB range on commodity NVMe
+(roughly 1.2 to 1.8 GB/s sequential read, no remote storage), (b)
+napkin math derived from the pg_partman source above and the Postgres
+docs cited inline ([release notes index](https://www.postgresql.org/docs/release/),
+[BRIN intro](https://www.postgresql.org/docs/current/brin.html#BRIN-INTRO),
+[ALTER TABLE locking](https://www.postgresql.org/docs/current/sql-altertable.html)),
+and (c) the published `pg_partman` `CHANGELOG.md` and `doc/` files for
+behavior claims. None of these come from a single named benchmark suite —
+ranges reflect the spread across configurations rather than measurement
+uncertainty in a single setup. Treat them as order-of-magnitude
+guidance, not as p50/p99 you can pin an SLO to.

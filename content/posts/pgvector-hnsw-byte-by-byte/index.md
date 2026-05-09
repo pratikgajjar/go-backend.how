@@ -12,11 +12,12 @@ featured = false
 math = false
 +++
 
-> A 1.0 MB shared object (`vector.so` is 1,015,584 bytes on Postgres
-> 15) turns Postgres — a system that has spent twenty-five years
-> optimising B-trees over rows — into a vector database that beats
-> brute force by an order of magnitude. The algorithmic core fits in
-> 800 lines of C that mostly manipulates 8 KB pages — measured below.
+> A 1.0 MB shared object (1,015,584 bytes for the `pg15` build of
+> pgvector v0.8.2 on `pgvector/pgvector:pg15`) turns Postgres — a
+> system that has spent twenty-five years optimising B-trees over
+> rows — into a vector database that beats brute force by an order
+> of magnitude. The algorithmic core fits in 800 lines of C that
+> mostly manipulates 8 KB pages.[^bench]
 
 I keep meeting teams who treat [pgvector](https://github.com/pgvector/pgvector)
 as if it were an external service: "the vector store." It isn't. It's
@@ -46,10 +47,11 @@ query, same hardware, with the index turned off and Postgres falling
 back to a sequential scan with [`vector_l2_ops`](https://github.com/pgvector/pgvector/blob/v0.8.2/src/vector.c#L573)
 returns an exact answer in **5,440 µs**.
 
-That is **14× faster** for **5.4 % less recall**, measured by me on
-an Apple M4 Pro inside a Linux VM. The arithmetic is `5440 / 382 =
-14.24`, and "recall@10 = 94.6 %" means out of every 10 true neighbours
-returned by the exhaustive scan, the index agreed on 9.46 of them.
+That is **14× faster** for **5.4 % less recall**, observed first-hand
+on an Apple M4 Pro inside a Linux VM[^bench]. The arithmetic is
+`5440 / 382 ≈ 14.24`, and "recall@10 = 94.6 %" means out of every
+10 true neighbours returned by the exhaustive scan, the index agreed
+on 9.46 of them.
 
 Here is the surprise. HNSW achieves this by walking a graph that
 lives entirely inside Postgres' regular `MAIN_FORKNUM` buffers — the
@@ -437,17 +439,18 @@ the auto-vectorizer doesn't know how to use. That's the only place in
 the distance code with manual intrinsics.
 
 For a `vector(128)` query, one distance call is 128 FMAs and a
-horizontal sum. On a 3 GHz core with AVX2 FMA (8 floats per
-FMA, 1 FMA issued per cycle, ~4-cycle latency pipelined) that's
-`128 / 8 + 4 = 20` cycles of arithmetic, about 7 ns; on ARM NEON
-with 4-wide FMLA it's closer to `128 / 4 + 5 ≈ 37` cycles or 12 ns.
-The total query time of 382 µs at default `ef_search`
-(see the table below) is dominated by the buffer-read random walk
-through the graph, not the math. `EXPLAIN (BUFFERS, ANALYZE)` on
-our benchmark shows each search at `ef_search = 40` registers
-528 shared-buffer hits — a measured `528 × 8 = 4,224` KB of cache
-touch — versus on the order of `528 × 7 = 3,696` ns of FMA work.
-At those numbers buffer-pool bookkeeping is the dominant cost.
+horizontal sum. On a 3 GHz core with AVX2 FMA (8 floats per FMA, 1
+FMA issued per cycle, ~4-cycle latency pipelined) the multiply
+phase is `128 / 8 = 16` cycles plus pipeline drain, totalling about
+7 ns of arithmetic. ARM NEON's 4-wide FMLA needs roughly
+`128 / 4 = 32` cycles plus a similar drain, about 12 ns. The total
+query time of 382 µs at default `ef_search` (see the table below) is
+dominated by the buffer-read random walk through the graph, not the
+math. `EXPLAIN (BUFFERS, ANALYZE)` on this post's benchmark shows
+each search at `ef_search = 40` registers 528 shared-buffer hits —
+a measured `528 × 8 = 4224` KB of cache touch[^bench] — versus
+`528 × 7 = 3696` ns of FMA work. At those numbers, buffer-pool
+bookkeeping is the dominant cost.
 
 ## 4.4 Random levels: where 1/ln(M) comes from
 
@@ -533,14 +536,15 @@ table size:        27.9 MB
 ```
 
 `833 B / row` decomposes by napkin math: the vector itself is
-`128 × 4 = 512 B` plus a `Vector` header (28 B observed), the level-0
-neighbour tuple holds `2 × 16 = 32` TIDs at 6 B each, so
-`32 × 6 = 192 B`, plus an 8 B tuple header, plus the element tuple's
-per-page slot (`ItemIdData` is 4 B), plus alignment slack. The dominant term is the vector data; the measured index
-size to table size ratio is `41,631,744 / 29,261,824 ≈ 1.42`,
-which means the index ships about 40 % more bytes than the heap
-because each element exists in both — see the size measurement
-below.
+`128 × 4 = 512 B` plus a `Vector` header (28 B from
+`offsetof(Vector, x)` in `src/vector.h`), the level-0 neighbour
+tuple holds `2 × 16 = 32` TIDs at 6 B each, so `32 × 6 = 192 B`,
+plus an 8 B tuple header, plus the element tuple's per-page slot
+(`ItemIdData` is 4 B), plus alignment slack. The dominant term is
+the vector data; the index-to-table size ratio came out at
+`41,631,744 / 29,261,824 ≈ 1.42`[^bench], which means the index ships
+about 40 % more bytes than the heap because each element exists in
+both.
 
 Query latency at varying `ef_search`:
 
@@ -559,11 +563,11 @@ exact     │   1.0000  │    5,440 │   18,668
 Three things to read out of this table.
 
 **The recall curve has a knee.** Going from `ef_search = 40` to `80`
-buys 2 percentage points of recall for 13 % more measured latency.
-Going from `80` to `320` buys 0.18 percentage points for 19 % more
-latency. The default of 40 is well-chosen for `K = 10`; pushing past
-95 % recall costs over 8× the latency at the same `K`, as the table
-above shows.
+buys 2 percentage points of recall for 13 % more latency on this
+benchmark[^bench]. Going from `80` to `320` buys 0.18 percentage
+points for 19 % more latency. The default of 40 is well-chosen for
+`K = 10`; pushing past 95 % recall costs over 8× the latency at the
+same `K`, as the table above shows.
 
 **Latency is dominated by the random walk, not the math.**
 `EXPLAIN (BUFFERS, ANALYZE)` measures `ef_search = 40` at 528
@@ -701,10 +705,10 @@ HNSW for anything that needs deterministic ranking.
 **Build time scales worse than IVFFlat.** Build is `O(N × log N ×
 ef_construction)` graph operations. IVFFlat's build is `O(N × probes
 × iterations)` k-means work, which parallelises better and uses less
-memory. The build measured in this post hit
-`50,000 / 6.0 ≈ 8,333` vectors/s single-threaded; at that rate a
-10M-row HNSW build takes about 1,200 s wall time — derived as
-`10,000,000 / 8,333 ≈ 1,200` seconds, i.e. roughly 20 minutes — and
+memory. The build in this post hit `50,000 / 6.0 ≈ 8,333`
+vectors/s single-threaded[^bench]; at that rate a 10M-row HNSW
+build takes about 1,200 s wall time — derived as
+`10,000,000 / 8,333 ≈ 1,200` seconds, roughly 20 minutes — and
 pgvector's parallel-build mode (`HnswParallelBuildMain`) cuts that
 by `max_parallel_maintenance_workers`-fold in practice.
 
@@ -726,13 +730,13 @@ Probably not worth it — buffer reads, not bytes, dominate.
 
 **2. Separate the vector payload from the graph nodes.** pgvector
 stores the full vector in every element tuple. The L2-search
-benchmark above touched `528 × 8 = 4,224` KB of buffer per query
-at default `ef_search = 40` (`EXPLAIN BUFFERS`-measured), and a tuple
-size for `vector(128)` is dominated by `128 × 4 = 512` bytes of
-floats. If you split the vector into a side relation and kept only
-the TID and neighbour pointers in the graph node, you'd pack many
-more graph nodes per 8 KB page and the buffer-read working set
-shrinks roughly proportional to the savings. The cost is two
+benchmark above touched `528 × 8 = 4224` KB of buffer per query at
+default `ef_search = 40` per `EXPLAIN (BUFFERS)`[^bench], and a
+tuple for `vector(128)` is dominated by `128 × 4 = 512` bytes of
+floats. Splitting the vector into a side relation, keeping only the
+TID and neighbour pointers in the graph node, would let many more
+graph nodes pack per 8 KB page — buffer-read working set shrinks
+roughly proportional to the savings. The cost is two
 relations and a join at read time. Microsoft's
 [DiskANN](https://github.com/microsoft/DiskANN) and the
 [FreshDiskANN paper](https://arxiv.org/abs/2105.09613) describe
@@ -798,8 +802,8 @@ respectively._
 
 This post is a code-archaeology run on pgvector v0.8.2. I read every
 line of `src/hnsw*.c` and `src/hnswutils.c` (`5,333` lines total),
-ran the index against a 50,000-row dataset I generated, and measured
-recall and latency myself. The "800 lines" in the title is a small
+ran the index against a 50,000-row dataset I generated, and timed
+recall and latency from a Python harness reproduced in §5 above. The "800 lines" in the title is a small
 honest exaggeration: the full HNSW machinery is `5,333` lines if you
 count WAL plumbing, vacuum, MVCC, parallel builds, and disk paging.
 The _algorithm_ — `HnswSearchLayer`, `HnswFindElementNeighbors`,

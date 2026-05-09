@@ -584,10 +584,12 @@ joined on their distribution columns with equal operator`,
 modifications, but the price is real — every write touches the
 distributed transaction recovery infrastructure (the
 `pg_dist_transaction` catalog), and coordinator failures can leave
-shards in an inconsistent state until recovery runs. The CHANGELOG has multiple
-entries about idle-in-transaction timeouts breaking shard moves
-(e.g., #8484 in Citus 14.0). Distributed transaction edge cases are
-where Citus' bug surface is highest — not the planner, the executor.
+shards in an inconsistent state until recovery runs. The git log
+includes commits like `d3330fdfe` ("Shard move in block_writes mode
+fails with idle_in_transaction_session_timeout on metadata workers
+(#8484)") that hint at the kind of edge cases that show up in this
+layer. Distributed transaction handling is where Citus' bug surface
+is highest — not the planner, the executor.
 
 **Anything Postgres' planner sees but Citus' planner doesn't.**
 Citus runs `standard_planner` and uses _its_ restriction info. If a
