@@ -155,7 +155,11 @@ Pre-Vote is off for the first pass; we'll add it later.
 ## Step 1: the election tick fires
 
 Every `Node.Tick()` hands a logical clock pulse to the state machine.
-Followers and candidates run `tickElection`; leaders run `tickHeartbeat`.
+Followers and candidates run `tickElection`; leaders run
+`tickHeartbeat`. The two ticks are mirror images of each other: a leader
+fires `MsgBeat` every `HeartbeatTick` ticks to keep its lease alive, and
+runs `MsgCheckQuorum` every `electionTimeout` ticks to step down if the
+cluster goes silent. Followers run only the election timer.
 
 ```go
 // raft.go
