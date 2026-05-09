@@ -802,12 +802,12 @@ is crossing a socket boundary — try `taskset -c 0-3` to keep them on
 one socket and the gap will normalise.
 
 That two-line output is, in microcosm, the entire reason a Cassandra
-fork that does nothing fundamentally different on the read path was
-able to claim 10× the throughput in their own published
-[benchmarks](https://www.scylladb.com/product/benchmarks/) (measured
-on a single i3.4xlarge node; see the table earlier in this section
-for the napkin-derived ratio). They didn't write faster code. They
-removed the coordination.
+fork that does nothing fundamentally different on the read path could
+claim an order-of-magnitude lead in ScyllaDB's own
+[published benchmarks](https://www.scylladb.com/product/benchmarks/) —
+the napkin gives `30–80×`, real workloads spend cycles on disk and
+protocol that nobody can shave, so the field-measured gap is
+`~10×`. They didn't write faster code. They removed the coordination.
 
 # Further reading
 

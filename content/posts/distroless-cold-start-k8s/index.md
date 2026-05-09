@@ -383,7 +383,10 @@ The zap line is the punchline: `boot=0.000523587 s ≈ 523 µs` from `execve` to
 Four observations the real trace makes obvious:
 
 1. **Go reserves > 1 GiB of virtual address space at boot** — the `PROT_NONE` mmaps for the heap arena (64 MiB), two 512 MiB regions for stack pools, plus several smaller ones. This is virtual reservation, not RSS; the kernel doesn't allocate physical pages. It does mean Go containers look bigger than they are in `top -o RSIZE`.
-2. **Go probes container limits at boot** — `/proc/self/cgroup`, `/proc/self/mountinfo`, `/sys/fs/cgroup/cpu.max` are all read in the first millisecond. Go 1.21+ uses these to auto-set `GOMAXPROCS` against the cgroup CPU quota instead of the host CPU count. Helpful when your pod has `cpu: 500m`; surprising if you'd set `GOMAXPROCS=4` manually and didn't notice the override.
+2. **Go probes container limits at boot** — `/proc/self/cgroup`, `/proc/self/mountinfo`, `/sys/fs/cgroup/cpu.max` are all read in the first millisecond. [Go 1.25][go125-cmp] introduced container-aware `GOMAXPROCS`: the runtime defaults `GOMAXPROCS` to the cgroup CPU bandwidth limit when one is set, and re-reads the cgroup periodically. Helpful when your pod has `cpu: 500m`; surprising if you'd set `GOMAXPROCS=4` manually and didn't realise the runtime was overriding it (you can disable via `GODEBUG=containermaxprocs=0`). Before 1.25, you needed [`uber-go/automaxprocs`][automaxprocs] for this.
+
+[go125-cmp]: https://go.dev/doc/go1.25#container-aware-gomaxprocs
+[automaxprocs]: https://github.com/uber-go/automaxprocs
 3. **The CA-bundle read happens lazily** at first `tls.Dial` — not at boot. If you're on scratch and forgot to ship a CA bundle, the bug doesn't appear until your first HTTPS call. The error is `x509: certificate signed by unknown authority`. Distroless includes the bundle at the canonical Linux path, so `crypto/x509` finds it without env-var gymnastics.
 4. **`time.LoadLocation("Asia/Kolkata")` opens `/usr/share/zoneinfo/Asia/Kolkata`**. On scratch that file does not exist; Go falls back to the embedded `tzdata` package only if you imported `time/tzdata` (which adds 448 KB to the binary, measured: 1,638,562 → 2,097,314 B on Go 1.26 arm64-linux). Distroless ships the OS zoneinfo so you don't have to.
 

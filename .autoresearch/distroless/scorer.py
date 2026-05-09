@@ -346,6 +346,7 @@ ALLOWED_HOSTS = {
     "www.pcisecuritystandards.org",
     "gcr.io", "cgr.dev",
     "www.postgresql.org", "postgresql.org",
+    "go.dev",
 }
 
 

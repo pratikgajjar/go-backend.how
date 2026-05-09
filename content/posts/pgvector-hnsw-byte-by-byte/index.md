@@ -486,9 +486,13 @@ floor-ing it gives a geometric. The mean is `ml`. The choice of
 #define HnswGetMl(m) (1 / log(m))
 ```
 
-`log` here is `ln` (libc convention). For `M = 16`, `ml ≈ 0.361`. The
-expected level of any element is `0.361`; `P(level ≥ 1) = e^(−1/ml) =
-e^(−ln M) = 1/M = 6.25 %`; `P(level ≥ 2) = 1/M² = 0.39 %`; and so on.
+`log` here is `ln` (libc convention). For `M = 16`, `ml ≈ 0.361` —
+the rate parameter, equal to the mean of the underlying continuous
+exponential, not the mean integer level. The integer-level
+distribution is geometric: `P(level ≥ 1) = e^(−1/ml) = e^(−ln M) =
+1/M = 6.25 %`; `P(level ≥ 2) = 1/M² = 0.39 %`; and so on. The mean
+level is `E[level] = 1/(M − 1) ≈ 0.067` for `M = 16` (verifiable in
+`python3 -c "M=16; print(sum(k*(M**(-k)-M**(-k-1)) for k in range(1, 100)))"`).
 The graph is dense at the bottom and exponentially sparse at the top,
 which is exactly what you want for the layered greedy descent to
 work.
