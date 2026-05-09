@@ -198,7 +198,7 @@ This is the `Lifetime L0 stalled for: 13.8s` that the badger close logs print at
 
 # Real numbers, on a MacBook M3 Max
 
-All runs were on a Mac M3 Max (12-core, 36 GB), Go 1.26.3, [`badger v4.9.1`](https://github.com/dgraph-io/badger/releases/tag/v4.9.1), APFS on internal NVMe. Workload: `db.NewWriteBatch()` looping over N synthetic 32-byte keys + V-byte values, no concurrent reads. The harness is ~48 lines and is listed at the end of the post. Each row is the median of three runs; the L0-stall column is the `Lifetime L0 stalled for:` value badger logs on `db.Close()`.
+All runs were on a Mac M3 Max (12-core, 36 GB), Go 1.26.3, [`badger v4.9.1`](https://github.com/dgraph-io/badger/releases/tag/v4.9.1), APFS on internal NVMe. Workload: `db.NewWriteBatch()` looping over N synthetic 32-byte keys + V-byte values, no concurrent reads. **One caveat the harness exposes**: the value slice is populated once with `rand.Read` and reused across all writes, so default Snappy compression collapses every block — the on-disk LSM is much smaller than `N × valSz` would suggest. Real workloads with varied values flow more bytes through L0→Lbase compaction and stall earlier; the numbers below are a generous floor for "small-value" performance, not a worst-case. The harness is ~48 lines and is listed at the end of the post. Each row is the median of three runs; the L0-stall column is the `Lifetime L0 stalled for:` value badger logs on `db.Close()`.
 
 | Workload                   | Config       | ops/s (median) | L0 stalls | Wall (median) |
 |----------------------------|--------------|---------------:|----------:|--------------:|
