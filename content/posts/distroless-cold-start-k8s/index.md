@@ -34,10 +34,11 @@ If you ship a Go binary in 2026, you have three honest base-image choices:
 
 Pick scratch and your security posture is "binary or nothing." Pick distroless-static and `tls.Dial` and `time.LoadLocation("Asia/Kolkata")` keep working without you shipping a CA bundle in your binary. Pick Wolfi and you can pay your favourite ops engineer `apk add curl` to debug a flaky pod at 03:00.
 
-In a payments shard at UPI scale, the choice has compounded effects. NPCI mandates [PCI-DSS-aligned][pci] container hardening — minimal attack surface, no shell-as-default, signed images. Distroless and Wolfi-with-no-extras both pass. Scratch passes too, but you lose `time.LoadLocation` and `tls.Config{}.RootCAs` defaults the moment your binary needs them, and the bug discovery is hours away from where the build happened.
+In a payments shard at UPI scale, the choice compounds. The compliance frameworks Indian backends typically operate under \u2014 the [RBI's cyber-security guidance][rbi-cyber] for regulated entities, plus [PCI-DSS][pci] for any card-data path \u2014 push toward minimal attack surface, no shell-as-default, and signed images. Distroless and Wolfi-with-no-extras both fit that envelope cleanly. Scratch fits too, but you lose `time.LoadLocation` and `tls.Config{}.RootCAs` defaults the moment your binary needs them, and the bug discovery is hours away from where the build happened.
 
 [wolfi]: https://github.com/wolfi-dev/os
 [pci]: https://www.pcisecuritystandards.org/document_library/?category=pcidss
+[rbi-cyber]: https://www.rbi.org.in/scripts/NotificationUser.aspx?Id=10435
 
 # The test rig — three Dockerfiles, one binary
 
