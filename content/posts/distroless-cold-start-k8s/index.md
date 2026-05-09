@@ -16,7 +16,7 @@ math = false
 
 A `FROM scratch` image with a 10.16 MB Go binary inside it ships **3.98 MB** on the wire after gzip. The same binary on top of `gcr.io/distroless/static:latest` ships **4.83 MB** across **fourteen** layers — almost a megabyte more bytes and thirteen extra HTTP fetches.
 
-Yet on a kind node with the registry on `localhost`, both images go from `kubectl apply` to a 200 OK on `/healthz` inside the same 30 ms band. Wolfi-base, which is **2.5×** the wire weight of either, finishes inside the same band too.
+Yet pushed to a `localhost:5005` registry and started with `podman run`, both images go from container start to a 200 OK on `/healthz` inside the same 30 ms band. Wolfi-base, which is **2.5×** scratch's wire weight (and **2×** distroless's), finishes inside the same band too.
 
 The smallest image isn't the fastest. The biggest one isn't the slowest. Image size is the wrong axis to argue on, and most "distroless vs scratch" posts you've read pick the wrong fight.
 
@@ -191,7 +191,7 @@ sha256:d6ec4871… (compressed 2,419,749 B → uncompressed 6,121,472 B)
 
 That's glibc 2.43 + openssl 3.6 + ldconfig — full C-library userland. SBOM JSON shipped per package; if you've ever wanted to know exactly what's in a base image, Wolfi tells you in `/var/lib/db/sbom`. Nothing distroless-static gives you.
 
-> Distroless trades a 13-fetch wireshark spaghetti for less than a megabyte of metadata. Wolfi trades 2.5× the bytes for an entire C runtime. Scratch trades nothing for nothing.
+> Distroless trades a 13-fetch wireshark spaghetti for less than a megabyte of metadata. Wolfi trades **2.5× scratch's wire bytes (or 2× distroless's)** for an entire C runtime. Scratch trades nothing for nothing.
 
 # The ascii architecture
 
@@ -264,11 +264,13 @@ done
 | `bench/distroless`  | 4.83 MB | 14 | 0.30 s | 0.30 s |
 | `bench/wolfi`       | 10.03 MB | 12 | 0.25 s | 0.27 s |
 
-That's *not a typo*. Wolfi (2.5× the wire bytes) pulled the **fastest**. Scratch (a single layer) pulled the **slowest** at p99. Three reasons, in order of weight:
+That's *not a typo*. Wolfi (2.5× scratch's wire bytes) pulled the **fastest** in this rig. Scratch (a single layer) pulled the **slowest** at p99. Three reasons, in order of weight:
 
-1. **Snapshot creation cost is per-layer-bounded, not per-byte-bounded** for tiny layers. Containerd's overlay snapshotter does a `mkdir` + `unlink` + `rename` cycle per layer. On APFS that's ~0.5–1 ms per layer including fsync. Distroless's 13 base layers cost ~13 ms of pure filesystem overhead even when the bytes are zero. The same overhead doesn't shrink to 0 just because a layer is 67 bytes.
+1. **Snapshot creation cost is per-layer-bounded, not per-byte-bounded** for tiny layers. Containerd's overlay snapshotter does a `mkdir` + `unlink` + `rename` cycle per layer. The fixed cost is bounded by syscall RTT and FS journal flush, in the low-millisecond range per layer regardless of layer size. Distroless's 13 base layers therefore cost on the order of 10–20 ms of pure filesystem overhead even when the bytes are zero — the same overhead doesn't shrink just because a layer is 67 bytes.
 
-2. **Single-layer images can't parallelise.** Containerd's default `MaxConcurrentDownloads = 3` means scratch's lone layer fetches on one TCP connection, gzip-decompresses on one CPU. Distroless's 13-and-Wolfi's-11 spread across 3 parallel connections, so the 10 MB binary layer (which both images carry on top) overlaps with all the small base layers.
+2. **Single-layer images can't parallelise.** Containerd's default `max_concurrent_downloads = 3` (see [`pkg/cri/config`][cricfg]) means scratch's lone layer fetches on one TCP connection, gzip-decompresses on one CPU. Distroless's 13-and-Wolfi's-11 spread across 3 parallel connections, so the binary layer (~3.98 MB compressed across all three) overlaps with the smaller base layers.
+
+[cricfg]: https://github.com/containerd/containerd/blob/main/pkg/cri/config/config.go
 
 3. **Gzip decompression is the long pole, and it's single-threaded per blob.** I measured `gunzip` on the 3.74 MB binary blob → 10.16 MB tar at 20–30 ms across five runs on an M3 P-core; the gunzip-vs-CPU envelope is roughly 200 MB/s on this hardware. With one-layer-per-CPU, scratch eats those 20–30 ms serially; Wolfi eats them overlapped with apk-DB layer decompression on a sibling core.
 
@@ -443,9 +445,10 @@ Three changes I'd make to a real platform team's container baseline.
 
 **1. Pick distroless-static as the default, scratch as the opt-in**. The 5 MB delta over scratch is irrelevant to cold-start (we measured: 30 ms band). The CA bundle and tzdata are worth it for every TLS-using and time-zone-aware service — which is every payments service. Reserve scratch for binaries that have *measured* their startup floor and need to shave the last 1 MB of supply-chain attack surface (your build pipeline, your sidecars, your one-shot CronJobs).
 
-**2. Build the binary with `-buildmode=pie` only when you need ASLR**. Default Go non-pie binaries link against fixed addresses; PIE adds ~0.6 ms per pod start because the kernel must rewrite relocations on `mmap`. A 1000-pod scale event eats that as 600 ms × 1 = 600 ms total fleet-wide. Sub-millisecond per pod, but it shows up at the 99.9th percentile. Use [`go build -buildmode=pie`][pie] only on binaries that ship to untrusted hosts.
+**2. Build the binary with `-buildmode=pie` only when you need ASLR**. Default Go non-PIE binaries link against fixed virtual addresses; PIE adds a per-pod relocation pass on the dynamic linker side that, on a 10 MB binary, sums to a fraction of a millisecond per pod (rangier on x86, smaller on ARM64). At 1000 pods scaling in parallel the wall-clock impact stays sub-millisecond, but the cumulative CPU cost shows up on the cluster-wide PSI graph. Use [`go build -buildmode=pie`][pie] only on binaries that ship to untrusted hosts (and run [`go test -bench`][gobench] on your own binary to measure the delta before opting in).
 
 [pie]: https://pkg.go.dev/cmd/go#hdr-Build_modes
+[gobench]: https://pkg.go.dev/testing#hdr-Benchmarks
 
 **3. Run a registry mirror on every node, not in the cluster**. `containerd` supports [registry mirrors][mirror] in `/etc/containerd/config.toml`. Run a `registry:2` on each kubelet node bound to `127.0.0.1`, with the cluster registry as upstream, and the per-pod pull becomes a localhost RTT. We saw that explicit: localhost-registry pulls were 200–300 ms, gcr.io pulls were 2–3 s — a **10×** swing. At 1000 pods × 10× = 10000 ms saved per scale event, with no image-format change. That gives back more wall-clock than picking the right base ever can.
 
