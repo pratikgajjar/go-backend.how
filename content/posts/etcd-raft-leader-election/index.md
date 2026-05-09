@@ -799,8 +799,12 @@ But it's only used for explicit transfer.
 
 The improvement: have a leader that's about to fail (hit a fatal
 internal error, lose its disk, etc.) emit `MsgTimeoutNow` to the
-healthiest follower as part of its shutdown sequence. Cost: ~50 lines.
-Benefit: bounded failover instead of waiting one full election timeout.
+healthiest follower as part of its shutdown sequence. Cost in the
+library: minimal — `sendTimeoutNow` already exists. The real cost is
+the application-side detection of "about to fail" plus a fenced
+shutdown sequence that won't fire if the leader is just slow; realistic
+estimate ~200-500 lines per host. Benefit: bounded failover instead of
+waiting one full election timeout.
 There's a correctness footgun — if the "failing" leader is just slow
 or merely partitioned from the application's monitor, it could
 double-elect (the receiving follower's `stepFollower` calls
