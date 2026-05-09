@@ -113,9 +113,10 @@ transaction copies any page it modifies to a free location, rewires
 the parent, fsyncs the new pages, and *only then* overwrites the older
 meta page. The atomic unit of commit is the meta page write - 4 KiB,
 power-fail safe, two pages alternating like double-buffered video.
-[`mdb.c:1290`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L1290)
-keeps the union: each meta lives at a *fixed* page id, but the txnid
-bit picks which.
+The two metas live at *fixed* page ids 0 and 1 (the union at
+[`mdb.c:1290`](https://github.com/LMDB/lmdb/blob/mdb.master/libraries/liblmdb/mdb.c#L1290)).
+On read, you pick the one with the higher `mm_txnid`; on write, you
+overwrite the older slot (`txnid & 1` picks which page to overwrite).
 
 ## 3.2 BoltDB - Bolt's Go reimplementation, same shape
 

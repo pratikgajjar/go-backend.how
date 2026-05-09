@@ -91,6 +91,21 @@ issues the regex scorer cannot see.
       to "cited from the repo's own README" + "useful complements
       to reading the C source".
 
+## Resume-cycle iters 27-33 added these final audit catches
+
+- [x] Iter 27: §1 "result is discarded" was overclaim; FinalizeRouterPlan
+      keeps the targetlist (column metadata) from standard_planner.
+      Reworded to "mostly thrown away ... keeps the targetlist".
+- [x] Iter 28: §5 closing said "Co-located joins stay in path 1 or 2"
+      but path 1 (fast-path) is single-table only (`numFromRels != 1`).
+      Reworded.
+- [x] Iter 30: §6 "every write touches pg_dist_transaction" was too
+      broad — only multi-shard 2PC writes. Cited LogTransactionRecord
+      precisely.
+- [x] Iter 31: §4 prose paragraph break (cosmetic readability).
+- [x] Iter 33: §6 fragile-fast-path number was inconsistent with §5
+      napkin envelope. Stitched together with explicit cross-reference.
+
 ## Audit pattern that found the most real bugs in this resume cycle
 
 Re-read each section under the assumption that every napkin number,

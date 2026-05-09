@@ -1071,7 +1071,7 @@ WAL becomes the floor. That's the upstream wall, not anything
 wal-cake can do about. The 1B-payments post discusses this floor in
 detail.
 
-[^fsync]: [1B Payments/Day — Watching fsync in real time](https://backend.how/posts/1b-payments-per-day/#watching-fsync-in-real-time) — weighted-average `fdatasync()` of 163 µs (97% under 256 µs, 100% under 512 µs) and 4.17M fsync calls for 10M Postgres inserts on a Mac Mini M4.
+[^fsync]: [1B Payments/Day — Watching fsync in real time](https://backend.how/posts/1b-payments-per-day/#watching-fsync-in-real-time) — measured weighted-average `fdatasync()` of `163 µs` (`97%` under `256 µs`, `100%` under `512 µs`) and `4.17M` fsync calls for `10M` Postgres inserts on a Mac Mini M4.
 
 # 8. What I'd change
 
