@@ -786,7 +786,12 @@ func TestElectionDemo(t *testing.T) {
 	nt := newNetworkWithConfig(cfg, nil, nil, nil)
 
 	// Trigger an election on node 1 by injecting MsgHup directly.
-	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	// pb.Message fields became pointers after the gogoproto.nullable
+	// migration (commit 26c2367), so build the message with addressable
+	// locals.
+	from, to := uint64(1), uint64(1)
+	hup := pb.MsgHup
+	nt.send(pb.Message{From: &from, To: &to, Type: &hup})
 
 	// At this point node 1 should be StateLeader at term 1 with the
 	// other two as followers, and the new leader's empty-entry MsgApp
