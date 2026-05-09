@@ -521,15 +521,18 @@ across-threads, which is `1044 / 8 ≈ 130` ms per thread.
 thread. The 5 ns/row hot-loop estimate at the start of this post
 applies to *one* of the eight aggregations Q01 performs (sum/avg/
 count over six measure expressions plus count_order plus
-count(*)); each is ~5 ns/row independently, summing to roughly
-`6 × 5 × 60_000_000 / 8 = 225_000_000` ns ≈ 23 ms per thread of
-hot inner loop, comfortably inside the 132 ms of HASH_GROUP_BY
-which also pays for the group-key hash, the perfect-hash slot
-calculation, and final state copy. Wall clock is 210.5 ms because
-SEQ_SCAN and HASH_GROUP_BY pipeline through chunks rather than
-running back-to-back — 130 + 132 = 262 ms per thread is the upper
-bound of work, and parallel pipelines compress that toward the
-210.5 ms observed.
+count(*)); each is ~5 ns/row independently. Stack six of them:
+`6 × 5 = 30` ns/row, then `30 × 60_000_000 = 1_800_000_000` ns of
+single-thread aggregation work, divided by 8 cores ≈ `1800 / 8 =
+225` ms across all aggregations per thread. That comfortably
+overshoots the 132 ms of HASH_GROUP_BY work the profile attributes
+per thread, which means the actual per-aggregation cost is closer
+to 3 ns/row in the inner loop after compiler vectorisation. Wall
+clock is 210.5 ms (per [the table](#real-numbers)) because SEQ_SCAN
+and HASH_GROUP_BY pipeline through chunks rather than running
+back-to-back: `130 + 132 = 262` ms per thread is the upper bound
+of work, and parallel pipelining compresses that toward the
+measured wall clock.
 
 # Stretch: a 50-line snippet you can run
 
