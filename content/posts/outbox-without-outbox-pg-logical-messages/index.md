@@ -744,9 +744,25 @@ or TTL-prune yourself.
 This is one of the cases the
 [`feat(kafka ack): Reliability 100%`](https://github.com/fampay-inc/factlib/commit/45f9f13)
 commit explicitly addresses. The earlier version of OwlPost flushed
-LSN ahead of Kafka acks; if Kafka ack came back as a failure later,
-the message was lost. The 1-second-tick design means the LSN never
-advances past an unacked Kafka write.
+LSN ahead of Kafka acks; if a Kafka produce later failed the message
+was lost. The 1-second-tick design means the LSN never advances past
+a Kafka write whose callback hasn't fired.
+
+> **Sharp edge worth naming.** Today
+> [`listenEventAck`](https://github.com/fampay-inc/factlib/blob/main/pkg/postgres/wal.go)
+> just does `w.xLogPos = *ackPos` on every received ack. Kafka ack
+> callbacks fire in per-partition order, but across partitions
+> (across aggregate IDs) they can interleave. So if event A (LSN_a)
+> goes to partition 1 and event B (LSN_b > LSN_a) goes to partition
+> 2, and B's broker is faster, the consumer can advance to LSN_b
+> while A is still in flight. Crash now and we replay from `>=
+> LSN_b`, skipping A. The fix is to track a contiguous-acked
+> high-water mark instead of a last-write-wins cursor; until that
+> ships, factlib's "at-least-once" guarantee is effectively
+> "at-least-once *per Kafka partition*". For most aggregate-keyed
+> workloads (which is what factlib is designed for) the per-aggregate
+> guarantee is what you actually want, but it's worth knowing the
+> limit.
 
 ### Scenario 4: Kafka down for hours
 
