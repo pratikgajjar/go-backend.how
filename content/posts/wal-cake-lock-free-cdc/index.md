@@ -1115,7 +1115,7 @@ The three things this post called out at the top:
    making concurrent S3 writes safe for in-order LSN ack.
 3. The Parquet writer uses dict for low-cardinality columns, delta
    encoding for monotonic LSN/timestamp, JSON-typed bytes for
-   open-ended payloads, and ZSTD-3 across the whole row group.
+   open-ended payloads, and ZSTD-3 page compression on every column.
 
 None of these are novel ideas. Logical replication has been in
 Postgres [since 9.4 (December 2014)](https://www.postgresql.org/docs/9.4/release-9-4.html).
