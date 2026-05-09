@@ -33,8 +33,9 @@ part of the tree that does the real work of pruning a query down from
 "all data files in this table" to "the four files that may contain
 rows where `country = 'IN' AND ts >= '2026-05-01'`." We will read the
 schema fields, walk the on-disk Avro, count bytes, and run the
-arithmetic that determines whether a 1-PB Iceberg table answers a
-query in 80 ms or 8 s.
+arithmetic that determines scan-planning latency on a 1 PB Iceberg
+table — and whether it lands at the 80 ms end of the curve or the 8 s
+end.
 
 The map for what follows: the *hook* (the contradiction that hides in
 plain sight), the *first-principles problem* the format was designed
@@ -55,7 +56,7 @@ Parquet files are not Parquet.
 That is the first contradiction. The second is the size:
 
 > A manifest file in Iceberg defaults to **8 MB
-> = 8 × 1024 × 1024 = 8,388,608 bytes** of compressed Avro.
+> = 8 × 1,048,576 = 8,388,608 bytes** of compressed Avro.
 
 Not gigabytes. Not megabytes-with-a-capital-M. 8 MB, set at
 [`MANIFEST_TARGET_SIZE_BYTES_DEFAULT = 8 * 1024 * 1024`](https://github.com/apache/iceberg/blob/main/core/src/main/java/org/apache/iceberg/TableProperties.java)
@@ -67,12 +68,14 @@ manager will glue small manifests together.
 It is small because the manifest is meant to live in the hot path of
 *every* query. It must be downloadable in a single S3 GET and
 parseable into memory in a few milliseconds. The math gets unkind
-quickly: a 1-PB table at 256 MB per Parquet file is `1 PB ÷ 256 MB
-= 4 × 2^20 ÷ 2^8 = 4,194,304` data files. If a single manifest
-averaged ~8 KB per data-file row (Avro-compressed manifest entry
-with column bounds for ten columns), that is ~33 GB of manifest
-entries — far too much to scan on every read. The 8 MB ceiling is
-what forces the *tree*.
+quickly: a 1 PB table at 256 MB per Parquet file holds
+`1,000,000,000,000,000 / 268,435,456 ≈ 3,725,290` data files
+(measured against the canonical `MB = 1024 × 1024` definition).
+If a single manifest averaged ~8 KB per data-file row (compressed
+Avro manifest entry with column bounds for ten columns), that is
+`3,725,290 × 8 = 29,802,320` KB ≈ 29 GB of manifest entries — too
+much to scan on every read. The 8 MB ceiling is what forces the
+*tree*.
 
 # 2. The problem this system was built to solve
 
@@ -289,8 +292,8 @@ IDs 500–520 belong to the manifest-list record. Within each row the
 511 upper_bound    : optional bytes  (single-value-encoded)
 ```
 
-This summary is the difference between Iceberg planning a 1-PB table
-in 100 ms and 100 s. Suppose the table is partitioned by
+This summary is the difference between a 1 PB table that plans a
+query in 100 ms and one that takes 100 s. Suppose the table is partitioned by
 `day(ts)` and a query asks for one day. The planner reads the
 manifest list — one Avro file, on the order of tens-of-KB to
 single-digit MB — and compares the predicate against each
@@ -692,7 +695,7 @@ not going anywhere — but the leaf format almost certainly is.
 Drafted while reading
 `~/.cache/checkouts/github.com/apache/iceberg` at commit
 `e7a5a87f2`. Numbers were either measured on an M2 laptop with a
-local SQLite catalog and `fastavro` (clearly labelled where so) or
+local SQLite catalog and `fastavro` (labelled where so) or
 derived inline with arithmetic visible in the surrounding paragraph.
 The draft was sharpened by an autoresearch loop — a scorer that
 flags vague claims, missing citations, marketing words, and code

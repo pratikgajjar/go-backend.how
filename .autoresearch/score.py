@@ -612,6 +612,87 @@ def anchor_check_defects(body: str) -> int:
     return n
 
 
+def defaults_consistency_defects(body: str, cached_repo: Path) -> int:
+    """Verify post claims about config defaults (`name=value`) against config.go."""
+    cfg = cached_repo / "internal" / "config" / "config.go"
+    if not cfg.exists():
+        return 0
+    src = cfg.read_text(encoding="utf-8", errors="replace")
+    # Extract flag.IntVar / DurVar / StringVar defaults: 3rd positional after the var/key.
+    int_defaults = {
+        k.lower(): v
+        for k, v in re.findall(
+            r'flag\.IntVar\(&cfg\.(\w+),\s*"[^"]*",\s*(\d+)', src
+        )
+    }
+    str_defaults = {
+        k.lower(): v
+        for k, v in re.findall(
+            r'flag\.StringVar\(&\w+,\s*"([^"]+)",\s*(?:os\.Getenv\([^)]+\),\s*"[^"]*",\s*"[^"]*")?\)?',
+            src,
+        )
+    }
+    # Also pick up "flush-interval" -> "30s" via `flag.StringVar(&flush, "flush-interval", "30s", ...)`
+    str_explicit = {
+        k.lower(): v
+        for k, v in re.findall(
+            r'flag\.StringVar\(&\w+,\s*"([^"]+)",\s*"([^"]+)"', src
+        )
+    }
+    n = 0
+    # Look for `name=value` mentions (in prose backticks)
+    for m in re.finditer(r"`(\w+)\s*=\s*([^`]+)`", body):
+        var = m.group(1)
+        val = m.group(2).strip().rstrip(",")
+        # Try int defaults
+        if var.lower() in int_defaults:
+            expected = int_defaults[var.lower()]
+            if expected != val:
+                n += 1
+                print(
+                    f"DEBUG default_mismatch: prose says `{var}={val}` "
+                    f"but config.go default is {expected}",
+                    file=sys.stderr,
+                )
+            continue
+        # Try string default by kebab-case (e.g. flush-interval)
+        kebab = re.sub(r"(?<!^)(?=[A-Z])", "-", var).lower()
+        if kebab in str_explicit:
+            expected = str_explicit[kebab]
+            if expected != val:
+                n += 1
+                print(
+                    f"DEBUG default_mismatch: prose says `{var}={val}` "
+                    f"but config.go default is {expected}",
+                    file=sys.stderr,
+                )
+    return n
+
+
+def range_bounds_defects(body: str) -> int:
+    """A range A–B (en-dash) or A-B (hyphen between numbers) must have A ≤ B (after suffix scaling)."""
+    # Match `N[suf]–M[suf]` with same/different unit
+    pat = re.compile(
+        rf"(?<!\w)({_NUM_PAT})({_SUF_PAT})\s*[–-]\s*({_NUM_PAT})({_SUF_PAT})"
+        r"\s*(µs|us|ms|ns|s|MB|GB|KB|TB|GiB|MiB|KiB|/sec|/min|/hr|%|×|x)?"
+    )
+    n = 0
+    for m in pat.finditer(body):
+        a, asu, b, bsu, _u = m.groups()
+        try:
+            A = _parse_num(a) * _scale(asu)
+            B = _parse_num(b) * _scale(bsu)
+        except ValueError:
+            continue
+        if A > B:
+            n += 1
+            print(
+                f"DEBUG range_inverted: {a}{asu}–{b}{bsu}  ({A} > {B})",
+                file=sys.stderr,
+            )
+    return n
+
+
 def footnote_balance_defects(body: str) -> int:
     """Every [^name] reference must have a matching [^name]: definition."""
     refs = set(re.findall(r"\[\^([\w-]+)\](?!:)", body))

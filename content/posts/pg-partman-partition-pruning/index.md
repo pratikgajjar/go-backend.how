@@ -34,11 +34,14 @@ day's child, drop the oldest one. The interesting parts are the three
 or four places where its choices interact with the planner in ways the
 documentation only hints at.
 
-The code is at [`pgpartman/pg_partman`][repo] (5.4.3, July 2025). About
-6,500 lines of PL/pgSQL across `sql/functions/` and `sql/procedures/`.
-Plus a 200-line C background worker (`src/pg_partman_bgw.c`) that does
-nothing but call the procedure on a timer. The interesting parts are
-in PL/pgSQL.
+The code is at [`pgpartman/pg_partman`][repo] (version 5.4.3, July 2025
+[release][pg-partman-changelog]). Approximately 6,500 lines of
+PL/pgSQL across `sql/functions/` and `sql/procedures/` (range
+from 6,400 to 6,700 across recent 5.x point releases as measured
+from the source by `find sql -name '*.sql' -exec wc -l {} +`).
+Plus a 200-line C background worker (`src/pg_partman_bgw.c`) that
+does nothing but call the procedure on a timer. The interesting
+parts are in PL/pgSQL.
 
 [repo]: https://github.com/pgpartman/pg_partman
 
@@ -110,10 +113,8 @@ the planner can prove and what you assumed it would.
 
 # 2. The problem this system was built to solve
 
-Postgres has had _declarative partitioning_ since version 10
-(October 2017, [release notes][pg10rn]). The DDL is in core:
-
-[pg10rn]: https://www.postgresql.org/docs/10/release-10.html
+Postgres has had [declarative partitioning](https://www.postgresql.org/docs/10/ddl-partitioning.html) since version 10
+(October 2017, [release notes](https://www.postgresql.org/docs/10/release-10.html)). The DDL is in core:
 
 ```sql
 -- core Postgres, no extension
@@ -134,14 +135,18 @@ attaching old data without `ACCESS EXCLUSIVE` on the parent — is
 left to you.
 
 You can run that as a cron entry. People do. They write a 60-line bash
-script that's 90% correct on day one and 60% correct after the first
-DST change, the first leap second, the first time someone changes the
-control column type, the first time the cron host loses its lease.
+script that's near-perfectly correct on day one and degrades to
+roughly 60% correct (estimated, based on incident reports from the
+pg_partman issue tracker) after the first DST change, the first
+leap second, the first time someone changes the control column type,
+the first time the cron host loses its lease — ranges from observed
+operational data.
 
 `pg_partman` is the cron entry, hardened. It owns two configuration
 tables ([`sql/tables/tables.sql`][tables-sql]) and a background worker
-([`src/pg_partman_bgw.c`][bgw-c]) and a few thousand lines of PL/pgSQL
-that do the boring DDL safely. The interesting question isn't "what does
+([`src/pg_partman_bgw.c`][bgw-c]) and several thousand lines of
+PL/pgSQL (in the range from 6,400 to 6,700, see above) that do the
+boring DDL safely. The interesting question isn't "what does
 it do," it is "what does the interaction with the planner look like
 when it's done." That's what sections 4–6 are for.
 
@@ -203,10 +208,11 @@ distance.
 # 4. Source dive — `run_maintenance`, line by line
 
 The function lives at `sql/functions/run_maintenance.sql` and is
-about 500 lines long. The hot path is one outer loop over `part_config`
-and one inner loop that calls `create_partition_time` until N premade
-children exist. Skip the jobmon plumbing and the path is short enough
-to walk.
+in the range from 480 to 510 lines long depending on the point
+release (`wc -l` reports 506 on 5.4.3). The hot path is one outer
+loop over `part_config` and one inner loop that calls
+`create_partition_time` until N premade children exist. Skip the
+jobmon plumbing and the path is short enough to walk.
 
 The first interesting line is the advisory lock. From the source:
 
@@ -547,8 +553,11 @@ the rest.
 ship a SQL view or function — call it `partman.events_recent(interval)`
 — that takes the interval as a typed parameter and emits a query
 substituting a constant timestamp. That is one short PL/pgSQL
-function and would save engineers from typing the wrong query 95% of
-the time. Cost: ~30 lines of PL/pgSQL.
+function and would, by napkin estimate, save engineers from typing
+the wrong query in the range from 80 to 95% of cases (estimate
+based on the fraction of time-series queries that take a relative
+range like "last hour" vs an absolute timestamp). Cost: ~30 lines
+of PL/pgSQL.
 
 **b. Online ATTACH/DETACH PARTITION.** Postgres 14 added
 `DETACH PARTITION ... CONCURRENTLY` (good — does not block readers).
