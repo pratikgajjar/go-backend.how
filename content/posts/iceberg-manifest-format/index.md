@@ -72,18 +72,17 @@ manager will glue small manifests together.
 It is small because the manifest is meant to live in the hot path of
 *every* query. It must be downloadable in a single S3 GET and
 parseable into memory in a few milliseconds. The math gets unkind
-quickly: a 1 PB table at 256 MB per Parquet file holds
-`1,000,000,000,000,000 / 268,435,456 ≈ 3,725,290` data files
-(measured against the canonical `MB = 1024 × 1024` definition).
+quickly: a 1 PiB table (`2^50` bytes) at 256 MiB per Parquet file
+(`2^28` bytes) holds `2^50 / 2^28 = 2^22 = 4,194,304` data files.
 If one manifest entry averages 300 bytes — compressed Avro with
 column bounds for ten columns and a 200-char S3 URI; consistent
-with manifests I have decoded on production tables — that is
-`3,725,290 × 300 = 1,117,587,000` bytes ≈ 1 GB of manifest entries.
-A single 8 MB manifest can therefore index
-`8,388,608 / 300 ≈ 27,962` files; the 1 PB table needs
-`3,725,290 / 27,962 ≈ 133` manifests. Scanning 133 small Avro
-files is tractable; scanning a 1 GB blob on every read is not. That
-is what forces the *tree*.
+with manifests I have decoded on real production tables — that is
+`4,194,304 × 300 = 1,258,291,200` bytes ≈ 1.2 GB of manifest
+entries total. A single 8 MiB manifest can index
+`8,388,608 / 300 ≈ 27,962` files, so the 1 PiB table needs
+`4,194,304 / 27,962 ≈ 150` manifests. Scanning 150 small Avro
+files is tractable; scanning a 1.2 GB blob on every read is not.
+That is what forces the *tree*.
 
 # 2. The problem this system was built to solve
 
@@ -511,22 +510,12 @@ itself.
 
 ## 5.1 Napkin math: scan-planning latency on a 1 PB table
 
-Hold the planner in your head. Now compute, with the working shown:
+Hold the planner in your head. From §1 we already have the file
+and manifest counts; restating for the planner:
 
-* Data files at 256 MB each. Working in MiB to keep the powers of two
-  honest: `1 PB ≈ 2^50 bytes`, `256 MB = 2^28 bytes`, so the table
-  holds `2^50 / 2^28 = 2^22 = 4,194,304` data files. Equivalently in
-  decimal: `1,000,000,000,000,000 / 268,435,456 ≈ 3,725,290` data
-  files — same order of magnitude either way.
-* Manifest target 8 MB → at 300 bytes per manifest entry (the same
-  estimate from §1, derived as compressed-Avro-with-ten-column-bounds
-  + 200-char S3 URI), one manifest holds
-  `8,388,608 / 300 ≈ 27,962` file entries (napkin math with the
-  exact byte count from §1).
-* Manifests in the table: `4,194,304 / 27,962 ≈ 150` manifests
-  (rounded up from 149.99). The published Iceberg performance
-  reports on tables in this range tend to land between 100 and
-  300 manifests, which matches.
+* Data files: `2^22 = 4,194,304` (1 PiB at 256 MiB each).
+* Manifests: `4,194,304 / 27,962 ≈ 150` (8 MiB target manifest at
+  300 bytes per entry).
 * Manifest-list size: at 250 bytes per `manifest_file` Avro
   record, total `150 × 250 = 37,500` bytes — small enough that
   fetching it is a single sub-50 KB read plus Avro header.

@@ -32,12 +32,12 @@ That ratio is the entire thesis of Scylla's architecture. The
 single-thread CAS isn't slow — it's coherence traffic. Four cores
 fighting for one cache line means the line ping-pongs through the
 inter-core fabric on every atomic, and the atomic-add path serializes
-them in hardware (LSE `LDADD` on ARMv8.1+, `LOCK XADD` on x86). The
+them in hardware (LSE LDADD on ARMv8.1+, `lock xadd` on x86). The
 "fast" version isn't
 faster code; it's the same code with the *coordination removed*.
 
-Cassandra runs many worker thread pools (`ReadStage`, `MutationStage`,
- etc.) across all cores, hitting shared memtables, a shared row cache,
+Cassandra runs many worker thread pools (ReadStage, MutationStage,
+etc.) across all cores, hitting shared memtables, a shared row cache,
 shared commit-log buffers. Scylla — built
 on the [Seastar](https://github.com/scylladb/seastar) framework — runs
 exactly **one OS thread per CPU**, pins each to its core, and gives each

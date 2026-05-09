@@ -707,16 +707,15 @@ ack), so the worst case is one extra cycle of latency.
 
 ## Tracker choice
 
-`alphadose/haxmap` over `sync.Map` was a measured choice. `sync.Map`
+`alphadose/haxmap` over `sync.Map` was a deliberate choice. `sync.Map`
 optimizes for read-heavy "many readers, one writer" patterns and uses
 a read-mostly atomic snapshot under the hood. Our pattern is
 **balanced**: every segment is `Set` once, `Get` zero-or-many times by
 the walker, then `Del`. `haxmap` is a striped hashmap with per-bucket
-spinlocks and outperforms `sync.Map` on this access pattern by ~3×
-per its [benchmarks][haxmap] (don't take the README at face value;
-the gap is real but workload-dependent — measure on yours).
-
-[haxmap]: https://github.com/alphadose/haxmap
+spinlocks and reports `~3×` over `sync.Map` on this access pattern in
+its [README benchmarks](https://github.com/alphadose/haxmap#benchmarks)
+(don't take a README at face value; the gap is real but
+workload-dependent — derive your own with `go test -bench`).
 
 # 5. Parquet that's small AND fast
 

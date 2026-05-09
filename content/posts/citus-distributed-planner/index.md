@@ -351,7 +351,7 @@ output is reproducible. Below is real output from
 
 ## Path 1 — fast-path router
 
-User query (from the regression test, line ~140 of
+User query (from the regression test, line 67 of
 `multi_router_planner_fast_path.out`):
 
 ```sql
@@ -426,12 +426,12 @@ SELECT l_quantity, count(*) count_quantity FROM lineitem
 GROUP BY l_quantity ORDER BY count_quantity, l_quantity;
 ```
 
-EXPLAIN output:
+EXPLAIN output (default settings, hash-aggregate enabled):
 
 ```text
 Sort
   Sort Key: (COALESCE((pg_catalog.sum(remote_scan.count_quantity))::bigint, '0'::bigint)), remote_scan.l_quantity
-  ->  GroupAggregate
+  ->  HashAggregate
         Group Key: remote_scan.l_quantity
         ->  Custom Scan (Citus Adaptive)
               Task Count: 2
