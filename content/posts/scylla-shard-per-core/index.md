@@ -124,8 +124,8 @@ client ──► token-aware driver ──► TCP connection to shard owner
 
 The client is *expected* to know which shard owns each partition. The
 driver computes `murmur3(pkey) % shard_count` and connects to the
-"shard-aware" CQL port (`native_shard_aware_transport_port`, default
-`19042` per
+shard-aware CQL port (the native_shard_aware_transport_port flag,
+default `19042` per
 [`db/config.cc`](https://github.com/scylladb/scylladb/blob/master/db/config.cc));
 the server uses the client-side ephemeral port `mod shard_count` to
 route the new socket to the owning reactor. When the client gets it

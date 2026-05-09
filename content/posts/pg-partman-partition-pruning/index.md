@@ -420,8 +420,8 @@ systems with smaller per-range tuples[^bench]).
 | `WHERE created_at >= now() - '1 hour'`             | no (planner) yes (executor) | 90 opened / 1 executed | ~46 MB metadata + ~12 MB data | range from 0.5 to 1.5 s, plan-dominated |
 | `SELECT count(*) WHERE created_at` between two adjacent day boundaries | yes    | 1 opened / 1 executed | minimal (visibility-map count, no heap) | from 100 ms to 350 ms (range from past benchmarks) |
 | `WHERE id = 12345678`                              | no        | 90 opened / 90 executed | ~90 × btree probe = 90 × 5 ops | from 30 to 120 ms  |
-| Same with non-key filter (e.g. `user_id = 42`), no constraint | partial | 1 / 1 | scan all 11M rows | from 800 ms to 2.4 s |
-| Same query, with `apply_constraints` on a per-user column | yes (constraint exclusion) | 0–3 / 0–3 | from 0 to ~30 MB | range 5 to 80 ms  |
+| Same range + non-key filter (`user_id = 42`), no constraint | partial | 1 / 1 | full 12 GB seq-scan of the matching child | range from 2 s to 8 s (parallel-worker dependent) |
+| Same query, with `apply_constraints` on a per-user column | yes (constraint exclusion) | 0–3 / 0–3 | from 0 to ~30 MB | range 5 ms to 80 ms  |
 
 The first row is the hook query from §1. Planner pruning fails
 because `now()` is `STABLE`; the plan opens all 90 children for
