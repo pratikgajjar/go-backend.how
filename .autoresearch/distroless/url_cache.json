@@ -9,6 +9,7 @@
   "https://github.com/containerd/containerd/tree/main/docs/snapshotters": 200,
   "https://github.com/opencontainers/image-spec/blob/main/manifest.md": 200,
   "https://github.com/wolfi-dev/os": 200,
+  "https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/": 200,
   "https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container": 200,
   "https://pkg.go.dev/cmd/go#hdr-Build_modes": 200,
   "https://pkg.go.dev/os/user": 200,
