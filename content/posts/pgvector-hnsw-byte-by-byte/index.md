@@ -382,8 +382,8 @@ already touched. The naive choice is "a `set<TID>`". pgvector keeps
 three hash tables and picks one at runtime:
 
 - `tids` (keyed by `ItemPointerData`) for on-disk traversals: the
-  thing that survives between calls is the TID, since we re-read
-  tuples each time.
+  TID is the only stable handle when the elements aren't pinned in
+  memory across the layer-descent calls.
 - `offsets` (keyed by relative pointer offset) for parallel in-memory
   builds, where the graph lives in shared memory mapped to different
   addresses in different worker processes. You can't compare absolute

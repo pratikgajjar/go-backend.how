@@ -74,7 +74,7 @@ Five components. None of them are fancy on their own; the engineering is in how 
                          └──────────────────┘
 ```
 
-The skiplist is custom, lock-free, written by the Dgraph team and lives at [`skl/skl.go`][skl]. SSTables follow a standard block-and-index layout. The value log is a sequence of mmap'd append-only files. A separate `DISCARD` mmap'd file (16 bytes per fid) tracks how much dead data each value-log file holds; the GC picks the most-discarded file to rewrite. The MANIFEST records every level/table change so a crashed DB can reconstitute the level layout without a full directory scan.
+The skiplist is custom, lock-free, written by the Dgraph team and lives at [`skl/skl.go`][skl]. SSTables follow a standard block-and-index layout with per-table bloom filters and per-block CRC32C checksums. The value log is a sequence of mmap'd append-only files; reads page-fault into the kernel page cache. A separate `DISCARD` mmap'd file (16 bytes per fid) tracks how much dead data each value-log file holds; the GC picks the most-discarded file to rewrite. The MANIFEST records every level/table change so a crashed DB can reconstitute the level layout without a full directory scan. A 256 MiB Ristretto-backed `BlockCache` (default per options.go:148) sits in front of SST block reads to keep hot blocks off disk.
 
 [skl]: https://github.com/dgraph-io/badger/blob/main/skl/skl.go
 
