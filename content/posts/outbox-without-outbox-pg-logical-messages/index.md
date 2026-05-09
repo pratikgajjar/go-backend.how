@@ -376,10 +376,14 @@ is dedicated to streaming CopyData forever — no more queries.
 Two one-time DDL operations. They run on every boot and are
 idempotent:
 
-```go
-// pkg/postgres/wal.go — ensurePublication, ensureReplicationSlot
-CREATE PUBLICATION %s
-SELECT pg_create_logical_replication_slot('%s', 'pgoutput')
+The two SQL statements that `pkg/postgres/wal.go` runs (via
+`fmt.Sprintf` interpolation, hence the `%s`):
+
+```sql
+-- ensurePublication
+CREATE PUBLICATION %s;
+-- ensureReplicationSlot
+SELECT pg_create_logical_replication_slot('%s', 'pgoutput');
 ```
 
 A **publication** is a set of tables whose row changes get streamed;
