@@ -124,11 +124,13 @@ here. Most teams pick "1 second" because it sounds reasonable and then
 quietly accept a 1 s delay on every webhook, every email, every
 side-effect.
 
-## HOT update churn on `processed = true`
+## MVCC update churn on `processed = true`
 
-`UPDATE outbox SET processed = true ...` is an MVCC update. Postgres
-writes a new row version. The old one becomes dead and waits for
-autovacuum. At 10K events/sec, that's:
+`UPDATE outbox SET processed = true ...` is an MVCC update — and
+because the partial index from §2.3 below has `processed = false` in
+its predicate, this *can't* be a HOT update (predicate change kicks
+the row out of the index). New heap tuple, old tuple dead, partial-
+index entry deleted on the next index scan. At 10K events/sec, that's:
 
 ```txt
 10,000 inserts/sec      → 10K live rows added per second

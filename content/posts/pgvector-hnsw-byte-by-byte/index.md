@@ -826,8 +826,9 @@ release that introduced it, August 2023, per the
 [CHANGELOG](https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md))
 and is still production-ready at v0.8. The intervening releases are
 a lesson in restrained improvement: parallel builds (0.6),
-half-precision and binary types (0.7), iterative scan (0.8). Each is
-a paper-grounded addition, not a refactor.
+half-precision / sparse / binary types and `binary_quantize` (0.7),
+iterative scan (0.8). Each is a paper-grounded addition, not a
+refactor.
 
 If there is one architectural decision worth lifting from this code
 and applying elsewhere, it is the **on-page graph layout**. Most
