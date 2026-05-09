@@ -662,16 +662,17 @@ debuggable. Cost: maybe a week of plumbing in
 `multi_explain.c`.
 
 **2. Make co-location a query hint, not a table-creation contract.**
-If I write a join on a key that isn't the distribution column but
-that's _functionally_ co-located (e.g., `customer_id` and
-`customer_email` where every customer has one email), Citus gives me
-no escape hatch. A `SET LOCAL citus.assume_colocated = ('orders',
-'lineitem', 'customer_id')` GUC for the duration of one query
-would let analysts trade a known-correct assumption for a fast path,
-similar to PostgreSQL's `enable_seqscan` family of flags. Cost: low,
-risk: medium (silent correctness bugs if the assumption is wrong, so
-this would have to be paired with a verification mode that DEBUGs
-every co-location assumption check).
+Citus already has a partial answer here:
+`citus.enable_non_colocated_router_query_pushdown`
+(see `shared_library_init.c`, the `DefineCustomBoolVariable` for it
+includes a docstring warning "it is not guaranteed that the same
+query will work after rebalancing the shards"). That GUC blanket-
+trusts non-colocated routing. What I want is the per-query escape
+hatch: a `SET LOCAL citus.assume_colocated = ('orders', 'lineitem',
+'customer_id')` for the duration of one query, paired with a
+verification mode that DEBUGs every assumption check. Cost: low,
+risk: medium (silent correctness bugs if the assumption is wrong,
+which is why the DEBUG mode is non-negotiable).
 
 **3. Push the fast-path eligibility check into PG's parse tree
 analysis layer.** Right now `FastPathRouterQuery` runs after

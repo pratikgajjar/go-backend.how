@@ -480,8 +480,13 @@ Two message types matter:
   faster — `standbyMessageTimeout := time.Second * 5` in
   `pkg/postgres/wal.go` — so we send a status update every 5 s
   regardless.
-- **XLogData.** Real WAL bytes. We parse them, hand the resulting
-  message to `processLogicalMessage`, and remember the LSN.
+- **XLogData.** Real WAL bytes. We parse them, compute
+  `newXLogPos := xld.WALStart + LSN(len(xld.WALData))`, and pass
+  *that* LSN through with the decoded message into
+  `processLogicalMessage`. The receive loop does not advance
+  `w.xLogPos` itself; the LSN rides on each event and only updates
+  `w.xLogPos` when the ack pipeline (see [§7](#7-reliability-proof--the-lsn-dance))
+  hears back from Kafka.
 
 `processLogicalMessage` is two lines and the type-switch is doing the
 filtering:

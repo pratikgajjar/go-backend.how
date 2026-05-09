@@ -763,6 +763,57 @@ def dupe_word_defects(body: str) -> int:
     return n
 
 
+def rendered_html_link_defects(repo_root: Path, post_slug: str) -> int:
+    """Parse the Hugo-rendered HTML for the post and verify internal hrefs
+    resolve to actual files under public/. Catches anchors that exist in
+    markdown source but not in the rendered output (template-stripped) and
+    cross-page links that 404 in the build.
+    """
+    html_path = repo_root / "public" / "posts" / post_slug / "index.html"
+    if not html_path.exists():
+        return 0
+    html = html_path.read_text(encoding="utf-8", errors="replace")
+    public = repo_root / "public"
+    n = 0
+    seen: set[str] = set()
+    for m in re.finditer(r'href="([^"]+)"', html):
+        href = m.group(1).split("?", 1)[0]
+        if href in seen:
+            continue
+        seen.add(href)
+        if href.startswith(("http://", "https://", "mailto:", "tel:", "javascript:", "data:")):
+            continue
+        if href.startswith("#"):
+            # already covered by bad_anchors on markdown
+            continue
+        page, _, frag = href.partition("#")
+        if not page:
+            continue
+        target_dir = public / page.lstrip("/").rstrip("/")
+        target_html = (
+            target_dir / "index.html" if target_dir.is_dir() else target_dir
+        )
+        if not target_html.exists():
+            n += 1
+            print(f"DEBUG broken_rendered_link: href={href!r}", file=sys.stderr)
+            continue
+        if frag:
+            try:
+                target_text = target_html.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+            if (
+                f'id="{frag}"' not in target_text
+                and f"id='{frag}'" not in target_text
+            ):
+                n += 1
+                print(
+                    f"DEBUG broken_rendered_anchor: href={href!r}",
+                    file=sys.stderr,
+                )
+    return n
+
+
 def commit_ref_defects(body: str, cached_repo: Path) -> int:
     """Each `commit \\`HASH\\`` reference must exist in the cached repo's git log."""
     refs = set(
@@ -963,6 +1014,9 @@ def main() -> int:
     cats["missing_sections"] = required_sections_defects(body, post_path)
     cats["bad_commit_refs"] = commit_ref_defects(body, cached_repo)
     cats["dupe_words"] = dupe_word_defects(body)
+    cats["broken_rendered_links"] = rendered_html_link_defects(
+        repo_root, post_path.parent.name
+    )
     cats["frontmatter"] = frontmatter_defects(fm)
 
     # Weights: code-correctness > math-grounding > polish
@@ -994,6 +1048,7 @@ def main() -> int:
         "missing_sections": 4,
         "bad_commit_refs": 4,
         "dupe_words": 2,
+        "broken_rendered_links": 5,
         "wordcount_off": 1,
         "frontmatter": 2,
     }
