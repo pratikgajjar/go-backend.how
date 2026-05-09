@@ -68,7 +68,10 @@ For a `SELECT ... FROM single_table WHERE dist_key = X` query, Citus
 recognises the shape of the parse tree directly and skips the
 `standard_planner` call entirely — that's the "fast path." Everything
 else pays the cost of planning a query against the unsharded table on
-the coordinator, even though the result is discarded.
+the coordinator. The output is mostly thrown away — `FinalizeRouterPlan`
+keeps the targetlist (column metadata) from the standard plan but
+replaces the execution tree with a `CustomScan` ("Citus Adaptive")
+that dispatches to workers.
 
 This sits behind every "Citus latency overhead" benchmark. On a query
 that prunes to a single shard and runs in 200µs on the worker, the
