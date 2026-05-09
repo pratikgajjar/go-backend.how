@@ -197,7 +197,7 @@ This is the `Lifetime L0 stalled for: 13.8s` that the badger close logs print at
 
 # Real numbers, on a MacBook M3 Max
 
-All runs were on a Mac M3 Max (12-core, 36 GB), Go 1.26.3, [`badger v4.9.1`](https://github.com/dgraph-io/badger/releases/tag/v4.9.1), APFS on internal NVMe. Workload: `db.NewWriteBatch()` looping over N synthetic 32-byte keys + V-byte values, no concurrent reads. The harness lives at `/tmp/badger-blog-bench/wb.go` (50 lines, listed at the end). Each row is the median of three runs; the L0-stall column is the `Lifetime L0 stalled for:` value badger logs on `db.Close()`.
+All runs were on a Mac M3 Max (12-core, 36 GB), Go 1.26.3, [`badger v4.9.1`](https://github.com/dgraph-io/badger/releases/tag/v4.9.1), APFS on internal NVMe. Workload: `db.NewWriteBatch()` looping over N synthetic 32-byte keys + V-byte values, no concurrent reads. The harness is ~48 lines and is listed at the end of the post. Each row is the median of three runs; the L0-stall column is the `Lifetime L0 stalled for:` value badger logs on `db.Close()`.
 
 | Workload                   | Config       | ops/s (median) | L0 stalls | Wall (median) |
 |----------------------------|--------------|---------------:|----------:|--------------:|
@@ -211,7 +211,7 @@ Three observations the table doesn't explain on its own:
 
 **1. The default `1 MiB` ValueThreshold means most "small" values stay in the LSM.** Default `ValueThreshold = maxValueThreshold = 1 << 20` (= `1,048,576` B) [(`options.go:201`)][opts]. A 128 B value? LSM. A 1 KB value? LSM. A 2 MiB value? Vlog. The headline 1M ops/s comes from the LSM still being small enough to drain — not from the WiscKey separation actually firing. For the 10M × 128 B row, total entries × value ≈ 1.28 GB, the bottom level holds 192 MiB of compressed tables, and L0→L4 compaction never gets behind. The "WiscKey on Go" pitch is technically idle at this row.
 
-**2. L0 stalls scale super-linearly with value bytes-in-LSM.** Doubling values from 128 B to 1 KB at the same key count quadruples the bytes that flow through every L0 → Lbase compaction. Memtables roll over more often, L0 fills faster than L0→L4 drains, the picker oscillates between L0→L0 self-merges and L0→Lbase pushes, and the per-record stall jumps from 0 to ~9 seconds for 5 M records.
+**2. L0 stalls scale super-linearly with value bytes-in-LSM.** Doubling values from 128 B to 1 KB at the same key count means roughly `8×` the bytes flowing through every L0 → Lbase compaction (1 KB / 128 B = 8). Memtables roll over more often, L0 fills faster than L0→L4 drains, the picker oscillates between L0→L0 self-merges and L0→Lbase pushes, and the lifetime stall jumps from 0 s to a measured 13.8 s on the 5M × 1 KB default row — 67% of wall.
 
 **3. Tuning fixes the stalls without changing the algorithm.** Bumping `NumLevelZeroTablesStall` from 15 to 30 raises the stall ceiling. Doubling `MemTableSize` from 64 MiB to 256 MiB drops L0-table-creation rate by `256 / 64 = 4×`. Doubling `NumCompactors` to 8 doubles the drain rate at the cost of CPU during heavy churn. The 5M × 1 KB workload goes from `245 K` ops/s on default to `590 K` ops/s on tuned — same disk, same data, entirely a scheduling change. The same workload with `ValueThreshold=64` (forcing values to vlog) lands at `526 K` ops/s; the win comes from the LSM no longer carrying the value bytes through compaction.
 
@@ -316,7 +316,7 @@ For an in-process view of the stall, there's no need for `bpftrace`; Badger's ow
 
 # Closing
 
-The "1M writes/sec without compaction stalls" headline is real for the workload Badger was designed for: small keys, small-and-getting-smaller LSM, value bytes flowing through the WiscKey vlog. It's just not the *default* shape, and the system never told you that. Walking the source — `pickCompactLevels` for the scoring, `addLevel0Table` for the stall point, `runCompactor` for the worker-zero L0 specialist — is what makes the gap between headline and default behavior obvious. Once you see it, the tuning is a 5-flag search over `MemTableSize`, `NumLevelZeroTablesStall`, `NumCompactors`, `ValueThreshold`, `VLogPercentile`, and you can pick which trade you want to pay.
+The "1M writes/sec without compaction stalls" headline is real for the workload Badger was designed for: small keys, an LSM that stays small relative to total data, value bytes flowing through the WiscKey vlog. It's just not the *default* shape, and the system never told you that. Walking the source — `pickCompactLevels` for the scoring, `addLevel0Table` for the stall point, `runCompactor` for the worker-zero L0 specialist — is what makes the gap between headline and default behavior obvious. Once you see it, the tuning is a 5-flag search over `MemTableSize`, `NumLevelZeroTablesStall`, `NumCompactors`, `ValueThreshold`, `VLogPercentile`, and you can pick which trade you want to pay.
 
 That, more than the WiscKey separation itself, is the lesson. Storage engines are a few hundred well-named knobs sitting on top of a couple of hard ideas. Reading the source and watching the engine break under load is faster than reading the docs.
 

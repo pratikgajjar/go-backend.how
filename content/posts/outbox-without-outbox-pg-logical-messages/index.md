@@ -1077,9 +1077,22 @@ func main() {
 }
 ```
 
-Run `psql -c "SELECT data FROM pg_logical_slot_peek_binary_changes('factlib_slot', NULL, NULL, 'proto_version', '1', 'publication_names', 'factlib_pub', 'messages', 'true');"`
-and you'll see the protobuf bytes hanging out in the WAL, waiting
-for OwlPost to drain them.
+After running the demo against an empty database, the WAL holds the
+encoded `OutboxEvent` bytes; create a temporary slot to peek at them:
+
+```sql
+SELECT pg_create_logical_replication_slot('demo_peek', 'pgoutput');
+CREATE PUBLICATION demo_pub;
+SELECT data FROM pg_logical_slot_peek_binary_changes(
+    'demo_peek', NULL, NULL,
+    'proto_version', '1', 'publication_names', 'demo_pub',
+    'messages', 'true'
+);
+SELECT pg_drop_replication_slot('demo_peek');
+```
+
+Stand up an actual OwlPost (`docker-compose up owlpost` from the
+factlib repo) and the same bytes flow into Kafka instead.
 
 # Comparison
 
