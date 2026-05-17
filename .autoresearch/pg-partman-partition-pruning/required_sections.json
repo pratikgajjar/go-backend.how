@@ -1,0 +1,9 @@
+[
+  ["1. hook / surprise", ["hook", "surpris", "wrong-feel"]],
+  ["2. problem from first principles", ["problem", "first principles", "what this system was built", "why"]],
+  ["3. architecture in 200 words", ["architecture", "overview", "shape"]],
+  ["4. source dive / line-by-line", ["source dive", "byte", "walk", "line by line", "subsystem", "run_maintenance"]],
+  ["5. real numbers / napkin math", ["real numbers", "napkin", "math", "benchmark", "what gets pruned"]],
+  ["6. tradeoffs", ["tradeoff", "bad at", "limitation"]],
+  ["7. what I'd build differently", ["what i'd", "build differently", "change"]]
+]

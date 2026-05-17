@@ -1,0 +1,3 @@
+FROM cgr.dev/chainguard/wolfi-base:latest
+COPY app-linux-arm64 /app
+ENTRYPOINT ["/app"]

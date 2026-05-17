@@ -1,0 +1,9 @@
+[
+  ["hook",          ["80×", "hook", "surprise", "beats postgres"]],
+  ["problem",       ["problem", "first principles", "first-principles", "built to solve", "solve"]],
+  ["architecture",  ["architecture", "200 words", "diagram", "in 200"]],
+  ["source dive",   ["source dive", "byte-by-byte", "line-by-line", "subsystem", "walk through", "vector flows", "dive"]],
+  ["real numbers",  ["real numbers", "benchmark", "tpc-h", "numbers"]],
+  ["tradeoffs",     ["tradeoff", "tradeoffs"]],
+  ["differently",   ["differently", "what i'd", "what i would", "what i’d", "what i'd build"]]
+]

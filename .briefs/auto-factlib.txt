@@ -1,0 +1,13 @@
+SWITCH TO AUTORESEARCH MODE for the factlib post — load the autoresearch-create skill and set it up. Goal: maximum correctness and napkin-math rigor.
+
+Constraints:
+- Post under review: content/posts/outbox-without-outbox-pg-logical-messages/index.md
+- Cached source-of-truth: ~/.cache/checkouts/github.com/fampay-inc/factlib/
+- Work in your own subdir: mkdir -p .autoresearch/factlib && cd .autoresearch/factlib (this isolates autoresearch.jsonl from the other pane's loop)
+- A starter scorer is at /Users/pratikgajjar/ambitious/go-backend.how/.autoresearch/score.py — read it, USE IT or replace it with a stricter version. It currently penalises: hugo build warnings, missing source-code file paths (code-comments that don't exist), unverified code snippets (no matching identifier in source), unit-bearing numbers without nearby napkin math, vague qualifiers without bounds, missing citations for "since version X" claims, marketing language, frontmatter issues. Primary metric: defects (lower is better).
+- Write autoresearch.md (goal, files in scope = the one post + this scorer; off-limits = everything else), autoresearch.sh that runs the scorer and prints `METRIC ...` lines.
+- init_experiment(name="factlib correctness + napkin math", metric_name="defects", direction="lower"), run baseline, log_experiment, then LOOP FOREVER. Each iteration: pick the worst category, fix it in the post, re-run, keep/discard.
+- Hard rules: never fabricate numbers; if you can't measure, derive — show the math inline; every code block must reference a real file in the cached repo and the snippet must substring-match real source; the postgres docs URLs must point at functions-admin / logicaldecoding correctly; replace "approximately/roughly/about N" with measured ranges or remove the claim.
+- DO NOT STOP. Run the loop autonomously. Append deferred ideas to autoresearch.ideas.md.
+
+Begin now.

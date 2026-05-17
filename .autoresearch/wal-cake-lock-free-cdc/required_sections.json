@@ -1,0 +1,10 @@
+[
+  ["1. naive answer / failure modes",        ["naive", "fails", "failure"]],
+  ["2. shape of the right answer",           ["shape", "right answer", "wiring"]],
+  ["3. replication loop / pgoutput",         ["replication", "pgoutput", "byte by byte"]],
+  ["4. ring buffer / lock-free",             ["ring buffer", "lock-free", "doesn't lock", "lockfree"]],
+  ["5. parquet encoding",                    ["parquet", "zstd"]],
+  ["6. s3 upload",                           ["s3", "upload"]],
+  ["7. throughput math / napkin",            ["throughput", "napkin"]],
+  ["8. tradeoffs / what i'd change",         ["change", "tradeoff", "limitation"]]
+]
