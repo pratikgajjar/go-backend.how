@@ -1,10 +1,10 @@
 +++
 title = "🦉 The Outbox Without an Outbox — Postgres Logical Messages as Eventbus"
 description = "Postgres has shipped pg_logical_emit_message since 9.6 (2016) — it lets you skip the outbox table entirely. We walk factlib + OwlPost line by line and audit the LSN-ack pipeline."
-date = 2026-05-09T12:00:00+05:30
-lastmod = 2026-05-09T12:00:00+05:30
-publishDate = "2026-05-09T12:00:00+05:30"
-draft = true
+date = 2026-05-17T12:00:00+05:30
+lastmod = 2026-05-17T12:00:00+05:30
+publishDate = "2026-05-17T12:00:00+05:30"
+draft = false
 tags = ["postgres", "outbox", "kafka", "event-driven", "wal", "golang"]
 images = ["og.png"]
 theme = "mauve"
