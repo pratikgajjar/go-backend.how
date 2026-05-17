@@ -1,6 +1,6 @@
 +++
 title = "🦉 The Outbox Without an Outbox — Postgres Logical Messages as Eventbus"
-description = "Postgres has shipped pg_logical_emit_message since 9.6 (2016) — it lets you skip the outbox table entirely. We walk factlib + OwlPost line by line and audit the LSN-ack pipeline."
+description = "The outbox pattern asks for what replication already provides — durable, ordered, resumable delivery. Postgres' pg_logical_emit_message lets your application piggyback on that, walked line by line through factlib + OwlPost."
 date = 2026-05-17T09:00:00+05:30
 lastmod = 2026-05-17T09:00:00+05:30
 publishDate = "2026-05-17T09:00:00+05:30"
