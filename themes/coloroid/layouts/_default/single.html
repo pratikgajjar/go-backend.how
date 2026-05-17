@@ -16,19 +16,45 @@
   <h1 class="article-title">{{ .Title }}</h1>
 
   <article class="article-content">
-    <div class="table-of-content">
-      <h4>Contents</h4>
+    <nav class="table-of-content" aria-labelledby="toc-heading">
+      <h2 id="toc-heading">Contents</h2>
       {{ .TableOfContents }}
-    </div>
+    </nav>
     {{ partial "ext_link.html" .Content }}
   </article>
 
   {{ partial "terms.html" (dict "taxonomy" "tags" "page" .) }}
 
+  {{ with .Params.series }}
+    {{ $page := $ }}
+    {{ range $seriesName := . }}
+      {{ with index $.Site.Taxonomies.series $seriesName }}
+        {{ $pages := .Pages.ByDate }}
+        {{ if gt (len $pages) 1 }}
+        <nav class="series-nav" aria-labelledby="series-heading-{{ $seriesName | urlize }}">
+          <h2 id="series-heading-{{ $seriesName | urlize }}">Series: {{ $seriesName | humanize | title }}</h2>
+          <ol>
+            {{ range $i, $p := $pages }}
+              <li{{ if eq $p.RelPermalink $page.RelPermalink }} class="current"{{ end }}>
+                {{ if eq $p.RelPermalink $page.RelPermalink }}
+                  <strong>{{ add $i 1 }}. {{ $p.Title }}</strong>
+                  <span class="series-current">(you are here)</span>
+                {{ else }}
+                  <a href="{{ $p.RelPermalink }}">{{ add $i 1 }}. {{ $p.Title }}</a>
+                {{ end }}
+              </li>
+            {{ end }}
+          </ol>
+        </nav>
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+
   {{ if .IsPage }}
   <div class="share-links">
     <span>Share:</span>
-    <a href="https://twitter.com/intent/tweet?url={{ .Permalink | urlquery }}&text={{ .Title | urlquery }}" target="_blank" rel="noopener noreferrer">twitter/x</a>
+    <a href="https://x.com/intent/tweet?url={{ .Permalink | urlquery }}&text={{ .Title | urlquery }}" target="_blank" rel="noopener noreferrer">twitter/x</a>
     <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ .Permalink | urlquery }}" target="_blank" rel="noopener noreferrer">linkedin</a>
     <button class="share-copy-btn">copy link</button>
     <div></div>
@@ -37,15 +63,15 @@
 
   {{ $related := .Site.RegularPages.Related . | first 3 }}
   {{ with $related }}
-  <div class="related-posts">
-    <h4>Related</h4>
+  <nav class="related-posts" aria-labelledby="related-heading">
+    <h2 id="related-heading">Related</h2>
     {{ range . }}
     <div class="related-post">
       <a href="{{ .RelPermalink }}">{{ .Title }}</a>
       <span class="read-time">~{{ math.Ceil (div (float .FuzzyWordCount) $.Site.Params.reading_speed) }} min</span>
     </div>
     {{ end }}
-  </div>
+  </nav>
   {{ end }}
 
   {{ partial "hacker-news-comments.html" . }}

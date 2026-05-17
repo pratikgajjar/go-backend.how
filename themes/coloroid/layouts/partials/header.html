@@ -1,6 +1,16 @@
+{{- /* On the home page the site title is the page's primary heading, so
+       wrap it in <h1>. On every other page, the post/page title is the
+       primary heading; the site title is decorative chrome — wrap it
+       in a styled <p> so each page has exactly one h1. */ -}}
+{{- if .IsHome }}
 <h1>
   <a href="/" style="text-decoration: none; color: inherit;">{{ site.Title }}</a>
 </h1>
+{{- else }}
+<p class="site-title" aria-label="{{ site.Title }}">
+  <a href="/" style="text-decoration: none; color: inherit;">{{ site.Title }}</a>
+</p>
+{{- end }}
 <div class="header-nav">
   {{ partial "menu.html" (dict "menuID" "main" "page" .) }}
   <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark/light mode" title="Toggle dark/light mode">◑</button>
