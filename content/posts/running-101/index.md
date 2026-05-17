@@ -6,7 +6,7 @@ lastmod = 2024-10-12T23:45:31+05:30
 publishDate = "2024-10-12T23:45:31+05:30"
 draft = false
 tags = [ "gyan", "health" ]
-images = ["aws-reinvent-2024-5k.jpg", "running-101-dark.png"]
+images = ["og.png"]
 featured = true
 theme = "mint"
 +++

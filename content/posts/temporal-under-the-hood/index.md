@@ -6,7 +6,7 @@ lastmod = 2026-04-05T12:00:00+05:30
 publishDate = "2026-04-05T12:00:00+05:30"
 draft = false
 tags = ["temporal", "durable-execution", "workflows", "postgres", "system-design"]
-images = []
+images = ["og.png"]
 theme = "teal"
 featured = true
 +++
@@ -1108,10 +1108,6 @@ not as production capacity planning._
 [^8]: [pgmq — a battle-tested Postgres queue](https://github.com/pgmq/pgmq)
 [^9]: [napkin-math — Sirupsen](https://github.com/sirupsen/napkin-math)
 
-[^10]: [Temporal](https://temporal.io/) — the durable execution platform benchmarked in this post.
-
-[^11]: [PostgreSQL](https://www.postgresql.org/) — the open-source relational database used as Temporal's persistence backend.
-
 _Temporal® is a trademark of Temporal Technologies, Inc. PostgreSQL® is a trademark of The PostgreSQL Global Development Group. Absurd is by Armin Ronacher / Earendil Works. This post is an independent benchmark and analysis — it is not affiliated with, endorsed by, or sponsored by any of these projects. All trademarks belong to their respective owners._
 
 ---
@@ -1119,7 +1115,7 @@ _Temporal® is a trademark of Temporal Technologies, Inc. PostgreSQL® is a trad
 ## Colophon — who did what
 
 This post was researched, benchmarked, and drafted by **Claude Opus 4.6**
-(via the [pi](https://github.com/mariozechner/pi) coding agent) while I
+(via the [pi](https://github.com/badlogic/pi-mono) coding agent) while I
 sat in an adjacent terminal saying things like "no, re-run that,"
 "use underscores for italics, not asterisks," and "that number doesn't
 match the table you wrote four sections ago." My contribution was

@@ -9,4 +9,4 @@ images: []
 
 Software Engineer.
 
-[@pratikgajjar_in](https://twitter.com/pratikgajjar_in)
+[@pratikgajjar_in](https://x.com/pratikgajjar_in)

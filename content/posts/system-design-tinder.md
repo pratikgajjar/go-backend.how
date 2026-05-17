@@ -2,8 +2,10 @@
 title = '♥️ System Design - Tinder'
 description = "A battle-tested deep dive into designing a location-based dating app that handles 2 billion swipes per day. We'll dissect the real engineering challenges: the geospatial nightmare, the cold start problem, chat delivery guarantees, and why your recommendation engine will make or break everything."
 date = 2023-02-15T10:00:00-07:00
+lastmod = 2023-02-15T10:00:00-07:00
 draft = false
-tags = ['System Design','HLD', 'Dating App', 'Geospatial', 'Recommendations']
+tags = ['system-design', 'dating-app', 'geospatial', 'recommendations']
+images = ["/posts/system-design-tinder/og.png"]
 theme = "blush"
 +++
 
