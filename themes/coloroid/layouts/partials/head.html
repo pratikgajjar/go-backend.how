@@ -1,10 +1,18 @@
 <!-- Performance hints -->
 <link rel="preload" href="/fonts/departuremono/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/jetbrains/JetBrainsMono[wght].woff2" as="font" type="font/woff2" crossorigin>
+{{- if eq .Kind "page" }}
+<link rel="preload" href="/fonts/jetbrains/JetBrainsMono-Italic[wght].woff2" as="font" type="font/woff2" crossorigin>
+{{- end }}
 <link rel="dns-prefetch" href="//stats.backend.how">
 <link rel="preconnect" href="https://stats.backend.how">
-<!-- Theme and display settings -->
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+{{- if .Params.math }}
+<link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+{{- end }}
+<!-- Cross-document View Transitions: smooth fade between pages on supporting browsers -->
+<meta name="view-transition" content="same-origin">
+<!-- Theme and display settings (charset and viewport are in baseof.html) -->
 <meta name="theme-color" content="#100f0f" />
 <meta name="author" content="{{ .Site.Params.author.name }}" />
 <meta name="copyright" content="{{ .Site.Copyright }}" />
@@ -23,14 +31,8 @@
 <!-- SEO Components -->
 {{ partial "head/seo.html" . }}
 <!-- CSS & JS -->
-{{ partialCached "head/css.html" . }} {{ partialCached "head/js.html" . }}
-<!-- RSS Feed -->
-{{ with .OutputFormats.Get "rss" -}} {{ printf `<link
-    rel="%q"
-    type="%q"
-    href="%q"
-    title="%q"
-/>` .Rel .MediaType.Type .Permalink site.Title | safeHTML }} {{ end }}
+{{ partialCached "head/css.html" . .Kind .Layout }} {{ partialCached "head/js.html" . }}
+{{- /* RSS alternate link is already emitted by head/seo.html via .AlternativeOutputFormats. */ -}}
 
 <script
     defer

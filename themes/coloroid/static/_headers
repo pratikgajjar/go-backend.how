@@ -1,9 +1,11 @@
 /*
   Cache-Control: public, s-maxage=60, must-revalidate
-  Content-Security-Policy: default-src 'self'; script-src 'self' cdn.jsdelivr.net static.cloudflareinsights.com *.backend.how 'nonce-mermaid'; connect-src cloudflareinsights.com *.backend.how hn.algolia.com; frame-src 'self' www.youtube.com www.youtube-nocookie.com; frame-ancestors 'none'; object-src 'none'; font-src 'self' cdn.jsdelivr.net; img-src 'self' mirrors.creativecommons.org; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net;
+  Content-Security-Policy: default-src 'self'; script-src 'self' cdn.jsdelivr.net *.backend.how 'nonce-mermaid'; connect-src 'self' *.backend.how hn.algolia.com; frame-src 'self' www.youtube-nocookie.com; frame-ancestors 'self'; object-src 'none'; font-src 'self' cdn.jsdelivr.net; img-src 'self'; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net;
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-  Content-Security-Policy: frame-ancestors 'self'
   X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()
 
 /fonts/*
   ! Cache-Control

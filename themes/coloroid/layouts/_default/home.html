@@ -3,10 +3,21 @@
   {{ range where site.RegularPages "Params.featured" true }}
     {{ $dateMachine := .Date | time.Format "2006-01-02T15:04:05-07:00" }}
     {{ $dateHuman := .Date | time.Format ":date_long" }}
-    <div class="meta-info">
-      <a style="text-decoration: none;" href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>
-      <time datetime="{{ $dateMachine }}">{{ $dateHuman }}</time>
-    </div>
+    {{ $readingTime := div (float .FuzzyWordCount) .Site.Params.reading_speed }}
+    {{ $readingTime = math.Ceil $readingTime }}
+    <article class="featured-post">
+      <h2><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></h2>
+      <div class="meta-info">
+        <time datetime="{{ $dateMachine }}">{{ $dateHuman }}</time>
+        <span class="read-time">~{{ $readingTime }} min</span>
+      </div>
+      {{ with .Description }}<p class="post-description">{{ . }}</p>{{ end }}
+      {{ with .Params.tags }}
+      <div class="post-tags">
+        {{ range first 5 . }}<a href="{{ "/tags/" | relURL }}{{ . | urlize }}" class="post-tag">#{{ . }}</a>{{ end }}
+      </div>
+      {{ end }}
+    </article>
     <hr>
   {{ end }}
 {{ end }}
