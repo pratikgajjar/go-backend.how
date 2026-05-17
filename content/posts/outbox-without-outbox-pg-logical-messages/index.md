@@ -957,12 +957,12 @@ batched emit (N events in one transaction; factlib doesn't expose
 this yet, but the extension is small), or move to a dedicated event
 store (Kafka, EventStoreDB, Pulsar) for async-write semantics.
 
-# Caveats
+## Caveats
 
 Things to be aware of that apply regardless — they aren't reasons to
 avoid this approach, just operational realities to plan for.
 
-## Schema evolution
+### Schema evolution
 
 Standard protobuf evolution rules apply (additive optional fields,
 never re-use field numbers, never change types) and you need a shared
@@ -970,7 +970,7 @@ schema registry across consumer languages. factlib doesn't solve this
 problem, it just doesn't make it worse — same as any protobuf-based
 event bus.
 
-## Long Postgres transactions
+### Long Postgres transactions
 
 With the `proto_version '1'` plugin arg factlib uses today, logical
 decoding does not see a transaction's records until COMMIT — a 30-
