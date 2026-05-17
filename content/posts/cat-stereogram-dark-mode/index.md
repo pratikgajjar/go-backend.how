@@ -6,8 +6,8 @@ lastmod = 2024-07-16T23:10:26+05:30
 publishDate = "2024-07-16T23:10:26+05:30"
 draft = false
 featured = false
-tags = []
-images = ["cat-stereogram.png", "cat-vision.png"]
+tags = ["stereograms", "vision", "dark-mode", "focus"]
+images = ["og.png"]
 theme = "lavender"
 +++
 
@@ -33,11 +33,11 @@ Regularly viewing stereograms prompts the eyes to change focus and utilize diffe
 
 # How to View a Stereogram
 
-### Relax Your Eyes
+## Relax Your Eyes
 
 Hold the stereogram at a comfortable distance and attempt to look through it rather than directly at it. Allow your eyes to relax and slightly unfocus.
 
-### Focus on a Point Behind the Image
+## Focus on a Point Behind the Image
 
 Visualize focusing on a point behind the stereogram. This technique helps align your eyes to perceive the hidden 3D image.
 
@@ -47,7 +47,7 @@ Visualize focusing on a point behind the stereogram. This technique helps align 
 4. Once the images merge, try to maintain this focus while slowly looking around the head and body of the cat. This technique helps align your eyes to perceive the hidden 3D image.
 5. After merging the images, remove your finger or pen tip and attempt to sustain the merged image without losing focus.
 
-### Adjust Distance
+## Adjust Distance
 
 Gradually bring the stereogram closer to your eyes until the 3D image becomes visible. Once perceived, adjust the distance for comfortable viewing.
 

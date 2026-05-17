@@ -2,8 +2,10 @@
 title = '🐘 Postgres - Optimising query'
 description = "Optimize your PostgreSQL queries with these techniques to improve performance: using indexes, analyzing data, utilizing EXPLAIN, avoiding SELECT *, implementing LIMIT, optimizing JOINs, and considering caching."
 date = 2023-02-15T10:00:00-07:00
+lastmod = 2023-02-15T10:00:00-07:00
 draft = false
-tags = ['DB','postgres', 'ai']
+tags = ['postgres', 'query-optimization']
+images = ["/posts/post-query-optimise/og.png"]
 theme = "periwinkle"
 +++
 

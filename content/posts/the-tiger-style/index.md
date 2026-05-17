@@ -6,8 +6,8 @@ lastmod = 2024-06-29T18:34:30+05:30
 publishDate = 2024-06-29T18:34:30+05:30
 featured = true
 draft = false
-tags = ['TigerBeetle', 'System Design', 'Repost']
-images = ["beetle.webp"]
+tags = ['tigerbeetle', 'system-design', 'repost']
+images = ["og.png"]
 theme = "tiger"
 +++
 
@@ -133,9 +133,9 @@ Code](https://spinroot.com/gerard/pdf/P10.pdf) will change the way you code fore
 
   - **Assert the relationships of compile-time constants** as a sanity check, and also to document
     and enforce [subtle
-    invariants](https://github.com/coilhq/tigerbeetle/blob/db789acfb93584e5cb9f331f9d6092ef90b53ea6/src/vsr/journal.zig#L45-L47)
+    invariants](https://github.com/tigerbeetle/tigerbeetle/blob/db789acfb93584e5cb9f331f9d6092ef90b53ea6/src/vsr/journal.zig#L45-L47)
     or [type
-    sizes](https://github.com/coilhq/tigerbeetle/blob/578ac603326e1d3d33532701cb9285d5d2532fe7/src/ewah.zig#L41-L53).
+    sizes](https://github.com/tigerbeetle/tigerbeetle/blob/578ac603326e1d3d33532701cb9285d5d2532fe7/src/ewah.zig#L41-L53).
     Compile-time assertions are extremely powerful because they are able to check a program's design
     integrity _before_ the program even executes.
 

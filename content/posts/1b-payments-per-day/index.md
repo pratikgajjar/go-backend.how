@@ -3,7 +3,8 @@ title: "💸 1B Payments/Day - TigerBeetle & PostgreSQL"
 date: 2025-03-01
 lastmod: 2026-05-06
 description: "Can one bank absorb India's entire daily UPI volume? A first-principles design exercise with real benchmarks: TigerBeetle vs PostgreSQL, traced with eBPF down to the io_uring and fsync calls."
-tags: ["golang", "tigerbeetle", "payments", "first-principles", "system-design", "ebpf"]
+tags: ["golang", "tigerbeetle", "payments", "system-design", "ebpf"]
+images: ["og.png"]
 draft: false
 theme: "honey"
 featured: true
@@ -21,7 +22,7 @@ India moves money like no other country. By February 2026, UPI was clearing **20
 | Dec-24 | 641          | 16,730.01   | 23,24,699.91  |
 | Nov-24 | 637          | 15,482.02   | 21,55,187.40  |
 
-Source: [NPCI product-statistics](https://www.npci.org.in/what-we-do/upi/product-statistics)
+Source: [NPCI product-statistics](https://www.npci.org.in/product/upi/product-statistics)
 
 Put those numbers side-by-side: Jan 2025 to Jan 2026, volume jumped from 17B to 21.7B in a single year — **28% YoY growth, month after month**. Bank count grew from 647 → 691. Rupee value from ₹23.48L Cr → ₹28.33L Cr.
 
@@ -199,7 +200,7 @@ $$
 \end{CD}
 $$
 
-<p style="text-align:center; font-family: var(--font-mono); font-size: 0.85rem; opacity: 0.7; margin-top: -0.5rem;">one thread · LSM + journal · io_uring + O_DIRECT</p>
+_one thread · LSM + journal · io_uring + O_DIRECT_
 
 With 6 replicas you tolerate 2 simultaneous node failures. A primary election needs 4 live nodes (4-of-6 quorum). The quorum math drives the "6" default — you want Byzantine-safe counts without paying for 7 or 9.
 
@@ -567,7 +568,7 @@ The solution: **checkpoint and archive**. TigerBeetle's accounts already represe
 | 90 days–1 year | **Warm** — ClickHouse / Parquet on NVMe | ~45 TB (compressed 2–3×) | seconds |
 | 1–10 years | **Cold** — S3 / GCS Parquet, partitioned by day | ~150 TB (compressed 3–5×) | minutes |
 
-### The archival pipeline
+## The archival pipeline
 
 1. **Scheduled rollover job** (nightly): query TigerBeetle for transfers with `timestamp < NOW() - 90d`, stream to Parquet files partitioned by day. The account balances at the cutoff date are the checkpoint — save those alongside the archived transfers.
 2. **Columnar compression** on the way out: zstd gets ~4.7× on this schema (we measured it — 27 B/row with dictionary encoding on the low-cardinality fields).
@@ -706,10 +707,6 @@ Full setup, teardown, and bpftrace scripts are in the [benchmark repo](https://g
 [^3]: [`pratikgajjar/1b-payments`](https://github.com/pratikgajjar/1b-payments) — benchmark code, eBPF scripts, and setup guide for reproducing every number in this post.
 
 [^4]: _Benchmarks were performed on an Apple M4 Mac Mini (10-core, 24 GB RAM) inside a Podman Linux VM (Fedora CoreOS 41, 4 CPU / 8 GB). Real-world performance will vary with storage, kernel, and workload._
-
-[^5]: [TigerBeetle](https://tigerbeetle.com/) — the financial transactions database used in this post's benchmarks.
-
-[^6]: [PostgreSQL](https://www.postgresql.org/) — the open-source relational database used in this post's benchmarks.
 
 [^7]: VR = [Viewstamped Replication](vr-revisited.pdf) — a leader-based consensus protocol by Oki & Liskov (1988), in the same family as Paxos and Raft. TigerBeetle's implementation is documented in their [VSR protocol docs](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/internals/vsr.md).
 
