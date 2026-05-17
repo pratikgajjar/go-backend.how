@@ -1,13 +1,13 @@
 {{ if .Params.hnItemId }}
 <div id="hn-comments" data-hn-item-id="{{ .Params.hnItemId }}">
-  <h3>Hacker News Comments</h3>
+  <h2>Hacker News Comments</h2>
   <div id="hn-comments-list">Loading comments...</div>
   <div id="no-comments-message" style="display: none;">No comments yet 🥶</div>
-  <a href="https://news.ycombinator.com/item?id={{ .Params.hnItemId }}" target="_blank">Add comment / Upvote on Hacker News</a>
+  <a href="https://news.ycombinator.com/item?id={{ .Params.hnItemId }}" target="_blank" rel="noopener noreferrer">Add comment / Upvote on Hacker News</a>
 </div>
 
 {{ $hnCommentsJS := resources.Get "js/hn-comments.js" | minify | fingerprint }}
-<script src="{{ $hnCommentsJS.Permalink }}" defer></script>
+<script src="{{ $hnCommentsJS.RelPermalink }}" defer></script>
 
 {{ end }}
 

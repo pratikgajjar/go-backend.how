@@ -52,79 +52,6 @@ body {
  * ============================================
  */
 
-/* ========== REDS & PINKS (1-8) ========== */
-body.theme-blush { --article-bg: oklch(90% 0.06 10); --article-text: oklch(25% 0.04 10); --color-link: oklch(45% 0.12 350); --selection: oklch(75% 0.08 10); --selection-fg: oklch(20% 0.02 10); }
-body.theme-coral { --article-bg: oklch(85% 0.10 25); --article-text: oklch(25% 0.04 25); --color-link: oklch(42% 0.14 15); --selection: oklch(68% 0.12 25); --selection-fg: oklch(18% 0.02 25); }
-body.theme-salmon { --article-bg: oklch(82% 0.12 30); --article-text: oklch(22% 0.04 30); --color-link: oklch(40% 0.14 20); --selection: oklch(65% 0.14 30); --selection-fg: oklch(15% 0.02 30); }
-body.theme-rose { --article-bg: oklch(88% 0.08 355); --article-text: oklch(24% 0.04 355); --color-link: oklch(45% 0.12 340); --selection: oklch(72% 0.10 355); --selection-fg: oklch(18% 0.02 355); }
-body.theme-dustyrose { --article-bg: oklch(78% 0.06 5); --article-text: oklch(22% 0.03 5); --color-link: oklch(38% 0.10 350); --selection: oklch(60% 0.08 5); --selection-fg: oklch(95% 0.02 5); }
-body.theme-raspberry { --article-bg: oklch(75% 0.10 350); --article-text: oklch(20% 0.04 350); --color-link: oklch(35% 0.12 340); --selection: oklch(55% 0.12 350); --selection-fg: oklch(95% 0.02 350); }
-body.theme-cherry { --article-bg: oklch(72% 0.12 15); --article-text: oklch(18% 0.04 15); --color-link: oklch(32% 0.14 5); --selection: oklch(52% 0.14 15); --selection-fg: oklch(95% 0.02 15); }
-body.theme-rosewood { --article-bg: oklch(68% 0.08 20); --article-text: oklch(18% 0.03 20); --color-link: oklch(35% 0.10 10); --selection: oklch(48% 0.10 20); --selection-fg: oklch(95% 0.02 20); }
-
-/* ========== ORANGES & AMBERS (9-16) ========== */
-body.theme-peach { --article-bg: oklch(88% 0.08 55); --article-text: oklch(25% 0.04 55); --color-link: oklch(42% 0.12 40); --selection: oklch(72% 0.10 55); --selection-fg: oklch(18% 0.02 55); }
-body.theme-apricot { --article-bg: oklch(85% 0.10 50); --article-text: oklch(24% 0.04 50); --color-link: oklch(40% 0.14 35); --selection: oklch(68% 0.12 50); --selection-fg: oklch(18% 0.02 50); }
-body.theme-tangerine { --article-bg: oklch(82% 0.12 45); --article-text: oklch(22% 0.04 45); --color-link: oklch(38% 0.14 30); --selection: oklch(65% 0.14 45); --selection-fg: oklch(15% 0.02 45); }
-body.theme-amber { --article-bg: oklch(80% 0.14 70); --article-text: oklch(22% 0.04 70); --color-link: oklch(38% 0.14 55); --selection: oklch(62% 0.16 70); --selection-fg: oklch(15% 0.02 70); }
-body.theme-honey { --article-bg: oklch(82% 0.12 80); --article-text: oklch(22% 0.04 80); --color-link: oklch(38% 0.12 65); --selection: oklch(65% 0.14 80); --selection-fg: oklch(15% 0.02 80); }
-body.theme-gold { --article-bg: oklch(84% 0.11 85); --article-text: oklch(23% 0.04 85); --color-link: oklch(40% 0.12 70); --selection: oklch(68% 0.12 85); --selection-fg: oklch(16% 0.02 85); }
-body.theme-butterscotch { --article-bg: oklch(78% 0.10 60); --article-text: oklch(22% 0.03 60); --color-link: oklch(38% 0.12 45); --selection: oklch(60% 0.12 60); --selection-fg: oklch(95% 0.02 60); }
-body.theme-terracotta { --article-bg: oklch(72% 0.10 40); --article-text: oklch(20% 0.03 40); --color-link: oklch(35% 0.12 25); --selection: oklch(55% 0.12 40); --selection-fg: oklch(95% 0.02 40); }
-
-/* ========== YELLOWS & CREAMS (17-22) ========== */
-body.theme-cream { --article-bg: oklch(95% 0.03 90); --article-text: oklch(28% 0.03 90); --color-link: oklch(45% 0.10 60); --selection: oklch(82% 0.05 90); --selection-fg: oklch(20% 0.02 90); }
-body.theme-vanilla { --article-bg: oklch(92% 0.04 95); --article-text: oklch(26% 0.03 95); --color-link: oklch(42% 0.10 70); --selection: oklch(78% 0.06 95); --selection-fg: oklch(20% 0.02 95); }
-body.theme-butter { --article-bg: oklch(90% 0.08 100); --article-text: oklch(25% 0.04 100); --color-link: oklch(42% 0.12 80); --selection: oklch(75% 0.10 100); --selection-fg: oklch(18% 0.02 100); }
-body.theme-lemon { --article-bg: oklch(92% 0.10 105); --article-text: oklch(26% 0.04 105); --color-link: oklch(45% 0.12 85); --selection: oklch(78% 0.12 105); --selection-fg: oklch(18% 0.02 105); }
-body.theme-sand { --article-bg: oklch(88% 0.05 85); --article-text: oklch(25% 0.03 85); --color-link: oklch(42% 0.10 65); --selection: oklch(72% 0.08 85); --selection-fg: oklch(18% 0.02 85); }
-body.theme-wheat { --article-bg: oklch(85% 0.06 75); --article-text: oklch(24% 0.03 75); --color-link: oklch(40% 0.10 55); --selection: oklch(68% 0.08 75); --selection-fg: oklch(18% 0.02 75); }
-
-/* ========== GREENS (23-32) ========== */
-body.theme-mint { --article-bg: oklch(90% 0.06 155); --article-text: oklch(24% 0.04 155); --color-link: oklch(40% 0.10 170); --selection: oklch(75% 0.08 155); --selection-fg: oklch(18% 0.02 155); }
-body.theme-seafoam { --article-bg: oklch(88% 0.07 165); --article-text: oklch(24% 0.04 165); --color-link: oklch(38% 0.10 180); --selection: oklch(72% 0.09 165); --selection-fg: oklch(18% 0.02 165); }
-body.theme-sage { --article-bg: oklch(82% 0.05 140); --article-text: oklch(22% 0.03 140); --color-link: oklch(38% 0.08 155); --selection: oklch(65% 0.07 140); --selection-fg: oklch(15% 0.02 140); }
-body.theme-pistachio { --article-bg: oklch(85% 0.08 130); --article-text: oklch(23% 0.04 130); --color-link: oklch(40% 0.10 145); --selection: oklch(68% 0.10 130); --selection-fg: oklch(16% 0.02 130); }
-body.theme-olive { --article-bg: oklch(72% 0.06 115); --article-text: oklch(20% 0.03 115); --color-link: oklch(35% 0.08 130); --selection: oklch(55% 0.08 115); --selection-fg: oklch(95% 0.02 115); }
-body.theme-moss { --article-bg: oklch(68% 0.07 125); --article-text: oklch(18% 0.03 125); --color-link: oklch(32% 0.08 140); --selection: oklch(50% 0.09 125); --selection-fg: oklch(95% 0.02 125); }
-body.theme-forest { --article-bg: oklch(65% 0.08 145); --article-text: oklch(18% 0.03 145); --color-link: oklch(30% 0.10 160); --selection: oklch(48% 0.10 145); --selection-fg: oklch(95% 0.02 145); }
-body.theme-jade { --article-bg: oklch(75% 0.08 160); --article-text: oklch(20% 0.03 160); --color-link: oklch(35% 0.10 175); --selection: oklch(58% 0.10 160); --selection-fg: oklch(95% 0.02 160); }
-body.theme-emerald { --article-bg: oklch(70% 0.10 155); --article-text: oklch(18% 0.04 155); --color-link: oklch(32% 0.12 170); --selection: oklch(52% 0.12 155); --selection-fg: oklch(95% 0.02 155); }
-body.theme-eucalyptus { --article-bg: oklch(78% 0.06 170); --article-text: oklch(22% 0.03 170); --color-link: oklch(38% 0.08 185); --selection: oklch(60% 0.08 170); --selection-fg: oklch(15% 0.02 170); }
-
-/* ========== TEALS & CYANS (33-38) ========== */
-body.theme-teal { --article-bg: oklch(82% 0.07 180); --article-text: oklch(22% 0.04 180); --color-link: oklch(38% 0.10 195); --selection: oklch(65% 0.09 180); --selection-fg: oklch(15% 0.02 180); }
-body.theme-turquoise { --article-bg: oklch(85% 0.08 185); --article-text: oklch(23% 0.04 185); --color-link: oklch(40% 0.10 200); --selection: oklch(68% 0.10 185); --selection-fg: oklch(16% 0.02 185); }
-body.theme-aqua { --article-bg: oklch(88% 0.06 190); --article-text: oklch(24% 0.04 190); --color-link: oklch(42% 0.08 205); --selection: oklch(72% 0.08 190); --selection-fg: oklch(18% 0.02 190); }
-body.theme-cyan { --article-bg: oklch(86% 0.08 200); --article-text: oklch(23% 0.04 200); --color-link: oklch(40% 0.10 215); --selection: oklch(70% 0.10 200); --selection-fg: oklch(16% 0.02 200); }
-body.theme-arctic { --article-bg: oklch(90% 0.05 210); --article-text: oklch(25% 0.03 210); --color-link: oklch(42% 0.08 225); --selection: oklch(75% 0.07 210); --selection-fg: oklch(18% 0.02 210); }
-body.theme-ocean { --article-bg: oklch(75% 0.08 195); --article-text: oklch(20% 0.04 195); --color-link: oklch(35% 0.10 210); --selection: oklch(58% 0.10 195); --selection-fg: oklch(95% 0.02 195); }
-
-/* ========== BLUES (39-45) ========== */
-body.theme-sky { --article-bg: oklch(90% 0.05 230); --article-text: oklch(24% 0.03 230); --color-link: oklch(42% 0.08 245); --selection: oklch(75% 0.07 230); --selection-fg: oklch(18% 0.02 230); }
-body.theme-powder { --article-bg: oklch(92% 0.04 235); --article-text: oklch(26% 0.03 235); --color-link: oklch(45% 0.08 250); --selection: oklch(78% 0.06 235); --selection-fg: oklch(20% 0.02 235); }
-body.theme-periwinkle { --article-bg: oklch(85% 0.07 260); --article-text: oklch(23% 0.04 260); --color-link: oklch(42% 0.10 275); --selection: oklch(68% 0.09 260); --selection-fg: oklch(16% 0.02 260); }
-body.theme-cornflower { --article-bg: oklch(80% 0.10 250); --article-text: oklch(22% 0.04 250); --color-link: oklch(40% 0.12 265); --selection: oklch(62% 0.12 250); --selection-fg: oklch(15% 0.02 250); }
-body.theme-steel { --article-bg: oklch(75% 0.04 240); --article-text: oklch(22% 0.02 240); --color-link: oklch(38% 0.06 255); --selection: oklch(58% 0.06 240); --selection-fg: oklch(95% 0.02 240); }
-body.theme-slate { --article-bg: oklch(70% 0.03 250); --article-text: oklch(20% 0.02 250); --color-link: oklch(35% 0.05 265); --selection: oklch(52% 0.05 250); --selection-fg: oklch(95% 0.02 250); }
-body.theme-denim { --article-bg: oklch(68% 0.08 245); --article-text: oklch(18% 0.04 245); --color-link: oklch(32% 0.10 260); --selection: oklch(50% 0.10 245); --selection-fg: oklch(95% 0.02 245); }
-
-/* ========== PURPLES & VIOLETS (46-50) ========== */
-body.theme-lavender { --article-bg: oklch(88% 0.06 290); --article-text: oklch(24% 0.04 290); --color-link: oklch(42% 0.10 305); --selection: oklch(72% 0.08 290); --selection-fg: oklch(18% 0.02 290); }
-body.theme-lilac { --article-bg: oklch(85% 0.08 295); --article-text: oklch(23% 0.04 295); --color-link: oklch(40% 0.12 310); --selection: oklch(68% 0.10 295); --selection-fg: oklch(16% 0.02 295); }
-body.theme-wisteria { --article-bg: oklch(80% 0.10 285); --article-text: oklch(22% 0.04 285); --color-link: oklch(38% 0.12 300); --selection: oklch(62% 0.12 285); --selection-fg: oklch(15% 0.02 285); }
-body.theme-mauve { --article-bg: oklch(78% 0.06 320); --article-text: oklch(22% 0.03 320); --color-link: oklch(38% 0.10 335); --selection: oklch(60% 0.08 320); --selection-fg: oklch(95% 0.02 320); }
-body.theme-plum { --article-bg: oklch(72% 0.10 310); --article-text: oklch(20% 0.04 310); --color-link: oklch(35% 0.12 325); --selection: oklch(55% 0.12 310); --selection-fg: oklch(95% 0.02 310); }
-
-/* ========== SPECIAL: TIGERBEETLE INSPIRED ========== */
-body.theme-tiger { 
-    --article-bg: oklch(18% 0.02 50); 
-    --article-text: oklch(92% 0.02 60); 
-    --color-link: oklch(75% 0.18 55); 
-    --selection: oklch(65% 0.20 50); 
-    --selection-fg: oklch(10% 0.02 50);
-}
-
 @media (pointer: fine) and (min-width: 821px) {
     body {
         padding: 20px;
@@ -222,7 +149,7 @@ img {
     align-items: center;
     margin-bottom: 1.5rem;
     font-size: 0.85rem;
-    opacity: 0.7;
+    opacity: 0.85;
     font-family: var(--font-mono);
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -327,6 +254,17 @@ blockquote p {
     margin: 0;
 }
 
+/* Links inside blockquote sit on a slightly darker bg; darken further
+   to hit WCAG AA contrast on light themes. */
+blockquote a {
+    color: oklch(from var(--color-link) calc(l - 0.15) c h);
+}
+@supports not (color: oklch(from white l c h)) {
+    blockquote a {
+        color: var(--article-text);
+    }
+}
+
 .inline-image {
     height: 1em;
     width: auto;
@@ -363,8 +301,15 @@ header {
     text-align: center;
 }
 
-header h1 {
+header h1,
+header .site-title {
     margin: 0;
+    font-family: var(--font-heading);
+    line-height: 1.3em;
+    letter-spacing: -0.05em;
+    color: var(--article-text);
+    font-size: 2em;
+    font-weight: bold;
 }
 
 footer {
@@ -445,7 +390,7 @@ body:not([class*="theme-"]) .table-of-content {
     background-color: oklch(24.78% 0 0);
 }
 
-.table-of-content h4 {
+.table-of-content > h2 {
     margin: 0 0 0.75rem 0;
     font-weight: 600;
     font-size: 0.9rem;
@@ -466,6 +411,14 @@ body:not([class*="theme-"]) .table-of-content {
 .table-of-content ol li a {
     transition: color 0.2s ease;
     text-decoration: none;
+    /* TOC sits on a slightly darker bg; force enough contrast by
+       darkening the link color further for the TOC context. */
+    color: oklch(from var(--color-link) calc(l - 0.15) c h);
+}
+@supports not (color: oklch(from white l c h)) {
+    .table-of-content ol li a {
+        color: var(--article-text);
+    }
 }
 
 .table-of-content ol li a:hover {
@@ -488,12 +441,23 @@ body:not([class*="theme-"]) .table-of-content {
     background: oklch(16.96% 0.0017 17.32); /* Light grey background for the track */
 }
 
-/* For Firefox */
-scrollbar-width: thin; /* Make the scrollbar thin */
-scrollbar-color: oklch(62.68% 0 0) oklch(95.81% 0 0); /* Thumb color and track color */
+/* For Firefox — these declarations must be on an element selector. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(62.68% 0 0) oklch(95.81% 0 0);
+}
 
-summary {
-    padding: 5px;
+summary,
+details > summary,
+.article-content details > summary {
+    /* Touch-target minimum (WCAG 2.5.5): 24x24 CSS px.
+       Selectors are progressively more specific so user-agent / Hugo
+       defaults can't shrink the height below 24px. */
+    display: block;
+    padding: 0.5rem 0.75rem;
+    min-height: 1.6em;
+    cursor: pointer;
+    line-height: 1.4;
 }
 
 li {
@@ -531,6 +495,17 @@ ul ul {
     padding: 1.5rem;
     border-radius: 8px;
     margin: 1.5em 0;
+}
+
+/* Mermaid renders edge/node labels via <foreignObject><div><span><p>;
+   force a high-contrast backdrop and text color against the dark
+   .mermaid container (axe-core flags low contrast on the auto-styled
+   span.edgeLabel labels). */
+.mermaid foreignObject .labelBkg,
+.mermaid foreignObject .edgeLabel,
+.mermaid foreignObject .edgeLabel p {
+    color: oklch(95% 0 0);
+    background-color: oklch(18% 0.01 250);
 }
 
 .highlight pre code {
@@ -671,6 +646,17 @@ sup a[href^="#fn"]::after {
     max-width: 100%;
     margin: 0 auto;
     word-wrap: break-word;
+}
+
+/* Footnote back-link targets must be >=24x24 CSS px for WCAG target-size. */
+a.footnote-backref {
+    display: inline-block;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0.1em 0.4em;
+    text-align: center;
+    line-height: 1.4;
+    margin-left: 0.25em;
 }
 
 hr {
@@ -1105,23 +1091,23 @@ body.theme-tiger hr {
     border-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Variable font: JetBrains Mono normal */
+/* Variable font: JetBrains Mono — restricted to weights 400-700 (the
+   only weights this design system uses). woff2 is universally supported
+   by all browsers >=2018; the TTF fallback was dead bytes. */
 @font-face {
     font-family: "JetBrains Mono";
     font-style: normal;
-    font-weight: 100 900;
+    font-weight: 400 700;
     font-display: swap;
-    src: url("/fonts/jetbrains/JetBrainsMono[wght].ttf") format("truetype-variations");
+    src: url("/fonts/jetbrains/JetBrainsMono[wght].woff2") format("woff2-variations");
 }
 
-/* Variable font: JetBrains Mono italic */
 @font-face {
     font-family: "JetBrains Mono";
     font-style: italic;
-    font-weight: 100 900;
+    font-weight: 400 700;
     font-display: swap;
-    src: url("/fonts/jetbrains/JetBrainsMono-Italic[wght].ttf")
-        format("truetype-variations");
+    src: url("/fonts/jetbrains/JetBrainsMono-Italic[wght].woff2") format("woff2-variations");
 }
 
 /* Departure Mono for display typography */
@@ -1345,8 +1331,8 @@ html[data-force-dark] body[class*="theme-"] {
     top: 0.4rem;
     right: 0.4rem;
     background: transparent;
-    color: var(--mocha-overlay0);
-    border: 1px solid var(--mocha-overlay0);
+    color: var(--mocha-subtext0);
+    border: 1px solid var(--mocha-overlay2);
     padding: 0.15rem 0.45rem;
     font-family: var(--font-mono);
     font-size: 0.62rem;
@@ -1364,7 +1350,7 @@ html[data-force-dark] body[class*="theme-"] {
 }
 
 .copy-btn:hover {
-    background: var(--mocha-overlay0);
+    background: var(--mocha-subtext0);
     color: var(--mocha-base);
 }
 
@@ -1396,7 +1382,7 @@ html[data-force-dark] body[class*="theme-"] {
     display: inline-block;
     font-size: 0.72rem;
     font-family: var(--font-mono);
-    opacity: 0.6;
+    opacity: 0.8;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     margin-bottom: 0.75rem;
@@ -1417,7 +1403,7 @@ html[data-force-dark] body[class*="theme-"] {
 .share-links > span {
     font-family: var(--font-mono);
     font-size: 0.72rem;
-    opacity: 0.5;
+    opacity: 0.75;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     white-space: nowrap;
@@ -1461,19 +1447,51 @@ html[data-force-dark] body[class*="theme-"] {
 }
 
 /* Related Posts */
-.related-posts {
+.related-posts,
+.series-nav {
     margin-top: 2rem;
     padding-top: 1.25rem;
     border-top: 1px dashed;
 }
 
-.related-posts h4 {
+.related-posts > h2,
+.series-nav > h2 {
     margin: 0 0 0.85rem 0;
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    opacity: 0.55;
+    opacity: 0.8;
     font-weight: 600;
+}
+
+.series-nav ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.series-nav li {
+    margin-bottom: 0.45rem;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.series-nav li.current {
+    opacity: 0.85;
+}
+
+.series-nav .series-current {
+    margin-left: 0.5rem;
+    font-size: 0.78rem;
+    opacity: 0.85;
+}
+
+.series-nav a {
+    text-decoration: none;
+}
+
+.series-nav a:hover {
+    text-decoration: underline dashed;
 }
 
 .related-post {
@@ -1498,7 +1516,7 @@ html[data-force-dark] body[class*="theme-"] {
 .related-post .read-time {
     flex-shrink: 0;
     font-size: 0.72rem;
-    opacity: 0.5;
+    opacity: 0.75;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -1529,6 +1547,93 @@ html[data-force-dark] body[class*="theme-"] {
     justify-content: center;
     gap: 0.25rem;
     flex-wrap: wrap;
+}
+
+/* Cross-document View Transitions — smooth fade between pages */
+@view-transition {
+    navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 180ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Respect reduced-motion preference — no transition for users who opt out */
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none !important;
+    }
+}
+
+/* Tag cloud — taxonomy index page (/tags/) */
+.tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.6rem;
+    margin: 1.5rem 0 2rem;
+    line-height: 1.6;
+}
+
+.tag-cloud-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    padding: 0.25rem 0.55rem;
+    border: 1px dashed var(--color-link);
+    color: var(--color-link);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.tag-cloud-item:hover {
+    background: var(--color-link);
+    color: var(--article-bg);
+    transform: translateY(-1px);
+}
+
+.tag-cloud-item .tag-count {
+    font-size: 0.7em;
+    opacity: 0.65;
+    font-weight: 400;
+}
+
+.tag-cloud-item:hover .tag-count {
+    opacity: 0.9;
+}
+
+/* Tag size by post count */
+.tag-cloud .tag-sm { font-size: 0.7rem; }
+.tag-cloud .tag-md { font-size: 0.82rem; }
+.tag-cloud .tag-lg { font-size: 0.96rem; }
+.tag-cloud .tag-xl { font-size: 1.1rem; font-weight: 600; }
+
+/* Homepage featured cards */
+.featured-post {
+    margin: 1.4rem 0 0.8rem;
+}
+
+.featured-post h2 {
+    margin: 0 0 0.3rem 0;
+    line-height: 1.25;
+}
+
+.featured-post h2 a {
+    text-decoration: none;
+}
+
+.featured-post h2 a:hover {
+    text-decoration: underline dashed;
+    text-underline-offset: 0.25em;
+}
+
+.featured-post .meta-info {
+    margin-bottom: 0.45rem;
 }
 
 /* Post list — tags inline */
@@ -1573,7 +1678,7 @@ html[data-force-dark] body[class*="theme-"] {
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    opacity: 0.4;
+    opacity: 0.75;
     margin-bottom: 0.6rem;
     font-weight: 400;
     border-bottom: 1px dashed;
@@ -1617,7 +1722,7 @@ html[data-force-dark] body[class*="theme-"] {
 .page-404 .error-code {
     font-size: 6rem;
     margin: 0;
-    opacity: 0.2;
+    opacity: 0.85;
     line-height: 1;
     font-family: var(--font-display);
     font-weight: 400;
@@ -1640,7 +1745,7 @@ html[data-force-dark] body[class*="theme-"] {
 .keyboard-hint {
     display: none;
     font-size: 0.65rem;
-    opacity: 0.35;
+    opacity: 0.85;
     font-family: var(--font-mono);
     text-align: center;
     margin-top: 0.4rem;
@@ -1675,5 +1780,124 @@ html[data-force-dark] body[class*="theme-"] {
 
     .share-links {
         gap: 0.4rem;
+    }
+}
+
+/* Image Lightbox */
+#image-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: zoom-out;
+    padding: 1.5rem;
+}
+
+#image-lightbox.open {
+    display: flex;
+}
+
+#image-lightbox img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+}
+
+#image-lightbox .lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    font-size: 1.4rem;
+    line-height: 1;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#image-lightbox .lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Print-friendly: clean article reading on paper / PDF export */
+@media print {
+    /* Drop chrome that's irrelevant to a printed article */
+    .left-pane, .menu-button, .expand-button, .collapse-button,
+    .copy-btn, #back-to-top, #reading-progress,
+    .share-links, .keyboard-hint, .hacker-news-comments,
+    nav.menu, .resizer {
+        display: none !important;
+    }
+
+    /* Reset to a sensible paper-friendly base */
+    html, body, main, article {
+        background: white !important;
+        color: black !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 11pt;
+        line-height: 1.45;
+    }
+
+    a {
+        color: black !important;
+        text-decoration: underline;
+    }
+
+    /* Show full URL after each external link so paper readers can find them */
+    a[href^="http"]:not([href*="backend.how"])::after {
+        content: " <" attr(href) ">";
+        font-size: 0.85em;
+        word-break: break-all;
+    }
+
+    /* Code blocks: hairline border, no scrollbars, allow page breaks */
+    pre, .highlight {
+        background: #f5f5f5 !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+        page-break-inside: avoid;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    code {
+        background: #f5f5f5 !important;
+        color: black !important;
+    }
+
+    /* Don't split headings off from their following paragraph */
+    h1, h2, h3, h4 {
+        page-break-after: avoid;
+    }
+
+    /* Tables: keep rows together where possible */
+    table {
+        page-break-inside: avoid;
+    }
+
+    img {
+        max-width: 100% !important;
+        page-break-inside: avoid;
+    }
+
+    /* Footnotes show inline-ish in print */
+    .footnotes {
+        font-size: 0.85em;
+        border-top: 1px solid #ccc;
+        margin-top: 2rem;
+        padding-top: 1rem;
     }
 }

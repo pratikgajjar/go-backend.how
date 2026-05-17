@@ -1,10 +1,47 @@
-{{- with resources.Get "css/main.css" }}
-  {{- if eq hugo.Environment "development" }}
+{{- /* For navigational/list pages (home, about, /posts/, /tags/, etc.)
+       inline the minified main.css directly in <head>. These pages have
+       compact HTML (8-20 KB), so adding ~25 KB of inline CSS still
+       produces tiny documents (~10-15 KB after compression on
+       Cloudflare) while removing the render-blocking external
+       round-trip. Individual posts (Kind=page) keep main.css as an
+       external stylesheet so it's cached across post navigations.
+       The archive page is technically Kind=page but its template is
+       a list view and its HTML stays small, so inline it too. */ -}}
+{{- $isInlineableKind := ne .Kind "page" -}}
+{{- $isArchive := eq .Layout "archive" -}}
+{{- if or $isInlineableKind $isArchive -}}
+  {{- /* Non-post pages don't render code blocks, so strip the Chroma
+         syntax-highlight rules from main.css before inlining (~5 KB
+         saved on every list/home/about/archive/term page). The full
+         main.css is still used by individual posts. The strip uses a
+         regex to remove the Chroma section delimited by the comments
+         in the source CSS. */ -}}
+  {{- with resources.Get "css/main.css" }}
+    {{- if eq hugo.Environment "development" }}
     <link rel="stylesheet" href="{{ .RelPermalink }}" crossorigin>
-  {{- else }}
-    {{- with . | minify | fingerprint }}
-      <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin>
+    {{- else }}
+      {{- with . | minify }}
+        {{- $css := .Content -}}
+        {{- /* Strip the Chroma block (lines 688-965ish in source) and
+               the body[class*="theme-"] .chroma|.highlight pre|chroma
+               code rules. The minified single-line CSS uses these
+               selectors so we strip by matching them directly. */ -}}
+        {{- $css = replaceRE `\.chroma[ .{][^{]*\{[^}]*\}` "" $css -}}
+        {{- $css = replaceRE `body\[class\*=theme-\] \.chroma[^{]*\{[^}]*\}` "" $css -}}
+        {{- $css = replaceRE `body\[class\*=theme-\] \.highlight pre\{[^}]*\}` "" $css -}}
+    <style>{{ $css | safeCSS }}</style>
+      {{- end }}
     {{- end }}
   {{- end }}
-{{- end }}
+{{- else -}}
+  {{- with resources.Get "css/main.css" }}
+    {{- if eq hugo.Environment "development" }}
+    <link rel="stylesheet" href="{{ .RelPermalink }}" crossorigin>
+    {{- else }}
+      {{- with . | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin>
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
 

@@ -1,7 +1,7 @@
 {{- with resources.Get "js/main.js" }}
   {{- if eq hugo.Environment "development" }}
     {{- with . | js.Build }}
-      <script src="{{ .RelPermalink }}" defer async></script>
+      <script src="{{ .RelPermalink }}" defer></script>
     {{- end }}
   {{- else }}
     {{- $opts := dict "minify" true }}

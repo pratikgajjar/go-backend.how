@@ -1,7 +1,17 @@
-<h{{ .Level }} id="{{ .Anchor | safeURL }}"> 
+{{- /* Inside individual posts, bump markdown heading levels by 1 so the
+       post template's <h1 class="article-title"> remains the page's only
+       h1: markdown `# Heading` → <h2>, `## Sub` → <h3>, etc. On other
+       pages (home, lists, taxonomy terms) the markdown content has no
+       wrapping article-title h1, so keep heading levels as authored. */ -}}
+{{- $level := .Level -}}
+{{- if and (eq .Page.Kind "page") (eq .Page.Section "posts") -}}
+  {{- $level = add .Level 1 -}}
+  {{- if gt $level 6 }}{{ $level = 6 }}{{ end -}}
+{{- end -}}
+<h{{ $level }} id="{{ .Anchor | safeURL }}">
   <a class="anchor" href="#{{ .Anchor | safeURL }}">
-    <span class="h-text"> {{ .Text | safeHTML }} </span> 
+    <span class="h-text"> {{ .Text | safeHTML }} </span>
     <span class="pound">#</span>
   </a>
-</h{{ .Level }}>
+</h{{ $level }}>
 

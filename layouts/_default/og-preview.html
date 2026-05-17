@@ -1,0 +1,264 @@
+{{- /* OG Preview Gallery — internal social-card review page.
+       Hidden via frontmatter (robots noindex, sitemap.disable, _build.list=never).
+       Accessible only by typing /og-preview/ directly. */ -}}
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OG Preview · backend.how</title>
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="googlebot" content="noindex, nofollow">
+  <link rel="preload" href="/fonts/jetbrains/JetBrainsMono[wght].woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    @font-face {
+      font-family: "JetBrains Mono";
+      src: url("/fonts/jetbrains/JetBrainsMono[wght].woff2") format("woff2-variations");
+      font-weight: 400 700;
+      font-display: swap;
+    }
+    :root {
+      --bg: #0a0908;
+      --surface: #15110e;
+      --border: #2a241c;
+      --text: #f0e5c5;
+      --muted: #8a7e6a;
+      --accent: #e9c97e;
+      --x-blue: #1d9bf0;
+      --li-blue: #0a66c2;
+      --fb-blue: #1877f2;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      margin: 0;
+      padding: 2rem 1.5rem 4rem;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--border); }
+    header h1 { margin: 0 0 .35em; font-size: 1.6rem; letter-spacing: -.02em; color: var(--accent); }
+    header p { margin: 0; color: var(--muted); font-size: .85rem; }
+    header code {
+      background: var(--surface);
+      color: var(--text);
+      padding: .15em .45em;
+      border-radius: 3px;
+      font-size: .85em;
+    }
+
+    .meta-line {
+      display: flex; gap: 1.5rem; flex-wrap: wrap;
+      font-size: .78rem; color: var(--muted); margin-top: .6rem;
+    }
+    .meta-line span::before { content: "→ "; color: var(--accent); }
+
+    .filter-bar {
+      display: flex; gap: .5rem; flex-wrap: wrap;
+      margin: 1.25rem 0 0;
+      font-size: .78rem;
+    }
+    .filter-bar button {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: .35rem .8rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: inherit;
+      letter-spacing: .04em;
+    }
+    .filter-bar button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+    .post-block {
+      margin-bottom: 4rem;
+      padding-bottom: 3rem;
+      border-bottom: 1px dashed var(--border);
+    }
+    .post-block:last-child { border-bottom: none; }
+    .post-meta {
+      display: flex; flex-wrap: wrap; gap: 1.25rem;
+      align-items: baseline;
+      margin-bottom: 1.5rem;
+      font-size: .82rem;
+      color: var(--muted);
+    }
+    .post-meta .slug {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: -.01em;
+    }
+    .post-meta a { color: inherit; text-decoration: underline dashed; text-underline-offset: .25em; }
+    .draft-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #000;
+      padding: 1px 8px;
+      border-radius: 2px;
+      font-size: .7rem;
+      letter-spacing: .08em;
+    }
+
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+    @media (max-width: 980px) { .cards { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+
+    .card-wrap { display: flex; flex-direction: column; gap: .55rem; }
+    .card-label {
+      font-size: .68rem;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--muted);
+      padding-bottom: .25rem;
+      border-bottom: 1px dotted var(--border);
+    }
+    .card-label .platform { color: var(--accent); margin-right: .4em; }
+
+    /* --- Twitter / X card (summary_large_image) ----------------------- */
+    .card-x {
+      background: #000;
+      border: 1px solid #2f3336;
+      border-radius: 16px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .card-x:hover { background: #0a0a0a; }
+    .card-x img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #111; }
+    .card-x-body { padding: .85rem 1rem 1rem; font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; }
+    .card-x-domain { color: #71767b; font-size: 13px; margin-bottom: .15rem; }
+    .card-x-title {
+      color: #e7e9ea; font-size: 15px; font-weight: 400; line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .card-x-desc {
+      color: #71767b; font-size: 13px; line-height: 1.3; margin-top: .2rem;
+      display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* --- LinkedIn card -------------------------------------------------- */
+    .card-li {
+      background: #1b1f23;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 8px;
+      overflow: hidden;
+      font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    }
+    .card-li img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #111; border-bottom: 1px solid rgba(255,255,255,.1); }
+    .card-li-body { padding: .8rem 1rem 1rem; }
+    .card-li-title { color: #fff; font-size: 15px; font-weight: 600; line-height: 1.3; }
+    .card-li-domain { color: rgba(255,255,255,.5); font-size: 12px; margin-top: .35rem; text-transform: lowercase; }
+
+    /* --- Facebook card ------------------------------------------------- */
+    .card-fb {
+      background: #242526;
+      border: 1px solid #3a3b3c;
+      border-radius: 8px;
+      overflow: hidden;
+      font-family: -apple-system, "SF Pro Text", "Segoe UI", Helvetica, sans-serif;
+    }
+    .card-fb img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #18191a; }
+    .card-fb-body { padding: .85rem 1rem 1rem; background: #18191a; }
+    .card-fb-domain {
+      color: #b0b3b8; font-size: 12px; text-transform: uppercase; letter-spacing: .025em;
+      margin-bottom: .25rem;
+    }
+    .card-fb-title { color: #e4e6eb; font-size: 17px; font-weight: 600; line-height: 1.25; }
+    .card-fb-desc { color: #b0b3b8; font-size: 14px; line-height: 1.3; margin-top: .35rem;
+      display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .raw-img {
+      margin-top: .6rem; padding: .35rem; background: var(--surface);
+      border: 1px dashed var(--border); border-radius: 4px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .7rem; color: var(--muted);
+    }
+    .raw-img a { color: var(--accent); text-decoration: none; }
+    .raw-img a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>OG Preview</h1>
+      <p>How each post's social card looks on <strong>X</strong>, <strong>LinkedIn</strong>,
+      and <strong>Facebook</strong>. Hidden from search, sitemap, and all internal nav.
+      Direct URL only: <code>/og-preview/</code>.</p>
+      <div class="meta-line">
+        <span>Image dim: 1200&times;630 (1.91:1, summary_large_image)</span>
+        <span>Total posts: {{ len (where .Site.RegularPages "Section" "posts") }}</span>
+        <span>Includes drafts on dev server (<code>--buildDrafts</code>)</span>
+      </div>
+    </header>
+
+    {{- /* Resolve OG image URL using RelPermalink so the preview renders
+           on dev server (http://localhost:1313) without trying to fetch
+           images from production https://backend.how. */ -}}
+    {{- range $page := where .Site.RegularPages "Section" "posts" }}
+      {{ $img := "" }}
+      {{ with $page.Params.images }}
+        {{ $first := index . 0 }}
+        {{ if or (hasPrefix $first "http://") (hasPrefix $first "https://") }}
+          {{ $img = $first }}
+        {{ else if hasPrefix $first "/" }}
+          {{ $img = $first | relURL }}
+        {{ else }}
+          {{ $img = printf "%s%s" $page.RelPermalink $first }}
+        {{ end }}
+      {{ else }}
+        {{ $img = "/og-image.png" | relURL }}
+      {{ end }}
+      {{ $title := $page.Title }}
+      {{ $desc := $page.Description }}
+      {{ $domain := "backend.how" }}
+      {{ $url := $page.Permalink }}
+
+      <section class="post-block" data-draft="{{ if $page.Draft }}1{{ else }}0{{ end }}">
+        <div class="post-meta">
+          <span class="slug">{{ $page.Title }}</span>
+          {{ if $page.Draft }}<span class="draft-badge">DRAFT</span>{{ end }}
+          <a href="{{ $page.RelPermalink }}">{{ $page.RelPermalink }}</a>
+          <a href="{{ $img }}" target="_blank">view raw og.png</a>
+        </div>
+        <div class="cards">
+          <div class="card-wrap">
+            <div class="card-label"><span class="platform">▌</span>X / Twitter</div>
+            <div class="card-x">
+              <img src="{{ $img }}" alt="" loading="lazy">
+              <div class="card-x-body">
+                <div class="card-x-domain">From {{ $domain }}</div>
+                <div class="card-x-title">{{ $title }}</div>
+                <div class="card-x-desc">{{ $desc }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-wrap">
+            <div class="card-label"><span class="platform">▌</span>LinkedIn</div>
+            <div class="card-li">
+              <img src="{{ $img }}" alt="" loading="lazy">
+              <div class="card-li-body">
+                <div class="card-li-title">{{ $title }}</div>
+                <div class="card-li-domain">{{ $domain }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-wrap">
+            <div class="card-label"><span class="platform">▌</span>Facebook</div>
+            <div class="card-fb">
+              <img src="{{ $img }}" alt="" loading="lazy">
+              <div class="card-fb-body">
+                <div class="card-fb-domain">{{ $domain }}</div>
+                <div class="card-fb-title">{{ $title }}</div>
+                <div class="card-fb-desc">{{ $desc }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    {{- end }}
+  </div>
+</body>
+</html>

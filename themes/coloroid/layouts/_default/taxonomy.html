@@ -1,0 +1,53 @@
+{{ define "main" }}
+  {{- if eq .Kind "term" -}}
+    {{- /* Term page (e.g., /tags/postgres/) — list posts under this term. */ -}}
+    <h1>#{{ .Title }}</h1>
+    {{ with .Content }}{{ . }}{{ end }}
+    {{ $count := len .Pages }}
+    <p class="meta-info">
+      <span>{{ $count }} post{{ if ne $count 1 }}s{{ end }} tagged "{{ .Title }}"</span>
+    </p>
+    {{ range .Pages.ByDate.Reverse }}
+      <article class="featured-post">
+        <h2><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></h2>
+        {{ $dateMachine := .Date | time.Format "2006-01-02T15:04:05-07:00" }}
+        {{ $dateHuman := .Date | time.Format ":date_long" }}
+        {{ $readingTime := div (float .FuzzyWordCount) .Site.Params.reading_speed }}
+        {{ $readingTime = math.Ceil $readingTime }}
+        <div class="meta-info">
+          <time datetime="{{ $dateMachine }}">{{ $dateHuman }}</time>
+          <span class="read-time">~{{ $readingTime }} min</span>
+        </div>
+        {{ with .Description }}<p class="post-description">{{ . }}</p>{{ end }}
+        {{ with .Params.tags }}
+          <div class="post-tags">
+            {{ range . }}<a href="{{ "/tags/" | relURL }}{{ . | urlize }}" class="post-tag">#{{ . }}</a>{{ end }}
+          </div>
+        {{ end }}
+      </article>
+    {{ end }}
+    <hr>
+    <p>
+      <a href="{{ "/tags/" | relURL }}">← all tags</a>
+    </p>
+  {{- else -}}
+    {{- /* Taxonomy parent page (e.g., /tags/) — show the tag cloud. */ -}}
+    <h1>{{ .Title }}</h1>
+    {{ .Content }}
+
+    {{ $taxonomies := index .Site.Taxonomies (.Data.Plural) }}
+    {{ if $taxonomies }}
+      {{ $sorted := $taxonomies.ByCount }}
+      <div class="tag-cloud" aria-label="All {{ .Data.Plural }} sorted by post count">
+        {{ range $sorted }}
+          {{ $count := len .Pages }}
+          {{ $weight := cond (ge $count 5) "xl" (cond (ge $count 3) "lg" (cond (ge $count 2) "md" "sm")) }}
+          <a href="{{ .Page.RelPermalink }}" class="tag-cloud-item tag-{{ $weight }}">
+            <span class="tag-name">#{{ .Page.Title }}</span>
+            <span class="tag-count">{{ $count }}</span>
+          </a>
+        {{ end }}
+      </div>
+    {{ end }}
+  {{- end -}}
+{{ end }}

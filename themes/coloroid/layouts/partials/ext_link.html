@@ -1,2 +1,9 @@
-{{ . | replaceRE "<a href=\"(http[s]?://[^\"]+)\">" "<a href=\"$1\" target=\"_blank\" rel=\"noopener noreferrer\">" | safeHTML }}
+{{- /* Post-process the rendered article HTML:
+       1. External links → target="_blank" rel="noopener noreferrer"
+       2. <th> in <thead> → add scope="col" for screen-reader-friendly tables
+*/ -}}
+{{- $html := . -}}
+{{- $html = replaceRE "<a href=\"(http[s]?://[^\"]+)\">" "<a href=\"$1\" target=\"_blank\" rel=\"noopener noreferrer\">" $html -}}
+{{- $html = replaceRE "<th( [^>]*|)>" "<th scope=\"col\"$1>" $html -}}
+{{ $html | safeHTML }}
 

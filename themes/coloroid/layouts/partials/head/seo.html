@@ -10,10 +10,24 @@
   {{ end -}}
 {{ end -}}
 
+{{- /* Title strategy: post title + " | site name" suffix on per-post pages,
+       but if the combined string would exceed 60 chars (Google's SERP cutoff),
+       drop the suffix and use the post title alone. */ -}}
 {{ if .IsHome -}}
-  <title>{{ .Site.Params.title }} {{ .Site.Params.titleSeparator }} {{ .Site.Params.titleAddition }}</title>
+  {{ with .Site.Params.titleAddition -}}
+    <title>{{ $.Site.Params.title }} {{ $.Site.Params.titleSeparator }} {{ . }}</title>
+  {{ else -}}
+    <title>{{ .Site.Params.title }}</title>
+  {{ end -}}
 {{ else -}}
-  <title>{{ .Title }} {{ .Site.Params.titleSeparator }} {{ .Site.Params.title }}</title>
+  {{- $sep := .Site.Params.titleSeparator -}}
+  {{- $suffix := .Site.Params.title -}}
+  {{- $full := printf "%s %s %s" .Title $sep $suffix -}}
+  {{- if le (len $full) 60 -}}
+    <title>{{ $full }}</title>
+  {{- else -}}
+    <title>{{ .Title }}</title>
+  {{- end -}}
 {{ end -}}
 
 {{ with .Description -}}
@@ -23,15 +37,15 @@
 {{ end -}}
 
 {{ if $.Scratch.Get "paginator" }}
-  <link rel="canonical" href="{{ .Paginator.URL | relURL }}">
+  <link rel="canonical" href="{{ .Paginator.URL | absURL }}">
   {{ if .Paginator.HasPrev -}}
-    <link rel="prev" href="{{ .Paginator.Prev.URL | relURL }}">
+    <link rel="prev" href="{{ .Paginator.Prev.URL | absURL }}">
   {{ end -}}
   {{ if .Paginator.HasNext -}}
-    <link rel="next" href="{{ .Paginator.Next.URL | relURL }}">
+    <link rel="next" href="{{ .Paginator.Next.URL | absURL }}">
   {{ end -}}
 {{ else -}}
-  <link rel="canonical" href="{{ .RelPermalink }}">
+  <link rel="canonical" href="{{ .Permalink }}">
 {{ end -}}
 
 {{ partial "head/twitter_cards.html" . }}
@@ -42,7 +56,7 @@
 <meta property="og:locale" content="{{ .Site.Params.ogLocale }}">
 
 {{ range .AlternativeOutputFormats -}}
-  <link rel="{{ .Rel }}" type="{{ .MediaType.Type }}" href="{{ .RelPermalink | safeURL }}">
+  <link rel="{{ .Rel }}" type="{{ .MediaType.Type }}" href="{{ .Permalink | safeURL }}">
 {{ end -}}
 
 {{ partial "head/structured-data.html" . }}

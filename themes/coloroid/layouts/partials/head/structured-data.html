@@ -3,9 +3,9 @@
     {
       "@context": "https://schema.org",
       "@type": "Organization",
-      "url": "{{ "/" | relURL }}",
+      "url": "{{ "/" | absURL }}",
       "name": "{{ .Site.Params.title }}",
-      "logo": "{{ "/" | relURL }}{{ .Site.Params.schemaLogo }}",
+      "logo": "{{ "/" | absURL }}{{ .Site.Params.schemaLogo }}",
       "sameAs": [
         "{{ .Site.Params.schemaTwitter | safeURL }}",
         "{{ .Site.Params.schemaLinkedIn | safeURL }}",
@@ -14,12 +14,13 @@
     }
 </script>
 {{ end -}} {{ if eq .Site.Params.schemaType "Person" -}}
+{{ $personName := default .Site.Params.title .Site.Params.author.name -}}
 <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Person",
-      "url": "{{ "/" | relURL }}",
-      "name": "{{ .Site.Params.title }}",
+      "url": "{{ "/" | absURL }}",
+      "name": "{{ $personName }}",
       "sameAs": [
         "{{ .Site.Params.schemaTwitter | safeURL }}",
         "{{ .Site.Params.schemaLinkedIn | safeURL }}",
@@ -51,31 +52,45 @@
       "@type": "Article",
       "mainEntityOfPage": {
         "@type": "WebPage",
-        "@id": "{{ .RelPermalink }}"
+        "@id": "{{ .Permalink }}"
       },
       "headline": "{{ .Title }}",
-      "image": [{{ range $i, $e := .Params.images }}{{ if $i }}, {{ end }}{{ printf "%s%s%s" $.Site.BaseURL (strings.TrimPrefix "/" $.RelPermalink) $e | safeJS }}{{ end }}],
+      "image": [
+        {{- if .Params.images -}}
+          {{- range $i, $e := .Params.images -}}
+            {{- if $i }}, {{ end -}}
+            {{- if or (hasPrefix $e "http://") (hasPrefix $e "https://") (hasPrefix $e "/") -}}
+              "{{ $e | absURL }}"
+            {{- else -}}
+              "{{ printf "%s%s" $.Permalink $e }}"
+            {{- end -}}
+          {{- end -}}
+        {{- else -}}
+          {{- /* Fall back to the site's OG image so Article.image is never empty
+                 (Google's Rich Results Test requires non-empty image array). */ -}}
+          "{{ "/og-image.png" | absURL }}"
+        {{- end -}}
+      ],
       "datePublished": "{{ .PublishDate.Format "2006-01-02T15:04:05CET" }}",
       "dateModified": "{{ .Lastmod.Format "2006-01-02T15:04:05CET" }}",
+      {{ $entityName := cond (eq .Site.Params.schemaType "Person") (default .Site.Params.title .Site.Params.author.name) .Site.Params.title -}}
       "author": {
         "@type": "{{ .Site.Params.schemaType }}",
-        "name": "{{ .Site.Params.title }}"
+        "name": "{{ $entityName }}"
       },
       "publisher": {
         "@type": "{{ .Site.Params.schemaType }}",
-        "name": "{{ .Site.Params.title }}",
-        {{ if eq .Site.Params.schemaType "Organization" -}}
+        "name": "{{ $entityName }}"{{ if eq .Site.Params.schemaType "Organization" }},
         "logo": {
           "@type": "ImageObject",
-          "url": "{{ "/" | relURL }}{{ .Site.Params.schemaLogo }}"
-        }
-        {{ end -}}
+          "url": "{{ "/" | absURL }}{{ .Site.Params.schemaLogo }}"
+        }{{ end }}
       },
       "description": "{{ .Description }}"
     }
 </script>
 {{ end -}} {{ end -}} {{ $dot := . -}} {{ $dot.Scratch.Set "path" "" -}} {{
-$dot.Scratch.Set "breadcrumb" slice -}} {{ $url := replace .RelPermalink (
+$dot.Scratch.Set "breadcrumb" slice -}} {{ $url := replace .Permalink (
 printf "%s" .Site.BaseURL) "" -}} {{ $.Scratch.Add "path" .Site.BaseURL -}} {{
 $.Scratch.Add "breadcrumb" (slice (dict "url" .Site.BaseURL "name" "home"
 "position" 1 )) -}} {{ range $index, $element := split $url "/" -}} {{
@@ -85,7 +100,7 @@ $element "" -}} {{ $.Scratch.Add "breadcrumb" (slice (dict "url" ($.Scratch.Get
 
 <script type="application/ld+json">
     {
-      "@context": "http://schema.org",
+      "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "itemListElement": [{{ range $.Scratch.Get "breadcrumb" }}{{ if ne .position 1 }},{{ end }}{
             "@type": "ListItem",
