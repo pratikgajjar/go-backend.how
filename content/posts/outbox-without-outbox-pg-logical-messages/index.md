@@ -2,11 +2,11 @@
 title = "🦉 The Outbox Without an Outbox — Postgres Logical Messages as Eventbus"
 description = "The outbox pattern asks for what replication already provides — durable, ordered, resumable delivery. Postgres' pg_logical_emit_message lets your application piggyback on that, walked line by line through factlib + OwlPost."
 date = 2026-05-17T09:00:00+05:30
-lastmod = 2026-05-17T09:00:00+05:30
+lastmod = 2026-05-17T10:50:00+05:30
 publishDate = "2026-05-17T09:00:00+05:30"
 draft = false
 tags = ["postgres", "outbox", "kafka", "event-driven", "wal", "golang"]
-images = ["og.png"]
+images = ["og-v2.png"]
 theme = "mauve"
 featured = false
 math = false
