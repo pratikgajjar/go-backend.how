@@ -3,3 +3,5 @@ resources/
 .DS_Store
 
 mm.sh
+.autoresearch/__pycache__/
+writePos
