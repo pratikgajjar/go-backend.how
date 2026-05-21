@@ -206,7 +206,7 @@ aren't.
 The atomicity argument behind the outbox table is sound. The
 implementation is just heavier than it needs to be.
 
-# 3. The forgotten Postgres feature: `pg_logical_emit_message`
+# 3. `pg_logical_emit_message`
 
 Function signature from the Postgres 17 docs[^3]:
 
@@ -233,8 +233,6 @@ Three properties matter:
    that LSN (the WAL is held by `min(confirmed_flush_lsn)` across
    slots), then recycle like any other WAL record. No vacuum, no
    bloat, no cleanup job.
-
-> The WAL **is** the outbox.
 
 This is not Debezium-style row-level CDC: we are not decoding row
 writes on an outbox table. We are inserting an application-defined
@@ -366,7 +364,7 @@ numbers off this paragraph.
 
 OwlPost (`cmd/owlpost/`) opens a logical-replication connection,
 filters the WAL for our prefix, deserialises the protobuf, ships to
-Kafka. The connection setup is the part most people get wrong:
+Kafka. The connection setup needs two non-obvious flags:
 
 ```go
 // pkg/postgres/wal.go — NewWALSubscriber
@@ -403,7 +401,7 @@ until the consumer acks past that LSN. *This is at-least-once for
 free*: if OwlPost crashes for an hour, WAL accumulates for an hour
 and we resume exactly where we left off. Operational footgun: a
 slot whose consumer never returns pins WAL until the disk fills —
-see [§7](#7-reliability-proof--the-lsn-dance).
+see [§7](#7-crash-safety-the-lsn-ack-pipeline).
 
 ## Starting replication
 
@@ -422,8 +420,8 @@ err = pglogrepl.StartReplication(ctx, w.replConn, w.cfg.ReplicationSlotName, w.x
 `messages 'true'` is a `pgoutput` plugin arg (added in PG 14[^6])
 that tells it to decode logical-decoding messages alongside row
 changes. Without it, `pg_logical_emit_message` calls are silently
-dropped on the subscriber side — one of the failure modes that is
-hardest to find without already knowing to look for it.
+dropped on the subscriber side — a failure mode that is easy to
+miss without already knowing to look for it.
 
 `w.xLogPos` is the start position. On every boot it's the slot's
 `confirmed_flush_lsn`:
@@ -469,7 +467,7 @@ Two message types matter:
   *that* LSN through with the decoded message into
   `processLogicalMessage`. The receive loop does not advance
   `w.xLogPos` itself; the LSN rides on each event and only updates
-  `w.xLogPos` when the ack pipeline (see [§7](#7-reliability-proof--the-lsn-dance))
+  `w.xLogPos` when the ack pipeline (see [§7](#7-crash-safety-the-lsn-ack-pipeline))
   hears back from Kafka.
 
 `processLogicalMessage` is two lines and the type-switch is doing the
@@ -629,7 +627,7 @@ wrapper — 98 B for a typical span. Vary `parent_op` and you land in
 the **80–120 B** envelope — **~20 %** of a 500 B payload, dropping
 to ~2 % for 5 KB payloads.
 
-# 7. Reliability proof — the LSN dance
+# 7. Crash safety: the LSN ack pipeline
 
 **Where we are**: §4 emits one SQL call into your transaction; §5
 decodes the WAL for our prefix; §6 carries trace context across.
@@ -722,7 +720,7 @@ producer        Postgres
 Because `transactional=true`, the message is part of the txn.
 Logical decoding emits a txn's records only on COMMIT. No COMMIT,
 no delivery, **zero events leak** — the same property the table-
-based pattern has, free.
+based pattern has.
 
 ## Scenario 3: consumer crash post-Kafka, pre-LSN-ack
 
@@ -759,7 +757,7 @@ Use an in-memory LRU of recent IDs plus, for sensitive flows,
 `processed_events(id uuid PRIMARY KEY, processed_at timestamptz)`
 table you TTL-prune yourself.
 
-> **Sharp edge worth naming.**
+> **Caveat:**
 > `listenEventAck`[^7] does `w.xLogPos = *ackPos` (line 390) on
 > every ack. Kafka callbacks
 > fire in-order per partition but across partitions interleave: if
@@ -929,8 +927,7 @@ for "when not to use this") or a dedicated event store.
 | End-to-end latency | poll interval (100 ms–5 s) | WAL flush + Kafka produce (single-digit ms on a same-VPC pgx connection, derived) |
 
 The producer cost is roughly the same. The **consumer** cost is where
-you get back hours of vacuum-tuning life and several Postgres-CPU
-percent.
+you avoid the vacuum-tuning work and several Postgres-CPU percent.
 
 # 9. The Python client (and polyglot fan-in)
 
