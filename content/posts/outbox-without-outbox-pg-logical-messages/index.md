@@ -61,8 +61,7 @@ its limits.
 
 # 1. The dual-write fallacy
 
-Here's the code most engineers write the first time they need to emit
-an event from a database transaction:
+Here's the natural first attempt:
 
 ```go
 func CreateUser(ctx context.Context, u User) error {
@@ -100,7 +99,7 @@ into. That's the outbox pattern.
 
 # 2. Why the canonical "outbox table" pattern is *almost* right
 
-The textbook outbox pattern looks like this:
+The outbox pattern, in its standard form, looks like this:
 
 ```sql
 BEGIN;
@@ -160,14 +159,10 @@ inserts — which it usually doesn't, until you tune
 `autovacuum_vacuum_scale_factor` for this specific table down to
 something like 0.01 and `autovacuum_vacuum_cost_limit` up to 5000.
 
-These knobs aren't usually front-and-centre in the tutorials I
-learned from, and they're the ones that decide whether the outbox
-table stays healthy at sustained throughput.
-
 ## Index choice for `WHERE processed = false`
 
 A normal btree on `processed` is mostly useless because the column has
-two values. The textbook "fix" is a **partial index**:
+two values. The fix is a **partial index**:
 
 ```sql
 CREATE INDEX outbox_unprocessed_idx
@@ -175,8 +170,8 @@ CREATE INDEX outbox_unprocessed_idx
   WHERE processed = false;
 ```
 
-This works — but it does not save you. Every insert still touches the
-index. Every update of `processed` from `false` to `true` triggers an
+This helps, but it does not eliminate the maintenance load. Every
+insert still touches the index. Every update of `processed` from `false` to `true` triggers an
 index entry deletion (and re-insertion if you ever flip it back).
 Index bloat tracks table bloat in lockstep. You still need vacuum.
 
@@ -188,8 +183,8 @@ The table is unbounded without one, so you write:
 DELETE FROM outbox WHERE processed = true AND created_at < now() - interval '7 days';
 ```
 
-Run that on a 10 GB outbox table during peak hours and watch your
-p99s. The right shape is a chunked delete with `LIMIT` + `pg_sleep`
+Running that on a 10 GB outbox table during peak hours will spike
+the database's p99s. The right shape is a chunked delete with `LIMIT` + `pg_sleep`
 between batches, or better still, partition the table by day and
 `DROP PARTITION` every morning. Both work; both are extra code,
 alerts, and runbooks.
@@ -315,8 +310,8 @@ func CreateUser(ctx context.Context, db *pgxpool.Pool, u User) error {
 
 The `producer` shares the `pgx.Tx` with the business `INSERT`. There
 is no way to call `Emit` outside a transaction, and no way for `Emit`
-to commit on its own. The compiler does not enforce this — the
-*ergonomics* enforce it. It's the cheapest invariant in the file.
+to commit on its own. The compiler does not enforce this; the API
+shape does.
 
 **UUIDv7 for event IDs.** Time-sortable, 48-bit millisecond
 timestamp prefix, then random bits. Two reasons it matters here
@@ -332,7 +327,7 @@ over UUIDv4:
    for replay debugging.
 
 Either v7 or ULID[^5] gets you the same property (both are 128-bit,
-both put a millisecond timestamp at the front). v7 wins because
+both put a millisecond timestamp at the front). We pick v7 because
 it's part of the UUID standard, so it round-trips through every
 Postgres / pgx / `database/sql` column typed as `uuid` without
 custom serde; ULID needs either a text column or a custom binary
@@ -357,8 +352,8 @@ The histogram is `factlib_event_processing_seconds`. The byte math
 in [§8](#8-ordering--throughput) derives an expected envelope of **80–250 µs p50** for sub-1KB
 events on a same-VPC pgx connection — most of which is the network
 round-trip, not the WAL append. We have not yet collected production
-percentiles to ship publicly, so resist the urge to read absolute
-numbers off this paragraph.
+percentiles to ship publicly, so treat these numbers as an envelope,
+not a measurement.
 
 # 5. How OwlPost consumes
 
@@ -376,7 +371,7 @@ replConn, err := pgconn.Connect(ctx, replUrl)
 regular SQL, unlike `replication=true`). factlib opens **two**
 connections because once you fire `START_REPLICATION`, that socket
 is dedicated to streaming CopyData forever — no more queries.
-`replConn` does streaming; `queryConn` does the boring
+`replConn` does streaming; `queryConn` does the
 `SELECT EXISTS(SELECT 1 FROM pg_replication_slots ...)` bookkeeping.
 
 ## Setting up the slot
@@ -548,11 +543,11 @@ Three details:
 
 # 6. Distributed tracing through the WAL
 
-Trace context across an outbox boundary isn't part of the canonical
-recipe and usually has to be added by hand. Without it, the
-producer's Sentry / OTel span ends at the database write and a fresh,
-disconnected one starts at the Kafka consume, which makes incident
-replay harder than it needs to be.
+Trace context across an outbox boundary needs to be plumbed in
+explicitly. Without it, the producer's Sentry / OTel span ends at
+the database write and a fresh, disconnected one starts at the
+Kafka consume, which makes incident replay harder than it needs to
+be.
 
 factlib carries the trace info inside the protobuf:
 
@@ -819,14 +814,14 @@ After ~hours, two things start to break:
   invalidates a slot before disk fills — set it (e.g. `10GB`) so a
   stuck slot loses its WAL retention rather than wedging the cluster.
 
-- **The producer's WAL emit latency stays unchanged.** This is good.
-  The producer doesn't care that the consumer is slow. The dual-write
+- **The producer's WAL emit latency stays unchanged.** The producer
+  doesn't care that the consumer is slow. The dual-write
   fallacy doesn't reappear because the producer's only contract is
   "the bytes are in WAL." Whether they're delivered today or tomorrow
   is the consumer's problem.
 
-When Kafka recovers, OwlPost drains. WAL is reclaimed. Disk pressure
-drops. No data loss.
+When Kafka recovers, OwlPost drains, WAL is reclaimed, and disk
+pressure drops without data loss.
 
 # 8. Ordering & throughput
 
@@ -840,15 +835,13 @@ Two questions every event-bus eventually has to answer.
   is totally ordered, and Kafka's per-partition order is preserved.
 - **Cross-aggregate ordering: not guaranteed in Kafka.** Two events
   for different aggregates may land on different partitions and be
-  consumed in any order. *You almost never want cross-aggregate
-  ordering anyway* — it serialises everything, defeats partitioning,
-  and hurts throughput. If you really need it (rare), make all the
-  related events share an aggregate.
+  consumed in any order. Cross-aggregate ordering serialises
+  everything, defeats partitioning, and hurts throughput; when you
+  need it, make the related events share an aggregate.
 
 The WAL itself preserves total order across all transactions on the
-publisher database. If you cared, you could write a single-partition
-consumer and get a strict total order out of factlib. Most teams
-shouldn't.
+publisher database. A single-partition consumer would expose that
+strict total order; the per-partition guarantee is usually enough.
 
 ## Throughput — napkin math
 
@@ -912,8 +905,8 @@ WAL bytes   ≈ 600 B × 10,000  = 6 MB/sec
 A modern NVMe sustains 1–3 GB/sec sequential writes; we're using
 0.3% of that. The bottleneck for ten-thousand-events-per-second is
 network round-trips on the producer side, not the WAL itself. For
-hundred-thousand-per-second you start needing batched-emit (see [Notes](#notes)
-for "when not to use this") or a dedicated event store.
+hundred-thousand-per-second you start needing batched-emit (see
+[Notes](#notes)) or a dedicated event store.
 
 ## How does this compare to a table-based outbox?
 
@@ -957,8 +950,7 @@ language can emit and every language can consume. A Django service
 emits a `payments-user` event; OwlPost (Go) reads it and ships to
 Kafka; downstream consumers in Python, Go, or Kotlin read the same
 bytes via the proto file. The producer language never enters the
-picture downstream — a nice property for a polyglot backend to get
-for free.
+picture downstream.
 
 ## Minimal Go producer
 
@@ -1111,7 +1103,7 @@ needs care around rolled-back streamed messages on the consumer.
 
 ## Production gotchas
 
-Two settings will bite you if you skip them.
+Two settings to configure before scaling.
 
 - **Slot-lag alerting is mandatory.** The dangerous failure mode is
   "OwlPost dies on a Friday evening, WAL fills the disk on Sunday
