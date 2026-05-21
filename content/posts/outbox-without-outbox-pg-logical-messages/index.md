@@ -932,59 +932,7 @@ The producer cost is roughly the same. The **consumer** cost is where
 you get back hours of vacuum-tuning life and several Postgres-CPU
 percent.
 
-# 9. When NOT to use this
-
-Every win has a cost. Name it.
-
-## Cross-database transactions
-
-`pg_logical_emit_message` is per-database. If your business
-transaction spans **multiple Postgres clusters** (write to A and B
-atomically), you don't have an atomic write to begin with — and
-factlib doesn't help. You need 2PC or a saga.
-
-## Ultra-high event rates (≥ 100K/sec)
-
-WAL append itself is cheap — microseconds, into a buffer that's
-only fsync'd at COMMIT. The real per-emit cost is the network
-round-trip for the SELECT (~80 µs same-VPC), and the real per-
-transaction cost is the COMMIT fsync (which already happens for the
-business write, so an extra emit inside a short txn is nearly free).
-The ceiling shows up around the commit-fsync rate, not the WAL
-itself: at 100K events/sec with one emit per txn, you need ~100K
-fsyncs/sec, which a single Postgres can't sustain. Mitigation:
-batched emit (N events in one transaction; factlib doesn't expose
-this yet, but the extension is small), or move to a dedicated event
-store (Kafka, EventStoreDB, Pulsar) for async-write semantics.
-
-## Caveats
-
-Things to be aware of that apply regardless — they aren't reasons to
-avoid this approach, just operational realities to plan for.
-
-### Schema evolution
-
-Standard protobuf evolution rules apply (additive optional fields,
-never re-use field numbers, never change types) and you need a shared
-schema registry across consumer languages. factlib doesn't solve this
-problem, it just doesn't make it worse — same as any protobuf-based
-event bus.
-
-### Long Postgres transactions
-
-With the `proto_version '1'` plugin arg factlib uses today, logical
-decoding does not see a transaction's records until COMMIT — a 30-
-second transaction blocks event delivery for 30 seconds. The
-outbox-table pattern has the same property; the advice is the same:
-keep transactions short, hoist long-running work outside the
-transaction.
-
-Newer pgoutput protocols help: v2 (PG 14) streams in-progress
-transactions; v3 (PG 15) adds two-phase commit; v4 (PG 16) adds
-parallel apply[^10]. Switching factlib past v1 is deferred — it
-needs care around rolled-back streamed messages on the consumer.
-
-# 10. The Python client (and polyglot fan-in)
+# 9. The Python client (and polyglot fan-in)
 
 The producer side has a sibling in `python/factlib/`. The hot path
 is identical (the source also wraps the `cursor.execute` in
@@ -1119,7 +1067,52 @@ configured and the same bytes flow into Kafka instead.
 | Outbox table + Debezium | ✅ | no (WAL) | yes | needed | per row | manual |
 | **factlib (logical messages)** | ✅ | no (WAL) | **none** | **automatic (WAL recycle)** | per aggregate | **in WAL** |
 
-# What I'd change next
+# Notes
+
+## Cross-database transactions
+
+`pg_logical_emit_message` is per-database. If your business
+transaction spans **multiple Postgres clusters** (write to A and B
+atomically), you don't have an atomic write to begin with — and
+factlib doesn't help. You need 2PC or a saga.
+
+## Ultra-high event rates (≥ 100K/sec)
+
+WAL append itself is cheap — microseconds, into a buffer that's
+only fsync'd at COMMIT. The real per-emit cost is the network
+round-trip for the SELECT (~80 µs same-VPC), and the real per-
+transaction cost is the COMMIT fsync (which already happens for the
+business write, so an extra emit inside a short txn is nearly free).
+The ceiling shows up around the commit-fsync rate, not the WAL
+itself: at 100K events/sec with one emit per txn, you need ~100K
+fsyncs/sec, which a single Postgres can't sustain. Mitigation:
+batched emit (N events in one transaction; factlib doesn't expose
+this yet, but the extension is small), or move to a dedicated event
+store (Kafka, EventStoreDB, Pulsar) for async-write semantics.
+
+## Schema evolution
+
+Standard protobuf evolution rules apply (additive optional fields,
+never re-use field numbers, never change types) and you need a shared
+schema registry across consumer languages. factlib doesn't solve this
+problem, it just doesn't make it worse — same as any protobuf-based
+event bus.
+
+## Long Postgres transactions
+
+With the `proto_version '1'` plugin arg factlib uses today, logical
+decoding does not see a transaction's records until COMMIT — a 30-
+second transaction blocks event delivery for 30 seconds. The
+outbox-table pattern has the same property; the advice is the same:
+keep transactions short, hoist long-running work outside the
+transaction.
+
+Newer pgoutput protocols help: v2 (PG 14) streams in-progress
+transactions; v3 (PG 15) adds two-phase commit; v4 (PG 16) adds
+parallel apply[^10]. Switching factlib past v1 is deferred — it
+needs care around rolled-back streamed messages on the consumer.
+
+## Running this in production
 
 A few notes from running this in production.
 
