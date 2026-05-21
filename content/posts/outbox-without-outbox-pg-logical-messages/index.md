@@ -86,8 +86,8 @@ failure modes:
 
 The bug is structural. There is no atomic operation that spans your
 relational database and your message broker. (Kafka transactions per
-KIP-98 don't help here — they bound a producer's writes across Kafka
-topics, not across Kafka and Postgres.) The fix is to make event
+KIP-98[^11] don't help here — they bound a producer's writes across
+Kafka topics, not across Kafka and Postgres.) The fix is to make event
 emission part of the *same* atomic write that the business data goes
 into. That's the outbox pattern.
 
@@ -1132,3 +1132,4 @@ Two settings to configure before scaling.
 [^8]: [`xlogrecord.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/access/xlogrecord.h)
 [^9]: [`replication/message.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/message.h)
 [^10]: [`logicalproto.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/logicalproto.h)
+[^11]: [KIP-98 — Exactly Once Delivery and Transactional Messaging](https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging)
