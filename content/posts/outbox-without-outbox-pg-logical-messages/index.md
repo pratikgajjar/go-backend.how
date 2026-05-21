@@ -199,8 +199,10 @@ implementation is just heavier than it needs to be.
 
 Function signature from the Postgres 17 docs[^3]:
 
-> `pg_logical_emit_message(transactional boolean, prefix text, content text  [, flush boolean DEFAULT false]) → pg_lsn`
-> `pg_logical_emit_message(transactional boolean, prefix text, content bytea [, flush boolean DEFAULT false]) → pg_lsn`
+```sql
+pg_logical_emit_message(transactional boolean, prefix text, content text  [, flush boolean DEFAULT false]) → pg_lsn
+pg_logical_emit_message(transactional boolean, prefix text, content bytea [, flush boolean DEFAULT false]) → pg_lsn
+```
 
 In English: emit a text or binary logical-decoding message that
 plugins receive through WAL. `transactional = true` makes it visible
