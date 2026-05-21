@@ -353,11 +353,13 @@ latency := time.Since(start).Seconds()
 metrics.EventProcessingLatency.WithLabelValues(...).Observe(latency)
 ```
 
-The histogram is `factlib_event_processing_seconds`. Local-test runs
-land at **80–250 µs p50** for sub-1KB events on a same-VPC pgx
-connection — most of which is the network round-trip, not the WAL
-append. [§8](#8-ordering--throughput) derives where that envelope
-comes from.
+The histogram is `factlib_event_processing_seconds`. A local
+benchmark[^12] (1 KB payload, BEGIN → INSERT → EMIT → COMMIT, 10K
+iterations on Apple M3 Max) measures the emit `SELECT` itself at
+**p50 ≈ 22 µs, p99 ≈ 42 µs** over TCP loopback. Production over
+same-VPC TCP adds the cross-host RTT (commonly ~200–500 µs
+cross-AZ); the WAL append itself stays in the single-digit µs
+range. [§8](#8-ordering--throughput) walks the byte math.
 
 # 5. How OwlPost consumes
 
@@ -889,12 +891,14 @@ on top of the business transaction. Cost components:
   itself costs `24 + 2 + 8` = **34 B**. Round the per-event amortised
   WAL footprint up to **~600 B** (567 + 34 = 601).
 
-- **Total round-trip.** Derived from parts: a localhost pgx
-  round-trip is `~80 µs` (one TCP write + read on loopback), the
-  protobuf marshal of a 500 B event is `~5 µs` on Apple Silicon,
-  and `pg_logical_emit_message` is a single C function call + WAL
-  append. Local-test runs sit at **80–250 µs p50** on a same-VPC
-  connection; outside that envelope is either network or contention.
+- **Total round-trip.** Measured on Apple M3 Max with the
+  benchmark in `a local benchmark harness`[^12], 1 KB
+  payload, BEGIN → INSERT → EMIT → COMMIT, 10K iterations: emit
+  `SELECT` p50 is **12.8 µs over unix socket** and **21.9 µs over
+  TCP loopback** (p99 28 µs and 42 µs respectively). Same-VPC TCP
+  adds the cross-host RTT (~200–500 µs cross-AZ on typical cloud).
+  The protobuf marshal of a 500 B event is ~5 µs, negligible
+  against the round-trip.
 
 At 10K events/sec:
 
@@ -1141,3 +1145,4 @@ Two settings to configure before scaling.
 [^9]: [`replication/message.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/message.h)
 [^10]: [`logicalproto.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/logicalproto.h)
 [^11]: [KIP-98 — Exactly Once Delivery and Transactional Messaging](https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging)
+[^12]: Reproducible from `a local benchmark harness` in this repo (Postgres 17.6, `wal_level = logical`, `synchronous_commit = on`).
