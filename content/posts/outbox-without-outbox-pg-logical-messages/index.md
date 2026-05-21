@@ -72,8 +72,8 @@ func CreateUser(ctx context.Context, u User) error {
 }
 ```
 
-It looks fine. It is not fine. These 4 lines hide **at least three**
-distinct failure modes:
+It looks fine. It is not fine. These 4 lines hide two distinct
+failure modes:
 
 1. **DB commits, Kafka returns error.** The user exists in your DB.
    Downstream services never hear about it. The retry budget on the
@@ -83,12 +83,6 @@ distinct failure modes:
 2. **DB commits, process dies before Kafka call.** OOM, kill -9,
    panic, the kernel reaps you because the K8s node was draining.
    Same outcome, no error to log.
-3. **Kafka acks, DB later loses its commit.** Less common: Kafka
-   acks while the DB is async-replicating, the primary fails over
-   before the WAL ships, and downstream services hold an event for
-   a row that doesn't exist post-failover. Synchronous replication
-   trades that risk for an `8 ms` instead of `800 µs` `db.Save` —
-   and you still have problems #1 and #2.
 
 The bug is structural. There is no atomic operation that spans your
 relational database and your message broker. (Kafka transactions per
