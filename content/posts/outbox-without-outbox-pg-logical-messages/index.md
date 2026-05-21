@@ -1,6 +1,6 @@
 +++
 title = "🦉 The Outbox Without an Outbox — Postgres Logical Messages as Eventbus"
-description = "The outbox pattern asks for what replication already provides — durable, ordered, resumable delivery. Postgres' pg_logical_emit_message lets your application piggyback on that, walked line by line through factlib + OwlPost."
+description = "The outbox pattern asks for what replication already provides — durable, ordered, resumable delivery. Postgres' pg_logical_emit_message lets you piggyback on that, walked line by line through factlib + OwlPost."
 date = 2026-05-17T09:00:00+05:30
 lastmod = 2026-05-17T10:50:00+05:30
 publishDate = "2026-05-17T09:00:00+05:30"
@@ -308,7 +308,7 @@ func CreateUser(ctx context.Context, db *pgxpool.Pool, u User) error {
         }
         producer, _ := factlibProducer.WithTxn(postgres.GetPgxTxn(tx))
         fact, _ := common.NewFact("user", u.ID, "user.created", payloadBytes, nil)
-        fact.TraceInfo = &common.TraceInfo{}  // mandatory; see §10 demo
+        fact.TraceInfo = &common.TraceInfo{}  // mandatory; see §9 demo
         _, err := producer.Emit(ctx, fact)
         return err
     })
@@ -914,7 +914,7 @@ WAL bytes   ≈ 600 B × 10,000  = 6 MB/sec
 A modern NVMe sustains 1–3 GB/sec sequential writes; we're using
 0.3% of that. The bottleneck for ten-thousand-events-per-second is
 network round-trips on the producer side, not the WAL itself. For
-hundred-thousand-per-second you start needing batched-emit (see [§9](#9-when-not-to-use-this)
+hundred-thousand-per-second you start needing batched-emit (see [Notes](#notes)
 for "when not to use this") or a dedicated event store.
 
 ## How does this compare to a table-based outbox?
@@ -1112,58 +1112,18 @@ transactions; v3 (PG 15) adds two-phase commit; v4 (PG 16) adds
 parallel apply[^10]. Switching factlib past v1 is deferred — it
 needs care around rolled-back streamed messages on the consumer.
 
-## Running this in production
+## Production gotchas
 
-A few notes from running this in production.
+Two settings will bite you if you skip them.
 
-- **Slot-lag alerting is mandatory, not optional.** The single most
-  dangerous failure mode is "OwlPost dies on a Friday evening, WAL
-  fills the disk on Sunday morning, Postgres goes read-only." We
-  alert on `pg_replication_slots.confirmed_flush_lsn` lag at 1 GiB
-  warning, 5 GiB page. You should too.
-- **Batched emit would help bulk loads.** Today every event is a
-  separate `pg_logical_emit_message` round-trip; a 200-row import
-  is 200 SELECTs serialised on one transaction. An
-  `EmitBatch([]*Fact)` envelope with N inner events would cut the
-  round-trips and the WAL header overhead. Not built yet.
-- **The 1-second ack tick is a knob.** Coalescing 10K acks per tick
-  is a sane default; low-volume / high-criticality flows want 100 ms.
-  Make it configurable.
-- **`max_wal_senders` and `max_replication_slots`** default to 10
-  in Postgres. Twelve services each running an OwlPost will exhaust
+- **Slot-lag alerting is mandatory.** The dangerous failure mode is
+  "OwlPost dies on a Friday evening, WAL fills the disk on Sunday
+  morning, Postgres goes read-only." Alert on
+  `pg_replication_slots.confirmed_flush_lsn` lag — 1 GiB warning,
+  5 GiB page.
+- **`max_wal_senders` and `max_replication_slots`** default to 10.
+  Twelve services each running their own consumer will exhaust
   them; bump both in `postgresql.conf` before you scale.
-- **A bpftrace one-liner that counts emits in real time** is useful
-  during incident response. Both `pg_logical_emit_message_text` and
-  `pg_logical_emit_message_bytea` call `LogLogicalMessage`, so one
-  uprobe covers both:
-
-  ```bash
-  bpftrace -e '
-    uprobe:/usr/lib/postgresql/17/bin/postgres:LogLogicalMessage {
-      @ = count();
-    }
-    interval:s:5 { print(@); clear(@); }
-  '
-  ```
-
-  Five-second buckets of emit counts on this Postgres. apt-installed
-  binaries are stripped; the PGDG `-dbgsym` package[^11] ships the
-  symbols separately (`apt install postgresql-17-dbgsym`).
-- **What we would not change:** `pgoutput` over `wal2json`.
-  `pgoutput` is in-tree, ships with every Postgres, needs no
-  extension install, and the protocol is stable since v1. JSON would
-  duplicate what protobuf already gives us.
-
-The whole library is 2,483 lines of Go (`find pkg cmd -name '*.go' -not -name '*_test.go' | xargs wc -l`). The interesting
-line is exactly one:
-
-```go
-"SELECT pg_logical_emit_message(true, $1, $2::bytea)"
-```
-
-Postgres did the hard work in 2016. The rest is the scaffolding —
-ack pipeline, slot management, trace propagation — that turns one
-function call into a system you can run in production.
 
 # Further reading
 
@@ -1189,4 +1149,3 @@ function call into a system you can run in production.
 [^8]: [`xlogrecord.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/access/xlogrecord.h)
 [^9]: [`replication/message.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/message.h)
 [^10]: [`logicalproto.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/logicalproto.h)
-[^11]: [PGDG `-dbgsym` packages — PostgreSQL Wiki](https://wiki.postgresql.org/wiki/Apt)
