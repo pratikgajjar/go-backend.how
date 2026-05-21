@@ -200,12 +200,21 @@ implementation is just heavier than it needs to be.
 Function signature from the Postgres 17 docs[^3]:
 
 ```sql
-pg_logical_emit_message(transactional boolean, prefix text, content text  [, flush boolean DEFAULT false]) → pg_lsn
-pg_logical_emit_message(transactional boolean, prefix text, content bytea [, flush boolean DEFAULT false]) → pg_lsn
+pg_logical_emit_message(
+    transactional boolean,
+    prefix        text,
+    content       text   [, flush boolean DEFAULT false]
+) → pg_lsn
+
+pg_logical_emit_message(
+    transactional boolean,
+    prefix        text,
+    content       bytea  [, flush boolean DEFAULT false]
+) → pg_lsn
 ```
 
-In English: emit a text or binary logical-decoding message that
-plugins receive through WAL. `transactional = true` makes it visible
+It emits a text or binary logical-decoding message that plugins
+receive through WAL. `transactional = true` makes it visible
 to decoders only when the surrounding txn commits; `false` writes
 immediately. The optional `flush` parameter (added in Postgres 16[^4]) forces an
 `XLogFlush` before returning — useful for non-transactional emits,
