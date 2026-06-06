@@ -6,7 +6,7 @@ lastmod = 2024-08-09T16:42:51+05:30
 publishDate = "2024-08-09T16:42:51+05:30"
 draft = false
 tags = ['aws', 'ec2', 'ssh']
-images = ["/posts/lost-ssh-access-to-ec2/og.png"]
+images = ["og-93f1d193.png"]
 hnItemId = 41270300
 theme = "steel"
 +++

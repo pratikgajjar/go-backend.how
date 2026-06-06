@@ -5,7 +5,7 @@ date = 2023-02-15T10:00:00-07:00
 lastmod = 2023-02-15T10:00:00-07:00
 draft = false
 tags = ['system-design', 'dating-app', 'geospatial', 'recommendations']
-images = ["/posts/system-design-tinder/og.png"]
+images = ["og-dabd1a53.png"]
 theme = "blush"
 +++
 

@@ -6,7 +6,7 @@ lastmod = 2024-07-05T22:21:15+05:30
 publishDate = "2024-07-05T22:21:15+05:30"
 draft = false
 tags = ['gyan', 'engineering']
-images = ["/posts/the-psychology-of-seeking-help/og.png"]
+images = ["og-7ea28dc5.png"]
 theme = "wisteria"
 +++
 

@@ -1230,25 +1230,25 @@ def main() -> int:
         tags = extract_list(fm, "tags")
         theme_name = extract_field(fm, "theme") or "amber"
 
-        # Honour existing `images` value if it points to a versioned filename
-        # (e.g. og-v2.png), so social cache-busts survive regeneration.
-        existing_images = extract_list(fm, "images")
-        existing_basename = ""
-        for v in existing_images:
-            if v.endswith(".png"):
-                existing_basename = v.rsplit("/", 1)[-1]
-                break
+        out_dir = (Path("content/posts") / slug) if is_bundle else (Path("static/posts") / slug)
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-        if is_bundle:
-            basename = existing_basename if existing_basename else "og.png"
-            out = Path("content/posts") / slug / basename
-            images_value = basename
-        else:
-            basename = existing_basename if existing_basename else "og.png"
-            out = Path("static/posts") / slug / basename
-            images_value = f"/posts/{slug}/{basename}"
+        # Render to a temp file, then name it og-<short>.png after a short
+        # content hash (like a git short sha). The URL only changes when the
+        # image changes, so social cards re-fetch; re-running on unchanged
+        # content is a no-op.
+        tmp = out_dir / "og.tmp.png"
+        motif, palette = render(slug, title, desc, tags, theme_name, tmp)
+        short = hashlib.sha256(tmp.read_bytes()).hexdigest()[:8]
+        basename = f"og-{short}.png"
+        out = out_dir / basename
+        tmp.replace(out)
+        # Keep exactly one card per post: drop any older og*.png.
+        for old in out_dir.glob("og*.png"):
+            if old.name != basename:
+                old.unlink()
 
-        motif, palette = render(slug, title, desc, tags, theme_name, out)
+        images_value = basename if is_bundle else f"/posts/{slug}/{basename}"
         new_fm = set_or_replace_images(fm, delim, images_value)
         new_text = f"{delim}\n{new_fm}\n{delim}{rest}" if delim else text
         tag = "✓" if (delim and new_text != text) else "·"

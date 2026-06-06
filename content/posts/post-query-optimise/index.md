@@ -5,7 +5,7 @@ date = 2023-02-15T10:00:00-07:00
 lastmod = 2023-02-15T10:00:00-07:00
 draft = false
 tags = ['postgres', 'query-optimization']
-images = ["/posts/post-query-optimise/og.png"]
+images = ["og-d1c8116d.png"]
 theme = "periwinkle"
 +++
 

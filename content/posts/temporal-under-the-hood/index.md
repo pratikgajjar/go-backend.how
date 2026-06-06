@@ -6,7 +6,7 @@ lastmod = 2026-04-05T12:00:00+05:30
 publishDate = "2026-04-05T12:00:00+05:30"
 draft = false
 tags = ["temporal", "durable-execution", "workflows", "postgres", "system-design"]
-images = ["og.png"]
+images = ["og-3420d4c7.png"]
 theme = "teal"
 featured = true
 +++

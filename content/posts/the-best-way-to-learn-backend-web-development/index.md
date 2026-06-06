@@ -6,7 +6,7 @@ lastmod = 2026-01-18T03:13:23+05:30
 publishDate = 2024-07-01T03:13:23+05:30
 draft = false
 tags = ['backend', 'gyan']
-images = ["/posts/the-best-way-to-learn-backend-web-development/og.png"]
+images = ["og-dd7f375a.png"]
 theme = "pistachio"
 +++
 

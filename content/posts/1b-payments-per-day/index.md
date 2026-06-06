@@ -4,7 +4,7 @@ date: 2025-03-01
 lastmod: 2026-05-06
 description: "Can one bank absorb India's entire daily UPI volume? A first-principles design exercise with real benchmarks: TigerBeetle vs PostgreSQL, traced with eBPF down to the io_uring and fsync calls."
 tags: ["golang", "tigerbeetle", "payments", "system-design", "ebpf"]
-images: ["og.png"]
+images: ["og-23339fbc.png"]
 draft: false
 theme: "honey"
 featured: true
