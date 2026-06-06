@@ -64,5 +64,6 @@
     <footer class="container">
       {{ partial "footer.html" . }}
     </footer>
+    {{ if site.Params.enableXiaohei | default true }}{{ partial "xiaohei.html" . }}{{ end }}
   </body>
 </html>
