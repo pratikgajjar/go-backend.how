@@ -6,15 +6,11 @@
 function initLazyLoadImages() {
   const images = document.querySelectorAll('.lazyload-image');
   images.forEach(img => {
-    const placeholder = img.previousElementSibling;
-    const handleLoaded = () => {
-      img.style.opacity = '1';
-      if (placeholder) placeholder.style.opacity = '0';
-    };
+    const reveal = () => img.classList.add('is-loaded');
     if (img.complete && img.naturalWidth !== 0) {
-      handleLoaded();
+      reveal();
     } else {
-      img.addEventListener('load', handleLoaded, { once: true });
+      img.addEventListener('load', reveal, { once: true });
     }
   });
 }
