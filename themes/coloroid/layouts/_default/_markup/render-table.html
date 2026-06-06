@@ -1,0 +1,25 @@
+{{- /* Wrap markdown tables in a horizontal-scroll container so wide tables
+       scroll on mobile instead of clipping/overflowing the page. The
+       .table-scroll-wrapper styles live in assets/css/main.css. */ -}}
+<div class="table-scroll-wrapper">
+  <table>
+    <thead>
+      {{- range .THead }}
+      <tr>
+        {{- range . }}
+        <th{{ with .Alignment }} style="text-align: {{ . }}"{{ end }}>{{ .Text }}</th>
+        {{- end }}
+      </tr>
+      {{- end }}
+    </thead>
+    <tbody>
+      {{- range .TBody }}
+      <tr>
+        {{- range . }}
+        <td{{ with .Alignment }} style="text-align: {{ . }}"{{ end }}>{{ .Text }}</td>
+        {{- end }}
+      </tr>
+      {{- end }}
+    </tbody>
+  </table>
+</div>
