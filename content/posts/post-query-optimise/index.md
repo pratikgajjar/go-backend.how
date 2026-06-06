@@ -9,6 +9,9 @@ images = ["/posts/post-query-optimise/og.png"]
 theme = "periwinkle"
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei running EXPLAIN on a slow query then adding an index to turn a sequential scan into an index seek" >}}
+
+
 PostgreSQL is a powerful and popular open-source relational database management system. It is known for its reliability, scalability, and ability to handle large amounts of data. However, as with any database system, it is important to optimize queries to ensure that they run as efficiently as possible. In this blog post, we will discuss some techniques for optimizing PostgreSQL queries to improve performance.
 
 # Use indexes

@@ -10,6 +10,9 @@ hnItemId = 40781712
 theme = "vanilla"
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei pressing knowledge and practice together and shipping content in one chosen format" >}}
+
+
 At the end of this, you'll understand the importance of creating content, when to start, and how to begin.
 
 # When? {#when}

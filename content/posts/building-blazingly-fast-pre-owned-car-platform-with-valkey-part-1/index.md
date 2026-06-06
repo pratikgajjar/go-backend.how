@@ -10,6 +10,9 @@ images = ["/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-par
 theme = "tangerine"
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei pre-computing a car card once and serving it to many requests to hit a 60ms response" >}}
+
+
 **Introduction**
 
 The content will cover how to leverage [Valkey](https://valkey.io/) for serving web pages at blazingly fast speeds. This guide assumes you have some familiarity with backend technology.

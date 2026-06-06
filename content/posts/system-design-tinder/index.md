@@ -9,6 +9,9 @@ images = ["/posts/system-design-tinder/og.png"]
 theme = "blush"
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei precomputing each user's recommendations offline into a Redis deck and dealing the top cards in under 50ms" >}}
+
+
 Here's the question that keeps engineers up at night when building a dating app at scale: **How do you show someone the right person, right now, within 10 miles, when 75 million people are swiping simultaneously?**
 
 Let's dig in.

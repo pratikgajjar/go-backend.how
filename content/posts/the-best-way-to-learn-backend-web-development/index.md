@@ -10,6 +10,9 @@ images = ["/posts/the-best-way-to-learn-backend-web-development/og.png"]
 theme = "pistachio"
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei committing to one backend stack for six months instead of hopping between languages" >}}
+
+
 You've probably read ten articles just like this one.
 
 "Learn HTML/CSS first." "Pick a language." "Understand databases." You know the drill. Another roadmap. Another overwhelming list of technologies that leaves you more paralyzed than when you started.

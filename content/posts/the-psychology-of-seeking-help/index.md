@@ -10,6 +10,9 @@ images = ["/posts/the-psychology-of-seeking-help/og.png"]
 theme = "wisteria"
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei sorting help-seekers by type and matching each to the right response" >}}
+
+
 In my experience as a backend engineer, I've observed various patterns in how people seek help when they encounter problems. Understanding these patterns not only aids in providing effective assistance but also helps in fostering a culture of collaborative problem-solving.
 
 # Types of Help Seekers
