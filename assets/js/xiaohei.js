@@ -193,13 +193,18 @@
   function startRubber(){
     var e = pickLine(); if (!e){ setState('walk', 1800); return; }
     var spans = wrapWords(e); if (!spans){ setState('walk', 1500); return; }
-    var er = e.getBoundingClientRect(), words = [], top = 1e9, left = 1e9;
-    for (var i=0;i<spans.length;i++){ var r=spans[i].getBoundingClientRect(); words.push({ span:spans[i], ox:r.left, w:r.width, piled:false }); if (r.top<top) top=r.top; if (r.left<left) left=r.left; }
-    line = { el:e, words:words, leftEdge:6, plantX: clampX(left - w()*0.2), wallX: innerWidth - w() - 8, lineTop:top, maxScroll:(er.right-6)+170, churnDur:1500, phase:'churn', t0:0, vbx:0, starsEl:null, guard:performance.now()+11000 };
+    var er = e.getBoundingClientRect(), words = [], top = 1e9, left = 1e9, right = 0;
+    for (var i=0;i<spans.length;i++){ var r=spans[i].getBoundingClientRect(); words.push({ span:spans[i], ox:r.left, w:r.width, piled:false }); if (r.top<top) top=r.top; if (r.left<left) left=r.left; if (r.right>right) right=r.right; }
+    var dir = Math.random()<0.5 ? 1 : -1;                              // run left OR right
+    var plantX = dir>0 ? clampX(left - w()*0.4) : clampX(right - w()*0.6);
+    line = { el:e, words:words, dir:dir, leftEdge:6, rightEdge:innerWidth-6, plantX:plantX, wallX: dir>0 ? (innerWidth - w() - 8) : 2, lineTop:top, maxScroll:(right-left)+innerWidth*0.6+170, churnDur:1500, phase:'churn', t0:0, vbx:0, starsEl:null, guard:performance.now()+11000 };
     for (var si=0; si<spans.length; si++) spans[si].style.transition='none';
-    gotoThen({x:clampX(left - w()*0.5), y:clampY(top - h() + 8)}, 'rubber', 99999);
+    gotoThen({x:plantX, y:clampY(top - h() + 8)}, 'rubber', 99999);
   }
-  function layoutChurn(sc){ if (!line) return 0; var used=0, remaining=0; for (var i=0;i<line.words.length;i++){ var wd=line.words[i]; var natural=wd.ox - sc, slot=line.leftEdge+used, tgt=natural>slot?natural:slot; if (natural>slot+0.5) remaining++; wd.span.style.transform='translateX('+(tgt - wd.ox).toFixed(1)+'px)'; used += wd.w*0.5; } return remaining; }
+  function layoutChurn(sc){ if (!line) return 0; var used=0, remaining=0, i, wd;
+    if (line.dir>0){ for (i=0;i<line.words.length;i++){ wd=line.words[i]; var nat=wd.ox - sc, slot=line.leftEdge+used, tgt=nat>slot?nat:slot; if (nat>slot+0.5) remaining++; wd.span.style.transform='translateX('+(tgt-wd.ox).toFixed(1)+'px)'; used+=wd.w*0.5; } }
+    else { for (i=0;i<line.words.length;i++){ wd=line.words[i]; var n2=wd.ox + sc, s2=line.rightEdge - used - wd.w, t2=n2<s2?n2:s2; if (n2<s2-0.5) remaining++; wd.span.style.transform='translateX('+(t2-wd.ox).toFixed(1)+'px)'; used+=wd.w*0.5; } }
+    return remaining; }
   function spawnStars(){ var d=document.createElement('div'); d.className='xh-stars'; for (var i=0;i<4;i++){ var s=document.createElement('span'); s.className='s'; s.textContent='★'; s.style.transform='rotate('+(i*90)+'deg) translate(0,-16px)'; d.appendChild(s); } fx.appendChild(d); return d; }
   function loveYou(){ if (reduce || innerWidth<=768 || dragging) return; if (state==='rubber') restoreLine(); if (state==='play') cleanupWord(); setState('love', 3400); glyph('love you'); brainAt = performance.now() + 700; }
   function posStars(){ if (line && line.starsEl){ line.starsEl.style.left = cx()+'px'; line.starsEl.style.top = (y - jumpY - 12)+'px'; } }
@@ -209,16 +214,17 @@
     if (line.phase==='churn'){                                       // stands on the line, runs in place; all words pile up BEHIND him
       if (!line.t0) line.t0 = now;
       var k = Math.min(1,(now-line.t0)/line.churnDur), sc = (1-Math.pow(1-k,3))*line.maxScroll;
-      x = clampX(line.plantX + Math.sin(now*0.05)*2); y = clampY(line.lineTop - h() + 8); face = 1;
+      x = clampX(line.plantX + Math.sin(now*0.05)*2); y = clampY(line.lineTop - h() + 8); face = line.dir;
       var remaining = layoutChurn(sc);
       if (Math.random() < dt*16) dust(x - w()*0.35, y + h() - 6);
-      if (remaining===0 || k>=1){ line.phase='rocket'; line.t0=now; line.vbx=2300; el.classList.remove('xh-lean');
+      if (remaining===0 || k>=1){ line.phase='rocket'; line.t0=now; line.vbx=line.dir*2300; el.classList.remove('xh-lean');
         for (var i=0;i<line.words.length;i++){ var s=line.words[i].span; s.style.transition=''; s.style.transform=''; }   // ground snaps back -> launches him like a rocket
         dust(x - w()*0.5, y + h()*0.5); }
     } else if (line.phase==='rocket'){                               // shoots himself forward
-      x += line.vbx*dt; face = 1;
-      if (Math.random() < dt*30) dust(x - w()*0.5, y + h()*0.4);
-      if (x + w() >= line.wallX){ x = line.wallX; line.phase='spring'; line.t0=now; line.vbx=-820; el.classList.add('xh-bonk'); dust(x+w()*0.5, y+h()*0.4); line.starsEl = spawnStars(); }
+      x += line.vbx*dt; face = line.dir;
+      if (Math.random() < dt*30) dust(x - line.dir*w()*0.5, y + h()*0.4);
+      var hit = line.dir>0 ? (x + w() >= line.wallX) : (x <= line.wallX);
+      if (hit){ x = line.wallX; line.phase='spring'; line.t0=now; line.vbx = -line.dir*820; el.classList.add('xh-bonk'); dust(x+w()*0.5, y+h()*0.4); line.starsEl = spawnStars(); }
     } else if (line.phase==='spring'){                               // hits the end, springs against the wall (damped)
       var ax = (line.wallX - x)*34 - line.vbx*7; line.vbx += ax*dt; x += line.vbx*dt;
       posStars();
