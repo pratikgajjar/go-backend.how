@@ -11,6 +11,9 @@ featured: true
 math: true
 ---
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei stamping an endless torrent of payment slips while a counter rolls to one billion per day" >}}
+
+
 India moves money like no other country. By February 2026, UPI was clearing **20+ billion** digital transactions per month — nearly half of all real-time payments on Earth.
 
 | Month  | Banks on UPI | Volume (Mn) | Value (₹ Cr.) |

@@ -11,6 +11,9 @@ images = ["og.png"]
 theme = "tiger"
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei stringing assertion tripwires across stepping stones to catch a bug early" >}}
+
+
 # The Essence Of Style
 
 > “There are three things extremely hard: steel, a diamond, and to know one's self.” — Benjamin

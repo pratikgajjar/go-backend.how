@@ -11,6 +11,9 @@ theme = "mauve"
 featured = false
 math = false
 +++
+
+{{< figure src="xiaohei-hero.png" alt="Xiaohei dropping a message straight into the Postgres WAL stream instead of an outbox table" >}}
+
 # How you arrive here
 
 By the end of this post you will see how Postgres' built-in

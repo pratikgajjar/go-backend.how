@@ -11,6 +11,9 @@ featured = true
 theme = "mint"
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei running steadily on a track while a chart tracks average heart rate dropping over time" >}}
+
+
 tldr;
 
 - Set a clear goal.

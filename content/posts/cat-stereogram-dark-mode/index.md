@@ -11,6 +11,9 @@ images = ["og.png"]
 theme = "lavender"
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei crossing its eyes to fuse two dotted panels into a 3D shape that pops out" >}}
+
+
 A stereogram is a unique type of image that creates the illusion of a three-dimensional scene from a two-dimensional pattern. When viewed correctly, stereograms appear to pop out of the background, offering viewers a captivating 3D experience.
 
 # The Cat Stereogram

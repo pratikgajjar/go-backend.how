@@ -11,6 +11,9 @@ theme = "teal"
 featured = true
 +++
 
+{{< figure src="xiaohei-hero.png" alt="Xiaohei feeding an event log through a projector that replays and rebuilds a faded workflow" >}}
+
+
 # What you'll learn
 
 Durable execution engines like [Temporal](https://temporal.io/) are
