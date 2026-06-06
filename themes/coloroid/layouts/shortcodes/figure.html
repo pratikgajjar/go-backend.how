@@ -17,17 +17,13 @@
       <!-- Resize the full-res image -->
       {{ $resized := $image.Resize (printf "%dx%d webp" .Width .Height) }}
       <!-- Create a blurred placeholder -->
-      {{ $blurImg := $image.Resize "800x q50" | images.Filter (images.GaussianBlur 6) }}
+      {{ $blurImg := $image.Resize "800x q50 webp" | images.Filter (images.GaussianBlur 6) }}
 
-      <!-- Container with fixed aspect ratio to prevent layout shift -->
-      <div style="position: relative; width: 100%; overflow: hidden; padding-bottom: calc(100% * {{ $resized.Height }} / {{ $resized.Width }});">
-        <!-- Blurred placeholder image -->
-        <img src="{{ $blurImg.RelPermalink }}"
-             alt="{{ $alt }}"
-             loading="lazy"
-             class="blur-image"
-             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(6px); transition: opacity 0.6s ease-out; opacity: 1;">
-        <!-- Full resolution image -->
+      <!-- Container holds the blurred placeholder as a background so it never
+           appears as a second <img> (e.g. in Safari Reader mode, which strips
+           the inline opacity/positioning that normally hides it). -->
+      <div class="image-frame" style="position: relative; width: 100%; overflow: hidden; padding-bottom: calc(100% * {{ $resized.Height }} / {{ $resized.Width }}); background-image: url('{{ $blurImg.RelPermalink }}'); background-size: cover; background-position: center;">
+        <!-- Full resolution image, fades in over the blurred background -->
         <img src="{{ $resized.RelPermalink }}"
              alt="{{ $alt }}"
              loading="lazy"

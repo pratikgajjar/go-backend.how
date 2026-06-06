@@ -1246,6 +1246,29 @@ body.theme-tiger hr {
         white-space: normal;
     }
 
+    /* Pin the first column (row labels) so it stays visible while the
+       value columns scroll horizontally — otherwise scrolling right loses
+       the context of which metric each cell belongs to. */
+    .table-scroll-wrapper td:first-child,
+    .table-scroll-wrapper th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        max-width: 40vw;
+        white-space: normal;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.12);
+    }
+    .table-scroll-wrapper td:first-child {
+        background-color: var(--article-bg);
+    }
+    .table-scroll-wrapper thead th:first-child {
+        z-index: 2;
+        background-color: var(--mocha-lavender);
+    }
+    body[class*="theme-"] .table-scroll-wrapper thead th:first-child {
+        background-color: oklch(25% 0.02 250);
+    }
+
     /* TOC */
     .table-of-content {
         margin-left: -16px !important;
