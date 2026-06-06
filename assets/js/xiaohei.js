@@ -15,7 +15,7 @@
   var state = 'walk', until = 0, brainAt = 0, tx = 0, ty = 0, pend = null;
   var word = null, line = null, G = 1700;
   var parked = false, dragging = false, ddx = 0, ddy = 0, downX = 0, downY = 0, moved = false;
-  try { var pk0 = localStorage.getItem('xh-park'); if (pk0 && pk0!=='roam'){ var pp=pk0.split(','); parked=true; x=(+pp[0])*innerWidth; y=(+pp[1])*innerHeight; } } catch(e){}
+  try { localStorage.removeItem('xh-park'); } catch(e){}   // roam by default; drag-to-sit is session-only
 
   function paint(){ el.style.transform = 'translate('+x.toFixed(1)+'px,'+(y-jumpY).toFixed(1)+'px)'; sprite.style.transform = 'scaleX('+face+')'; }
   function cx(){ return x + w()/2; }
@@ -252,13 +252,12 @@
   function drop(e){
     if (!dragging) return; dragging=false; el.classList.remove('xh-held');
     try { sprite.releasePointerCapture(e.pointerId); } catch(err){}
-    if (moved){ parked=true; savePark(); jump(8); }
+    if (moved){ parked=true; jump(8); }
     nextBehaviour();
   }
   sprite.addEventListener('pointerup', drop);
   sprite.addEventListener('pointercancel', drop);
-  sprite.addEventListener('dblclick', function(){ parked=!parked; savePark(); glyph(parked?'📌':'🏃'); nextBehaviour(); });
-  function savePark(){ try { localStorage.setItem('xh-park', parked ? (x/innerWidth).toFixed(4)+','+(y/innerHeight).toFixed(4) : 'roam'); } catch(e){} }
+  sprite.addEventListener('dblclick', function(){ parked=!parked; glyph(parked?'📌':'🏃'); nextBehaviour(); });
   addEventListener('resize', function(){ x=clampX(x); y=clampY(y); paint(); }, {passive:true});
 
   function clearPose(){ el.classList.remove('xh-walk','xh-run','xh-inspect','xh-yawn','xh-sleep','xh-think','xh-play','xh-eat','xh-air','xh-lean','xh-bonk','xh-love'); }
