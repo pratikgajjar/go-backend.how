@@ -8,7 +8,7 @@ draft = false
 tags = ["postgres", "outbox", "kafka", "event-driven", "wal", "golang"]
 images = ["og-4a8e2733.png"]
 theme = "mauve"
-featured = false
+featured = true
 math = false
 +++
 
@@ -23,8 +23,7 @@ The outbox pattern needs three things: durability, order, and resumable
 delivery after a consumer disconnects. Every database already provides
 them, for replication. To keep a standby in sync, the database writes
 every change to a write-ahead log, ships those bytes to replicas in
-order, and tracks how far each replica has caught up. The same three
-guarantees, already built and hardened.
+order, and tracks how far each replica has caught up.
 
 Put that way, the outbox table is a second copy of replication, built
 in application code on the same database: its own polling loop, its own
@@ -113,15 +112,14 @@ UPDATE outbox SET processed = true WHERE id = ANY($1);
 DELETE FROM outbox WHERE id = ANY($1);
 ```
 
-This works well. The trade-off is the ongoing maintenance it adds.
+The trade-off is the ongoing maintenance it adds.
 
 ## The polling-latency / scan-cost tradeoff
 
 Poll every 100 ms and lag stays ~100 ms, at the cost of **864,000
 SELECT scans per day per worker** even when no events exist. Poll every
 5 s and you add 5 s of p99 latency to every downstream. No good answer;
-1 second is the usual compromise, and that 1 s lands on every webhook,
-every email, every side-effect.
+1 second is the usual compromise.
 
 ## Vacuum, indexes, and cleanup
 
@@ -164,8 +162,8 @@ The other option is **Debezium** tailing the WAL for `INSERT`s on
 cost is running Debezium: a JVM process with Kafka Connect and a schema
 registry. Fine if you're already on that stack, heavy if you're not.
 
-The atomicity argument behind the outbox table is sound. The
-implementation is heavier than it needs to be.
+The atomicity argument is sound; the implementation is heavier than it
+needs to be.
 
 # 3. `pg_logical_emit_message`
 
@@ -281,8 +279,7 @@ func CreateUser(ctx context.Context, db *pgxpool.Pool, u User) error {
 
 The `producer` shares the `pgx.Tx` with the business `INSERT`. There
 is no way to call `Emit` outside a transaction, and no way for `Emit`
-to commit on its own. The compiler does not enforce this; the API
-shape does.
+to commit on its own.
 
 **UUIDv7 for event IDs.** Time-sortable, 48-bit millisecond
 timestamp prefix, then random bits. Two reasons it matters here
@@ -305,8 +302,7 @@ custom serde.
 **One marshal, one SQL call.** No retry inside the emit. If the
 `SELECT pg_logical_emit_message(...)` fails, the surrounding
 transaction is poisoned and rolls back, and the caller decides whether
-to retry the whole business operation. A half-emitted event doesn't
-exist in this design.
+to retry the whole business operation.
 
 **Latency observability.** Each emit records the
 `factlib_event_processing_seconds` histogram; the `SELECT` itself runs in
@@ -649,8 +645,7 @@ After ~hours, two things start to break:
 - **The producer's WAL emit latency stays unchanged.** The producer
   doesn't care that the consumer is slow. The dual-write
   fallacy doesn't reappear because the producer's only contract is
-  "the bytes are in WAL." Whether they're delivered today or tomorrow
-  is the consumer's problem.
+  "the bytes are in WAL."
 
 When Kafka recovers, OwlPost drains, WAL is reclaimed, and disk
 pressure drops without data loss.
@@ -661,7 +656,7 @@ pressure drops without data loss.
 
 - **Per-aggregate ordering: strict.** Kafka partition is keyed on
   `aggregateId`. All events for `aggregate_id = "user-12345"` land on
-  the same partition, in WAL emission order, period. The WAL itself
+  the same partition, in WAL emission order. The WAL itself
   is totally ordered, and Kafka's per-partition order is preserved.
 - **Cross-aggregate ordering: not guaranteed in Kafka.** Two events
   for different aggregates may land on different partitions and be
