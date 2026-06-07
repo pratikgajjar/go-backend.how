@@ -641,7 +641,9 @@ After ~hours, two things start to break:
   FROM pg_replication_slots;
   ```
 
-  In Prometheus terms: scrape it and warn at `> 1 GiB`, page at `> 5 GiB`. If it grows
+  We scraped this with a Postgres metrics exporter running custom
+  queries — slot lag alongside integer-PK headroom and vacuum and index
+  stats — and alerted at `> 1 GiB`, paged at `> 5 GiB`. If it grows
   past your reserved disk, Postgres stops accepting writes, halting
   *every* writer in your fleet. Postgres 13+ has
   `max_slot_wal_keep_size` (default `-1` / no limit) that
@@ -673,6 +675,11 @@ pressure drops without data loss.
 The WAL itself preserves total order across all transactions on the
 publisher database. A single-partition consumer would expose that
 strict total order; the per-partition guarantee is usually enough.
+
+One consumer is fine if it keeps up with your event rate; reach for
+more partitions only when you need the parallelism. Repartitioning a
+live topic reshuffles which keys map to which partition, so size for
+roughly a year of growth up front rather than reaching for it later.
 
 ## Throughput — napkin math
 
@@ -730,8 +737,10 @@ events into one transaction, amortise that fsync across many emits. Batch
 ~512 and you reach ~390K/sec durable, where the disk sits at 12% and the
 limit becomes CPU and WAL-insert locks rather than fsync. Only payloads
 above ~100 KB push WAL to the disk's write rate. So 100K events/sec is
-comfortable on one node once you batch; the producer is rarely the ceiling.
-The single slot consumer is.
+comfortable on one node once you batch. Batching scales both sides: the
+producer groups emits into fewer commits, and the consumer batches WAL
+reads and fans the processing out across Kafka partitions or workers,
+trading strict global order for per-key order.
 
 ## Cost breakdown vs the outbox table
 
@@ -745,14 +754,11 @@ The single slot consumer is.
 | End-to-end latency | poll interval (100 ms–5 s) | WAL flush + Kafka produce (single-digit ms on a same-VPC pgx connection, derived) |
 | Consumer parallelism | N workers (`SKIP LOCKED` / partitioned table) | 1 reader per slot; fan out via Kafka |
 
-The producer cost is roughly the same. The consumer side is where they
-differ, and it cuts both ways. The table outbox is wasteful to poll, but it
-parallelizes cleanly: run N workers with `SELECT ... FOR UPDATE SKIP
-LOCKED`, or partition the table, and they make progress independently. A
-logical slot has exactly one reader, so OwlPost decodes the WAL in order,
-reads in batches, and hands off to Kafka, where partitions restore
-parallelism downstream. The two approaches parallelize in different places:
-the table at the database read, factlib after Kafka.
+The producer cost is roughly the same; the consumer side is where they
+differ. The outbox table is wasteful to poll but parallelizes at the
+database read: N workers with `SELECT ... FOR UPDATE SKIP LOCKED`, or a
+partitioned table. A logical slot has exactly one reader, so factlib
+parallelizes after Kafka instead.
 
 # Comparison
 
@@ -771,21 +777,6 @@ the table at the database read, factlib after Kafka.
 transaction spans **multiple Postgres clusters** (write to A and B
 atomically), you don't have an atomic write to begin with, and
 factlib doesn't help. You need 2PC or a saga.
-
-## Scaling the producer
-
-Writing the emit to the WAL is cheap: it appends one record to an in-memory
-buffer. The real cost is the `fsync` at COMMIT that makes the transaction
-durable, and a `transactional` emit rides that same `fsync` instead of
-adding its own. So the limit is durable commits per second, not bytes.
-
-Batching needs no extra machinery: because the emit rides your transaction,
-a transaction that produces several facts emits each one and they share one
-commit, so a single `fsync` covers the batch.
-
-The producer is rarely the wall. The consumer is: one logical slot is a
-single reader, so to scale past it shard by prefix or aggregate range, or
-move to a dedicated event store like Kafka or Pulsar.
 
 ## Schema evolution
 
@@ -814,9 +805,8 @@ needs care around rolled-back streamed messages on the consumer.
 - **`max_wal_senders` and `max_replication_slots`** default to 10.
   Twelve services each running their own consumer will exhaust them;
   bump both in `postgresql.conf` before you scale.
-- **Slot-lag alerting is mandatory.** A stuck slot pins WAL until the
-  disk fills and Postgres stops accepting writes. Alert on
-  `pg_replication_slots` lag and cap it with `max_slot_wal_keep_size`.
+- **Slot-lag alerting is mandatory.** Alert on `pg_replication_slots` lag
+  and cap it with `max_slot_wal_keep_size`.
 
 # Further reading
 
