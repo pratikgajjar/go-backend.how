@@ -13,4 +13,18 @@
   {{ end }}
 </div>
 {{ end }}
+
+{{ with site.Taxonomies.tags }}
+<h2 id="tags">Tags</h2>
+<div class="tag-cloud" aria-label="All tags sorted by post count">
+  {{ range .ByCount }}
+    {{ $count := len .Pages }}
+    {{ $weight := cond (ge $count 5) "xl" (cond (ge $count 3) "lg" (cond (ge $count 2) "md" "sm")) }}
+    <a href="{{ .Page.RelPermalink }}" class="tag-cloud-item tag-{{ $weight }}">
+      <span class="tag-name">#{{ .Page.Title }}</span>
+      <span class="tag-count">{{ $count }}</span>
+    </a>
+  {{ end }}
+</div>
+{{ end }}
 {{ end }}

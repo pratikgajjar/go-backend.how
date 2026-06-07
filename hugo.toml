@@ -162,10 +162,6 @@ privacyEnhanced = true
   url = "/archive/"
   weight = 20
 [[menus.main]]
-  name = "tags"
-  url = "/tags/"
-  weight = 30
-[[menus.main]]
   name = "about"
   url = "/about/"
   weight = 40
