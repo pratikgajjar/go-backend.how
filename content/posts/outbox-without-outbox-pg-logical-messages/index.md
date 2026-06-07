@@ -162,8 +162,10 @@ The other option is **Debezium** tailing the WAL for `INSERT`s on
 cost is running Debezium: a JVM process with Kafka Connect and a schema
 registry. Fine if you're already on that stack, heavy if you're not.
 
-The atomicity argument is sound; the implementation is heavier than it
-needs to be.
+That path runs INSERT → WAL → Kafka Connect → Kafka, with a schema
+registry alongside. The event is in the WAL the moment you commit; the
+next section reads it straight from there, dropping the table and the
+Connect tier.
 
 # 3. `pg_logical_emit_message`
 
