@@ -564,6 +564,8 @@ over the longest gap-free run from the front:
 ```go
 // pkg/postgres/wal.go — advance over the contiguous acked prefix
 func (w *WALSubscriber) onKafkaAck(lsn pglogrepl.LSN) {
+    // NOTE: pending is an unbounded slice today; a fixed ~1000-slot ring
+    // buffer would cap the in-flight set and back-pressure the WAL reader.
     w.mu.Lock()
     w.acked[lsn] = true
     for len(w.pending) > 0 && w.acked[w.pending[0]] {
