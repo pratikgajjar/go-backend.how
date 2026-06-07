@@ -1,6 +1,6 @@
 +++
-title = "🦉 The Outbox Without an Outbox — Postgres Logical Messages as Eventbus"
-description = "The outbox pattern asks for what replication already provides — durable, ordered, resumable delivery. Postgres' pg_logical_emit_message lets you piggyback on that, walked line by line through factlib + OwlPost."
+title = "🦉 The Outbox Without an Outbox"
+description = "The outbox pattern asks for what replication already provides: durable, ordered, resumable delivery. Postgres' pg_logical_emit_message lets you piggyback on that. A line-by-line walk through factlib + OwlPost."
 date = 2026-05-17T09:00:00+05:30
 lastmod = 2026-05-17T10:50:00+05:30
 publishDate = "2026-05-17T09:00:00+05:30"
@@ -14,36 +14,28 @@ math = false
 
 {{< figure src="xiaohei-hero.png" alt="Xiaohei dropping a message straight into the Postgres WAL stream instead of an outbox table" >}}
 
-# How you arrive here
+# The idea
 
-By the end of this post you will see how Postgres' built-in
-replication can carry your application's events — no separate outbox
-table, polling loop, or cleanup job — along with the LSN-ack
-pipeline that keeps it crash-safe, the trace context that survives
-the WAL, and the failure modes where the approach breaks down.
+Postgres' replication can already carry your application's events: no
+separate outbox table, polling loop, or cleanup job.
 
-The outbox pattern needs three properties for events: durability,
-order preservation, and resumable delivery after a consumer
-disconnects. Every production database already provides those for an
-unrelated reason — replication. To let a warm standby survive the
-primary's failure, the database writes every change to a write-ahead
-log, ships those bytes to replicas in order, and tracks where each
-replica is caught up to. The same three guarantees, with years of
-pain folded into the implementation.
+The outbox pattern needs three things: durability, order, and resumable
+delivery after a consumer disconnects. Every database already provides
+them, for replication. To keep a standby in sync, the database writes
+every change to a write-ahead log, ships those bytes to replicas in
+order, and tracks how far each replica has caught up. The same three
+guarantees, already built and hardened.
 
-Stated that way, the outbox table looks like a second copy of the
-replication mechanism — built in application code, on top of the
-same database, with its own polling loop, its own high-water mark
-(`processed = true`), and its own retention story (the cleanup job).
-The database underneath is solving the same problem already.
+Put that way, the outbox table is a second copy of replication, built
+in application code on the same database: its own polling loop, its own
+high-water mark (`processed = true`), its own cleanup job. The database
+underneath already solves this.
 
-So a natural question is whether the application can emit its own
-events into the replication stream the database is already running.
-Postgres has shipped that capability since 9.6 (September 2016)[^1].
-`pg_logical_emit_message` writes an arbitrary blob into the WAL
-atomically with the surrounding transaction; the same logical-
-replication machinery a read replica uses decodes it out the other
-end. The producer call is one line:
+Can the application emit its own events into that replication stream?
+Postgres has shipped this since 9.6 (September 2016)[^1].
+`pg_logical_emit_message` writes a blob into the WAL atomically with the
+surrounding transaction; the same logical decoding that powers logical
+replication reads it on the other end. The producer call is one line:
 
 ```go
 // pkg/outbox/producer/producer.go
@@ -51,20 +43,18 @@ sqlQuery := "SELECT pg_logical_emit_message(true, $1, $2::bytea)"
 err = a.conn.Exec(ctx, sqlQuery, a.prefix, protoBytes)
 ```
 
-Roll back the transaction and no message leaves the system; commit
-and the bytes are in the WAL and will be delivered. The replication
-slot's `confirmed_flush_lsn` carries the bookkeeping that the outbox
-table would otherwise hold, so no separate table, index, or vacuum
-job is needed.
+Roll back and the message is never delivered; commit and it ships
+through the WAL like any replicated change. The replication slot's
+`confirmed_flush_lsn` holds the bookkeeping the outbox table would
+hold, so there's no separate table, index, or vacuum job.
 
-This post walks factlib[^2] — the Go library we ship at FamPay —
-and its consumer **OwlPost** line by line: producer, consumer, ack
-pipeline, trace propagation, and the edges where the approach hits
-its limits.
+This post walks factlib[^2] — the Go library we ship at FamPay — and
+its consumer **OwlPost** line by line: producer, consumer, ack
+pipeline, trace propagation, and where it hits its limits.
 
 # 1. The dual-write fallacy
 
-Here's the natural first attempt:
+The first attempt:
 
 ```go
 func CreateUser(ctx context.Context, u User) error {
@@ -75,28 +65,27 @@ func CreateUser(ctx context.Context, u User) error {
 }
 ```
 
-It looks fine. It is not fine. These 4 lines hide two distinct
-failure modes:
+These few lines hide one failure mode: the DB commit lands but the event
+never reaches Kafka. It happens two ways:
 
-1. **DB commits, Kafka returns error.** The user exists in your DB.
-   Downstream services never hear about it. The retry budget on the
-   client expires; the request returns 500; the user retries and now
-   you have two users (or one user and a UNIQUE-violation depending on
-   your schema). Either way, your invariants are broken.
-2. **DB commits, process dies before Kafka call.** OOM, kill -9,
-   panic, the kernel reaps you because the K8s node was draining.
-   Same outcome, no error to log.
+1. **Kafka returns an error.** The user exists in your DB, but downstream
+   services never hear about it. The retry budget on the client expires;
+   the request returns 500; the user retries and now you have two users
+   (or one user and a UNIQUE-violation, depending on your schema).
+   Either way, your invariants are broken.
+2. **The process dies before the Kafka call.** OOM, kill -9, panic, the
+   kernel reaps you because the K8s node was draining. Same outcome, no
+   error to log.
 
-The bug is structural. There is no atomic operation that spans your
-relational database and your message broker. (Kafka transactions per
-KIP-98[^11] don't help here — they bound a producer's writes across
-Kafka topics, not across Kafka and Postgres.) The fix is to make event
-emission part of the *same* atomic write that the business data goes
-into. That's the outbox pattern.
+The bug is structural: no atomic operation spans your database and your
+message broker. (Kafka transactions per KIP-98[^11] don't help: they
+bound a producer's writes across Kafka topics, not across Kafka and
+Postgres.) The fix: make event emission part of the *same* atomic write
+as the business data. That's the outbox pattern.
 
-# 2. Why the canonical "outbox table" pattern is *almost* right
+# 2. The outbox table is almost right
 
-The outbox pattern, in its standard form, looks like this:
+The standard outbox table:
 
 ```sql
 BEGIN;
@@ -124,24 +113,28 @@ UPDATE outbox SET processed = true WHERE id = ANY($1);
 DELETE FROM outbox WHERE id = ANY($1);
 ```
 
-This works. It also has an operations tail that's easy to
-under-estimate at design time. Let's enumerate.
+This works well. The trade-off is the ongoing maintenance it adds.
 
 ## The polling-latency / scan-cost tradeoff
 
-Set the poll interval to 100 ms and event lag is bounded by ~100 ms,
-at the cost of **864,000 SELECT scans per day per worker** even when
-no events exist. Set it to 5 s and you've added 5 s of p99 latency to
-every event-driven downstream. There is no good answer here; "1
-second" is the typical compromise, and that 1 s lands on every
-webhook, every email, every side-effect.
+Poll every 100 ms and lag stays ~100 ms, at the cost of **864,000
+SELECT scans per day per worker** even when no events exist. Poll every
+5 s and you add 5 s of p99 latency to every downstream. No good answer;
+1 second is the usual compromise, and that 1 s lands on every webhook,
+every email, every side-effect.
 
-## MVCC update churn on `processed = true`
+## Vacuum, indexes, and cleanup
 
-`UPDATE outbox SET processed = true ...` writes a new row version;
-the old tuple dies and waits for autovacuum. The partial index below
-(`WHERE processed = false`) makes this not-HOT — predicate change
-kicks the row out of the index. At 10K events/sec:
+`UPDATE outbox SET processed = true` writes a new row version; the old
+tuple dies and waits for autovacuum. You need a partial index:
+
+```sql
+CREATE INDEX outbox_unprocessed_idx ON outbox (created_at) WHERE processed = false;
+```
+
+It makes that update not-HOT (Heap-Only Tuple; the predicate change
+kicks the row out of the index), so index bloat tracks table bloat. At
+10K events/sec:
 
 ```txt
 10,000 inserts/sec      → 10K live rows added per second
@@ -149,58 +142,34 @@ kicks the row out of the index. At 10K events/sec:
                         → vacuum has to reclaim ~864M dead tuples/day
 ```
 
-Even if you switched to `DELETE` instead of `UPDATE`, you still write
-a tombstone, still bloat the table, still need vacuum to run. The
-table only shrinks when autovacuum manages to compete with your
-inserts — which it usually doesn't, until you tune
-`autovacuum_vacuum_scale_factor` for this specific table down to
-something like 0.01 and `autovacuum_vacuum_cost_limit` up to 5000.
-
-## Index choice for `WHERE processed = false`
-
-A normal btree on `processed` is mostly useless because the column has
-two values. The fix is a **partial index**:
-
-```sql
-CREATE INDEX outbox_unprocessed_idx
-  ON outbox (created_at)
-  WHERE processed = false;
-```
-
-This helps, but it does not eliminate the maintenance load. Every
-insert still touches the index. Every update of `processed` from `false` to `true` triggers an
-index entry deletion (and re-insertion if you ever flip it back).
-Index bloat tracks table bloat in lockstep. You still need vacuum.
-
-## The cleanup job
-
-The table is unbounded without one, so you write:
+`DELETE` instead of `UPDATE` just trades the update for a tombstone:
+same bloat, same vacuum. The table only shrinks when autovacuum keeps up
+with your inserts, which usually means tuning
+`autovacuum_vacuum_scale_factor` down to ~0.01 and
+`autovacuum_vacuum_cost_limit` up to 5000 for this table. And it stays
+unbounded without a cleanup job:
 
 ```sql
 DELETE FROM outbox WHERE processed = true AND created_at < now() - interval '7 days';
 ```
 
-Running that on a 10 GB outbox table during peak hours will spike
-the database's p99s. The right shape is a chunked delete with `LIMIT` + `pg_sleep`
-between batches, or better still, partition the table by day and
-`DROP PARTITION` every morning. Both work; both are extra code,
-alerts, and runbooks.
+Run that on a 10 GB table at peak and you spike p99s; the safe shapes are
+a chunked delete (`LIMIT` + `pg_sleep`) or partition-by-day +
+`DROP PARTITION`. Both are extra code, alerts, and runbooks.
 
 ## Polling vs change-data-capture
 
-The other escape hatch is **Debezium** tailing the WAL for
-`INSERT`s on `outbox`. Genuinely good — no polling, ~10 ms latency,
-row-level semantics. The cost is operating Debezium: a JVM process
-with Kafka Connect and a schema registry, fine for teams already on
-that stack, heavier than the rest of the design for teams that
-aren't.
+The other option is **Debezium** tailing the WAL for `INSERT`s on
+`outbox`. Solid: no polling, ~10 ms latency, row-level semantics. The
+cost is running Debezium: a JVM process with Kafka Connect and a schema
+registry. Fine if you're already on that stack, heavy if you're not.
 
 The atomicity argument behind the outbox table is sound. The
-implementation is just heavier than it needs to be.
+implementation is heavier than it needs to be.
 
 # 3. `pg_logical_emit_message`
 
-Function signature from the Postgres 17 docs[^3]:
+The function signature[^3]:
 
 ```sql
 pg_logical_emit_message(
@@ -216,26 +185,23 @@ pg_logical_emit_message(
 ) → pg_lsn
 ```
 
-It emits a text or binary logical-decoding message that plugins
-receive through WAL. `transactional = true` makes it visible
-to decoders only when the surrounding txn commits; `false` writes
-immediately. The optional `flush` parameter (added in Postgres 16[^4]) forces an
-`XLogFlush` before returning — useful for non-transactional emits,
-irrelevant for the `transactional=true` path factlib takes (the
-COMMIT flushes). Pre-16 Postgres has only the 3-parameter form.
+It emits a text or binary logical-decoding message that plugins receive
+through WAL. `transactional = true` makes it visible to decoders only on
+COMMIT; `false` writes immediately. factlib uses `transactional = true`,
+so the surrounding COMMIT carries the flush.
 
 Three properties matter:
 
 1. **Atomic with the surrounding transaction.** If you `ROLLBACK`,
-   the message is gone. Same guarantee as the outbox table, no table
-   needed.
+   the message is never delivered.[^4] Same guarantee as the outbox table,
+   no table needed.
 2. **Decoded by `pgoutput` / `wal2json` like any row change.** Same
    `START_REPLICATION` connection, same `confirmed_flush_lsn`.
 3. **Zero on-disk table footprint after WAL recycling.** Bytes live
-   in WAL until the slowest active replication slot has flushed past
-   that LSN (the WAL is held by `min(confirmed_flush_lsn)` across
-   slots), then recycle like any other WAL record. No vacuum, no
-   bloat, no cleanup job.
+   in WAL until every replication slot has decoded past them (each
+   slot's `restart_lsn` marks the oldest WAL it still needs, so a
+   checkpoint recycles anything below the minimum), then they recycle
+   like any other WAL record. No vacuum, no bloat, no cleanup job.
 
 This is not Debezium-style row-level CDC: we are not decoding row
 writes on an outbox table. We are inserting an application-defined
@@ -247,9 +213,8 @@ replication.)
 # 4. How factlib emits
 
 factlib's producer (`pkg/outbox/producer/producer.go`) is **99 lines**
-end-to-end; the hot-path `Emit()` is the bottom 50. Reproduced below
-with `metrics.EmitFailures.WithLabelValues(...)` calls on each
-early-return collapsed:
+end-to-end. The hot path is `Emit()`, reproduced below with the
+per-error `metrics.EmitFailures.WithLabelValues(...)` calls collapsed:
 
 ```go
 // pkg/outbox/producer/producer.go
@@ -288,9 +253,7 @@ func (a *PostgresAdapter) Emit(ctx context.Context, fact *common.Fact) (string, 
 }
 ```
 
-A few things are doing real work here.
-
-**`WithTxn(txn)` — bind the producer to a transaction by construction.**
+**`WithTxn(txn)` binds the producer to a transaction by construction.**
 Right above the function:
 
 ```go
@@ -309,7 +272,7 @@ func CreateUser(ctx context.Context, db *pgxpool.Pool, u User) error {
         }
         producer, _ := factlibProducer.WithTxn(postgres.GetPgxTxn(tx))
         fact, _ := common.NewFact("user", u.ID, "user.created", payloadBytes, nil)
-        fact.TraceInfo = &common.TraceInfo{}  // mandatory; see §9 demo
+        fact.TraceInfo = &common.TraceInfo{}  // required; Emit dereferences it
         _, err := producer.Emit(ctx, fact)
         return err
     })
@@ -334,41 +297,71 @@ over UUIDv4:
    approximate timeline without a separate `created_at` index. Useful
    for replay debugging.
 
-Either v7 or ULID[^5] gets you the same property (both are 128-bit,
-both put a millisecond timestamp at the front). We pick v7 because
-it's part of the UUID standard, so it round-trips through every
-Postgres / pgx / `database/sql` column typed as `uuid` without
-custom serde; ULID needs either a text column or a custom binary
-type per ORM.
+Either v7 or ULID[^5] gives this (both are 128-bit with a leading
+millisecond timestamp); we pick v7 because it's part of the UUID
+standard and round-trips through any Postgres / pgx `uuid` column without
+custom serde.
 
 **One marshal, one SQL call.** No retry inside the emit. If the
 `SELECT pg_logical_emit_message(...)` fails, the surrounding
-transaction is poisoned and rolls back, and the caller gets to decide
-whether to retry the whole business operation. This is correct: a
-half-emitted event isn't a thing in this design.
+transaction is poisoned and rolls back, and the caller decides whether
+to retry the whole business operation. A half-emitted event doesn't
+exist in this design.
 
-**Latency observability via Prometheus.**
+**Latency observability.** Each emit records the
+`factlib_event_processing_seconds` histogram; the `SELECT` itself runs in
+microseconds.
 
-```go
-start := time.Now()
-err = a.conn.Exec(ctx, sqlQuery, a.prefix, protoBytes)
-latency := time.Since(start).Seconds()
-metrics.EventProcessingLatency.WithLabelValues(...).Observe(latency)
+**Same emit in Python.** factlib has a sibling in `python/factlib/` with
+the same SQL and protobuf bytes:
+
+```python
+# python/factlib/index.py
+def emit(self):
+    cursor = connection.cursor()
+    try:
+        sql_query = "SELECT pg_logical_emit_message(true, %s, %s::bytea)"
+        cursor.execute(sql_query, (self._prefix, self._event.SerializeToString()))
+    finally:
+        cursor.close()
 ```
 
-The histogram is `factlib_event_processing_seconds`. A local
-benchmark[^12] (1 KB payload, BEGIN → INSERT → EMIT → COMMIT, 10K
-iterations on Apple M3 Max) measures the emit `SELECT` itself at
-**p50 ≈ 22 µs, p99 ≈ 42 µs** over TCP loopback. Production over
-same-VPC TCP adds the cross-host RTT (commonly ~200–500 µs
-cross-AZ); the WAL append itself stays in the single-digit µs
-range. [§8](#8-ordering--throughput) walks the byte math.
+The Django version uses `django.db.connection`, picking up the in-flight
+ORM transaction as long as `emit()` runs inside an `atomic()` block. Once
+the wire format is "bytes in WAL with a prefix", any language can emit and
+any can consume: a Django service emits a `payments-user` event, OwlPost
+(Go) ships it to Kafka, downstream consumers in any language read the same
+proto. The producer language never enters the picture downstream.
+
+To verify an emit landed in WAL, create a slot **before** running the
+producer (`cmd/demo/main.go`, which needs `wal_level = logical` and
+`DATABASE_URL`); a slot only sees changes after its creation point. Then
+peek:
+
+```sql
+-- before: table, publication, slot
+CREATE TABLE users (id text PRIMARY KEY, email text);
+CREATE PUBLICATION demo_pub;
+SELECT pg_create_logical_replication_slot('demo_peek', 'pgoutput');
+
+-- run the producer (INSERT + emit), then peek at the bytes:
+SELECT lsn, encode(data, 'hex')
+FROM pg_logical_slot_peek_binary_changes(
+    'demo_peek', NULL, NULL,
+    'proto_version', '1', 'publication_names', 'demo_pub', 'messages', 'true'
+);
+
+-- cleanup:
+SELECT pg_drop_replication_slot('demo_peek');
+DROP PUBLICATION demo_pub;
+DROP TABLE users;
+```
 
 # 5. How OwlPost consumes
 
 OwlPost (`cmd/owlpost/`) opens a logical-replication connection,
 filters the WAL for our prefix, deserialises the protobuf, ships to
-Kafka. The connection setup needs two non-obvious flags:
+Kafka. The connection setup needs two flags:
 
 ```go
 // pkg/postgres/wal.go — NewWALSubscriber
@@ -379,7 +372,7 @@ replConn, err := pgconn.Connect(ctx, replUrl)
 `?replication=database` enters replication mode (it can still run
 regular SQL, unlike `replication=true`). factlib opens **two**
 connections because once you fire `START_REPLICATION`, that socket
-is dedicated to streaming CopyData forever — no more queries.
+only streams CopyData; you can't run queries on it.
 `replConn` does streaming; `queryConn` does the
 `SELECT EXISTS(SELECT 1 FROM pg_replication_slots ...)` bookkeeping.
 
@@ -401,11 +394,10 @@ we don't care about row changes, just logical-decoding messages, but
 an empty one.
 
 A **replication slot** is the durability primitive. It holds WAL
-until the consumer acks past that LSN. *This is at-least-once for
-free*: if OwlPost crashes for an hour, WAL accumulates for an hour
-and we resume exactly where we left off. Operational footgun: a
-slot whose consumer never returns pins WAL until the disk fills —
-see [§7](#7-crash-safety-the-lsn-ack-pipeline).
+until the consumer acks past that LSN (log sequence number, a byte
+offset into the WAL). *This is at-least-once for free*: if OwlPost crashes for an hour, WAL accumulates for an hour
+and we resume exactly where we left off. One risk to watch: a slot whose
+consumer never returns pins WAL until the disk fills.
 
 ## Starting replication
 
@@ -424,8 +416,7 @@ err = pglogrepl.StartReplication(ctx, w.replConn, w.cfg.ReplicationSlotName, w.x
 `messages 'true'` is a `pgoutput` plugin arg (added in PG 14[^6])
 that tells it to decode logical-decoding messages alongside row
 changes. Without it, `pg_logical_emit_message` calls are silently
-dropped on the subscriber side — a failure mode that is easy to
-miss without already knowing to look for it.
+dropped on the subscriber side, with no error to tell you why.
 
 `w.xLogPos` is the start position. On every boot it's the slot's
 `confirmed_flush_lsn`:
@@ -463,19 +454,17 @@ Two message types matter:
   30 s) even when the WAL is idle. The server can request a reply, in
   which case OwlPost echoes back its current `WALWritePosition` so the
   server doesn't tear down the connection. OwlPost's *own* tick is
-  faster — `standbyMessageTimeout := time.Second * 5` in
-  `pkg/postgres/wal.go` — so we send a status update every 5 s
+  faster (`standbyMessageTimeout := time.Second * 5` in
+  `pkg/postgres/wal.go`), so we send a status update every 5 s
   regardless.
 - **XLogData.** Real WAL bytes. We parse them, compute
   `newXLogPos := xld.WALStart + LSN(len(xld.WALData))`, and pass
   *that* LSN through with the decoded message into
   `processLogicalMessage`. The receive loop does not advance
   `w.xLogPos` itself; the LSN rides on each event and only updates
-  `w.xLogPos` when the ack pipeline (see [§7](#7-crash-safety-the-lsn-ack-pipeline))
-  hears back from Kafka.
+  `w.xLogPos` when the ack pipeline hears back from Kafka.
 
-`processLogicalMessage` is two lines and the type-switch is doing the
-filtering:
+`processLogicalMessage` filters by prefix with a type switch:
 
 ```go
 func (w *WALSubscriber) processLogicalMessage(
@@ -497,26 +486,11 @@ prefixes) on the same database fan out the same way: each consumer
 subscribes with its own prefix and ignores the rest. The prefix is
 the routing key.
 
-## Prefix-based handler dispatch
+## Kafka adapter
 
-In `pkg/outbox/consumer/consumer.go`:
-
-```go
-type EventHandler func(ctx context.Context, event *postgres.Event) error
-func (s *OutboxConsumer) RegisterHandler(prefix string, handler EventHandler) {
-    s.Handlers[prefix] = handler
-}
-```
-
-For OwlPost, the registered handler is the Kafka adapter:
-
-```go
-// cmd/owlpost/main.go
-outboxConsumer.RegisterHandler(cfg.WalPrefix, consumer.KafkaEventHandler(kafkaAdapter, logger))
-outboxConsumer.RegiserHandlerAck(kafkaAdapter.Acks)
-```
-
-And the Kafka adapter:
+`OutboxConsumer.RegisterHandler(prefix, handler)` wires one handler per
+prefix (and an ack callback). For OwlPost the handler is the Kafka
+adapter:
 
 ```go
 // pkg/outbox/consumer/kafka.go — KafkaEventHandler
@@ -537,42 +511,24 @@ Three details:
   with prefix `payments-user` land in the `payments-user.user`
   topic. Topic proliferation is bounded by aggregate type, not event
   type; you filter individual event types on the consumer side.
-- **Key = aggregateId.** Kafka's sticky partitioner hashes this to
-  a partition; all events for `aggregate_id = "user-12345"` land on
-  the same partition in WAL order. **Per-aggregate ordering is
-  preserved end-to-end.** Cross-aggregate isn't — see [§8](#8-ordering--throughput).
-- **`headers["LSN"] = event.XLogPos.String()`.** The LSN rides with
-  the message so OwlPost's own ack callback can feed it back into
-  the slot-advancement pipeline (§7 walks the timing — the slot's
-  `confirmed_flush_lsn` is the single source of truth for "where
-  we've read up to", not the Kafka offset). Downstream consumers
-  don't need the header for correctness; it's there for debugging,
-  so any Kafka message can be correlated back to its exact WAL
-  position on the publisher.
+- **Key = aggregateId.** Kafka hashes this key to a partition, so
+  all events for `aggregate_id = "user-12345"` land on the same
+  partition in WAL order. **Per-aggregate ordering is preserved
+  end-to-end**, cross-aggregate isn't.
+- **`headers["LSN"]`.** The LSN rides with each message so OwlPost's ack
+  callback can feed it back to advance the slot. Downstream
+  consumers don't need it; it's there so any Kafka message can be traced
+  back to its exact WAL position on the publisher.
 
 # 6. Distributed tracing through the WAL
 
-Trace context across an outbox boundary needs to be plumbed in
-explicitly. Without it, the producer's Sentry / OTel span ends at
-the database write and a fresh, disconnected one starts at the
-Kafka consume, which makes incident replay harder than it needs to
-be.
-
-factlib carries the trace info inside the protobuf:
+Trace context across an outbox boundary has to be passed explicitly, or
+the producer's Sentry / OTel span ends at the database write and a fresh,
+disconnected one starts at the Kafka consume, which makes incident replay
+harder. factlib carries it inside the protobuf:
 
 ```protobuf
 // pkg/proto/outbox.proto
-message OutboxEvent {
-  string id              = 1;
-  string aggregate_type  = 2;
-  string aggregate_id    = 3;
-  string event_type      = 4;
-  bytes  payload         = 5;
-  int64  created_at      = 6;
-  map<string, string> metadata = 7;
-  optional TraceInfo trace_info = 8;
-}
-
 message TraceInfo {
   string trace_id = 1;
   string span_id  = 2;
@@ -580,219 +536,86 @@ message TraceInfo {
 }
 ```
 
-On the producer side, the Python client lifts the active Sentry span
-straight off the hub:
-
-```python
-# python/factlib/index.py
-def _get_trace_context(self) -> TraceInfo:
-    span = sentry_sdk.Hub.current.scope.span
-    if span is None:
-        return {}
-    return TraceInfo(
-        trace_id=span.trace_id,
-        span_id=span.span_id,
-        metadata={"parent_op": span.op or "", "is_sampled": "1" if span.sampled else "0"},
-    )
-```
-
-The Go side is symmetric — caller fills in `Fact.TraceInfo` from
-their tracer of choice. Both languages produce the same protobuf, so
-polyglot fan-in works because the WAL doesn't care about the
-producer language. Django writes a fact, OwlPost reads it, the Go
-consumer downstream sees the same trace ID.
-
-On the consumer side, `KafkaEventHandler` lifts the trace fields back
-out and stuffs them into Kafka headers:
-
-```go
-// pkg/outbox/consumer/kafka.go
-if event.Outbox.TraceInfo != nil && event.Outbox.TraceInfo.TraceId != "" {
-    headers["trace_id"] = event.Outbox.TraceInfo.TraceId
-    headers["span_id"]  = event.Outbox.TraceInfo.SpanId
-    for k, v := range event.Outbox.TraceInfo.Metadata {
-        headers[k] = v
-    }
-}
-```
-
-Service A's Sentry span covers the SQL `INSERT` plus the
-`pg_logical_emit_message` call. Service B's Kafka consumer reads
-`trace_id` from headers and opens a child span with the same trace
-ID. Sentry / Jaeger / Tempo stitches them into one waterfall.
-
-Cost: an extra **~95 B in the protobuf**, zero extra plumbing on
-the consumer side. Derivation: every protobuf field is tag (1 B for
-field numbers 1–15) + length-prefix (1 B for short strings) +
-payload, so a 32-hex `trace_id` costs 34 B, a 16-hex `span_id` 18 B,
-the two metadata entries `parent_op` ("http.request") and
-`is_sampled` ("1") add 27 + 17, plus 2 B for the `trace_info`
-wrapper — 98 B for a typical span. Vary `parent_op` and you land in
-the **80–120 B** envelope — **~20 %** of a 500 B payload, dropping
-to ~2 % for 5 KB payloads.
+The producer fills `TraceInfo` from its tracer (the Python client lifts
+the active Sentry span off the hub; the Go side is symmetric). On the
+consumer, `KafkaEventHandler` copies those fields into Kafka headers, so
+Service B opens a child span with the same trace ID and Sentry / Jaeger /
+Tempo stitch the two into one waterfall. Same protobuf in every language,
+so polyglot fan-in needs no extra work.
 
 # 7. Crash safety: the LSN ack pipeline
 
-**Where we are**: §4 emits one SQL call into your transaction; §5
-decodes the WAL for our prefix; §6 carries trace context across.
-This section closes the loop on crash-safety — the LSN ack pipeline
-that keeps "the database commit and the event delivery are atomic"
-true under failure. Four scenarios; we'll walk all of them.
+The LSN ack pipeline guarantees every committed event reaches Kafka at
+least once under failure, across four scenarios.
 
 ## Scenario 1: the happy path
 
-```txt
-producer       Postgres        OwlPost            Kafka
-   │  INSERT        │              │                 │
-   │ ─────────────▶ │              │                 │
-   │  pg_logical_   │              │                 │
-   │   emit_msg     │              │                 │
-   │ ─────────────▶ │              │                 │
-   │  COMMIT        │              │                 │
-   │ ─────────────▶ │              │                 │
-   │                │  WAL bytes   │                 │
-   │                │ ───────────▶ │                 │
-   │                │              │  produce(key,v) │
-   │                │              │ ──────────────▶ │
-   │                │              │      ack(LSN)   │
-   │                │              │ ◀────────────── │
-   │                │ ack=LSN      │                 │
-   │                │ ◀─────────── │                 │
-   │                │  confirmed_  │                 │
-   │                │  flush_lsn↑  │                 │
-```
+{{< figure src="seq-happy-path.png" alt="Sequence diagram of the happy path: the producer sends INSERT, pg_logical_emit_message, then COMMIT to Postgres; Postgres streams the WAL bytes to OwlPost; OwlPost produces to Kafka and receives ack(LSN); OwlPost sends ack=LSN back to Postgres, which advances confirmed_flush_lsn." >}}
 
-The ack flows back through four hops:
+OwlPost produces to Kafka asynchronously (franz-go, `acks=all`, idempotent
+producer), so each partition stays ordered and a success callback means the
+record is durably replicated. It does not advance the slot on each ack, and
+it never advances to the *latest* ack: a later event can ack while an
+earlier one is still in flight on another partition. It advances to the
+**contiguous acked prefix** instead.
 
-1. Kafka acks the produce. `KafkaAdapter.Produce`'s callback fires.
-2. The callback finds the `LSN` header and sends it to
-   `kafkaAdapter.Acks`, which is plumbed into `consumer.handlerAcks`.
-3. `OutboxConsumer.syncAck` parses the LSN and pushes it onto
-   `walSubscriber.AckXLogPos`.
-4. `WALSubscriber.listenEventAck` pops the LSN, updates `w.xLogPos`,
-   and on the next 1-second tick calls `SendStandbyStatusUpdate`,
-   which tells Postgres to advance `confirmed_flush_lsn`.
-
-Postgres can now recycle WAL up to that LSN. The "outbox" auto-cleans.
-
-The relevant code:
+The single WAL reader hands events to the producer in LSN order, so
+`pending` stays sorted. Each Kafka success marks one done; we then advance
+over the longest gap-free run from the front:
 
 ```go
-// pkg/postgres/wal.go — listenEventAck
-func (w *WALSubscriber) listenEventAck(ctx context.Context) {
-    ticker := time.NewTicker(1 * time.Second)
-    defer ticker.Stop()
-    for {
-        select {
-        case <-ctx.Done():
-            return
-        case ackPos := <-w.AckXLogPos:
-            w.xLogPos = *ackPos
-        case <-ticker.C:
-            w.SendStandbyStatusUpdate()
-        }
+// pkg/postgres/wal.go — advance over the contiguous acked prefix
+func (w *WALSubscriber) onKafkaAck(lsn pglogrepl.LSN) {
+    w.mu.Lock()
+    w.acked[lsn] = true
+    for len(w.pending) > 0 && w.acked[w.pending[0]] {
+        w.safe = w.pending[0]          // highest LSN with no gap below it
+        delete(w.acked, w.pending[0])
+        w.pending = w.pending[1:]
     }
+    w.mu.Unlock()
 }
+
+// 1s tick:
+w.SendStandbyStatusUpdate(w.safe)      // everything <= safe is durable
 ```
 
-Note the design: the LSN is **not** flushed to Postgres on every Kafka
-ack. It's coalesced into a 1-second tick. At 10K events/sec, that
-collapses 10,000 ack writes into one `pglogrepl.SendStandbyStatusUpdate`
-call (the wire-protocol message is called "Standby status update")
-— that is **four orders of magnitude** less ack traffic
-(`10,000 → 1` per second). We trade a 1-second window of replay-on-
-crash for it. Sensible default; tunable if your workload disagrees.
+This keeps the pipeline full, no draining. Two properties fall out:
+
+- **A gap pins the slot.** If an event is slow or its produce fails, its
+  LSN never leaves the head of `pending`, so `safe` (and
+  `confirmed_flush_lsn`) stops there. A stuck broker becomes back-pressure,
+  not skipped events. Pair it with slot-lag alerting.
+- **Ack traffic collapses.** `safe` advances on every ack but is only
+  shipped to Postgres on a 1-second tick, so 10K acks/sec become one
+  `SendStandbyStatusUpdate`, four orders of magnitude less wire chatter.
+
+The cost is a bounded replay window (events since the last shipped tick),
+which the consumer dedupes on `event.Id`.
 
 ## Scenario 2: producer crash mid-transaction
 
-```txt
-producer        Postgres
-   │ INSERT          │
-   │ ──────────────▶ │
-   │ pg_logical_     │
-   │  emit_msg       │
-   │ ──────────────▶ │
-   │ ✗ panic
-                     │
-                     │ ROLLBACK (txn abandoned)
-                     │ → no commit record in WAL
-                     │ → logical-decoder skips
-                     │   the entire transaction
-                     │ → no message delivered
-```
-
-Because `transactional=true`, the message is part of the txn.
-Logical decoding emits a txn's records only on COMMIT. No COMMIT,
-no delivery, **zero events leak** — the same property the table-
-based pattern has.
+This is what `transactional=true` is for: logical decoding emits a
+transaction's records only on COMMIT. A panic before COMMIT means
+ROLLBACK, so no commit record reaches the WAL and zero events leak,
+same as the table-based pattern.
 
 ## Scenario 3: consumer crash post-Kafka, pre-LSN-ack
 
-```txt
-OwlPost                Kafka         Postgres
-   │  produce(K, V)        │              │
-   │ ────────────────────▶ │              │
-   │            ack(LSN=X) │              │
-   │ ◀──────────────────── │              │
-   │                                      │
-   │  ✗ kill -9                           │
-   │                                      │
-                                          │
-                                          │ confirmed_flush_lsn still < X
-                                          │ → on restart, replay from < X
-   ┌─────────┐                            │
-   │ OwlPost │                            │
-   │ restart │                            │
-   └────┬────┘                            │
-        │ getxLogPos()                    │
-        │ ──────────────────────────────▶ │
-        │ ◀── confirmed_flush_lsn         │
-        │                                 │
-        │ replay X again                  │
-        │ produce(K, V)  ─── duplicate ─→ Kafka
-```
+{{< figure src="seq-replay-duplicate.png" alt="Sequence diagram: OwlPost produces to Kafka and gets ack(LSN=X), then is killed (kill -9) before sending the ack back to Postgres, whose confirmed_flush_lsn is still < X. On restart OwlPost reads confirmed_flush_lsn via getxLogPos(), replays X, and produces a duplicate to Kafka." >}}
 
-The same event is produced to Kafka twice. By design — this is
-at-least-once; dedup is the consumer's job. `event.Id` is a UUIDv7,
-so dedupe on it. **Don't reach for a Bloom filter**: a false positive
-would silently *skip* an unseen event, the wrong direction of error.
-Use an in-memory LRU of recent IDs plus, for sensitive flows,
-`INSERT ... ON CONFLICT DO NOTHING` against a
-`processed_events(id uuid PRIMARY KEY, processed_at timestamptz)`
-table you TTL-prune yourself.
-
-> **Caveat:**
-> `listenEventAck`[^7] does `w.xLogPos = *ackPos` (line 390) on
-> every ack. Kafka callbacks
-> fire in-order per partition but across partitions interleave: if
-> event A (LSN_a) is on partition 1 and event B (LSN_b > LSN_a) on
-> partition 2 acks first, the consumer advances to LSN_b while A is
-> in flight. Crash now and we replay from `>= LSN_b`, skipping A.
-> The fix is a contiguous-acked high-water mark instead of last-
-> write-wins; until that
-> ships, factlib's "at-least-once" guarantee is effectively
-> "at-least-once *per Kafka partition*". For most aggregate-keyed
-> workloads (which is what factlib is designed for) the per-aggregate
-> guarantee is what you actually want, but it's worth knowing the
-> limit.
+The same event is produced to Kafka twice, by design: this is at-least-once,
+so the consumer must be idempotent. Dedupe on `event.Id` (a UUIDv7). For
+durable dedup, `INSERT ... ON CONFLICT DO NOTHING` into a
+`processed_events(id uuid PRIMARY KEY, processed_at timestamptz)` table you
+TTL-prune; an in-memory LRU of recent IDs is a fine fast-path in front of
+it, but only the table survives the restart that caused the duplicate.
+A Bloom filter is the wrong tool here: a false positive would silently
+skip an unseen event, the wrong direction of error.
 
 ## Scenario 4: Kafka down for hours
 
-```txt
-OwlPost                Kafka
-   │  produce(K, V)        │ ✗ broker unreachable
-   │ ────────────────────▶
-   │                  retries internally
-   │  produce(K, V)        │ ✗ still down
-                           ...
-                           ...
-                           │ Kafka recovers
-   │                  ┌────┘
-   │                  │
-   │  buffered acks   │
-   │ ◀────────────────┘
-   │ ack chain proceeds
-```
+{{< figure src="seq-kafka-down.png" alt="Sequence diagram: OwlPost produces to Kafka but the broker is unreachable, so it retries internally; a second produce still fails while the broker is down; after time passes Kafka recovers, the buffered acks flow back to OwlPost, and the ack chain proceeds." >}}
 
 While Kafka is down, OwlPost reads up to **1000** events into the
 `w.events` channel (a buffered Go channel; sends block past that),
@@ -816,11 +639,11 @@ After ~hours, two things start to break:
   FROM pg_replication_slots;
   ```
 
-  In Prometheus terms: scrape this, alert at `> 1 GiB`. If it grows
-  past your reserved disk, Postgres goes read-only and *every*
-  writer in your fleet stops. Postgres 13+ has
+  In Prometheus terms: scrape it and warn at `> 1 GiB`, page at `> 5 GiB`. If it grows
+  past your reserved disk, Postgres stops accepting writes, halting
+  *every* writer in your fleet. Postgres 13+ has
   `max_slot_wal_keep_size` (default `-1` / no limit) that
-  invalidates a slot before disk fills — set it (e.g. `10GB`) so a
+  invalidates a slot before disk fills; set it (e.g. `10GB`) so a
   stuck slot loses its WAL retention rather than wedging the cluster.
 
 - **The producer's WAL emit latency stays unchanged.** The producer
@@ -833,8 +656,6 @@ When Kafka recovers, OwlPost drains, WAL is reclaimed, and disk
 pressure drops without data loss.
 
 # 8. Ordering & throughput
-
-Two questions every event-bus eventually has to answer.
 
 ## Ordering
 
@@ -854,54 +675,34 @@ strict total order; the per-partition guarantee is usually enough.
 
 ## Throughput — napkin math
 
-Each `Emit` call is exactly one extra `SELECT pg_logical_emit_message(...)`
-on top of the business transaction. Cost components:
+Each `Emit` is one extra `SELECT pg_logical_emit_message(...)` on top of
+the business transaction. Three costs:
 
-- **Function call overhead.** A few µs for the C function dispatch
-  inside Postgres (`pg_logical_emit_message_bytea` is a built-in,
-  not a SQL or PL/pgSQL function), ignoring the payload.
-- **`bytea` argument copy.** The protobuf payload is bound as a
-  parameter; pgx copies it once into the network buffer. For a 500 B
-  payload, ~hundreds of nanoseconds.
-- **WAL append.** A logical-decoding message produces a single
-  `XLOG_LOGICAL_MESSAGE` WAL record. The structural overhead is
-  fixed and easy to compute from the Postgres source headers
-  (`xlogrecord.h`[^8], `replication/message.h`[^9]):
-
-  - `SizeOfXLogRecord` = `offsetof(XLogRecord, xl_crc) + sizeof(pg_crc32c)`
-    = `4 + 4 + 8 + 1 + 1 + 2 (pad) + 4` = **24 B** (per-record header).
-  - `XLogRecordDataHeaderLong` = **5 B** (used because our payload >255 B).
-  - `SizeOfLogicalMessage` = `offsetof(xl_logical_message, message)`
-    = `4 (Oid) + 1 (bool) + 3 (pad) + 8 (Size prefix_size) + 8 (Size message_size)`
-    = **24 B**.
-  - The prefix is stored inline in the `message[]` flexible array, NUL-
-    terminated; for the literal `"payments-user"` that is `13 + 1 = 14 B`.
-  - The protobuf payload itself: **500 B** (worked example).
+- **Function dispatch + arg copy.** A few µs for the built-in C function
+  (`pg_logical_emit_message_bytea`); pgx copies the `bytea` payload once
+  into the network buffer (~hundreds of ns for 500 B).
+- **WAL append.** One `XLOG_LOGICAL_MESSAGE` record. Its overhead is
+  fixed and computable from the Postgres headers (`xlogrecord.h`[^8],
+  `replication/message.h`[^9]). For a 500 B payload with prefix
+  `"payments-user"`:
 
   ```txt
   XLogRecord header               24 B
-  XLogRecordDataHeaderLong         5 B
+  XLogRecordDataHeaderLong         5 B   (payload >255 B)
   xl_logical_message header       24 B
   prefix (NUL-terminated)         14 B   ("payments-user\0")
   payload                        500 B
-  ─────────────────────────────────────
+  ──────────────────────────────────────
   total                          567 B per emit
   ```
 
-  Plus the surrounding `xl_xact_commit` record at COMMIT. Its
-  minimal payload is just `TimestampTz xact_time` (8 B), small
-  enough to use `XLogRecordDataHeaderShort` (2 B), so the COMMIT
-  itself costs `24 + 2 + 8` = **34 B**. Round the per-event amortised
-  WAL footprint up to **~600 B** (567 + 34 = 601).
-
-- **Total round-trip.** Measured on Apple M3 Max with the
-  benchmark in `a local benchmark harness`[^12], 1 KB
-  payload, BEGIN → INSERT → EMIT → COMMIT, 10K iterations: emit
-  `SELECT` p50 is **12.8 µs over unix socket** and **21.9 µs over
-  TCP loopback** (p99 28 µs and 42 µs respectively). Same-VPC TCP
-  adds the cross-host RTT (~200–500 µs cross-AZ on typical cloud).
-  The protobuf marshal of a 500 B event is ~5 µs, negligible
-  against the round-trip.
+  Plus the COMMIT's `xl_xact_commit` record (~34 B), so **~600 B**
+  amortised per event.
+- **Total round-trip.** On Apple M3 Max[^12] (1 KB payload, BEGIN →
+  INSERT → EMIT → COMMIT, 10K iters): emit `SELECT` p50 **12.8 µs**
+  (unix socket) / **21.9 µs** (TCP loopback), p99 28 / 42 µs. Same-VPC
+  TCP adds the cross-host RTT (~200–500 µs cross-AZ). Protobuf marshal
+  of 500 B is ~5 µs, negligible.
 
 At 10K events/sec:
 
@@ -911,159 +712,55 @@ WAL bytes   ≈ 600 B × 10,000  = 6 MB/sec
             ≈ 500 GB/day
 ```
 
-A modern NVMe sustains 1–3 GB/sec sequential writes; we're using
-0.3% of that. The bottleneck for ten-thousand-events-per-second is
-network round-trips on the producer side, not the WAL itself. For
-hundred-thousand-per-second you start needing batched-emit (see
-[Notes](#notes)) or a dedicated event store.
+A modern NVMe sustains 1–3 GB/sec sequential writes; the EBS gp3 volume
+here did 574 MB/sec. At ~600 B per event the WAL is never the limit for
+small events. What binds depends on payload size and how you commit.
+Measured on a 16-core EC2 box (EBS gp3, durable `synchronous_commit = on`)[^13]:
 
-## How does this compare to a table-based outbox?
+```txt
+small events, one emit per commit    fsync-bound      ~25–70K emits/sec
+small events, batched (~512/commit)  CPU / WAL locks  ~390K emits/sec
+large events (≥100 KB)               WAL bandwidth    ~SSD write rate
+```
+
+A single connection does ~1,000 emits/sec, exactly the volume's
+single-stream fsync rate. Concurrency, and especially batching several
+events into one transaction, amortise that fsync across many emits. Batch
+~512 and you reach ~390K/sec durable, where the disk sits at 12% and the
+limit becomes CPU and WAL-insert locks rather than fsync. Only payloads
+above ~100 KB push WAL to the disk's write rate. So 100K events/sec is
+comfortable on one node once you batch; the producer is rarely the ceiling.
+The single slot consumer is.
+
+## Cost breakdown vs the outbox table
 
 | | Outbox table (poll) | factlib (logical msg) |
 |---|---:|---:|
-| Producer SQL | 1 INSERT (heap tuple ~24 B header + payload + 2 index entries) | 1 SELECT (~600 B WAL, derived in [§8](#8-ordering--throughput)) |
+| Producer SQL | 1 INSERT (heap tuple ~24 B header + payload + 2 index entries) | 1 SELECT (~600 B WAL) |
 | Producer round-trips | 1 | 1 |
-| Consumer query rate | 10/sec polls per worker | 0 (push via WAL) |
+| Consumer query rate | 10/sec poll (100 ms) | 0 (push via WAL) |
 | Index writes per event | 2 (PK + partial-on-`processed`) | 0 |
 | Vacuum cost | proportional to event rate | none |
 | End-to-end latency | poll interval (100 ms–5 s) | WAL flush + Kafka produce (single-digit ms on a same-VPC pgx connection, derived) |
+| Consumer parallelism | N workers (`SKIP LOCKED` / partitioned table) | 1 reader per slot; fan out via Kafka |
 
-The producer cost is roughly the same. The **consumer** cost is where
-you avoid the vacuum-tuning work and several Postgres-CPU percent.
-
-# 9. The Python client (and polyglot fan-in)
-
-The producer side has a sibling in `python/factlib/`. The hot path
-is identical (the source also wraps the `cursor.execute` in
-`except Exception as e: raise RuntimeError("Failed to emit event") from e`,
-elided here):
-
-```python
-# python/factlib/index.py
-def emit(self):
-    cursor = connection.cursor()
-    try:
-        sql_query = "SELECT pg_logical_emit_message(true, %s, %s::bytea)"
-        cursor.execute(sql_query, (self._prefix, self._event.SerializeToString()))
-    finally:
-        cursor.close()
-```
-
-Same SQL, same protobuf bytes. The Django version uses
-`django.db.connection`, picking up the in-flight ORM transaction as
-long as `emit()` runs inside an `atomic()` block. Mental model maps
-1:1 to the Go side.
-
-Once the wire format is "bytes in WAL with a prefix", every
-language can emit and every language can consume. A Django service
-emits a `payments-user` event; OwlPost (Go) reads it and ships to
-Kafka; downstream consumers in Python, Go, or Kotlin read the same
-bytes via the proto file. The producer language never enters the
-picture downstream.
-
-## Minimal Go producer
-
-A whole runnable producer, copy-pasteable. Set
-`DATABASE_URL=postgres://...?sslmode=disable` and a database with
-`wal_level = logical` and run:
-
-```go
-// cmd/demo/main.go — minimal factlib producer
-package main
-
-import (
-    "context"
-    "log"
-    "os"
-
-    "git.famapp.in/fampay-inc/factlib/pkg/common"
-    flogger "git.famapp.in/fampay-inc/factlib/pkg/logger"
-    "git.famapp.in/fampay-inc/factlib/pkg/outbox/producer"
-    fpostgres "git.famapp.in/fampay-inc/factlib/pkg/postgres"
-    "github.com/jackc/pgx/v5"
-)
-
-func main() {
-    ctx := context.Background()
-    conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer conn.Close(ctx)
-
-    base, err := producer.NewPostgresAdapter("payments-user", flogger.New())
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    err = pgx.BeginFunc(ctx, conn, func(tx pgx.Tx) error {
-        if _, err := tx.Exec(ctx,
-            "INSERT INTO users (id, email) VALUES ($1, $2)",
-            "user-12345", "alice@example.com",
-        ); err != nil {
-            return err
-        }
-        p, err := base.WithTxn(fpostgres.GetPgxTxn(tx))
-        if err != nil {
-            return err
-        }
-        fact, err := common.NewFact(
-            "user", "user-12345", "user.created",
-            []byte(`{"email":"alice@example.com"}`),
-            map[string]string{"source": "demo"},
-        )
-        if err != nil {
-            return err
-        }
-        // Required: factlib's Emit dereferences fact.TraceInfo, so an
-        // empty struct is mandatory if you don't have a tracer wired up.
-        fact.TraceInfo = &common.TraceInfo{}
-        _, err = p.Emit(ctx, fact)
-        return err
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-}
-```
-
-To verify the emit landed in WAL, create a slot **before** running
-the demo (a slot only sees changes after its creation point), then
-peek after:
-
-```sql
--- 1. Before running the Go demo:
-CREATE TABLE users (id text PRIMARY KEY, email text);
-CREATE PUBLICATION demo_pub;
-SELECT pg_create_logical_replication_slot('demo_peek', 'pgoutput');
-
--- 2. Run the Go program above (it does the INSERT + emit).
-
--- 3. Peek at the bytes:
-SELECT lsn, encode(data, 'hex')
-FROM pg_logical_slot_peek_binary_changes(
-    'demo_peek', NULL, NULL,
-    'proto_version', '1', 'publication_names', 'demo_pub',
-    'messages', 'true'
-);
-
--- 4. Cleanup:
-SELECT pg_drop_replication_slot('demo_peek');
-DROP PUBLICATION demo_pub;
-DROP TABLE users;
-```
-
-Run `go run ./cmd/owlpost` from the factlib repo with `KAFKA_BROKERS`
-configured and the same bytes flow into Kafka instead.
+The producer cost is roughly the same. The consumer side is where they
+differ, and it cuts both ways. The table outbox is wasteful to poll, but it
+parallelizes cleanly: run N workers with `SELECT ... FOR UPDATE SKIP
+LOCKED`, or partition the table, and they make progress independently. A
+logical slot has exactly one reader, so OwlPost decodes the WAL in order,
+reads in batches, and hands off to Kafka, where partitions restore
+parallelism downstream. The two approaches parallelize in different places:
+the table at the database read, factlib after Kafka.
 
 # Comparison
 
-| Approach | Atomic with business txn | Polling | Schema migration | Cleanup | Per-aggregate ordering | Trace context |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Dual-write (db + kafka) | ❌ | n/a | none | none | weak | manual |
-| Outbox table + poller | ✅ | yes | yes | needed | per row | manual |
-| Outbox table + Debezium | ✅ | no (WAL) | yes | needed | per row | manual |
-| **factlib (logical messages)** | ✅ | no (WAL) | **none** | **automatic (WAL recycle)** | per aggregate | **in WAL** |
+| Approach | What it costs | What you get |
+|---|---|---|
+| Dual-write (DB then Kafka) | No atomicity: a crash between the two writes loses or duplicates events | Simplest to write |
+| Outbox table + poller | A table, polling latency, and constant vacuum + cleanup | Atomicity on any database, simple mental model, parallel consumers |
+| Outbox table + Debezium | Running Debezium (JVM, Kafka Connect, schema registry); table and cleanup remain | No polling (~10 ms), per-aggregate ordering, mature tooling |
+| **factlib (logical messages)** | Postgres-only, one WAL reader (fan out via Kafka), slot-lag alerting | No table, index, vacuum, cleanup, or schema migration; per-aggregate ordering; trace context in the WAL |
 
 # Notes
 
@@ -1071,35 +768,36 @@ configured and the same bytes flow into Kafka instead.
 
 `pg_logical_emit_message` is per-database. If your business
 transaction spans **multiple Postgres clusters** (write to A and B
-atomically), you don't have an atomic write to begin with — and
+atomically), you don't have an atomic write to begin with, and
 factlib doesn't help. You need 2PC or a saga.
 
-## Ultra-high event rates (≥ 100K/sec)
+## Scaling the producer
 
-WAL append itself is cheap — microseconds, into a buffer that's
-only fsync'd at COMMIT. The real per-emit cost is the network
-round-trip for the SELECT (~80 µs same-VPC), and the real per-
-transaction cost is the COMMIT fsync (which already happens for the
-business write, so an extra emit inside a short txn is nearly free).
-The ceiling shows up around the commit-fsync rate, not the WAL
-itself: at 100K events/sec with one emit per txn, you need ~100K
-fsyncs/sec, which a single Postgres can't sustain. Mitigation:
-batched emit (N events in one transaction; factlib doesn't expose
-this yet, but the extension is small), or move to a dedicated event
-store (Kafka, EventStoreDB, Pulsar) for async-write semantics.
+Writing the emit to the WAL is cheap: it appends one record to an in-memory
+buffer. The real cost is the `fsync` at COMMIT that makes the transaction
+durable, and a `transactional` emit rides that same `fsync` instead of
+adding its own. So the limit is durable commits per second, not bytes.
+
+Batching needs no extra machinery: because the emit rides your transaction,
+a transaction that produces several facts emits each one and they share one
+commit, so a single `fsync` covers the batch.
+
+The producer is rarely the wall. The consumer is: one logical slot is a
+single reader, so to scale past it shard by prefix or aggregate range, or
+move to a dedicated event store like Kafka or Pulsar.
 
 ## Schema evolution
 
 Standard protobuf evolution rules apply (additive optional fields,
 never re-use field numbers, never change types) and you need a shared
 schema registry across consumer languages. factlib doesn't solve this
-problem, it just doesn't make it worse — same as any protobuf-based
+problem, it just doesn't make it worse, same as any protobuf-based
 event bus.
 
 ## Long Postgres transactions
 
 With the `proto_version '1'` plugin arg factlib uses today, logical
-decoding does not see a transaction's records until COMMIT — a 30-
+decoding does not see a transaction's records until COMMIT, so a 30-
 second transaction blocks event delivery for 30 seconds. The
 outbox-table pattern has the same property; the advice is the same:
 keep transactions short, hoist long-running work outside the
@@ -1107,21 +805,17 @@ transaction.
 
 Newer pgoutput protocols help: v2 (PG 14) streams in-progress
 transactions; v3 (PG 15) adds two-phase commit; v4 (PG 16) adds
-parallel apply[^10]. Switching factlib past v1 is deferred — it
+parallel apply[^10]. Switching factlib past v1 is deferred because it
 needs care around rolled-back streamed messages on the consumer.
 
 ## Production gotchas
 
-Two settings to configure before scaling.
-
-- **Slot-lag alerting is mandatory.** The dangerous failure mode is
-  "OwlPost dies on a Friday evening, WAL fills the disk on Sunday
-  morning, Postgres goes read-only." Alert on
-  `pg_replication_slots.confirmed_flush_lsn` lag — 1 GiB warning,
-  5 GiB page.
 - **`max_wal_senders` and `max_replication_slots`** default to 10.
-  Twelve services each running their own consumer will exhaust
-  them; bump both in `postgresql.conf` before you scale.
+  Twelve services each running their own consumer will exhaust them;
+  bump both in `postgresql.conf` before you scale.
+- **Slot-lag alerting is mandatory.** A stuck slot pins WAL until the
+  disk fills and Postgres stops accepting writes. Alert on
+  `pg_replication_slots` lag and cap it with `max_slot_wal_keep_size`.
 
 # Further reading
 
@@ -1140,12 +834,12 @@ Two settings to configure before scaling.
 [^1]: [Postgres 9.6 release notes — September 2016](https://www.postgresql.org/docs/9.6/release-9-6.html)
 [^2]: [factlib — github.com/fampay-inc/factlib](https://github.com/fampay-inc/factlib)
 [^3]: [`pg_logical_emit_message` — Postgres 17 docs](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-REPLICATION)
-[^4]: [Postgres 16 release notes](https://www.postgresql.org/docs/release/16.0/)
+[^4]: Rollback isn't physically free: the `XLOG_LOGICAL_MESSAGE` record is written to WAL when the function runs, and `ROLLBACK` only adds an abort record on top. Logical decoding buffers the transaction and drops it on abort, so what you avoid is *delivery*, not the *write* — the bytes sit in WAL until normal recycling. The outbox table is the same shape: a rolled-back `INSERT` still wrote a tuple and WAL that vacuum later reclaims.
 [^5]: [ULID specification](https://github.com/ulid/spec)
 [^6]: [Postgres 14 release notes](https://www.postgresql.org/docs/release/14.0/)
-[^7]: [`listenEventAck` — factlib/pkg/postgres/wal.go L381-396](https://github.com/fampay-inc/factlib/blob/main/pkg/postgres/wal.go#L381-L396)
 [^8]: [`xlogrecord.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/access/xlogrecord.h)
 [^9]: [`replication/message.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/message.h)
 [^10]: [`logicalproto.h` — postgres/postgres REL_17_0](https://github.com/postgres/postgres/blob/REL_17_0/src/include/replication/logicalproto.h)
 [^11]: [KIP-98 — Exactly Once Delivery and Transactional Messaging](https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging)
-[^12]: Reproducible from `a local benchmark harness` in this repo (Postgres 17.6, `wal_level = logical`, `synchronous_commit = on`).
+[^12]: Measured on a local PostgreSQL 17 (`wal_level = logical`, `synchronous_commit = on`), 10,000 iterations of BEGIN → INSERT → `pg_logical_emit_message` → COMMIT timing the emit `SELECT`, over a unix socket and TCP loopback on an Apple M3 Max.
+[^13]: Throughput measured on a 16-core EC2 instance (EBS gp3, ~574 MB/sec sequential write, single-stream `fdatasync` ~1,100/sec) running PostgreSQL 15 with `wal_level = logical`, `synchronous_commit = on`, over a unix socket. Load from a concurrent Go emitter (pgx, one `pg_logical_emit_message` per commit unless batched), cross-checked against `pgbench` within ~2%.
