@@ -13,7 +13,7 @@
   var vx = 0, vy = 0, face = 1;
   var jumpY = 0, jT0 = -1, jH = 0, jDur = 540;
   var state = 'walk', until = 0, brainAt = 0, tx = 0, ty = 0, pend = null;
-  var word = null, line = null, G = 1700;
+  var word = null, line = null, G = 1700, bannerEl = null;
   var parked = false, dragging = false, ddx = 0, ddy = 0, downX = 0, downY = 0, moved = false;
   try { localStorage.removeItem('xh-park'); } catch(e){}   // roam by default; drag-to-sit is session-only
 
@@ -206,7 +206,9 @@
     else { for (i=0;i<line.words.length;i++){ wd=line.words[i]; var n2=wd.ox + sc, s2=line.rightEdge - used - wd.w, t2=n2<s2?n2:s2; if (n2<s2-0.5) remaining++; wd.span.style.transform='translateX('+(t2-wd.ox).toFixed(1)+'px)'; used+=wd.w*0.5; } }
     return remaining; }
   function spawnStars(){ var d=document.createElement('div'); d.className='xh-stars'; for (var i=0;i<4;i++){ var s=document.createElement('span'); s.className='s'; s.textContent='★'; s.style.transform='rotate('+(i*90)+'deg) translate(0,-16px)'; d.appendChild(s); } fx.appendChild(d); return d; }
-  function loveYou(){ if (reduce || innerWidth<=768 || dragging) return; if (state==='rubber') restoreLine(); if (state==='play') cleanupWord(); setState('love', 3400); glyph('love you'); brainAt = performance.now() + 700; }
+  function loveYou(){ if (reduce || innerWidth<=768 || dragging) return; setState('love', 3400); glyph('love you'); brainAt = performance.now() + 700; }
+  function posBanner(){ if (bannerEl){ bannerEl.style.left = cx()+'px'; bannerEl.style.top = (y - jumpY - 4)+'px'; } }
+  function showBanner(){ if (reduce || innerWidth<=768 || dragging) return; setState('banner', 6500); bannerEl = document.createElement('div'); bannerEl.className='xh-banner-sign'; bannerEl.innerHTML='Thanks for reading! <span class="hh">❤</span><br>share feedback'; fx.appendChild(bannerEl); posBanner(); }
   function posStars(){ if (line && line.starsEl){ line.starsEl.style.left = cx()+'px'; line.starsEl.style.top = (y - jumpY - 12)+'px'; } }
   function rubberTick(now, dt){
     if (!line){ setState('walk', 1200); return; }
@@ -266,17 +268,20 @@
   sprite.addEventListener('dblclick', function(){ parked=!parked; glyph(parked?'📌':'🏃'); nextBehaviour(); });
   addEventListener('resize', function(){ x=clampX(x); y=clampY(y); paint(); }, {passive:true});
 
-  function clearPose(){ el.classList.remove('xh-walk','xh-run','xh-inspect','xh-yawn','xh-sleep','xh-think','xh-play','xh-eat','xh-air','xh-lean','xh-bonk','xh-love'); }
+  function clearPose(){ el.classList.remove('xh-walk','xh-run','xh-inspect','xh-yawn','xh-sleep','xh-think','xh-play','xh-eat','xh-air','xh-lean','xh-bonk','xh-love','xh-banner'); }
   function setState(s, dur){
-    if (state==='play' && s!=='play') cleanupWord();
-    if (state==='rubber' && s!=='rubber') restoreLine();
+    var keepW = (s==='play') || (s==='goto' && pend && pend.s==='play');
+    var keepL = (s==='rubber') || (s==='goto' && pend && pend.s==='rubber');
+    if (word && !keepW) cleanupWord();          // always restore an orphaned word/line on any state change
+    if (line && !keepL) restoreLine();
+    if (bannerEl && s!=='banner'){ bannerEl.remove(); bannerEl=null; }
     state = s; clearPose(); until = performance.now()+(dur||3000);
     if (s==='walk'){ el.classList.add('xh-walk'); heading=Math.random()*6.28; turnRate=(Math.random()-.5)*2; speed=30+Math.random()*18; }
     else if (s==='dash'){ el.classList.add('xh-walk','xh-run'); var b=Math.random()*6.28; vx=Math.cos(b)*150; vy=Math.sin(b)*72; }
     else if (s==='goto'){ el.classList.add('xh-walk'); }
     else if (s==='rubber'){ el.classList.add('xh-walk','xh-run','xh-lean'); }
     else if (s==='play'){ el.classList.add(word && word.mode==='eat' ? 'xh-eat' : word && word.mode==='ponder' ? 'xh-think' : 'xh-play'); }
-    else { vx=0; vy=0; if (s==='inspect') el.classList.add('xh-inspect'); else if (s==='yawn') el.classList.add('xh-yawn'); else if (s==='sleep') el.classList.add('xh-sleep'); else if (s==='think') el.classList.add('xh-think'); else if (s==='love') el.classList.add('xh-love'); }
+    else { vx=0; vy=0; if (s==='inspect') el.classList.add('xh-inspect'); else if (s==='yawn') el.classList.add('xh-yawn'); else if (s==='sleep') el.classList.add('xh-sleep'); else if (s==='think') el.classList.add('xh-think'); else if (s==='love') el.classList.add('xh-love'); else if (s==='banner') el.classList.add('xh-banner'); }
   }
   function gotoThen(pt, anticName, dur){ pend = {s:anticName, d:dur}; tx=pt.x; ty=pt.y; setState('goto', 9000); }
   function antic(name, dur){ var t = parked ? null : emptyTarget(); if (t) gotoThen(t, name, dur); else setState(name, dur); }
@@ -304,10 +309,13 @@
 
   if (location.hash === '#play') setTimeout(playWord, 600);
   if (location.hash === '#love') setTimeout(loveYou, 600);
+  if (location.hash === '#banner') setTimeout(showBanner, 600);
   if (location.hash === '#gear5' || location.hash === '#rubber') setTimeout(startRubber, 600);
   if (reduce){ paint(); return; }
   if (parked) nextBehaviour(); else setState('walk', 3000);
-  setTimeout(loveYou, 21000);   // after 21s on the site: hold a heart & say love you
+  setInterval(loveYou, 21000);          // say "love you" every 21s
+  setTimeout(showBanner, 120000);       // at 2 min: hold a thanks-for-reading banner
+  addEventListener('pagehide', function(){ if (word) cleanupWord(); if (line) restoreLine(); });   // never leave text broken
   var last = performance.now();
   function tick(now){
     var dt = Math.min(0.05,(now-last)/1000); last = now;
@@ -351,6 +359,7 @@
 
     if (state==='think' && now>brainAt){ glyph(thought()); brainAt = now+480+Math.random()*520; }
     if (state==='love' && now>brainAt){ glyph('love you'); brainAt = now+700+Math.random()*400; }
+    if (state==='banner') posBanner();
     if (state==='inspect'){ if (now>brainAt){ glyph(thought()); brainAt = now+650+Math.random()*600; } el.style.setProperty('--xh-look', (Math.sin(now/300)*2.2).toFixed(2)+'px'); }
     if (state==='sleep' && now>brainAt){ glyph('z','xh-z'); brainAt = now+900+Math.random()*500; }
     if (state!=='goto' && state!=='play' && state!=='rubber' && state!=='held' && now>until){ if (state==='yawn' && !parked && Math.random()<0.3) setState('sleep', 4000+Math.random()*3000); else nextBehaviour(); }

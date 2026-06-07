@@ -120,6 +120,8 @@
   #xiaohei.xh-love .xh-arm-l{ transform:rotate(150deg); }
   #xiaohei.xh-love .xh-arm-r{ transform:rotate(-150deg); }
   #xiaohei.xh-love .xh-mouth{ transform:scaleY(.5) scaleX(1.1); }
+  #xiaohei.xh-banner .xh-arm-l{ transform:rotate(150deg); }
+  #xiaohei.xh-banner .xh-arm-r{ transform:rotate(-150deg); }
 
   @keyframes xh-bob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
   @keyframes xh-step{ 0%,100%{transform:rotate(22deg)} 50%{transform:rotate(-22deg)} }
@@ -139,6 +141,8 @@
   #xh-fx .xh-word{ position:absolute; left:0; top:0; white-space:nowrap; transform-origin:center; will-change:transform; }
   #xh-fx .xh-stars{ position:absolute; left:0; top:0; pointer-events:none; animation:xh-starspin .8s linear infinite; }
   #xh-fx .xh-stars .s{ position:absolute; left:0; top:0; color:#f4b400; font:700 15px/1 system-ui,sans-serif; transform-origin:0 0; text-shadow:0 0 2px rgba(0,0,0,.25); }
+  #xh-fx .xh-banner-sign{ position:absolute; transform:translate(-50%,-100%); background:var(--article-bg,#fff); color:var(--article-text,#222); border:2px solid var(--article-text,#222); padding:6px 12px; font:700 13px/1.35 ui-monospace,"JetBrains Mono",monospace; white-space:nowrap; text-align:center; box-shadow:3px 3px 0 rgba(0,0,0,.2); }
+  #xh-fx .xh-banner-sign .hh{ color:#e0245e; }
   @keyframes xh-starspin{ from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes xh-rise{ 0%{opacity:0; transform:translateY(0) scale(.6)} 20%{opacity:.95} 100%{opacity:0; transform:translateY(-46px) translateX(var(--dx,0)) scale(1.1) rotate(var(--rot,0))} }
   @keyframes xh-puff{ 0%{opacity:.5; transform:scale(.5)} 100%{opacity:0; transform:translate(var(--dx,0),6px) scale(1.6)} }
