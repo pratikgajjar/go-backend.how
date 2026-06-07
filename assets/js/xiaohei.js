@@ -307,10 +307,16 @@
     else antic('sleep', 3000+Math.random()*3000);
   }
 
-  if (location.hash === '#play') setTimeout(playWord, 600);
-  if (location.hash === '#love') setTimeout(loveYou, 600);
-  if (location.hash === '#banner') setTimeout(showBanner, 600);
-  if (location.hash === '#gear5' || location.hash === '#rubber') setTimeout(startRubber, 600);
+  function fireHash(delay){                                  // map URL hash -> trigger (runs at load AND on live hashchange)
+    if (reduce || innerWidth <= 768) return;
+    var d = delay || 0, hsh = location.hash;
+    if (hsh === '#play') setTimeout(playWord, d);
+    else if (hsh === '#love') setTimeout(loveYou, d);
+    else if (hsh === '#banner') setTimeout(showBanner, d);
+    else if (hsh === '#gear5' || hsh === '#rubber') setTimeout(startRubber, d);
+  }
+  fireHash(600);
+  addEventListener('hashchange', function(){ fireHash(0); });
   if (reduce){ paint(); return; }
   if (parked) nextBehaviour(); else setState('walk', 3000);
   setInterval(loveYou, 21000);          // say "love you" every 21s
