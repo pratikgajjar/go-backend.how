@@ -610,8 +610,10 @@ durable dedup, `INSERT ... ON CONFLICT DO NOTHING` into a
 `processed_events(id uuid PRIMARY KEY, processed_at timestamptz)` table you
 TTL-prune; an in-memory LRU of recent IDs is a fine fast-path in front of
 it, but only the table survives the restart that caused the duplicate.
-A Bloom filter is the wrong tool here: a false positive would silently
-skip an unseen event, the wrong direction of error.
+A Bloom filter is the cheapest membership check, but it only errs toward
+false positives — reporting an unseen event as already seen. So it can
+confirm an event is new (definitely not in the set) but never that one was
+already handled; keep the table as the authority.
 
 ## Scenario 4: Kafka down for hours
 
