@@ -1,0 +1,80 @@
+{{- /*
+  Kaze (風, "wind") — the free, rubbery wind-spirit of go-backend.how.
+
+  An ink blob (theme text colour) with a red scarf that is always in the wind
+  and a paper hat folded from the page itself (theme background colour, with
+  faint lines of "text" on it). Rendered with WebGL signed-distance fields and
+  a small physics sim: verlet rubber arms, a verlet scarf, spring squash &
+  stretch, gravity, and the page's own elements as places to stand.
+
+  What it does:
+    - Lives on the bottom edge / in the gutters; perches on the corners of
+      images, code blocks and headings, and rides them as you scroll.
+    - Rubber arms: plucks real words off the page to read or eat (then puts
+      them back), "rockets" itself across the page by grabbing a far corner,
+      and hangs off the reading-progress bar while you read — swinging as
+      the bar grows.
+    - Gear-5 rubber run: treats a line of text as the ground, plows the words
+      into a pile, then gets launched by the snap-back and bonks the wall.
+    - Scroll is wind: scarf streams, he squints, holds his hat — scroll hard
+      enough and the hat blows away; he stretches an arm to catch it.
+    - Drag & FLING him. Hard landings make the page ripple like rubber.
+    - Click to say hi (hearts if you keep going). Halfway cheer, end-of-post
+      finale (hat toss + banner), "tl;dr?" if you skipped to the end.
+    - Stays out of your way while you're actively reading (attention budget).
+  Hash triggers: #pluck #rocket #swing #gear5 #hat #finale #love #hello
+
+  Remove completely: delete this file + assets/js/kaze.js + the include in
+    layouts/partials/xiaohei.html (which is what baseof.html calls).
+  Disable without deleting: set  enableXiaohei = false  under [params].
+*/ -}}
+<div id="kaze" aria-hidden="true" data-article="{{ if .IsPage }}1{{ end }}">
+  <canvas class="kz-canvas"></canvas>
+  <div class="kz-hit" title="Kaze — drag &amp; fling me, click to say hi"></div>
+</div>
+<style>
+  #kaze{ position:fixed; inset:0; z-index:60; pointer-events:none; }
+  #kaze .kz-canvas{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  #kaze .kz-hit{ position:absolute; left:0; top:0; width:34px; height:48px; border-radius:45%;
+    pointer-events:auto; cursor:grab; touch-action:none; -webkit-tap-highlight-color:transparent; will-change:transform; }
+  #kaze.kz-held .kz-hit{ cursor:grabbing; }
+  #kaze.kz-off .kz-hit{ pointer-events:none; }
+
+  #kz-fx{ position:fixed; inset:0; z-index:61; pointer-events:none; overflow:hidden; }
+  #kz-fx .kz-g{ position:absolute; font:700 14px/1 ui-monospace,"JetBrains Mono",monospace; color:var(--article-text,#222);
+    white-space:nowrap; opacity:0; animation:kz-rise 1.6s ease-out forwards; }
+  #kz-fx .kz-g.kz-z{ font-size:17px; animation-duration:2.6s; }
+  #kz-fx .kz-g.kz-heart{ color:#e8453c; font-size:16px; }
+  #kz-fx .kz-g.kz-big{ font-size:16px; }
+  #kz-fx .kz-dust{ position:absolute; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%;
+    background:var(--article-text,#222); opacity:.35; animation:kz-puff .55s ease-out forwards; }
+  #kz-fx .kz-conf{ position:absolute; width:6px; height:10px; margin:-5px 0 0 -3px; border-radius:1px;
+    animation:kz-conf 1.9s cubic-bezier(.15,.7,.35,1) forwards; }
+  #kz-fx .kz-word{ position:absolute; left:0; top:0; white-space:nowrap; transform-origin:center; will-change:transform; }
+  #kz-fx .kz-stars{ position:absolute; font:700 14px/1 system-ui,sans-serif; color:#f4b400; animation:kz-spin .8s linear infinite; }
+  #kz-fx .kz-stars span{ position:absolute; left:0; top:0; transform-origin:0 0; }
+  #kz-fx .kz-banner{ position:absolute; transform:translate(-50%,-100%); background:var(--article-bg,#fff); color:var(--article-text,#222);
+    border:2px solid var(--article-text,#222); padding:6px 12px; font:700 13px/1.35 ui-monospace,"JetBrains Mono",monospace;
+    white-space:nowrap; text-align:center; box-shadow:3px 3px 0 rgba(0,0,0,.2); animation:kz-pop .35s cubic-bezier(.2,1.6,.4,1); }
+  #kz-fx .kz-banner b{ color:#e8453c; }
+  .kz-w{ display:inline-block; will-change:transform; transition:transform .4s cubic-bezier(.18,.9,.2,1); }
+  .kz-quake{ animation:kz-quake .7s cubic-bezier(.3,.7,.3,1) both; }
+
+  @keyframes kz-rise{ 0%{opacity:0; transform:translate(-50%,0) scale(.6)} 18%{opacity:.95}
+    100%{opacity:0; transform:translate(calc(-50% + var(--dx,0px)),-48px) scale(1.08) rotate(var(--rot,0deg))} }
+  @keyframes kz-puff{ 0%{opacity:.45; transform:scale(.5)} 100%{opacity:0; transform:translate(var(--dx,0px),-4px) scale(1.7)} }
+  @keyframes kz-conf{ 0%{transform:translate(0,0) rotate(0); opacity:1}
+    35%{transform:translate(calc(var(--dx)*.6), var(--up)) rotate(calc(var(--r)*.4)); opacity:1}
+    100%{transform:translate(var(--dx), var(--dy)) rotate(var(--r)); opacity:0} }
+  @keyframes kz-spin{ to{ transform:rotate(360deg) } }
+  @keyframes kz-pop{ 0%{ transform:translate(-50%,-100%) scale(.3) } 100%{ transform:translate(-50%,-100%) scale(1) } }
+  @keyframes kz-quake{ 0%{transform:translateY(0)} 25%{transform:translateY(var(--q,6px)) scaleY(.985)}
+    55%{transform:translateY(calc(var(--q,6px) * -.45))} 80%{transform:translateY(calc(var(--q,6px) * .15))} 100%{transform:none} }
+
+  @media print{ #kaze,#kz-fx{ display:none !important; } }
+</style>
+{{- /* External, fingerprinted + SRI so it satisfies the CSP (script-src 'self'). */ -}}
+{{- with resources.Get "js/kaze.js" -}}
+  {{- $js := . | minify | fingerprint -}}
+  <script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{- end -}}
