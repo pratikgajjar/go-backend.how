@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 700" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">
+  <title>One car card, built once and read by every ad click</title>
+  <defs>
+    <marker id="ht-ink" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="f-ink" d="M0,0 L8,4 L0,8 z" fill="#211a14"/></marker>
+    <marker id="ht-grn" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="f-safe" d="M0,0 L8,4 L0,8 z" fill="#1e6a3c"/></marker>
+    <symbol id="ht-car" viewBox="0 0 170 80">
+      <path class="f-paper s-ink" d="M12,62 L14,50 Q16,44 26,42 L44,40 L62,24 Q68,20 80,20 L112,20 Q122,20 128,26 L144,40 Q158,42 162,50 L164,62 Z" fill="#fbf7ef" stroke="#211a14" stroke-width="2.4" stroke-linejoin="round"/>
+      <path class="f-tint s-ink" d="M68,27 L80,24 L100,24 L100,40 L54,40 Z M106,24 L114,24 Q120,24 124,29 L134,40 L106,40 Z" fill="#efe6d8" stroke="#211a14" stroke-width="1.6" stroke-linejoin="round"/>
+      <circle class="f-ink" cx="44" cy="62" r="12" fill="#211a14"/><circle class="f-paper" cx="44" cy="62" r="4.5" fill="#fbf7ef"/>
+      <circle class="f-ink" cx="134" cy="62" r="12" fill="#211a14"/><circle class="f-paper" cx="134" cy="62" r="4.5" fill="#fbf7ef"/>
+    </symbol>
+    <symbol id="ht-phone" viewBox="0 0 36 56">
+      <rect class="f-paper s-ink" x="1" y="1" width="34" height="54" rx="6" fill="#fbf7ef" stroke="#211a14" stroke-width="1.6"/>
+      <rect class="f-tint" x="6" y="8" width="24" height="16" rx="2" fill="#efe6d8"/>
+      <rect class="f-data" x="6" y="30" width="16" height="4" fill="#6f4a1f"/>
+      <rect class="f-line" x="6" y="38" width="24" height="3" fill="#d8cfc2"/>
+      <rect class="f-line" x="6" y="44" width="18" height="3" fill="#d8cfc2"/>
+    </symbol>
+  </defs>
+  <rect class="f-paper" width="360" height="700" fill="#fbf7ef"/>
+
+  <text class="f-ink" x="16" y="30" font-size="15" font-weight="800" fill="#211a14">Build the car card once.</text>
+  <text class="f-ink" x="16" y="50" font-size="15" font-weight="800" fill="#211a14">Serve every ad click from one key.</text>
+
+  <text class="f-ink" x="16" y="88" font-size="14" font-weight="800" fill="#211a14">MySQL</text>
+  <text class="f-mute" x="72" y="88" font-size="11" fill="#5c534a">~10 tables per car</text>
+  <g font-size="12">
+    <rect class="f-datal s-data" x="16" y="98" width="160" height="30" rx="3" fill="#f3e4cc" stroke="#6f4a1f" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <text class="f-data" x="28" y="118" fill="#6f4a1f">cars</text>
+    <rect class="f-datal s-data" x="184" y="98" width="160" height="30" rx="3" fill="#f3e4cc" stroke="#6f4a1f" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <text class="f-data" x="196" y="118" fill="#6f4a1f">car_images</text>
+    <rect class="f-datal s-data" x="16" y="134" width="160" height="30" rx="3" fill="#f3e4cc" stroke="#6f4a1f" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <text class="f-data" x="28" y="154" fill="#6f4a1f">car_features</text>
+    <rect class="f-datal s-data" x="184" y="134" width="160" height="30" rx="3" fill="#f3e4cc" stroke="#6f4a1f" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <text class="f-data" x="196" y="154" fill="#6f4a1f">… 7 more</text>
+  </g>
+  <text class="f-mute" x="16" y="184" font-size="10.5" fill="#5c534a">written by the ops portal, the inventory</text>
+  <text class="f-mute" x="16" y="198" font-size="10.5" fill="#5c534a">app, and price scripts</text>
+
+  <path class="s-ink" d="M60,206 L60,262" stroke="#211a14" stroke-width="1.8" fill="none" marker-end="url(#ht-ink)"/>
+  <text class="f-ink" x="68" y="238" font-size="11" fill="#211a14">build JSON</text>
+  <path class="s-safe" d="M230,206 L230,262" stroke="#1e6a3c" stroke-width="2.2" fill="none" marker-end="url(#ht-grn)"/>
+  <text class="f-safe" x="238" y="222" font-size="10.5" font-weight="800" fill="#1e6a3c">on each change:</text>
+  <text class="f-safe" x="238" y="236" font-size="10.5" font-weight="800" fill="#1e6a3c">binlog → Kafka</text>
+  <text class="f-safe" x="238" y="250" font-size="10.5" font-weight="800" fill="#1e6a3c">→ consumer</text>
+
+  <rect class="f-paper s-ink" x="16" y="264" width="328" height="262" rx="6" fill="#fbf7ef" stroke="#211a14" stroke-width="1.6"/>
+  <text class="f-ink" x="30" y="288" font-size="14" font-weight="800" fill="#211a14">Valkey</text>
+  <text class="f-data" x="330" y="288" font-weight="800" text-anchor="end" fill="#6f4a1f">dp:2323</text>
+  <rect class="f-pickl s-pick" x="30" y="300" width="300" height="212" rx="10" fill="#fde0c2" stroke="#b8520f" stroke-width="2.2"/>
+  <rect class="f-paper" x="42" y="312" width="276" height="96" rx="6" fill="#fbf7ef"/>
+  <use href="#ht-car" x="95" y="320" width="170" height="80"/>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <text class="f-ink" x="44" y="434" font-size="15" font-weight="700" fill="#211a14">Tata Nexon XZ+</text>
+    <text class="f-mute" x="44" y="452" font-size="12" fill="#5c534a">2nd owner · Mumbai · sample</text>
+    <text class="f-data" x="44" y="492" font-size="22" font-weight="800" fill="#6f4a1f">₹5,10,000</text>
+  </g>
+  <text class="f-mute" x="318" y="486" font-size="10" text-anchor="end" fill="#5c534a">gzip JSON</text>
+  <text class="f-mute" x="318" y="498" font-size="10" text-anchor="end" fill="#5c534a">TTL 12 h</text>
+
+  <g class="s-ink" stroke="#211a14" stroke-width="1.6" fill="none">
+    <path d="M78,590 L78,560 L150,530" marker-end="url(#ht-ink)"/>
+    <path d="M180,590 L180,530" marker-end="url(#ht-ink)"/>
+    <path d="M282,590 L282,560 L210,530" marker-end="url(#ht-ink)"/>
+  </g>
+  <text class="f-ink" x="16" y="546" font-size="11" fill="#211a14">GET dp:2323</text>
+  <use href="#ht-phone" x="60" y="592" width="36" height="56"/>
+  <use href="#ht-phone" x="162" y="592" width="36" height="56"/>
+  <use href="#ht-phone" x="264" y="592" width="36" height="56"/>
+  <g class="f-ink" font-size="11" text-anchor="middle" fill="#211a14">
+    <text x="78" y="664">Google</text><text x="180" y="664">Facebook</text><text x="282" y="664">Instagram</text>
+  </g>
+  <text class="f-mute" x="16" y="690" font-size="11" fill="#5c534a">95%+ of traffic · one key lookup</text>
+  <rect class="s-ink" x="240" y="676" width="104" height="22" rx="11" fill="none" stroke="#211a14" stroke-width="1.4"/>
+  <text class="f-ink" x="292" y="691" font-size="10.5" font-weight="800" text-anchor="middle" fill="#211a14">target 60 ms</text>
+</svg>

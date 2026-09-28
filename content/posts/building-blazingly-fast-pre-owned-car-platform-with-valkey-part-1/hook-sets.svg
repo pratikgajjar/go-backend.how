@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 390" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">
+<title>Which writes each cache hook sees</title>
+<rect width="720" height="390" rx="12" fill="#fbf7ef"/>
+<rect x="10" y="10" width="700" height="336" rx="14" fill="#fde0c2" stroke="#b8520f" stroke-width="2"/>
+<text x="26" y="36" font-weight="800" fill="#211a14">Every committed write to MySQL <tspan font-weight="400" font-size="11">· the binlog reader sees this set (our pick)</tspan></text>
+<rect x="26" y="48" width="200" height="42" rx="8" fill="#fbf7ef" stroke="#1e6a3c" stroke-width="1.5"/><text x="36" y="66" font-weight="800" fill="#1e6a3c">✓</text><text x="52" y="66" font-weight="800" fill="#211a14">Mark sold</text><text x="52" y="82" font-size="10.5" fill="#5c534a">Ops portal · CakePHP</text>
+<rect x="236" y="48" width="220" height="42" rx="8" fill="#fbf7ef" stroke="#1e6a3c" stroke-width="1.5"/><text x="246" y="66" font-weight="800" fill="#1e6a3c">✓</text><text x="262" y="66" font-weight="800" fill="#211a14">Daily prices</text><text x="262" y="82" font-size="10.5" fill="#5c534a">Price script · Python</text>
+<rect x="26" y="104" width="668" height="226" rx="12" fill="#f3ece0" stroke="#d8cfc2" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="42" y="130" font-weight="800" fill="#211a14">Writes from the Django inventory app <tspan font-weight="400" font-size="11" fill="#5c534a">· the domain layer sees this set</tspan></text>
+<rect x="42" y="142" width="200" height="42" rx="8" fill="#fbf7ef" stroke="#1e6a3c" stroke-width="1.5"/><text x="52" y="160" font-weight="800" fill="#1e6a3c">✓</text><text x="68" y="160" font-weight="800" fill="#211a14">Swap a photo</text><text x="68" y="176" font-size="10.5" fill="#5c534a">Inventory app</text>
+<rect x="252" y="142" width="200" height="42" rx="8" fill="#fbf7ef" stroke="#1e6a3c" stroke-width="1.5"/><text x="262" y="160" font-weight="800" fill="#1e6a3c">✓</text><text x="278" y="160" font-weight="800" fill="#211a14">Add 4 photos</text><text x="278" y="176" font-size="10.5" fill="#5c534a">Inventory app</text>
+<rect x="42" y="198" width="636" height="116" rx="12" fill="#fbf7ef" stroke="#d8cfc2" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="58" y="224" font-weight="800" fill="#211a14">save() and create() <tspan font-weight="400" font-size="11" fill="#5c534a">· post_save sees this set</tspan></text>
+<rect x="58" y="238" width="200" height="42" rx="8" fill="#fbf7ef" stroke="#1e6a3c" stroke-width="1.5"/><text x="68" y="256" font-weight="800" fill="#1e6a3c">✓</text><text x="84" y="256" font-weight="800" fill="#211a14">Edit owner</text><text x="84" y="272" font-size="10.5" fill="#5c534a">Inventory app</text>
+<text x="18" y="372" font-size="11.5" fill="#211a14">Sample writes seen: post_save 1 of 5 · domain layer 3 of 5 · binlog reader 5 of 5</text>
+</svg>

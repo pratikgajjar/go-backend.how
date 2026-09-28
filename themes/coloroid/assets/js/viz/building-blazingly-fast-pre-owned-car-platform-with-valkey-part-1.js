@@ -1,9 +1,12 @@
 /*
  * Figures for "Building blazingly fast pre-owned car platform with Valkey – Part 1".
+ * Own look (frame="none"): a cream spec card with a number-plate figure tag,
+ * mono for the system, the app's sans font for the car card a buyer sees.
  *
- *   write-coverage  which writes each cache-invalidation hook can see
- *   change-path     one price change from UPDATE to the next GET, step by step
- *   fault-map       the same pipeline with the five failures from the text
+ *   car1-hero         the post in one picture: one card, built once, read by every ad click
+ *   hook-sets         place each write in the smallest hook ring that sees it
+ *   change-timeline   swimlanes: guess when the buyer sees the new price, then scrub
+ *   outage-timeline   the same lanes: predict what a failure does, then see it
  *
  * Checked against:
  *   - pratikgajjar/mysql-data-stream-kafka @ ea9296b (main.py): only_events,
@@ -12,666 +15,662 @@
  *   - mysql-replication 0.19: before_values / after_values / values
  *   - django-redis 6.0: key ":1:<key>", pickle then gzip, SET … PX <ms>
  *   - Django 6.1: QuerySet.update(), bulk_create(), bulk_update() send no post_save
- * Car id, prices, binlog positions and offsets are sample values.
+ * Car, prices, binlog positions and offsets are sample values.
  */
-import { h, s, stepper, colorKey, codeBlock, register, uid } from './lib.js';
+import { h, s, register, uid, clamp, REDUCED } from './lib.js';
 
 const P = 'v-car1-';
+const inr = (n) => `₹${n.toLocaleString('en-IN')}`;
+const OLD = 525000;
+const NEW = 510000;
 
 /* ------------------------------------------------------------ helpers */
 
-/** Call rebuild('wide' | 'tall') now and whenever the app crosses 560px. */
-function onLayout(app, rebuild) {
+function onLayout(el, rebuild, at = 560) {
   let cur = null;
   const check = () => {
-    const k = app.clientWidth < 560 ? 'tall' : 'wide';
+    const k = el.clientWidth < at ? 'tall' : 'wide';
     if (k !== cur) { cur = k; rebuild(k); }
   };
-  if ('ResizeObserver' in window) new ResizeObserver(check).observe(app);
+  if ('ResizeObserver' in window) new ResizeObserver(check).observe(el);
   check();
 }
 
-function markers(id) {
-  const m = (name, color) => s('marker', { id: `${id}-${name}`, viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' },
-    s('path', { d: 'M0,0 L8,4 L0,8 z', style: `fill:var(--${color})` }));
-  return s('defs', null, m('ink', 'ink'), m('green', 'green'), m('purple', 'purple'), m('red', 'red'), m('line', 'line'));
+/** Colour key. items: [[swatchClass, label], …] */
+function key(items) {
+  return h('ul', { class: `${P}key` }, ...items.map(([k, t]) => h('li', null, h('i', { class: `${P}sw ${P}sw--${k}` }), t)));
 }
 
-const pathD = (pts) => `M${pts.map((q) => q.join(',')).join(' L')}`;
+/** Code lines: «x» data, ⟪x⟫ good, ⟦x⟧ bad, // comment. */
+function code(lines) {
+  const esc = (v) => v.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const html = lines.map((ln) => {
+    let t = esc(ln);
+    const c = t.indexOf('//');
+    if (c >= 0) t = `${t.slice(0, c)}<span class="cm">${t.slice(c)}</span>`;
+    return t.replace(/«(.+?)»/g, '<span class="d">$1</span>').replace(/⟪(.+?)⟫/g, '<span class="ok">$1</span>').replace(/⟦(.+?)⟧/g, '<span class="bad">$1</span>');
+  }).join('\n');
+  return `<pre class="${P}code"><code>${html}</code></pre>`;
+}
 
-/**
- * Draw a box with one or two sections. spec.a / spec.b are line arrays:
- * first line is the title, the rest are small labels, '@name' is a live value.
+const CAR_PATH = 'M12,62 L14,50 Q16,44 26,42 L44,40 L62,24 Q68,20 80,20 L112,20 Q122,20 128,26 L144,40 Q158,42 162,50 L164,62 Z';
+const CAR_WIN = 'M68,27 L80,24 L100,24 L100,40 L54,40 Z M106,24 L114,24 Q120,24 124,29 L134,40 L106,40 Z';
+function carIcon() {
+  return s('svg', { viewBox: '0 0 176 80', class: `${P}caricon`, 'aria-hidden': 'true' },
+    s('path', { d: CAR_PATH, class: 'body' }), s('path', { d: CAR_WIN, class: 'win' }),
+    s('circle', { cx: 44, cy: 62, r: 12, class: 'tyre' }), s('circle', { cx: 134, cy: 62, r: 12, class: 'tyre' }),
+    s('circle', { cx: 44, cy: 62, r: 4.5, class: 'hub' }), s('circle', { cx: 134, cy: 62, r: 4.5, class: 'hub' }));
+}
+
+/* ================================================================ HERO */
+
+function initHero(fig, app) {
+  const img = fig.querySelector('.wv-fallback');
+  const base = img ? img.getAttribute('src').replace(/[^/]*$/, '') : '';
+  const stage = h('div', { class: `${P}hero` });
+  app.append(stage, key([['pick', 'the pre-computed card (our choice)'], ['data', 'data'], ['safe', 'the path that keeps it fresh']]));
+  const cache = {};
+  onLayout(app, async (kind) => {
+    const file = kind === 'tall' ? 'hero-tall.svg' : 'hero.svg';
+    try {
+      cache[file] ??= await fetch(base + file).then((r) => (r.ok ? r.text() : Promise.reject(r.status)));
+      stage.innerHTML = cache[file];
+      const svg = stage.querySelector('svg');
+      svg.setAttribute('role', 'img');
+      svg.setAttribute('aria-label', fig.getAttribute('aria-label') || '');
+      svg.querySelector('title')?.remove();
+    } catch (e) {
+      fig.classList.remove('wv-live');
+    }
+  }, 600);
+}
+
+/* ========================================================== HOOK RINGS */
+
+/*
+ * The reader places one concrete write at a time into the smallest ring
+ * that sees it. Placed writes stay, so the coverage map builds up.
  */
-function drawBox(rect, spec, split, refs, dashed) {
-  const [x, y, w, hh] = rect;
-  const g = s('g', { class: 'node' });
-  g.append(s('rect', { x, y, width: w, height: hh, class: `box${dashed ? ' dash' : ''}` }));
-  const secs = [];
-  if (!spec.b) secs.push([x, y, w, hh, spec.a]);
-  else if (split === 'v') secs.push([x, y, w, hh / 2, spec.a], [x, y + hh / 2, w, hh / 2, spec.b]);
-  else secs.push([x, y, w / 2, hh, spec.a], [x + w / 2, y, w / 2, hh, spec.b]);
-  if (spec.b) {
-    g.append(split === 'v'
-      ? s('line', { x1: x, x2: x + w, y1: y + hh / 2, y2: y + hh / 2, class: 'rule' })
-      : s('line', { x1: x + w / 2, x2: x + w / 2, y1: y, y2: y + hh, class: 'rule' }));
+const RINGS = {
+  binlog: { title: 'Every committed write to MySQL', hook: 'the binlog reader' },
+  domain: { title: 'Writes from the Django inventory app', hook: 'a domain layer' },
+  signal: { title: 'save() and create()', hook: 'post_save' },
+};
+const ORDER = ['signal', 'domain', 'binlog'];
+
+/* Sample writes, in the order the reader meets them. `set` = smallest ring. */
+const WRITES = [
+  {
+    id: 'save', set: 'signal', who: 'Inventory app · Django', label: 'Edit owner',
+    code: ['car = Car.objects.get(id=«2323»)', 'car.owner = «2»', 'car.save()'],
+    why: 'save() sends post_save after the UPDATE, so every ring sees it.',
+  },
+  {
+    id: 'update', set: 'domain', who: 'Inventory app · Django', label: 'Swap a photo',
+    code: ['CarImage.objects.filter(car_id=«2323», image_url=old)', '    .update(image_url=new)'],
+    why: 'QuerySet.update() runs one UPDATE and sends no post_save. A domain service sees it only if this code calls the service.',
+  },
+  {
+    id: 'bulk', set: 'domain', who: 'Inventory app · Django', label: 'Add 4 photos',
+    code: ['CarImage.objects.bulk_create([', '    CarImage(car_id=«2323», image_url=u) for u in urls])'],
+    why: 'bulk_create() inserts in one query and sends no post_save either.',
+  },
+  {
+    id: 'ops', set: 'binlog', who: 'Ops portal · CakePHP', label: 'Mark sold',
+    code: ["UPDATE cars SET status = «'sold'» WHERE id = «2323»;"],
+    why: 'The portal is a PHP app that writes to MySQL directly. No Django code runs, so only the binlog sees it.',
+  },
+  {
+    id: 'ds', set: 'binlog', who: 'Price script · Python', label: 'Daily prices',
+    code: ['cur.executemany(', '    "UPDATE cars SET price = %s WHERE id = %s",', '    rows)                  // 10,000 cars'],
+    why: 'The script has its own MySQL connection. Only the binlog sees it.',
+  },
+];
+
+function initHookSets(fig, app) {
+  let k = 0; let answered = false; let right = 0;
+  const rings = {}; const chipsIn = {}; const counts = {};
+
+  const ask = h('p', { class: `${P}ask` });
+  const wcard = h('div', { class: `${P}wcard` });
+  const fb = h('div', { class: `${P}fb`, 'aria-live': 'polite' });
+  const next = h('button', { type: 'button', class: `${P}next` });
+  const show = h('button', { type: 'button', class: `${P}skip`, onclick: () => choose(null) }, 'show me');
+  next.addEventListener('click', () => (k >= WRITES.length - 1 ? finish() : load(k + 1)));
+
+  const ring = (id, inner) => {
+    const r = h('div', { class: `${P}ring ${P}ring--${id}`, role: 'button', tabindex: 0, 'aria-label': `${RINGS[id].title}, seen by ${RINGS[id].hook}` },
+      h('div', { class: `${P}ringlbl` }, h('b', null, RINGS[id].title), h('span', null, `seen by ${RINGS[id].hook}`), counts[id] = h('em')),
+      chipsIn[id] = h('div', { class: `${P}placed` }), inner);
+    const pick = (e) => { e.stopPropagation(); if (!answered && k < WRITES.length) choose(id); };
+    r.addEventListener('click', pick);
+    r.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { pick(e); e.preventDefault(); } });
+    rings[id] = r;
+    return r;
+  };
+  const tree = ring('binlog', ring('domain', ring('signal')));
+  const restart = h('button', { type: 'button', class: `${P}skip`, onclick: () => reset() }, 'start over');
+
+  tree.classList.add(`${P}tree`);
+  app.append(h('div', { class: `${P}hookgrid` }, ask, wcard, tree, fb, h('div', { class: `${P}btnrow` }, show, next, restart)),
+  key([['look', 'the write in your hand'], ['opt', 'a hook, as a ring'], ['data', 'writes placed'], ['pick', 'the ring we chose']]));
+
+  function load(i) {
+    k = i; answered = false;
+    const w = WRITES[i];
+    ask.innerHTML = `Write <b>${i + 1} of ${WRITES.length}</b>. Tap the smallest ring that sees it.`;
+    wcard.innerHTML = `<span class="${P}who">${w.who}</span><b>${w.label}</b>${code(w.code)}`;
+    wcard.hidden = false;
+    fb.className = `${P}fb`; fb.textContent = '';
+    next.hidden = true; show.hidden = false; restart.hidden = true;
+    Object.values(rings).forEach((r) => r.classList.remove('is-right', 'is-wrong', 'is-answer', 'is-pick', 'is-done'));
+    tree.classList.add('is-asking');
   }
-  for (const [sx, sy, sw, sh, lines] of secs) {
-    const hs = lines.map((t, k) => (k === 0 ? 15 : 13));
-    let yy = sy + sh / 2 - hs.reduce((a, b) => a + b, 0) / 2;
-    lines.forEach((t, k) => {
-      yy += hs[k];
-      const live = t.startsWith('@');
-      const te = s('text', { x: sx + sw / 2, y: yy - 3.5, 'text-anchor': 'middle', class: live ? 't-s t-b t-data' : k === 0 ? 't-m t-b' : 't-xs t-mute' }, live ? '' : t);
-      if (live) refs[t.slice(1)] = te;
-      g.append(te);
-    });
+
+  function place(w) {
+    const c = h('button', { type: 'button', class: `${P}pchip`, onclick: (e) => { e.stopPropagation(); review(w); } }, w.label);
+    chipsIn[w.set].append(c);
+    return c;
   }
-  return g;
+
+  function choose(id) {
+    const w = WRITES[k];
+    answered = true;
+    tree.classList.remove('is-asking');
+    const ok = id === w.set;
+    if (ok) right++;
+    if (id) rings[id].classList.add(ok ? 'is-right' : 'is-wrong');
+    if (!ok) rings[w.set].classList.add('is-answer');
+    place(w).classList.add('is-new');
+    fb.className = `${P}fb ${ok ? 'is-ok' : 'is-bad'}`;
+    fb.innerHTML = `<strong>${ok ? 'Right.' : id ? `It lands in “${RINGS[w.set].title}”.` : `“${RINGS[w.set].title}”.`}</strong> ${w.why}`;
+    next.textContent = k >= WRITES.length - 1 ? 'See the count →' : 'Next write →';
+    next.hidden = false; show.hidden = true;
+  }
+
+  function review(w) {
+    fb.className = `${P}fb`;
+    fb.innerHTML = `<strong>${w.label}</strong> (${w.who}). ${w.why}`;
+  }
+
+  function finish() {
+    k = WRITES.length;
+    Object.values(rings).forEach((r) => r.classList.remove('is-right', 'is-wrong', 'is-answer'));
+    for (const id of ORDER) {
+      const n = WRITES.filter((w) => ORDER.indexOf(w.set) <= ORDER.indexOf(id)).length;
+      counts[id].textContent = `sees ${n} of ${WRITES.length}`;
+    }
+    rings.binlog.classList.add('is-pick');
+    tree.classList.add('is-done');
+    ask.innerHTML = `You placed <b>${right} of ${WRITES.length}</b> in the right ring.`;
+    wcard.hidden = true;
+    fb.className = `${P}fb is-ok`;
+    fb.innerHTML = '<strong>Only the outer ring holds every write.</strong> A hook sees the writes inside its ring. The binlog reader is the only hook every writer passes, so that is where we put it. Tap a placed write to read why it sits there.';
+    next.hidden = true; show.hidden = true; restart.hidden = false;
+  }
+
+  function reset() {
+    right = 0;
+    Object.values(chipsIn).forEach((c) => c.replaceChildren());
+    Object.values(counts).forEach((c) => { c.textContent = ''; });
+    load(0);
+  }
+  load(0);
 }
 
-/** A small data chip that slides between points. */
-function chip(svg) {
-  const g = s('g', { class: `${P}chip`, style: 'display:none' });
-  const r = s('rect', { x: 0, y: -10, height: 20, rx: 2 });
-  const t = s('text', { x: 0, y: 4, class: 't-s t-b', 'text-anchor': 'middle' });
-  g.append(r, t);
-  svg.append(g);
-  return {
-    show(x, y, label, kind = 'data') {
-      t.textContent = label;
-      const w = label.length * 7.3 + 14;
-      r.setAttribute('x', -w / 2); r.setAttribute('width', w);
-      g.setAttribute('class', `${P}chip is-${kind}`);
-      g.style.display = '';
-      g.style.transform = `translate(${x}px, ${y}px)`;
+/* =========================================================== TIMELINE */
+
+const LANES = ['script', 'MySQL', 'producer', 'Kafka', 'consumer', 'Valkey', 'buyer'];
+const LANE_LABEL = { script: 'price script', MySQL: 'MySQL', producer: 'producer', Kafka: 'Kafka', consumer: 'consumer', Valkey: 'Valkey', buyer: 'buyer' };
+
+/*
+ * A scenario: events on lanes at ordinal x (order, not time), outage blocks,
+ * and cache bands on the Valkey lane. Event kinds: ok | resume | fail | lost | wait | expire.
+ * src: [x, lane] draws the connector from there; default is the previous event.
+ */
+const E = {
+  commit: (x, src = [x - 0.65, 'script']) => ({
+    x, lane: 'MySQL', tag: 'commit', src,
+    title: 'The price script commits an UPDATE',
+    body: `${code(['UPDATE cars SET price = «510000» WHERE id = «2323»;', 'COMMIT;'])}<p>MySQL appends one <code>Update_rows</code> event to the binlog, with the whole row before and after. Valkey still holds the JSON with ${inr(OLD)}.</p>`,
+  }),
+  read: (x, extra = {}) => ({
+    x, lane: 'producer', tag: 'row event',
+    title: 'The producer reads the row event',
+    body: `${code([
+      'stream = BinLogStreamReader(..., server_id=100, blocking=True,',
+      '    only_events=[WriteRowsEvent, UpdateRowsEvent],',
+      '    log_file=«"mysql-bin.000412"», log_pos=«18411», resume_stream=True)',
+      'row["before_values"]   // {"id": 2323, …, "price": «525000»}',
+      'row["after_values"]    // {"id": 2323, …, "price": «510000»}',
+    ])}<p>The producer connects as a MySQL replica. This needs <code>binlog_format=ROW</code>, the default since MySQL 5.7.7. The public library asks only for inserts and updates, so a deleted row, such as a removed photo, never reaches Kafka unless <code>DeleteRowsEvent</code> is added.</p>`,
+    ...extra,
+  }),
+  send: (x, extra = {}) => ({
+    x, lane: 'Kafka', tag: 'p2 · 88,120',
+    title: 'One JSON message on topic cars',
+    body: `${code([
+      'producer.send(topic=«"cars"», value=«b\'{"schema": "carsdb", "table": "cars",»',
+      '    «"type": "UpdateRowsEvent", "row": {…, "price": 510000}}}\'»)',
+      '// 296 bytes · no key: kafka-python picks a random partition',
+    ])}<p>It lands on partition 2 at offset 88,120. With no key, two changes to one car can land in different partitions and arrive in any order. Sending the car id as the key keeps one car's changes in one partition, in order.</p>`,
+    ...extra,
+  }),
+  map: (x, extra = {}) => ({
+    x, lane: 'consumer', tag: 'car 2323',
+    title: 'The consumer finds the car id (sketch)',
+    body: `${code([
+      'CAR_ID = {"cars": lambda r: r["id"],',
+      '          "car_images": lambda r: r["car_id"],',
+      '          "car_features": lambda r: r["car_id"]}',
+      'row = msg["row"].get("after_values") or msg["row"]["values"]',
+      'car_id = CAR_ID[msg["table"]](row)     // «2323»',
+    ])}<p>The binlog knows rows, not car pages. The consumer needs one rule per table. When someone adds a table to the car page, they add a rule here.</p>`,
+    ...extra,
+  }),
+  set: (x, extra = {}) => ({
+    x, lane: 'Valkey', tag: 'SET',
+    title: 'Rebuild the JSON and SET it',
+    body: `${code([
+      'payload = build_car_json(2323)        // reads ~10 tables on MySQL',
+      'cache.set("dp:2323", payload, timeout=12 * 3600)',
+      'SET «:1:dp:2323» «1f 8b 08 00 …» PX «43200000»   // pickle → gzip',
+    ])}<p>The consumer reads the car's current rows, not the values in the event, so a late or repeated event still writes the latest state. django-redis adds the <code>:1:</code> version prefix and sends 12 hours as milliseconds.</p>`,
+    ...extra,
+  }),
+  ack: (x, extra = {}) => ({
+    x, lane: 'Kafka', tag: '88,121',
+    title: 'Commit the offset after the SET',
+    body: `${code(['consumer.commit()      // p2: 88,120 → «88,121»'])}<p>The offset moves only after the SET returns. If the consumer dies in between, Kafka hands out 88,120 again and the same JSON is built again. Delivery is at-least-once, and a rebuild is safe to repeat.</p>`,
+    ...extra,
+  }),
+  get: (x) => ({
+    x, lane: 'Valkey', tag: 'GET', src: [x - 0.6, 'buyer'],
+    title: 'The next buyer gets the new price',
+    body: `${code(['GET /listing/2323/', 'cache.get("dp:2323")   // GET :1:dp:2323 → gunzip → unpickle', `→ 200 {"id": 2323, "price": «${NEW}», …}`])}<p>One key lookup and no MySQL query. The red stretch on the Valkey lane, from the commit to the SET, is the lag of the pipeline.</p>`,
+  }),
+};
+
+const NORMAL = {
+  intro: 'Press play, drag the purple line, or tap a dot. The card shows what a buyer gets at that moment.',
+  events: [E.commit(1), E.read(2), E.send(3), E.map(4), E.set(5), E.ack(6), E.get(7)],
+  blocks: [],
+  bands: [[0, 1, 'ok'], [1, 5, 'stale'], [5, 99, 'ok']],
+};
+
+const FAULTS = [
+  {
+    id: 1, name: 'Consumer', resume: 'The consumer resumes at the last committed offset.', ask: 3.4, answer: 'longer',
+    intro: 'The consumer node dies right after the change reaches Kafka.',
+    why: 'Kafka keeps the message, and the consumer never committed its offset, so it reads the change after it restarts. Until then the page shows the old price.',
+    events: [E.commit(1), E.read(2), E.send(3),
+      { x: 5, lane: 'Kafka', tag: 'waits', kind: 'wait', src: null, title: 'The message waits in Kafka', body: '<p>Kafka keeps messages for 7 days by default (<code>log.retention.hours=168</code>). The committed offset for partition 2 is still 88,120. The car page shows the old price the whole time.</p>' },
+      { ...E.map(7), kind: 'resume', tag: 'from 88,120', title: 'The consumer restarts at the committed offset', body: `${code(['// group resumes p2 at the committed offset', 'poll() → offset «88,120»'])}<p>Anything the consumer wrote before it died but did not commit is processed again. The rebuild gives the same JSON, so a repeat is harmless.</p>` },
+      E.set(8), E.ack(9)],
+    blocks: [['consumer', 3.4, 6.6]],
+    bands: [[0, 1, 'ok'], [1, 8, 'stale'], [8, 99, 'ok']],
+  },
+  {
+    id: 2, name: 'Producer', resume: 'The producer resumes at its saved binlog position.', ask: 1.4, answer: 'longer',
+    intro: 'The producer node dies right after the UPDATE commits.',
+    why: 'The change waits in the binlog on the MySQL disk, and the producer resumes from its saved position.',
+    events: [E.commit(1),
+      { x: 3, lane: 'MySQL', tag: 'in binlog', kind: 'wait', src: null, title: 'The event stays in the binlog', body: '<p>The binlog file is on the MySQL disk. Nothing is lost while MySQL still has that file.</p>' },
+      E.read(5, { kind: 'resume', tag: 'from 18411', title: 'The producer restarts at its saved position', src: [3, 'MySQL'] }),
+      E.send(6), E.map(7), E.set(8), E.ack(9)],
+    blocks: [['producer', 1.4, 4.6]],
+    bands: [[0, 1, 'ok'], [1, 8, 'stale'], [8, 99, 'ok']],
+    extra: 'Events after the saved position that were already sent go to Kafka a second time, and the consumer rebuilds those cars twice. The public library saves its position to a local file when it stops on a signal or an error.',
+  },
+  {
+    id: 3, name: 'Valkey', resume: 'The offset was never committed, so the consumer retries the same message.', ask: 4.4, answer: 'longer',
+    intro: 'Valkey goes down just as the consumer is ready to write.',
+    why: 'The SET fails, so the consumer does not commit the offset. It retries until Valkey is back.',
+    events: [E.commit(1), E.read(2), E.send(3), E.map(4),
+      { x: 5, lane: 'consumer', tag: 'SET ✗', kind: 'fail', title: 'SET fails, the offset stays', body: `${code(['cache.set(...)      // ⟦ConnectionError⟧', '// no commit: p2 stays at «88,120»'])}<p>The consumer does not commit the offset, so the change is not lost. It retries.</p>` },
+      { x: 6.5, lane: 'consumer', tag: 'retry ✗', kind: 'fail', src: [5, 'consumer'], title: 'Retries fail while Valkey is down', body: '<p>While Valkey is down, the API cannot read the cache either. What a buyer sees then depends on the API\'s fallback.</p>' },
+      E.set(8, { kind: 'resume', tag: 'SET ✓', src: [6.5, 'consumer'], title: 'Valkey is back and the retry succeeds', body: `${code(['SET «:1:dp:2323» «1f 8b 08 00 …» PX «43200000»   // ⟪OK⟫'])}<p>If Valkey failed over to a replica instead, the last writes before the failure can be missing, because replication is asynchronous. The 12-hour TTL limits how long such a key stays wrong.</p>` }),
+      E.ack(9)],
+    blocks: [['Valkey', 4.4, 7.6]],
+    bands: [[0, 1, 'ok'], [1, 4.4, 'stale'], [4.4, 7.6, 'down'], [7.6, 8, 'stale'], [8, 99, 'ok']],
+  },
+  {
+    id: 4, name: 'Kafka broker', ask: 3.5,
+    variants: {
+      one: {
+        label: 'acks=1 (default)', resume: 'Nothing resumes: no component still has the change.',
+        intro: 'The partition leader dies right after it confirms the message. The producer uses the kafka-python default, acks=1.', answer: 'lost',
+        why: 'The leader confirmed before any follower copied the message, then died. The producer does not resend it, so car 2323 keeps the old price until its 12-hour TTL ends.',
+        events: [E.commit(1), E.read(2),
+          E.send(3, { tag: 'leader ack', title: 'The leader confirms alone', body: `${code(['KafkaProducer(bootstrap_servers=…)   // acks=«1» by default'])}<p>With <code>acks=1</code> the leader confirms before any follower has copied the message.</p>` }),
+          { x: 5.2, lane: 'Kafka', tag: 'lost', kind: 'lost', title: 'The new leader never had the message', body: '<p>A follower becomes leader without the message. The producer already has its ack, so it does not resend. Nothing tells the consumer about the price change.</p>' },
+          { x: 8, lane: 'Valkey', tag: 'TTL ends', kind: 'expire', src: null, title: 'The key expires 12 hours after its last SET', body: '<p>Car 2323 keeps the old price until its 12-hour TTL removes the key.</p>' }],
+        blocks: [['Kafka', 3.5, 4.8]],
+        bands: [[0, 1, 'ok'], [1, 8, 'stale'], [8, 99, 'gone']],
+      },
+      all: {
+        label: "acks='all'", resume: 'The new leader already has the message, so the consumer reads it as usual.',
+        intro: "The partition leader dies right after it confirms the message. The producer uses acks='all', and the topic has replication factor 3 and min.insync.replicas=2.", answer: 'longer',
+        why: 'An in-sync follower already had the message, so it becomes leader and the consumer reads the change a little later.',
+        events: [E.commit(1), E.read(2),
+          E.send(3, { tag: 'leader + follower', title: 'The leader confirms after a follower has it', body: `${code(["KafkaProducer(bootstrap_servers=…, acks=«'all'»)", '// topic: replication.factor=«3», min.insync.replicas=«2»'])}<p>The leader answers only after an in-sync follower has the message.</p>` }),
+          { x: 5, lane: 'Kafka', tag: 'new leader', kind: 'resume', src: [3, 'Kafka'], title: 'A follower with the message takes over', body: '<p>The new leader has offset 88,120, so the consumer reads it as usual.</p>' },
+          E.map(6), E.set(7), E.ack(8)],
+        blocks: [['Kafka', 3.5, 4.8]],
+        bands: [[0, 1, 'ok'], [1, 7, 'stale'], [7, 99, 'ok']],
+      },
     },
-    hide() { g.style.display = 'none'; },
+  },
+  {
+    id: 5, name: 'MySQL', resume: 'The producer reconnects at its binlog position.', ask: 0.6, answer: 'usual',
+    intro: 'MySQL restarts just before the price script runs its UPDATE.',
+    why: 'While MySQL is down the UPDATE itself fails, so the cache still matches the database. After the restart the script retries and the change flows with the usual lag.',
+    events: [
+      { x: 1.6, lane: 'script', tag: 'UPDATE ✗', kind: 'fail', src: null, title: 'The UPDATE fails', body: '<p>MySQL is down, so nothing changes. The cache still matches the database.</p>' },
+      E.commit(3.4),
+      E.read(4.4, { kind: 'resume', tag: 'reconnect', title: 'The producer reconnects at its position' }),
+      E.send(5.4), E.map(6.4), E.set(7.4), E.ack(8.4)],
+    blocks: [['MySQL', 0.6, 2.6]],
+    bands: [[0, 3.4, 'ok'], [3.4, 7.4, 'stale'], [7.4, 99, 'ok']],
+    extra: 'Binlog files survive a restart. If a file is purged before the producer reads it, those changes never reach Kafka: rebuild every active car with the management command.',
+  },
+];
+
+const BAND_CARD = {
+  ok: (after) => ({ price: after ? NEW : OLD, cls: 'is-ok', note: after ? 'new price · matches MySQL' : 'matches MySQL' }),
+  stale: () => ({ price: OLD, cls: 'is-stale', note: `stale · MySQL has ${inr(NEW)}` }),
+  down: () => ({ price: null, cls: 'is-down', note: 'Valkey is down · depends on the API fallback' }),
+  gone: () => ({ price: null, cls: 'is-gone', note: 'key expired (TTL 12 h)' }),
+};
+const BAND_LABEL = { stale: 'serves the old price', down: 'down', gone: 'key expired' };
+
+/*
+ * Swimlane engine shared by Fig. 2 and Fig. 3, so the reader's map of the
+ * lanes stays the same across both figures.
+ *   opts.top      element above the controls
+ *   opts.onDot(k) return true to take over a dot tap (guess mode)
+ *   opts.onMove() called when the reader moves time
+ *   opts.extra(k) html appended to step k's detail
+ */
+function timeline(fig, app, opts = {}) {
+  const id = uid('car1t');
+  let sc = null; let now = 0; let L = null; let kind = 'wide'; let playing = null;
+  let revealTo = Infinity; let prompt = null; let guess = -1;
+  const refs = {};
+  const stage = h('div', { class: `${P}tl` });
+  const card = h('div', { class: `${P}buyer`, 'aria-live': 'polite' },
+    h('div', { class: `${P}buyerhead` }, 'a buyer opening car 2323 now sees'),
+    h('div', { class: `${P}car` }, h('div', { class: `${P}photo` }, carIcon()),
+      h('b', null, 'Tata Nexon XZ+'), h('span', { class: `${P}sub` }, '2nd owner · Mumbai · sample'),
+      refs.price = h('div', { class: `${P}price` }), refs.cnote = h('div', { class: `${P}cnote` })));
+  const detail = h('div', { class: `${P}detail`, 'aria-live': 'polite' });
+  const slider = h('input', { type: 'range', min: 0, max: 10, step: 0.01, value: 0, 'aria-label': 'Time' });
+  const play = h('button', { type: 'button', class: `${P}play` }, '▶ play');
+  const ctrl = h('div', { class: `${P}ctrl` }, play, slider);
+
+  slider.addEventListener('input', () => { stop(); moved(); setNow(+slider.value); });
+  play.addEventListener('click', () => { moved(); if (playing) stop(); else start(); });
+
+  app.append(...(opts.top ? [opts.top] : []), ctrl, h('div', { class: `${P}tlgrid` }, stage, card), ...(opts.below ? [opts.below] : []), detail);
+
+  const moved = () => opts.onMove?.();
+  const xmax = () => Math.max(...sc.events.map((e) => e.x)) + 0.9;
+  const limit = () => Math.min(xmax(), revealTo);
+
+  function geom() {
+    const wide = kind === 'wide';
+    const W = wide ? 700 : 360;
+    const lab = wide ? 96 : 70;
+    const top = wide ? 30 : 16;
+    const lh = wide ? 38 : 32;
+    const vx = wide ? 16 : 0; // extra height on the Valkey lane for the band label
+    const hOf = (ln) => lh + (ln === 'Valkey' ? vx + 8 : 0);
+    const yOf = {}; let y = top;
+    for (const ln of LANES) { yOf[ln] = y; y += hOf(ln); }
+    const H = y + 6;
+    const x0 = lab + 14; const x1 = W - 16;
+    const X = (x) => x0 + (x / xmax()) * (x1 - x0);
+    const Y = (ln) => yOf[ln] + lh / 2;
+    return { wide, W, H, lab, top, lh, X, Y, yOf, hOf, x0, x1 };
+  }
+
+  function build() {
+    if (!sc) return;
+    L = geom();
+    const { W, H, X, Y, lh, top, wide, yOf, hOf } = L;
+    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': fig.getAttribute('aria-label') || 'Timeline' });
+    svg.append(s('defs', null,
+      s('pattern', { id: `${id}-hatch`, width: 7, height: 7, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' },
+        s('rect', { width: 7, height: 7, class: `${P}hatchbg` }), s('line', { x1: 0, y1: 0, x2: 0, y2: 7, class: `${P}hatchln` })),
+      s('marker', { id: `${id}-a`, viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 6, markerHeight: 6, orient: 'auto' }, s('path', { d: 'M0,0 L8,4 L0,8 z', class: `${P}arrowhead` }))));
+
+    LANES.forEach((ln, k) => {
+      svg.append(s('rect', { x: 0, y: yOf[ln], width: W, height: hOf(ln), class: `${P}lane${k % 2 ? ' odd' : ''}` }));
+      svg.append(s('text', { x: 8, y: Y(ln) + 4, class: `${P}lanelbl` }, !wide && ln === 'script' ? 'script' : LANE_LABEL[ln]));
+    });
+    // cache bands on the Valkey lane, clipped at what the reader may see
+    const by = Y('Valkey') + 13;
+    for (const [a, b, st] of sc.bands) {
+      const xa = X(clamp(a, 0, limit())); const xb = X(clamp(b, 0, limit()));
+      if (xb - xa < 1) continue;
+      svg.append(s('rect', { x: xa, y: by, width: xb - xa, height: 6, rx: 2, class: `${P}band ${P}band--${st}`, fill: st === 'down' ? `url(#${id}-hatch)` : null }));
+      const lbl = st === 'ok' ? (a > 0 ? 'new price' : 'matches MySQL') : BAND_LABEL[st];
+      if (wide && xb - xa > lbl.length * 6.2 + 10) svg.append(s('text', { x: xa + 4, y: by + 17, class: `${P}bandlbl ${P}bandlbl--${st}` }, lbl));
+    }
+    const hidden = (x) => x > revealTo + 1e-6;
+    // connectors
+    refs.hops = sc.events.map((e, k) => {
+      const src = e.src === undefined ? (k ? [sc.events[k - 1].x, sc.events[k - 1].lane] : null) : e.src;
+      if (!src || hidden(e.x)) return [null, e.x];
+      const [sx, sl] = src;
+      const ax = X(sx); const ay = Y(sl); const bx = X(e.x); const byy = Y(e.lane);
+      const d = Math.abs(ax - bx) < 0.5 ? `M${ax},${ay} L${bx},${byy + (byy > ay ? -11 : 11)}`
+        : `M${ax},${ay} C${(ax + bx) / 2},${ay} ${(ax + bx) / 2},${byy} ${bx - 11},${byy}`;
+      if (!sc.events.some((o) => o.x === sx && o.lane === sl)) svg.append(s('circle', { cx: ax, cy: ay, r: 3.2, class: `${P}origin` }));
+      const p = s('path', { d, class: `${P}hop${e.kind === 'lost' ? ' is-lost' : ''}`, 'marker-end': `url(#${id}-a)` });
+      svg.append(p);
+      return [p, e.x];
+    });
+    // the unknown: fog over what the reader has not predicted yet
+    if (revealTo < xmax()) {
+      const fx = X(revealTo) + 6;
+      svg.append(s('rect', { x: fx, y: top, width: W - fx, height: H - top - 6, class: `${P}fog` }));
+      svg.append(s('text', { x: (fx + W) / 2, y: (top + H) / 2 + 12, 'text-anchor': 'middle', class: `${P}fogq` }, '?'));
+    }
+    // outage blocks: the given in a question, so drawn above the fog
+    for (const [ln, a, b] of sc.blocks) {
+      svg.append(s('rect', { x: X(a), y: yOf[ln] + 3, width: X(b) - X(a), height: lh - 6, rx: 4, class: `${P}down`, fill: `url(#${id}-hatch)` }));
+      svg.append(s('text', { x: (X(a) + X(b)) / 2, y: Y(ln) + 4, 'text-anchor': 'middle', class: `${P}downlbl` }, 'down'));
+    }
+    // events
+    refs.dots = sc.events.map((e, k) => {
+      const g = s('g', { class: `${P}ev ${P}ev--${e.kind || 'ok'}${hidden(e.x) ? ' is-hidden' : ''}${k === guess ? ' is-guess' : ''}`, tabindex: hidden(e.x) ? -1 : 0, role: 'button', 'aria-label': `Step ${k + 1}: ${e.title}` });
+      const cx = X(e.x); const cy = Y(e.lane);
+      g.append(s('circle', { cx, cy, r: 10 }));
+      g.append(s('text', { x: cx, y: cy + 4, 'text-anchor': 'middle', class: 'n' }, e.kind === 'fail' || e.kind === 'lost' ? '✗' : String(k + 1)));
+      if (wide) g.append(s('text', { x: cx, y: cy - 15, 'text-anchor': 'middle', class: 'tag' }, k === guess ? 'your guess' : e.tag));
+      const go = () => {
+        if (opts.onDot?.(k)) return;
+        stop(); moved(); setNow(e.x + 0.001);
+      };
+      g.addEventListener('click', go);
+      g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { go(); ev.preventDefault(); } });
+      svg.append(g);
+      return g;
+    });
+    refs.cursor = s('g', { class: `${P}cursor` },
+      s('line', { x1: 0, x2: 0, y1: top - (wide ? 24 : 12), y2: H - 4 }),
+      s('rect', { x: -5, y: top - (wide ? 28 : 16), width: 10, height: 10, rx: 2 }));
+    svg.append(refs.cursor);
+    svg.addEventListener('pointerdown', (ev) => {
+      if (ev.target.closest(`.${P}ev`)) return;
+      stop(); moved();
+      const move = (e2) => {
+        const r = svg.getBoundingClientRect();
+        const vx = ((e2.clientX - r.left) / r.width) * W;
+        setNow(clamp(((vx - L.x0) / (L.x1 - L.x0)) * xmax(), 0, limit()));
+      };
+      move(ev);
+      svg.setPointerCapture(ev.pointerId);
+      svg.addEventListener('pointermove', move);
+      svg.addEventListener('pointerup', () => svg.removeEventListener('pointermove', move), { once: true });
+    });
+    refs.svg = svg;
+    stage.replaceChildren(svg);
+    slider.max = limit();
+    setNow(now);
+  }
+
+  const bandAt = (x) => sc.bands.find(([a, b]) => x >= a && x < b) || sc.bands[sc.bands.length - 1];
+
+  function renderDetail(cur) {
+    if (prompt) { detail.replaceChildren(prompt); return; }
+    if (cur < 0) { detail.innerHTML = `<p class="${P}intro">${sc.intro}</p>`; return; }
+    const e = sc.events[cur];
+    const tail = cur === sc.events.length - 1 && sc.extra ? `<p class="${P}extra">${sc.extra}</p>` : '';
+    detail.innerHTML = `<h4><span class="${P}num ${P}num--${e.kind || 'ok'}">${e.kind === 'fail' || e.kind === 'lost' ? '✗' : cur + 1}</span>${e.title}<small>${LANE_LABEL[e.lane]}</small></h4>${e.body}${tail}${opts.extra?.(cur) || ''}`;
+    // words first, code on demand
+    const pres = [...detail.querySelectorAll(`pre.${P}code`)];
+    if (pres.length) {
+      const d = h('details', { class: `${P}more` }, h('summary', null, 'show the code'), ...pres);
+      detail.append(d);
+    }
+  }
+
+  function setNow(x) {
+    now = clamp(x, 0, limit());
+    slider.value = now;
+    if (!refs.svg) return;
+    refs.cursor.setAttribute('transform', `translate(${L.X(now)},0)`);
+    let cur = -1;
+    sc.events.forEach((e, k) => {
+      const done = e.x <= now + 1e-6;
+      refs.dots[k].classList.toggle('is-done', done);
+      if (done) cur = k;
+    });
+    refs.dots.forEach((d, k) => d.classList.toggle('is-cur', k === cur));
+    refs.hops.forEach(([p, ex]) => p && p.classList.toggle('is-done', ex <= now + 1e-6));
+    const [a, , st] = bandAt(now);
+    const c = BAND_CARD[st](a > 0);
+    refs.price.textContent = c.price == null ? '—' : inr(c.price);
+    refs.cnote.textContent = c.note;
+    card.className = `${P}buyer ${c.cls}`;
+    renderDetail(cur);
+  }
+
+  function start() {
+    if (now >= limit() - 0.01) setNow(0);
+    play.textContent = '❚❚ pause';
+    if (REDUCED) {
+      playing = setInterval(() => {
+        const nx = sc.events.find((e) => e.x > now + 1e-6 && e.x <= limit());
+        if (!nx) { stop(); return; }
+        setNow(nx.x + 0.001);
+      }, 1400);
+      return;
+    }
+    let last = performance.now();
+    const tick = (t) => {
+      setNow(now + ((t - last) / 1000) * 0.8);
+      last = t;
+      if (now >= limit() - 0.001) { stop(); return; }
+      playing = requestAnimationFrame(tick);
+    };
+    playing = requestAnimationFrame(tick);
+  }
+  function stop() {
+    if (playing) { cancelAnimationFrame(playing); clearInterval(playing); }
+    playing = null;
+    play.textContent = '▶ play';
+  }
+
+  onLayout(app, (k) => { kind = k; build(); }, 600);
+  return {
+    load(next, { at = 0, reveal = Infinity } = {}) { stop(); sc = next; now = at; revealTo = reveal; guess = -1; build(); },
+    reveal(x) { revealTo = x; build(); },
+    prompt(el) { prompt = el; if (sc && refs.svg) setNow(now); },
+    guess(k) { guess = k; build(); },
+    setNow(x) { stop(); setNow(x); },
+    get now() { return now; },
   };
 }
 
-/* ====================================================== WRITE COVERAGE */
-
-const HOOKS = [
-  {
-    id: 'signal', name: 'Model signals', chip: 'post_save',
-    pros: ['Runs in the same process, right after save()'],
-    cons: ['Sees only Django save() and create()', 'Cache code mixes with model code'],
-  },
-  {
-    id: 'domain', name: 'Domain layer', chip: 'CarService',
-    pros: ['Sees every Django write that goes through the service'],
-    cons: ['The PHP portal and the scripts never call it', 'Each new code path must remember to'],
-  },
-  {
-    id: 'binlog', name: 'Binlog reader', chip: 'binlog reader', pick: true,
-    pros: ['Sees every committed row change, from any client', 'No cache code in the apps'],
-    cons: ['Three new parts to run: producer, Kafka, consumer', 'The cache updates after the commit, not with it', 'Needs a rule per table to find the car id'],
-  },
-];
-
-/* Sample writes. `lane` is the path the write takes to MySQL. */
-const WRITES = [
-  {
-    id: 'save', lane: 'save', who: 'Inventory app', label: 'Edit owner', table: 'cars',
-    code: ['car = Car.objects.get(id=«2323»)', 'car.owner = «2»', 'car.save()'],
-    hit: { signal: 1, domain: 1, binlog: 1 },
-    why: { signal: 'save() sends post_save after the UPDATE.' },
-  },
-  {
-    id: 'update', lane: 'bulk', who: 'Inventory app', label: 'Swap a photo', table: 'car_images',
-    code: ['CarImage.objects.filter(car_id=«2323», image_url=old)', '    .update(image_url=new)'],
-    hit: { signal: 0, domain: 1, binlog: 1 },
-    why: { signal: 'QuerySet.update() runs one UPDATE and sends no post_save.', domain: 'Caught, if this code calls the service instead of the ORM.' },
-  },
-  {
-    id: 'bulk', lane: 'bulk', who: 'Inventory app', label: 'Add 4 photos', table: 'car_images',
-    code: ['CarImage.objects.bulk_create([', '    CarImage(car_id=«2323», image_url=u) for u in urls])'],
-    hit: { signal: 0, domain: 1, binlog: 1 },
-    why: { signal: 'bulk_create() inserts in one query and sends no post_save.', domain: 'Caught, if this code calls the service instead of the ORM.' },
-  },
-  {
-    id: 'ops', lane: 'ops', who: 'Ops portal', label: 'Mark sold', table: 'cars',
-    code: ["UPDATE cars SET status = «'sold'» WHERE id = «2323»;"],
-    hit: { signal: 0, domain: 0, binlog: 1 },
-    why: { signal: 'The portal is a CakePHP app. Django never sees the write.', domain: 'The portal writes to MySQL directly and never calls the Django service.' },
-  },
-  {
-    id: 'ds', lane: 'ds', who: 'Price script', label: 'Daily prices', table: 'cars',
-    code: ['cur.executemany(', '    "UPDATE cars SET price = %s WHERE id = %s",', '    rows)                     // 10,000 cars'],
-    hit: { signal: 0, domain: 0, binlog: 1 },
-    why: { signal: 'A Python script with its own MySQL connection. No Django model runs.', domain: 'The script writes to MySQL directly and never calls the Django service.' },
-  },
-];
-
-const COV = {
-  wide: {
-    vb: [960, 292],
-    boxes: {
-      inv: [10, 12, 330, 134], ops: [10, 162, 330, 54], ds: [10, 230, 330, 54],
-      mysql: [430, 12, 210, 272], valkey: [760, 96, 190, 104],
-    },
-    titles: { inv: [22, 32], ops: [22, 194], ds: [22, 262] },
-    domain: [22, 44, 78, 92],
-    signal: [236, 56, 96, 24],
-    tables: { cars: [446, 40, 178, 30], car_images: [446, 80, 178, 30], car_features: [446, 120, 178, 30] },
-    binlog: [446, 206, 178, 60],
-    binlogChip: [560, 250, 112, 26],
-    lanes: {
-      save: [[100, 68], [430, 68]], bulk: [[100, 114], [430, 114]],
-      ops: [[340, 189], [430, 189]], ds: [[340, 257], [430, 257]],
-    },
-    laneLabels: { save: [112, 62], bulk: [112, 108] },
-    commit: [[535, 154], [535, 206]], commitLabel: true,
-    hookPath: {
-      signal: [[284, 56], [284, 4], [855, 4], [855, 96]],
-      domain: [[61, 44], [61, 4], [855, 4], [855, 96]],
-      binlog: [[672, 263], [712, 263], [712, 170], [760, 170]],
-    },
-    miss: { save: [405, 68], bulk: [405, 114], ops: [385, 189], ds: [385, 257] },
-  },
-  tall: {
-    vb: [360, 640],
-    boxes: {
-      inv: [8, 8, 296, 134], ops: [8, 154, 296, 46], ds: [8, 212, 296, 46],
-      mysql: [8, 290, 344, 210], valkey: [8, 544, 344, 88],
-    },
-    titles: { inv: [20, 28], ops: [20, 182], ds: [20, 240] },
-    domain: [20, 40, 64, 92],
-    signal: [194, 54, 100, 24],
-    tables: { cars: [22, 318, 150, 28], car_images: [22, 354, 150, 28], car_features: [22, 390, 150, 28] },
-    binlog: [22, 430, 150, 56],
-    binlogChip: [190, 445, 110, 26],
-    lanes: {
-      save: [[84, 66], [320, 66], [320, 290]], bulk: [[84, 112], [328, 112], [328, 290]],
-      ops: [[304, 177], [336, 177], [336, 290]], ds: [[304, 235], [344, 235], [344, 290]],
-    },
-    laneLabels: { save: [92, 60], bulk: [92, 106] },
-    commit: [[97, 418], [97, 430]],
-    hookPath: {
-      signal: [[244, 78], [244, 92], [180, 92], [180, 272], [4, 272], [4, 588], [8, 588]],
-      domain: [[20, 86], [4, 86], [4, 588], [8, 588]],
-      binlog: [[245, 471], [245, 544]],
-    },
-    miss: { save: [320, 272], bulk: [328, 272], ops: [336, 272], ds: [344, 272] },
-  },
-};
-
-function initCoverage(fig, app) {
-  const id = uid('car1c');
-  let hook = 'binlog';
-  let write = 'ops';
-  let L; let refs;
-  const stage = h('div');
-
-  const hookBtns = HOOKS.map((hk) => h('button', {
-    type: 'button', class: `wv-btn ${P}hook${hk.pick ? ` ${P}hook--pick` : ''}`,
-    onclick: () => { hook = hk.id; paint(); },
-  }, hk.name, hk.pick ? h('span', { class: `${P}ours` }, 'our pick') : null));
-  const proscons = h('ul', { class: `${P}pc`, 'aria-live': 'polite' });
-  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
-
-  const table = h('table', { class: `wv-mini ${P}matrix` });
-  const thead = h('tr', null, h('th', null, 'sample write'), ...HOOKS.map((hk) => h('th', { 'data-h': hk.id },
-    h('button', { type: 'button', class: `${P}th`, onclick: () => { hook = hk.id; paint(); } }, hk.chip === 'binlog reader' ? 'binlog' : hk.chip))));
-  const rows = WRITES.map((wr) => h('tr', { 'data-w': wr.id },
-    h('td', null, h('button', { type: 'button', class: `${P}row`, onclick: () => { write = wr.id; paint(); } },
-      h('b', null, wr.label), h('span', null, wr.who))),
-    ...HOOKS.map((hk) => h('td', { 'data-h': hk.id, class: wr.hit[hk.id] ? 'ok' : 'bad' }, wr.hit[hk.id] ? '✓' : '✗'))));
-  const total = h('tr', { class: `${P}total` }, h('td', null, 'writes seen'),
-    ...HOOKS.map((hk) => h('td', { 'data-h': hk.id }, `${WRITES.filter((w) => w.hit[hk.id]).length} / ${WRITES.length}`)));
-  table.append(h('thead', null, thead), h('tbody', null, ...rows, total));
-
-  app.append(
-    h('div', { class: `${P}bar` }, h('span', { class: `${P}lbl` }, 'Hook'), h('div', { class: 'wv-seg' }, ...hookBtns)),
-    proscons, stage, note,
-    h('div', { class: 'wv-scroll' }, table),
-    colorKey([['k-opt', 'hook you can pick'], ['k-pick', 'the hook we chose'], ['k-look', 'this write'], ['k-data', 'rows'], ['k-safe', 'cache rebuilt'], ['k-gap', 'write missed, page stale']]),
-  );
-
-  function build(kind) {
-    L = COV[kind];
-    refs = { lanes: {}, tables: {}, hooks: {}, hookPaths: {} };
-    const [W, H] = L.vb;
-    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': fig.getAttribute('aria-label') || 'Writers, MySQL and Valkey' });
-    svg.append(markers(id));
-
-    const b = L.boxes;
-    for (const k of ['inv', 'ops', 'ds']) svg.append(s('rect', { x: b[k][0], y: b[k][1], width: b[k][2], height: b[k][3], class: 'box' }));
-    const tt = (k, a, c) => s('text', { x: L.titles[k][0], y: L.titles[k][1], class: 't-m t-b' }, a, s('tspan', { class: 't-xs t-mute', dx: 8 }, c));
-    svg.append(tt('inv', 'Inventory app', 'Django'), tt('ops', 'Ops portal', 'CakePHP'), tt('ds', 'Price scripts', 'Python + SQL'));
-
-    // lanes into MySQL
-    for (const [k, pts] of Object.entries(L.lanes)) {
-      const p = s('path', { d: pathD(pts), class: 'edge', 'marker-end': `url(#${id}-ink)` });
-      refs.lanes[k] = p;
-      svg.append(p);
-    }
-    for (const [k, [x, y]] of Object.entries(L.laneLabels)) {
-      svg.append(s('text', { x, y, class: 't-xs halo' }, k === 'save' ? 'save() · create()' : '.update() · bulk_create()'));
-    }
-
-    // MySQL with tables and binlog
-    const [mx, my, mw, mh] = b.mysql;
-    svg.append(s('rect', { x: mx, y: my, width: mw, height: mh, class: 'box' }));
-    svg.append(s('text', { x: mx + 16, y: my + 20, class: 't-m t-b' }, 'MySQL', s('tspan', { class: 't-xs t-mute', dx: 8 }, 'primary')));
-    for (const [t, [x, y, w, hh]] of Object.entries(L.tables)) {
-      const g = s('g', { class: `${P}tbl` }, s('rect', { x, y, width: w, height: hh, class: 'box dash' }),
-        s('text', { x: x + w / 2, y: y + hh / 2 + 4, 'text-anchor': 'middle', class: 't-s' }, t));
-      refs.tables[t] = g;
-      svg.append(g);
-    }
-    const [bx, by, bw, bh] = L.binlog;
-    svg.append(s('rect', { x: bx, y: by, width: bw, height: bh, class: 'box dash' }));
-    svg.append(s('text', { x: bx + 12, y: by + 20, class: 't-s t-b' }, 'binlog'));
-    refs.binlogRow = s('text', { x: bx + 12, y: by + 36, class: 't-xs t-data t-b' }, '');
-    refs.binlogTbl = s('text', { x: bx + 12, y: by + 50, class: 't-xs t-data' }, '');
-    svg.append(refs.binlogRow, refs.binlogTbl);
-    svg.append(s('path', { d: pathD(L.commit), class: 'edge', 'marker-end': `url(#${id}-ink)` }));
-    if (L.commitLabel) svg.append(s('text', { x: L.commit[0][0] + 6, y: (L.commit[0][1] + L.commit[1][1]) / 2 + 4, class: 't-xs t-mute' }, 'every commit'));
-
-    // Valkey
-    const [vx, vy, vw, vh] = b.valkey;
-    svg.append(s('rect', { x: vx, y: vy, width: vw, height: vh, class: 'box' }));
-    svg.append(s('text', { x: vx + vw / 2, y: vy + 22, 'text-anchor': 'middle', class: 't-m t-b' }, 'Valkey'));
-    svg.append(s('text', { x: vx + vw / 2, y: vy + 42, 'text-anchor': 'middle', class: 't-s t-data t-b' }, ':1:dp:2323'));
-    refs.vval = s('text', { x: vx + vw / 2, y: vy + 64, 'text-anchor': 'middle', class: 't-s t-b' }, '');
-    refs.vsub = s('text', { x: vx + vw / 2, y: vy + 82, 'text-anchor': 'middle', class: 't-xs' }, '');
-    svg.append(refs.vval, refs.vsub);
-
-    // hook paths to Valkey (only the selected one shows)
-    for (const [k, pts] of Object.entries(L.hookPath)) {
-      const p = s('path', { d: pathD(pts), class: 'edge-ack', 'marker-end': `url(#${id}-green)` });
-      refs.hookPaths[k] = p;
-      svg.append(p);
-    }
-
-    // hook chips
-    const hookChip = (k, [x, y, w, hh], label, vertical) => {
-      const g = s('g', { class: `${P}hk` }, s('rect', { x, y, width: w, height: hh, rx: 2 }));
-      if (vertical) {
-        g.append(s('text', { x: x + w / 2, y: y + hh / 2 - 4, 'text-anchor': 'middle', class: 't-xs t-b' }, label));
-        g.append(s('text', { x: x + w / 2, y: y + hh / 2 + 12, 'text-anchor': 'middle', class: 't-xs' }, 'domain'));
-      } else g.append(s('text', { x: x + w / 2, y: y + hh / 2 + 4, 'text-anchor': 'middle', class: 't-s t-b' }, label));
-      refs.hooks[k] = g;
-      svg.append(g);
-    };
-    hookChip('domain', L.domain, 'CarService', true);
-    hookChip('signal', L.signal, 'post_save');
-    hookChip('binlog', L.binlogChip, 'reader');
-
-    refs.miss = s('g', { class: `${P}miss` }, s('circle', { r: 9 }), s('text', { y: 4, 'text-anchor': 'middle', class: 't-s t-b' }, '✗'));
-    svg.append(refs.miss);
-    stage.replaceChildren(svg);
-    paint();
-  }
-
-  function paint() {
-    if (!refs) return;
-    const wr = WRITES.find((w) => w.id === write);
-    const hk = HOOKS.find((x) => x.id === hook);
-    const caught = !!wr.hit[hook];
-
-    hookBtns.forEach((bn, k) => bn.setAttribute('aria-pressed', String(HOOKS[k].id === hook)));
-    proscons.replaceChildren(...hk.pros.map((t) => h('li', { class: 'pro' }, t)), ...hk.cons.map((t) => h('li', { class: 'con' }, t)));
-
-    for (const [k, p] of Object.entries(refs.lanes)) {
-      const on = k === wr.lane;
-      p.setAttribute('class', on ? `edge ${P}hot` : 'edge is-dim');
-      p.setAttribute('marker-end', `url(#${id}-${on ? 'purple' : 'ink'})`);
-    }
-    for (const [t, g] of Object.entries(refs.tables)) g.classList.toggle('is-hit', t === wr.table);
-    refs.binlogRow.textContent = `${wr.id === 'bulk' ? 'Write_rows' : 'Update_rows'} event`;
-    refs.binlogTbl.textContent = `table ${wr.table}`;
-    for (const [k, g] of Object.entries(refs.hooks)) {
-      const on = k === hook;
-      g.setAttribute('class', `${P}hk${on ? (caught ? ' is-caught' : HOOKS.find((x) => x.id === k).pick ? ' is-pick' : ' is-opt') : ' is-off'}`);
-    }
-    for (const [k, p] of Object.entries(refs.hookPaths)) p.style.display = k === hook && caught ? '' : 'none';
-    if (caught) {
-      refs.miss.style.display = 'none';
-      refs.vval.textContent = 'rebuilt';
-      refs.vval.setAttribute('class', 't-s t-b t-safe');
-      refs.vsub.textContent = 'fresh JSON';
-      refs.vsub.setAttribute('class', 't-xs t-safe');
-    } else {
-      const [x, y] = L.miss[wr.lane];
-      refs.miss.style.display = '';
-      refs.miss.setAttribute('transform', `translate(${x},${y})`);
-      refs.vval.textContent = 'old JSON';
-      refs.vval.setAttribute('class', 't-s t-b t-bad');
-      refs.vsub.textContent = 'stale up to 12 h (TTL)';
-      refs.vsub.setAttribute('class', 't-xs t-bad');
-    }
-
-    const why = wr.why?.[hook] || (caught ? (hook === 'binlog' ? 'Every committed row change is in the binlog, whichever client wrote it.' : 'The write passes through the hook.') : '');
-    note.className = `wv-note ${caught ? 'is-good' : 'is-bad'}`;
-    note.innerHTML = `<span class="k">${wr.who}</span><b>${wr.label}</b>${codeBlock(wr.code)}<p><span class="${caught ? 'c-safe' : 'c-bad'}">${caught ? `${hk.name}: caught.` : `${hk.name}: missed.`}</span> ${why}${caught ? '' : ' The car page keeps the old JSON until its 12-hour TTL ends.'}</p>`;
-
-    rows.forEach((r) => r.classList.toggle('is-sel', r.dataset.w === write));
-    table.querySelectorAll('[data-h]').forEach((c) => c.classList.toggle('is-col', c.dataset.h === hook));
-    table.querySelectorAll(`.${P}row`).forEach((bn, k) => bn.setAttribute('aria-pressed', String(WRITES[k].id === write)));
-  }
-
-  onLayout(app, build);
-}
-
-/* ======================================================== PIPELINE MAP */
-
-const PIPE_NODES = {
-  script: { a: ['price script', 'Python + SQL'] },
-  mysql: { a: ['MySQL', '~10 tables'], b: ['binlog', '@pos'] },
-  prod: { a: ['producer', 'binlog → Kafka'] },
-  kafka: { a: ['Kafka', 'topic cars'], b: ['consumer offset', '@off'] },
-  cons: { a: ['consumer', 'rebuild JSON'] },
-  valkey: { a: ['Valkey', ':1:dp:2323'], b: ['price in JSON', '@price'] },
-  api: { a: ['Django API', 'GET /listing/2323/'] },
-  buyer: { a: ['buyer', 'from an ad'] },
-};
-
-/* [id, from, to, kind] kind: data | read | rebuild */
-const PIPE_EDGES = [
-  ['e1', 'script', 'mysql', 'data'], ['e2', 'mysql', 'prod', 'data'], ['e3', 'prod', 'kafka', 'data'],
-  ['e4', 'kafka', 'cons', 'data'], ['e5', 'cons', 'valkey', 'data'], ['r1', 'cons', 'mysql', 'rebuild'],
-  ['g1', 'buyer', 'api', 'read'], ['g2', 'api', 'valkey', 'read'],
-];
-
-const PIPE = {
-  wide: {
-    vb: [960, 262], split: 'v',
-    nodes: {
-      script: [10, 22, 130, 64], mysql: [180, 22, 160, 128], prod: [380, 86, 130, 64],
-      kafka: [550, 22, 170, 128], cons: [770, 22, 180, 64], valkey: [770, 150, 180, 104],
-      api: [320, 174, 220, 56], buyer: [10, 174, 160, 56],
-    },
-    anchors: {
-      script: [75, 22], mysql: [260, 22], mysqlB: [260, 86], prod: [445, 86], kafka: [635, 22], kafkaB: [635, 86],
-      cons: [860, 22], valkey: [860, 150], valkeyB: [860, 202], api: [430, 174], buyer: [90, 174],
-    },
-    edges: {
-      e1: [[140, 54], [180, 54]], e2: [[340, 118], [380, 118]], e3: [[510, 118], [530, 118], [530, 54], [550, 54]],
-      e4: [[720, 54], [770, 54]], e5: [[860, 86], [860, 150]], r1: [[800, 22], [800, 8], [300, 8], [300, 22]],
-      g1: [[170, 202], [320, 202]], g2: [[540, 202], [770, 202]],
-    },
-    labels: [['reads the car rows', 550, 4, 'middle'], ['GET', 655, 196, 'middle']],
-    durable: [['durable', 260, 164], ['durable', 635, 164]],
-  },
-  tall: {
-    vb: [360, 632], split: 'h',
-    nodes: {
-      script: [10, 10, 300, 50], mysql: [10, 86, 300, 60], prod: [10, 172, 300, 50], kafka: [10, 248, 300, 60],
-      cons: [10, 334, 300, 50], valkey: [10, 410, 300, 60], api: [10, 496, 300, 50], buyer: [10, 572, 300, 50],
-    },
-    anchors: {
-      script: [160, 10], mysql: [85, 86], mysqlB: [235, 86], prod: [160, 172], kafka: [85, 248], kafkaB: [235, 248],
-      cons: [160, 334], valkey: [85, 410], valkeyB: [235, 410], api: [160, 496], buyer: [160, 572],
-    },
-    edges: {
-      e1: [[85, 60], [85, 86]], e2: [[235, 146], [235, 172]], e3: [[85, 222], [85, 248]], e4: [[85, 308], [85, 334]],
-      e5: [[85, 384], [85, 410]], r1: [[310, 359], [342, 359], [342, 74], [130, 74], [130, 86]],
-      g1: [[160, 572], [160, 546]], g2: [[160, 496], [160, 470]],
-    },
-    labels: [['reads', 350, 220, 'middle', true], ['GET', 168, 488, 'start']],
-    durable: [],
-  },
-};
-
-function pipeline(fig, stage, onBuilt) {
-  const id = uid('car1p');
-  const api = { L: null, nodes: {}, edges: {}, refs: {}, chip: null, svg: null };
-  function build(kind) {
-    const L = PIPE[kind];
-    api.L = L; api.nodes = {}; api.edges = {}; api.refs = {};
-    const [W, H] = L.vb;
-    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': fig.getAttribute('aria-label') || 'Change pipeline' });
-    svg.append(markers(id));
-    for (const [eid, , , k] of PIPE_EDGES) {
-      const p = s('path', {
-        d: pathD(L.edges[eid]), class: k === 'rebuild' ? 'edge-ctl' : 'edge',
-        'marker-end': k === 'rebuild' ? `url(#${id}-line)` : `url(#${id}-ink)`,
-      });
-      p.dataset.kind = k;
-      api.edges[eid] = p;
-      svg.append(p);
-    }
-    for (const [t, x, y, a, rot] of L.labels) {
-      svg.append(s('text', { x, y, class: 't-xs t-mute halo', 'text-anchor': a, transform: rot ? `rotate(-90 ${x} ${y})` : null }, t));
-    }
-    for (const [t, x, y] of L.durable) svg.append(s('text', { x, y, class: 't-xs t-safe t-up t-b', 'text-anchor': 'middle' }, t));
-    for (const [nid, spec] of Object.entries(PIPE_NODES)) {
-      const g = drawBox(L.nodes[nid], spec, L.split, api.refs, false);
-      g.dataset.id = nid;
-      api.nodes[nid] = g;
-      svg.append(g);
-    }
-    api.chip = chip(svg);
-    api.svg = svg;
-    api.id = id;
-    stage.replaceChildren(svg);
-    onBuilt(api);
-  }
-  onLayout(stage.parentElement, build);
-  return api;
-}
-
-function setEdge(api, eid, state) {
-  const p = api.edges[eid];
-  const kind = p.dataset.kind;
-  const base = kind === 'rebuild' ? 'edge-ctl' : 'edge';
-  p.setAttribute('class', `${base}${state === 'hot' ? ` ${P}hot` : state === 'dim' ? ' is-dim' : ''}`);
-  const m = state === 'hot' ? 'purple' : kind === 'rebuild' ? 'line' : 'ink';
-  p.setAttribute('marker-end', `url(#${api.id}-${m})`);
-}
-
-/* ----------------------------------------------------- one price change */
-
-const POS0 = '000412 : 18411';
-const POS1 = '000412 : 18807';
-const OFF0 = 'p2 → 88,120';
-const OFF1 = 'p2 → 88,121';
-const MSG_BYTES = 296; // len(json.dumps(sample event)) for the row below
-
-const CHANGE = [
-  {
-    label: 'Write', focus: ['script', 'mysql'], hot: ['e1'], chipAt: 'mysql', chip: 'price 510000',
-    pos: POS1, off: OFF0, price: 'old',
-    title: 'A script changes the price', where: 'price script → MySQL primary',
-    body: () => `${codeBlock([
-      'UPDATE cars SET price = «510000» WHERE id = «2323»;',
-      'COMMIT;',
-    ])}<p>MySQL appends one <code>Update_rows</code> event to the binlog, with the whole row before and after. Valkey still holds the JSON with <span class="c-bad">price 525,000</span>, so every request for car 2323 now gets the old price.</p>`,
-  },
-  {
-    label: 'Read binlog', focus: ['mysql', 'prod'], hot: ['e2'], chipAt: 'prod', chip: 'UpdateRowsEvent',
-    pos: POS1, off: OFF0, price: 'old',
-    title: 'The producer reads the row event', where: 'producer · BinLogStreamReader',
-    body: () => `${codeBlock([
-      'stream = BinLogStreamReader(',
-      '    connection_settings=config["mysql_config"],',
-      '    server_id=100, blocking=True,',
-      '    only_events=[WriteRowsEvent, UpdateRowsEvent],',
-      `    log_file=«"mysql-bin.000412"», log_pos=«18411», resume_stream=True)`,
-      'for binlog_event in stream:',
-      '    for row in binlog_event.rows:',
-      '        row["before_values"]   // {"id": 2323, …, "price": «525000»}',
-      '        row["after_values"]    // {"id": 2323, …, "price": «510000»}',
-    ], [3, 7, 8])}<p>The producer connects to MySQL as a replica and receives row events. This needs <code>binlog_format=ROW</code>, the default since MySQL 5.7.7. <span class="c-bad">The public library asks only for inserts and updates.</span> A deleted row, such as a removed photo, never reaches Kafka unless <code>DeleteRowsEvent</code> is added to <code>only_events</code>.</p>`,
-  },
-  {
-    label: 'Send', focus: ['prod', 'kafka'], hot: ['e3'], chipAt: 'kafka', chip: 'p2 · 88,120',
-    pos: POS1, off: OFF0, price: 'old',
-    title: 'One JSON message per row', where: 'producer → Kafka topic cars',
-    body: () => `${codeBlock([
-      'producer.send(topic=«"cars"», value=«b\'{"schema": "carsdb", "table": "cars",',
-      '    "type": "UpdateRowsEvent", "row": {"before_values": {…},',
-      '    "after_values": {…, "price": 510000}}}\'»)',
-      '// no key: kafka-python picks a random partition → p2, offset 88,120',
-      '// acks=1 (default): the leader has it, followers may not yet',
-    ], [3])}<p>The topic is the table name. For this sample row the value is ${MSG_BYTES} bytes of JSON. With no key, two changes to car 2323 can land in different partitions and arrive in any order. Sending the car id as the key keeps one car's changes in one partition, in order.</p>`,
-  },
-  {
-    label: 'Map', focus: ['kafka', 'cons'], hot: ['e4'], chipAt: 'cons', chip: 'car 2323',
-    pos: POS1, off: OFF0, price: 'old',
-    title: 'The consumer finds the car id', where: 'consumer (sketch)',
-    body: () => `${codeBlock([
-      'CAR_ID = {                          // table → column with the car id',
-      '    "cars":         lambda r: r["id"],',
-      '    "car_images":   lambda r: r["car_id"],',
-      '    "car_features": lambda r: r["car_id"],',
-      '}',
-      'msg = json.loads(record.value)      // p2, offset 88,120',
-      'row = msg["row"].get("after_values") or msg["row"]["values"]',
-      'car_id = CAR_ID[msg["table"]](row)  // «2323»',
-    ], [1, 7])}<p>The binlog knows rows, not car pages. The consumer needs one rule per table to find the car id. When someone adds a table to the car page, they add a rule here.</p>`,
-  },
-  {
-    label: 'Rebuild', focus: ['cons', 'valkey', 'mysql'], hot: ['r1', 'e5'], chipAt: 'valkey', chip: 'SET',
-    pos: POS1, off: OFF0, price: 'new',
-    title: 'Rebuild the JSON and write it to Valkey', where: 'consumer → MySQL, Valkey',
-    body: () => `${codeBlock([
-      'payload = build_car_json(2323)          // reads ~10 tables',
-      'cache.set("dp:2323", payload, timeout=12 * 3600)',
-      '// django-redis: pickle → gzip → one SET',
-      'SET «:1:dp:2323» «1f 8b 08 00 …» PX «43200000»',
-    ], [3])}<p>The consumer reads the car's current rows, not the values in the event, so a late or repeated event still writes the latest state. django-redis adds the <code>:1:</code> prefix (key version 1) and sends 12 hours as 43,200,000 ms. The cache now holds <span class="c-safe">price 510,000</span>. To invalidate instead, the consumer sends <code>DEL :1:dp:2323</code>.</p>`,
-  },
-  {
-    label: 'Commit', focus: ['cons', 'kafka'], hot: [], chipAt: null,
-    pos: POS1, off: OFF1, price: 'new', offHot: true,
-    title: 'Commit the offset after the SET', where: 'consumer → Kafka',
-    body: () => `${codeBlock([
-      'cache.set(...)          // returned OK',
-      'consumer.commit()       // p2: 88,120 → «88,121»',
-    ], [1])}<p>The offset moves only after the SET returns. If the consumer dies between the two, Kafka hands out offset 88,120 again and the consumer builds the same JSON again. Delivery is at-least-once, and a rebuild is safe to repeat.</p>`,
-  },
-  {
-    label: 'Serve', focus: ['buyer', 'api', 'valkey'], hot: ['g1', 'g2'], chipAt: 'api', chip: '200 · 510000', chipKind: 'safe',
-    pos: POS1, off: OFF1, price: 'new',
-    title: 'The next buyer gets the new price', where: 'buyer → Django API → Valkey',
-    body: () => `${codeBlock([
-      'GET /listing/2323/',
-      'cache.get("dp:2323")    // GET :1:dp:2323 → gunzip → unpickle',
-      '→ 200 {"id": 2323, "price": «510000», …}',
-    ], [2])}<p>One key lookup and no MySQL query. The price was wrong from step 1 to step 5. That window is the lag of the pipeline: binlog, producer, Kafka, consumer.</p>`,
-  },
-];
-
-function setPrice(api, state) {
-  const t = api.refs.price;
-  if (!t) return;
-  t.textContent = state === 'new' ? '510,000 · fresh' : state === 'old' ? '525,000 · stale' : '510,000';
-  t.setAttribute('class', `t-s t-b ${state === 'new' ? 't-safe' : state === 'old' ? 't-bad' : 't-data'}`);
-  api.nodes.valkey.classList.toggle('is-bad', state === 'old');
-}
-
-function anchor(api, key) {
-  return api.L.anchors[key] || api.L.anchors[key.replace(/B$/, '')];
-}
+/* ---------------------------------------------------- Fig. 2: predict */
 
 function initChange(fig, app) {
-  const stage = h('div');
-  const insp = h('div', { class: 'wv-insp', 'aria-live': 'polite' });
-  app.append(stage);
-  let step = 0;
-  let api;
-  function show(i) {
-    step = i;
-    if (!api?.L) return;
-    const st = CHANGE[i];
-    for (const [nid, g] of Object.entries(api.nodes)) {
-      g.classList.toggle('is-focus', st.focus.includes(nid));
-      g.classList.toggle('is-dim', !st.focus.includes(nid) && !(nid === 'valkey' && st.price === 'old'));
-    }
-    for (const eid of Object.keys(api.edges)) setEdge(api, eid, st.hot.includes(eid) ? 'hot' : 'dim');
-    api.refs.pos.textContent = st.pos;
-    api.refs.off.textContent = st.off;
-    api.refs.off.setAttribute('class', `t-s t-b ${st.offHot ? 't-safe' : 't-data'}`);
-    setPrice(api, st.price);
-    if (st.chipAt) {
-      const [x, y] = anchor(api, st.chipAt);
-      api.chip.show(x, y, st.chip, st.chipKind || 'data');
-    } else api.chip.hide();
-    insp.innerHTML = `<h4><span>${String(i + 1).padStart(2, '0')} · ${st.title}</span><span class="where">${st.where}</span></h4>${st.body()}`;
-  }
-  const bar = stepper(app, CHANGE, (i) => show(i));
-  app.prepend(bar.el);
-  app.append(colorKey([['k-look', 'this step'], ['k-data', 'sample data'], ['k-gap', 'stale cache'], ['k-safe', 'fresh cache, durable']]), insp);
-  api = pipeline(fig, stage, (a) => { api = a; show(step); });
-  bar.go(0);
-}
-
-/* ---------------------------------------------------------- fault map */
-
-/* Order matches the numbered failure sections in the post. */
-const FAULTS = [
-  {
-    node: 'cons', title: 'Consumer node fails', resume: 'kafkaB', resumeLabel: 'it resumes at the last committed offset',
-    body: 'Kafka keeps the messages, for 7 days by default. On restart the consumer group reads from the last committed offset, so some cars are rebuilt twice, with the same result. Until it catches up, car pages keep the old JSON, at most until the 12-hour TTL removes the key.',
-  },
-  {
-    node: 'prod', title: 'Producer node fails', resume: 'mysqlB', resumeLabel: 'it resumes at the saved binlog position',
-    body: 'The binlog stays on the MySQL disk. The producer restarts from the binlog file and position it saved, and may send a few events again. The consumer rebuilds those cars twice, which is harmless. Nothing is lost while MySQL still has that binlog file.',
-  },
-  {
-    node: 'valkey', title: 'Valkey server fails', resume: 'kafkaB', resumeLabel: 'the offset stays put, so the message is retried',
-    body: 'The SET fails, so the consumer does not commit the offset and retries once Valkey is back. After a failover to a replica, the last writes before the failure can be missing, because replication is asynchronous. The 12-hour TTL limits how long such a key stays wrong.',
-  },
-  {
-    node: 'kafka', title: 'Kafka broker fails', resume: 'kafka', resumeLabel: 'a follower becomes the leader of the partition',
-    body: 'With replication factor 3, min.insync.replicas=2 and acks="all" on the producer, one broker can fail without losing a change. kafka-python defaults to acks=1: the leader confirms before any follower has the message, so a leader crash at that moment can drop one change. That car stays stale until its TTL ends.',
-  },
-  {
-    node: 'mysql', title: 'MySQL fails', resume: 'mysqlB', resumeLabel: 'the producer resumes from its binlog position',
-    body: 'A restart keeps the binlog files, and the producer reconnects where it stopped. If a binlog file is purged before the producer reads it, those changes are gone. Rebuild every active car with the management command, and keep enough binlog on disk to cover a long producer outage.',
-  },
-];
-
-function initFaults(fig, app) {
-  const stage = h('div');
-  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
-  app.append(stage, colorKey([['k-gap', 'failed part'], ['k-look', 'where it resumes'], ['k-safe', 'durable']]), note);
-  let sel = -1;
-  let api; let marks = [];
-
-  function pick(k) {
-    sel = k;
-    if (!api?.L) return;
-    marks.forEach((m, j) => m.classList.toggle('is-on', j === k));
-    const f = FAULTS[k];
-    const rnode = f.resume.replace(/B$/, '');
-    for (const [nid, g] of Object.entries(api.nodes)) {
-      g.classList.toggle('is-bad', nid === f.node);
-      g.classList.toggle('is-focus', nid === rnode && nid !== f.node);
-      g.classList.remove('is-dim');
-    }
-    api.refs.pos.setAttribute('class', `t-s t-b ${f.resume === 'mysqlB' ? 't-look' : 't-data'}`);
-    api.refs.off.setAttribute('class', `t-s t-b ${f.resume === 'kafkaB' ? 't-look' : 't-data'}`);
-    note.className = 'wv-note is-bad';
-    note.innerHTML = `<span class="k">${k + 1}</span><b>${f.title}.</b> ${f.body} <span class="c-look">${f.resumeLabel[0].toUpperCase()}${f.resumeLabel.slice(1)}.</span>`;
-  }
-  function idle() {
-    note.className = 'wv-note';
-    note.innerHTML = '<span class="k">Faults</span>Tap a red number. The numbers match the sections below.';
-  }
-
-  api = pipeline(fig, stage, (a) => {
-    api = a;
-    a.refs.pos.textContent = POS1;
-    a.refs.off.textContent = OFF1;
-    setPrice(a, 'plain');
-    for (const eid of Object.keys(a.edges)) setEdge(a, eid, 'plain');
-    marks = FAULTS.map((f, k) => {
-      const [x, y, w] = a.L.nodes[f.node];
-      const cx = x + w - 12; const cy = a.L.nodes[f.node][1];
-      const m = s('g', { class: 'mark', tabindex: 0, role: 'button', 'aria-label': `Failure ${k + 1}: ${f.title}` },
-        s('circle', { cx, cy, r: 9 }), s('text', { x: cx, y: cy + 3.5, 'text-anchor': 'middle' }, String(k + 1)));
-      m.addEventListener('click', () => pick(k));
-      m.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { pick(k); e.preventDefault(); } });
-      a.svg.append(m);
-      return m;
-    });
-    if (sel >= 0) pick(sel); else idle();
+  const SET = NORMAL.events.findIndex((e) => e.tag === 'SET');
+  let mode = 'ask'; let guess = -1;
+  const ask = h('div', { class: `${P}prompt` },
+    h('p', null, h('b', null, 'Guess first. '), `The script has just changed the price to ${inr(NEW)}. At which step does a buyer first see it? Tap a dot.`),
+    h('button', { type: 'button', class: `${P}skip`, onclick: () => { mode = 'watch'; t.prompt(null); } }, 'skip the guess'));
+  const t = timeline(fig, app, {
+    onDot(k) {
+      if (mode !== 'ask') return false;
+      guess = k; mode = 'watch';
+      t.guess(k);
+      t.prompt(h('div', { class: `${P}prompt` }, h('p', null, `You picked step ${k + 1}. Now press play, or drag the purple line, and watch the buyer's card.`)));
+      return true;
+    },
+    onMove() { if (mode === 'watch') t.prompt(null); },
+    extra(k) {
+      if (k !== SET || guess < 0) return '';
+      return guess === SET
+        ? `<p class="${P}verdict is-ok">You guessed step ${SET + 1}. The card changes only when the consumer writes the new JSON.</p>`
+        : `<p class="${P}verdict is-bad">You guessed step ${guess + 1}. The card changes only here, at step ${SET + 1}, when the consumer writes the new JSON. Until then Valkey serves the old one.</p>`;
+    },
   });
+  t.load(NORMAL);
+  t.prompt(ask);
+  app.append(key([['look', 'now'], ['safe', 'cache matches MySQL'], ['gap', 'cache serves the old price'], ['data', 'sample car and price']]));
 }
 
-register({ 'write-coverage': initCoverage, 'change-path': initChange, 'fault-map': initFaults });
+/* ------------------------------------------------ Fig. 3: what if … */
+
+const OUTCOMES = [['lost', 'The change is lost'], ['longer', 'The page stays stale longer'], ['usual', 'Only the usual lag']];
+
+function initOutage(fig, app) {
+  let cur = FAULTS[0]; let variant = 'one';
+  const btns = FAULTS.map((f) => h('button', { type: 'button', class: `${P}fault`, onclick: () => pick(f) }, h('i', null, String(f.id)), f.name));
+  const vbar = h('div', { class: `${P}variants`, role: 'group', 'aria-label': 'Producer acks' });
+  const vnames = Object.keys(FAULTS[3].variants);
+  const vbtns = vnames.map((k) => h('button', {
+    type: 'button', class: `${P}opt ${P}opt--sm`, onclick: () => { variant = k; pick(cur); },
+  }, h('b', null, FAULTS[3].variants[k].label)));
+  vbar.append(h('span', null, 'producer setting:'), ...vbtns);
+  const verdict = h('div', { class: `${P}verdictbox`, 'aria-live': 'polite' });
+  const top = h('div', null, h('div', { class: `${P}faults`, role: 'group', 'aria-label': 'Failure' }, ...btns), vbar);
+  let answered = false;
+  const t = timeline(fig, app, { top, below: verdict, onMove() { if (answered) t.prompt(null); } });
+
+  function pick(f) {
+    cur = f; answered = false;
+    btns.forEach((b, k) => b.setAttribute('aria-pressed', String(FAULTS[k] === f)));
+    vbar.hidden = !f.variants;
+    vbtns.forEach((b, k) => b.setAttribute('aria-pressed', String(vnames[k] === variant)));
+    const sc = f.variants ? { ...f.variants[variant], ask: f.ask } : f;
+    verdict.hidden = true;
+    t.load(sc, { at: sc.ask, reveal: sc.ask });
+    const q = h('div', { class: `${P}prompt` },
+      h('p', null, h('b', null, 'What happens to the price change? '), sc.intro),
+      h('div', { class: `${P}answers` }, ...OUTCOMES.map(([k, label]) => h('button', {
+        type: 'button', class: `${P}answer`, onclick: () => answer(sc, k),
+      }, label))));
+    t.prompt(q);
+  }
+
+  function answer(sc, k) {
+    answered = true;
+    const ok = k === sc.answer;
+    const rs = cur.variants ? cur.variants[variant].resume : cur.resume;
+    verdict.hidden = false;
+    verdict.className = `${P}verdictbox ${ok ? 'is-ok' : 'is-bad'}`;
+    verdict.innerHTML = `<p><strong>${ok ? 'Right' : `Not quite: ${OUTCOMES.find((o) => o[0] === sc.answer)[1].toLowerCase()}`}.</strong> ${sc.why}</p>`
+      + `<p class="${P}resume"><span class="${P}num ${P}num--resume">↺</span> ${rs}</p>`;
+    t.reveal(Infinity);
+    t.prompt(h('div', { class: `${P}prompt` }, h('p', null, 'Press play, or tap a dot, to walk through what happened.')));
+  }
+  pick(cur);
+  app.append(key([['look', 'now'], ['down', 'component down'], ['resume', 'where it resumes'], ['gap', 'stale, or change lost'], ['safe', 'cache matches MySQL']]));
+}
+
+register({ 'car1-hero': initHero, 'hook-sets': initHookSets, 'change-timeline': initChange, 'outage-timeline': initOutage });
