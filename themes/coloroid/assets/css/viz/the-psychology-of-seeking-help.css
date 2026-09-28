@@ -1,0 +1,92 @@
+/* Figures for "The Psychology of Seeking Help". Classes: v-psh-* */
+
+/* ---------- seeker map ---------- */
+.v-psh-map { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (min-width: 760px) { .v-psh-map { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); } }
+
+.v-psh-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
+  grid-template-rows: auto repeat(3, minmax(4.4rem, auto));
+  border: 1.25px solid var(--ink);
+}
+.v-psh-ax { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); padding: 0.35rem 0.45rem; }
+.v-psh-corner { grid-row: 1; grid-column: 1; color: var(--mute); font-size: 9.5px; border-bottom: 1.25px solid var(--ink); border-right: 1px solid var(--line); }
+.v-psh-colhead { grid-row: 1; font-weight: 800; border-bottom: 1.25px solid var(--ink); text-align: center; }
+.v-psh-colhead + .v-psh-colhead { border-left: 1px solid var(--line); }
+.v-psh-rowhead { font-weight: 800; display: flex; align-items: center; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.v-psh-cell { border-bottom: 1px solid var(--line); }
+.v-psh-cell.v-psh-stack { border-left: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; gap: 0.35rem; padding: 0.4rem; }
+.v-psh-grid .is-last { border-bottom: 0; }
+.v-psh-slot { display: flex; align-items: center; justify-content: center; padding: 0.4rem; z-index: 1; }
+.v-psh-slot.v-psh-tall { align-items: stretch; }
+
+.v-psh-chip {
+  font: inherit; font-size: 11.5px; font-weight: 700; line-height: 1.25;
+  width: 100%; min-height: 34px; padding: 0.4rem 0.35rem;
+  color: var(--blue); background: var(--blue-l);
+  border: 1.5px solid var(--blue); border-radius: 0;
+  cursor: pointer; touch-action: manipulation;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem;
+  overflow-wrap: normal; word-break: keep-all;
+}
+.v-psh-chip:hover { background: var(--board); }
+.v-psh-chip[aria-pressed="true"] { color: var(--ink); background: var(--purple-l); border: 2px solid var(--purple); box-shadow: 2px 2px 0 var(--purple); }
+.v-psh-chip.is-unknown { border-style: dashed; }
+.v-psh-q { font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--red); background: var(--red-l); padding: 0.05rem 0.3rem; border: 1px dashed var(--red); }
+.v-psh-chip:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+
+.v-psh-panel { border: 1.25px solid var(--ink); padding: 0.7rem 0.8rem; display: grid; gap: 0.5rem; min-height: 16rem; align-content: start; }
+.v-psh-panel h4 { margin: 0; font-family: var(--font-mono); font-size: 14px; font-weight: 800; color: var(--ink); }
+.v-psh-panel p { font-size: 12.5px; }
+.v-psh-sub { font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--mute); font-weight: 700; margin-top: 0.2rem; }
+.wv ul.v-psh-did { list-style: none; padding: 0; display: grid; gap: 0.25rem; font-size: 12.5px; }
+.v-psh-did li { padding: 0.2rem 0.45rem; background: var(--green-l); border-left: 3px solid var(--green); color: var(--ink); }
+.v-psh-none { padding: 0.2rem 0.45rem; background: var(--red-l); border-left: 3px dashed var(--red); }
+.v-psh-panel .wv-note { min-height: 0; font-size: 12px; }
+
+/* ---------- channel walk ---------- */
+.v-psh-lbl { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.v-psh-pickbtn { border-color: var(--orange); }
+.v-psh-pickbtn[aria-pressed="true"] { background: var(--orange); border-color: var(--orange); color: var(--board); }
+.v-psh-rec { margin-left: 0.45em; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange); }
+.v-psh-pickbtn[aria-pressed="true"] .v-psh-rec { color: var(--board); }
+
+.v-psh-record { border: 1.5px dashed var(--ink); padding: 0.55rem 0.7rem; display: grid; gap: 0.4rem; min-height: 8.2rem; align-content: start; }
+.v-psh-record.is-none { border-color: var(--red); }
+.v-psh-record.is-public { border-color: var(--green); }
+.v-psh-rhead { display: flex; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; }
+.v-psh-record.is-none .wv-tag { color: var(--red); }
+.v-psh-record.is-public .wv-tag { color: var(--green); }
+.v-psh-msg { display: flex; gap: 0.5rem; align-items: flex-start; font-size: 12px; }
+.v-psh-who { flex: 0 0 auto; width: 1.7rem; height: 1.7rem; display: grid; place-items: center; font-weight: 800; border: 1.25px solid var(--ink); background: var(--board); }
+body[class*="theme-"] .wv .v-psh-msg code { background: var(--brown-l); color: var(--brown); border: 1px solid var(--brown); padding: 0.25rem 0.45rem; font-weight: 700; white-space: normal; overflow-wrap: anywhere; font-size: 11.5px; }
+.v-psh-msg.is-spoken code { opacity: 0.55; text-decoration: line-through; text-decoration-color: var(--red); }
+.v-psh-found { font-size: 11px; font-weight: 800; color: var(--green); }
+.v-psh-lost { font-size: 11px; font-weight: 800; color: var(--red); }
+
+.v-psh-people { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.35rem; margin: 0.7rem 0; }
+@media (max-width: 560px) { .v-psh-people { grid-template-columns: repeat(2, minmax(0, 1fr)); } .v-psh-people > :first-child { grid-column: 1 / -1; } }
+.v-psh-person { border: 1.25px solid var(--line); padding: 0.4rem 0.5rem; display: grid; gap: 0.1rem; min-height: 5.4rem; align-content: start; transition: background-color 0.3s, border-color 0.3s; }
+.v-psh-person b { font-size: 15px; }
+.v-psh-role { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--mute); }
+.v-psh-st { font-size: 11.5px; line-height: 1.35; }
+.v-psh-person.is-look { border: 2px solid var(--purple); background: var(--purple-l); }
+.v-psh-person.is-bad { border: 1.5px dashed var(--red); background: var(--red-l); }
+.v-psh-person.is-bad .v-psh-st { color: var(--red); font-weight: 700; }
+.v-psh-person.is-good { border-color: var(--green); background: var(--green-l); }
+.v-psh-person.is-seen { border-color: var(--ink); }
+.v-psh-person.is-away { border-style: dashed; }
+.v-psh-person.is-away .v-psh-st, .v-psh-person.is-idle .v-psh-st { color: var(--mute); }
+
+.wv .v-psh-tally { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.v-psh-tally .v { font-size: 14px; }
+@media (max-width: 560px) {
+  .v-psh-grid { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr); }
+  .v-psh-chip { font-size: 11px; padding: 0.35rem 0.2rem; }
+  .v-psh-slot, .v-psh-cell.v-psh-stack { padding: 0.3rem; }
+  .v-psh-ax { padding: 0.35rem 0.3rem; }
+  .v-psh-tally .wv-stat { padding: 0.4rem 0.45rem; }
+  .v-psh-tally .wv-stat .k { font-size: 9px; }
+  .v-psh-tally .v { font-size: 12.5px; }
+}

@@ -82,6 +82,10 @@ This group is familiar with the problem but prefers not to solve it themselves. 
 - Prefers delegation
 - Low engagement in the resolution process
 
+Each type has two ratings: the effort spent before asking, and the difficulty of the problem. On one grid, two things stand out. The Persistent Problem Solver and the Exhausted Effort share a cell; what separates them is whether they still have a lead to follow. The Direct Seeker has no row, because no one has looked at the problem yet.
+
+{{< viz kind="seeker-map" fig="1" title="Help seekers by effort and difficulty" fallback="seeker-map.svg" alt="Grid of the five help seekers by effort before asking and difficulty of the problem" caption="Ratings come from the sections above. Select a type to see what they did before asking and what they want from you." >}}
+
 # Reactions to Solutions
 
 ## The Inquisitive Learner
@@ -116,7 +120,9 @@ This group has no interest in the problem or solution; they just want it resolve
 
 # Communication
 
-Smart help seekers often choose non-blocking communication methods such as Slack messages and make their issues known in public channels. This not only allows them to receive help but also keeps others informed, fostering a collaborative environment.
+Smart help seekers send a message instead of calling, and post it in a public channel instead of a DM. A message does not force anyone to stop work. Anyone who is free can answer, and the answer stays searchable for the next person who hits the same problem.
+
+{{< viz kind="channel-walk" fig="2" title="One question, three channels" fallback="channel-walk.svg" alt="The same question asked by phone call, direct message, and public channel, followed until a new teammate hits the same error" caption="People, the question, and the fix are samples. Pick a channel, then step through. Search follows Slack: public channel messages show up for every workspace member except guests, and the free plan keeps the last 90 days searchable." >}}
 
 ## Not recommended
 

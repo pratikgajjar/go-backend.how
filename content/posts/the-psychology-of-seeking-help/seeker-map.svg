@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 366" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">
+  <rect width="640" height="366" fill="#fbfbf8"/>
+  <text x="20" y="28" font-size="14" font-weight="800" fill="#1a1d24">How much has this person done before asking,</text>
+  <text x="20" y="46" font-size="14" font-weight="800" fill="#1a1d24">and how hard is the problem?</text>
+
+  <!-- grid frame -->
+  <rect x="20" y="66" width="600" height="262" fill="none" stroke="#1a1d24" stroke-width="1.5"/>
+  <line x1="20" y1="96" x2="620" y2="96" stroke="#1a1d24" stroke-width="1.5"/>
+  <line x1="110" y1="66" x2="110" y2="328" stroke="#c9cbd1"/>
+  <line x1="380" y1="66" x2="380" y2="328" stroke="#c9cbd1"/>
+  <line x1="20" y1="173" x2="620" y2="173" stroke="#c9cbd1"/>
+  <line x1="20" y1="250" x2="620" y2="250" stroke="#c9cbd1"/>
+
+  <text x="30" y="86" font-size="10" fill="#555a66">DIFFICULTY</text>
+  <text x="245" y="86" font-size="11" font-weight="800" fill="#1a1d24" text-anchor="middle">LOW EFFORT</text>
+  <text x="500" y="86" font-size="11" font-weight="800" fill="#1a1d24" text-anchor="middle">HIGH EFFORT</text>
+  <text x="30" y="139" font-size="11" font-weight="800" fill="#1a1d24">HIGH</text>
+  <text x="30" y="216" font-size="11" font-weight="800" fill="#1a1d24">MEDIUM</text>
+  <text x="30" y="293" font-size="11" font-weight="800" fill="#1a1d24">LOW</text>
+
+  <!-- Direct seeker spans all rows: difficulty unknown -->
+  <rect x="122" y="106" width="118" height="212" fill="#e3ebfa" stroke="#2f5fb3" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="181" y="200" font-size="12" font-weight="700" fill="#2f5fb3" text-anchor="middle">Direct</text>
+  <rect x="136" y="210" width="90" height="18" fill="#f8e1dd" stroke="#b8322a" stroke-dasharray="3 2"/>
+  <text x="181" y="223" font-size="10" font-weight="800" fill="#b8322a" text-anchor="middle">UNKNOWN</text>
+
+  <!-- Delegator: low / low -->
+  <rect x="252" y="264" width="116" height="36" fill="#e3ebfa" stroke="#2f5fb3" stroke-width="1.5"/>
+  <text x="310" y="286" font-size="12" font-weight="700" fill="#2f5fb3" text-anchor="middle">Delegator</text>
+
+  <!-- High effort -->
+  <rect x="394" y="108" width="212" height="28" fill="#e3ebfa" stroke="#2f5fb3" stroke-width="1.5"/>
+  <text x="500" y="126" font-size="12" font-weight="700" fill="#2f5fb3" text-anchor="middle">Persistent</text>
+  <rect x="394" y="142" width="212" height="26" fill="#e3ebfa" stroke="#2f5fb3" stroke-width="1.5"/>
+  <text x="500" y="159" font-size="12" font-weight="700" fill="#2f5fb3" text-anchor="middle">Exhausted</text>
+  <rect x="394" y="194" width="212" height="36" fill="#e3ebfa" stroke="#2f5fb3" stroke-width="1.5"/>
+  <text x="500" y="216" font-size="12" font-weight="700" fill="#2f5fb3" text-anchor="middle">Connector</text>
+
+  <text x="20" y="352" font-size="10" fill="#555a66">Ratings from the post. Persistent and Exhausted share a cell.</text>
+</svg>
