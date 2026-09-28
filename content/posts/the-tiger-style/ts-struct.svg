@@ -1,71 +1,71 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" width="900" height="400" role="img" aria-label="The 128-byte TigerBeetle Transfer, 16 bytes per row, with no padding, and the three compile-time assertions that hold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-<rect width="900" height="400" fill="#19120d"/>
-<text x="20.0" y="28.0" font-size="10.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">bytes, 16 per row</text>
-<text x="52.0" y="63.0" font-size="10.5" fill="#a79d92" text-anchor="end" font-weight="400" xml:space="preserve">0</text>
-<text x="52.0" y="101.0" font-size="10.5" fill="#a79d92" text-anchor="end" font-weight="400" xml:space="preserve">16</text>
-<text x="52.0" y="139.0" font-size="10.5" fill="#a79d92" text-anchor="end" font-weight="400" xml:space="preserve">32</text>
-<text x="52.0" y="177.0" font-size="10.5" fill="#a79d92" text-anchor="end" font-weight="400" xml:space="preserve">48</text>
-<text x="52.0" y="215.0" font-size="10.5" fill="#a79d92" text-anchor="end" font-weight="400" xml:space="preserve">64</text>
-<text x="52.0" y="253.0" font-size="10.5" fill="#a79d92" text-anchor="end" font-weight="400" xml:space="preserve">80</text>
-<text x="52.0" y="291.0" font-size="10.5" fill="#a79d92" text-anchor="end" font-weight="400" xml:space="preserve">96</text>
-<text x="52.0" y="329.0" font-size="10.5" fill="#a79d92" text-anchor="end" font-weight="400" xml:space="preserve">112</text>
-<rect x="61" y="41" width="510" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="66.0" y="55.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">id</text>
-<text x="66.0" y="69.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@0</text>
-<rect x="61" y="79" width="510" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="66.0" y="93.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">debit_account_id</text>
-<text x="66.0" y="107.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@16</text>
-<rect x="61" y="117" width="510" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="66.0" y="131.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">credit_account_id</text>
-<text x="66.0" y="145.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@32</text>
-<rect x="61" y="155" width="510" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="66.0" y="169.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">amount</text>
-<text x="66.0" y="183.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@48</text>
-<rect x="61" y="193" width="510" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="66.0" y="207.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">pending_id</text>
-<text x="66.0" y="221.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@64</text>
-<rect x="61" y="231" width="510" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="66.0" y="245.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">user_data_128</text>
-<text x="66.0" y="259.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@80</text>
-<rect x="61" y="269" width="254" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="66.0" y="283.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">user_data_64</text>
-<text x="66.0" y="297.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@96</text>
-<rect x="317" y="269" width="126" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="322.0" y="283.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">user_data_32</text>
-<text x="322.0" y="297.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@104</text>
-<rect x="445" y="269" width="126" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="450.0" y="283.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">timeout</text>
-<text x="450.0" y="297.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@108</text>
-<rect x="61" y="307" width="126" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="66.0" y="321.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">ledger</text>
-<text x="66.0" y="335.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@112</text>
-<rect x="189" y="307" width="62" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="194.0" y="321.0" font-size="10" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">code</text>
-<text x="194.0" y="335.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@116</text>
-<rect x="253" y="307" width="62" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="258.0" y="321.0" font-size="10" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">flags</text>
-<text x="258.0" y="335.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@118</text>
-<rect x="317" y="307" width="254" height="34" fill="#3e2f1f" stroke="#e2bf8a"/>
-<text x="322.0" y="321.0" font-size="11" fill="#e2bf8a" text-anchor="start" font-weight="700" xml:space="preserve">timestamp</text>
-<text x="322.0" y="335.0" font-size="9.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">@120</text>
-<text x="602.0" y="28.0" font-size="10.5" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">comptime</text>
-<line x1="596" x2="596" y1="41" y2="60" stroke="#7fdc9c" stroke-width="2"/>
-<text x="602.0" y="54.0" font-size="11" fill="#7fdc9c" text-anchor="start" font-weight="700" xml:space="preserve">assert</text>
-<text x="641.6" y="54.0" font-size="11" fill="#efe6dc" text-anchor="start" font-weight="400" xml:space="preserve">(stdx.no_padding(Transfer));</text>
-<text x="922.0" y="54.0" font-size="10.5" fill="#7fdc9c" text-anchor="end" font-weight="700" xml:space="preserve">holds</text>
-<line x1="596" x2="596" y1="67" y2="86" stroke="#7fdc9c" stroke-width="2"/>
-<text x="602.0" y="80.0" font-size="11" fill="#7fdc9c" text-anchor="start" font-weight="700" xml:space="preserve">assert</text>
-<text x="641.6" y="80.0" font-size="11" fill="#efe6dc" text-anchor="start" font-weight="400" xml:space="preserve">(@sizeOf(Transfer) == 128);</text>
-<text x="922.0" y="80.0" font-size="10.5" fill="#7fdc9c" text-anchor="end" font-weight="700" xml:space="preserve">holds</text>
-<line x1="596" x2="596" y1="93" y2="112" stroke="#7fdc9c" stroke-width="2"/>
-<text x="602.0" y="106.0" font-size="11" fill="#7fdc9c" text-anchor="start" font-weight="700" xml:space="preserve">assert</text>
-<text x="641.6" y="106.0" font-size="11" fill="#efe6dc" text-anchor="start" font-weight="400" xml:space="preserve">(@alignOf(Transfer) == 16);</text>
-<text x="922.0" y="106.0" font-size="10.5" fill="#7fdc9c" text-anchor="end" font-weight="700" xml:space="preserve">holds</text>
-<text x="602.0" y="150.0" font-size="11" fill="#a79d92" text-anchor="start" font-weight="400" xml:space="preserve">$ zig build</text>
-<text x="602.0" y="168.0" font-size="11" fill="#7fdc9c" text-anchor="start" font-weight="400" xml:space="preserve">(no output: all three hold)</text>
-<text x="602.0" y="210.0" font-size="11" fill="#efe6dc" text-anchor="start" font-weight="700" xml:space="preserve">Change a field, and a check fails:</text>
-<text x="602.0" y="232.0" font-size="11" fill="#f28b7c" text-anchor="start" font-weight="400" xml:space="preserve">amount: u64       128 B, 8 B padding</text>
-<text x="602.0" y="251.0" font-size="11" fill="#f28b7c" text-anchor="start" font-weight="400" xml:space="preserve">timeout: u64      144 B, 12 B padding</text>
-<text x="602.0" y="270.0" font-size="11" fill="#f28b7c" text-anchor="start" font-weight="400" xml:space="preserve">timestamp moved   144 B, 16 B padding</text>
-<text x="602.0" y="289.0" font-size="11" fill="#f28b7c" text-anchor="start" font-weight="400" xml:space="preserve">+ user_data_8: u8 144 B, 15 B padding</text>
+<rect width="900" height="400" fill="#fbfbf8"/>
+<text x="20.0" y="28.0" font-size="10.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">bytes, 16 per row</text>
+<text x="52.0" y="63.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">0</text>
+<text x="52.0" y="101.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">16</text>
+<text x="52.0" y="139.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">32</text>
+<text x="52.0" y="177.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">48</text>
+<text x="52.0" y="215.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">64</text>
+<text x="52.0" y="253.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">80</text>
+<text x="52.0" y="291.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">96</text>
+<text x="52.0" y="329.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">112</text>
+<rect x="61" y="41" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="66.0" y="55.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">id</text>
+<text x="66.0" y="69.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@0</text>
+<rect x="61" y="79" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="66.0" y="93.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">debit_account_id</text>
+<text x="66.0" y="107.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@16</text>
+<rect x="61" y="117" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="66.0" y="131.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">credit_account_id</text>
+<text x="66.0" y="145.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@32</text>
+<rect x="61" y="155" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="66.0" y="169.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">amount</text>
+<text x="66.0" y="183.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@48</text>
+<rect x="61" y="193" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="66.0" y="207.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">pending_id</text>
+<text x="66.0" y="221.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@64</text>
+<rect x="61" y="231" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="66.0" y="245.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">user_data_128</text>
+<text x="66.0" y="259.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@80</text>
+<rect x="61" y="269" width="254" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="66.0" y="283.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">user_data_64</text>
+<text x="66.0" y="297.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@96</text>
+<rect x="317" y="269" width="126" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="322.0" y="283.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">user_data_32</text>
+<text x="322.0" y="297.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@104</text>
+<rect x="445" y="269" width="126" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="450.0" y="283.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">timeout</text>
+<text x="450.0" y="297.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@108</text>
+<rect x="61" y="307" width="126" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="66.0" y="321.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">ledger</text>
+<text x="66.0" y="335.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@112</text>
+<rect x="189" y="307" width="62" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="194.0" y="321.0" font-size="10" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">code</text>
+<text x="194.0" y="335.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@116</text>
+<rect x="253" y="307" width="62" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="258.0" y="321.0" font-size="10" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">flags</text>
+<text x="258.0" y="335.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@118</text>
+<rect x="317" y="307" width="254" height="34" fill="#f3e6d6" stroke="#7a5530"/>
+<text x="322.0" y="321.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">timestamp</text>
+<text x="322.0" y="335.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@120</text>
+<text x="602.0" y="28.0" font-size="10.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">comptime</text>
+<line x1="596" x2="596" y1="41" y2="60" stroke="#1c7042" stroke-width="2"/>
+<text x="602.0" y="54.0" font-size="11" fill="#1c7042" text-anchor="start" font-weight="700" xml:space="preserve">assert</text>
+<text x="641.6" y="54.0" font-size="11" fill="#15181d" text-anchor="start" font-weight="400" xml:space="preserve">(stdx.no_padding(Transfer));</text>
+<text x="922.0" y="54.0" font-size="10.5" fill="#1c7042" text-anchor="end" font-weight="700" xml:space="preserve">holds</text>
+<line x1="596" x2="596" y1="67" y2="86" stroke="#1c7042" stroke-width="2"/>
+<text x="602.0" y="80.0" font-size="11" fill="#1c7042" text-anchor="start" font-weight="700" xml:space="preserve">assert</text>
+<text x="641.6" y="80.0" font-size="11" fill="#15181d" text-anchor="start" font-weight="400" xml:space="preserve">(@sizeOf(Transfer) == 128);</text>
+<text x="922.0" y="80.0" font-size="10.5" fill="#1c7042" text-anchor="end" font-weight="700" xml:space="preserve">holds</text>
+<line x1="596" x2="596" y1="93" y2="112" stroke="#1c7042" stroke-width="2"/>
+<text x="602.0" y="106.0" font-size="11" fill="#1c7042" text-anchor="start" font-weight="700" xml:space="preserve">assert</text>
+<text x="641.6" y="106.0" font-size="11" fill="#15181d" text-anchor="start" font-weight="400" xml:space="preserve">(@alignOf(Transfer) == 16);</text>
+<text x="922.0" y="106.0" font-size="10.5" fill="#1c7042" text-anchor="end" font-weight="700" xml:space="preserve">holds</text>
+<text x="602.0" y="150.0" font-size="11" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">$ zig build</text>
+<text x="602.0" y="168.0" font-size="11" fill="#1c7042" text-anchor="start" font-weight="400" xml:space="preserve">(no output: all three hold)</text>
+<text x="602.0" y="210.0" font-size="11" fill="#15181d" text-anchor="start" font-weight="700" xml:space="preserve">Change a field, and a check fails:</text>
+<text x="602.0" y="232.0" font-size="11" fill="#b83026" text-anchor="start" font-weight="400" xml:space="preserve">amount: u64       128 B, 8 B padding</text>
+<text x="602.0" y="251.0" font-size="11" fill="#b83026" text-anchor="start" font-weight="400" xml:space="preserve">timeout: u64      144 B, 12 B padding</text>
+<text x="602.0" y="270.0" font-size="11" fill="#b83026" text-anchor="start" font-weight="400" xml:space="preserve">timestamp moved   144 B, 16 B padding</text>
+<text x="602.0" y="289.0" font-size="11" fill="#b83026" text-anchor="start" font-weight="400" xml:space="preserve">+ user_data_8: u8 144 B, 15 B padding</text>
 </svg>
