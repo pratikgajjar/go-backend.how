@@ -1,6 +1,6 @@
 +++
-title = "🏃 Running 101"
-description = "Discover the journey and achievements of an avid runner who completed a 100km challenge in 30 days, reduced BMI from 24.1 to 22.3, and improved their running pace and resting heart rate. Learn about their strategies for music, nutrition, hydration, and more to enhance your own running performance."
+title = "Running 101"
+description = "How I went from a 38-minute 4K to a 24:45 5K: one goal at a time, one running metric at a time, measured with a Garmin watch. Check where your own cadence, contact time, bounce, and heart-rate zones sit."
 date = 2024-10-12T23:45:31+05:30
 lastmod = 2024-10-12T23:45:31+05:30
 publishDate = "2024-10-12T23:45:31+05:30"
@@ -11,8 +11,7 @@ featured = true
 theme = "mint"
 +++
 
-{{< viz kind="progress" wide="false" frame="none" fallback="progress.svg" alt="My pace by goal: 4K at 9:30 per km before the plan, then 5K at 7:00, under 6:00, 4:57, a 10K under 60 minutes, and a sub-20 5K still ahead" caption="Times and dates are from the Result and Next Steps sections at the end of this post." >}}
-
+Before I started training, a 4K took me about 38 minutes. In December 2024 I ran a 5K in 24:45. This post is how: one clear goal at a time, one running metric at a time, measured on a Garmin watch. By the end you will know which form numbers matter, where yours sit among other runners, and which one to work on first.
 
 tldr;
 
@@ -20,9 +19,9 @@ tldr;
 - Track your performance, focus on one metric at a time.
 - Vary your runs, but maintain consistency.
 - Maintain a consistent pace throughout your target run(s).
-- Focus on nutritions and strength training.
+- Focus on nutrition and strength training.
 
-# Setting Goals
+# Why running
 
 I am a 27-year-old software engineer writing in the year 2024. I spend most of my time sitting for work, and since grade 12, I've been aspiring to have a six-pack as it's often seen as 'cool.' As a football fan, I'm aware that players typically peak between their late twenties and early thirties, with an analysis by The Athletic[^1] suggesting that the optimal age for different positions ranges from 27 to 31 years old. Thus, I set myself the goal of reaching peak physical fitness by my late twenties.
 
@@ -30,9 +29,13 @@ However, I am more inclined towards outdoor activities than hitting the gym. I w
 
 > "The most successful people I know believe in themselves almost to the point of delusion." -- Sam Altman ([@sama](https://x.com/sama))
 
-# Plan
+Among the various options available for outdoor physical activity, I chose running due to its minimal effort requirement and ease of execution.
 
-Among the various options available for outdoor physical activity, I chose running due to its minimal effort requirement and ease of execution. To facilitate this plan:
+# Measure first
+
+I work in tech, where we measure systems all the time to keep them efficient and to spot anomalies. I wanted the same for my running, so I bought a Garmin watch that records many running metrics. "If you can measure it, you can improve it."
+
+The rest of the kit is simple.
 
 _Footwear:_ I wear Skechers running shoes for all my runs.
 
@@ -40,9 +43,7 @@ _Attire:_ I ensure I have comfortable, well-fitting clothing suitable for runnin
 
 _Running Routes:_ In urban areas, I prefer peaceful roads and public parks in metropolitan cities.
 
-Given my background in tech, where continuous measurement of metrics helps maintain system efficiency and detect anomalies, I wanted to apply the same principle to my fitness journey. To accurately track progress, I invested in a Garmin watch that records multiple metrics with high precision. The saying "If you can measure it, you can improve it" applies here; tracking quantifiable data enables better understanding of my performance and facilitates continuous growth.
-
-# Execution
+# Start slow
 
 To begin my running journey safely, I took things slow initially to minimize the risk of injuries. As a newcomer, it is common to make mistakes, and rushing into intense workouts could lead to strains or other issues. Having previously completed a 4K run in around 38 minutes with no prior preparation, I decided to set a more achievable goal for my initial plan.
 
@@ -55,29 +56,22 @@ Now, with my customized plan in hand, I have clear guidance on when and how much
 
 > "No man has the right to be an amateur in the matter of physical training. It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable." -- Socrates
 
-These are the top-line metrics I chase to become a more efficient runner.
+# Form: the input metrics
 
-## Metrics
-
-Input metrics[^2] are the ones we improve through continuous training.
+The watch reports many numbers. I split them in two. Input metrics[^2] describe your form, and you improve them through continuous training.
 
 - Cadence
 - Vertical Ratio
 - Vertical Oscillation
 - Ground Contact Time
 
-Output metrics are the effect.
-
-- Pace
-- HR Zones (Heart Rate)
-- Power Zones
-- Stride Length
+Output metrics are the effect: pace, heart-rate zones, power zones, and stride length. They come later in this post.
 
 Garmin compares each input metric with other runners and puts it in a percentile band. Start with my own first number, then type yours to see where each one sits and which one to work on first.
 
 {{< viz kind="form-check" wide="false" frame="none" title="Where your form sits" fallback="form-check.svg" alt="Four bars, one per input metric, each split into Garmin's five percentile bands, with a sample runner marked on each" caption="Garmin Connect shows these numbers for each run under Running Dynamics. The starting cadence and pace are mine; the contact time and bounce are sample values. The runner moves at the cadence, contact time, and bounce in the rows. Step length comes from pace and cadence: `1000 / (pace × cadence)`. Band edges are from the tables below." >}}
 
-### Cadence
+## Cadence
 
 Cadence is the number of steps per minute (spm), both feet counted. Garmin has researched many runners of all different levels. In general, more experienced runners tend to have a higher cadence.
 
@@ -93,7 +87,7 @@ The zones in the table below show the percentile of runners that occupy each zon
 | 5-29%              | 151-162 spm   |
 | < 5%               | < 151 spm     |
 
-### Vertical Ratio
+## Vertical Ratio
 
 Vertical ratio is a way to measure running efficiency.
 It divides vertical oscillation by stride length and then shows your ratio as a percentage. Since stride length provides the benefit of running (horizontal movement) and vertical oscillation is an energy cost (vertical movement), a lower vertical ratio indicates a small cost for a large benefit.
@@ -108,7 +102,7 @@ The zones in the table below show the percentile of runners that occupy each zon
 | 5 - 29%            | 8.7% - 10.1% |
 | < 5%               | > 10.1%      |
 
-### Vertical Oscillation
+## Vertical Oscillation
 
 Vertical oscillation is the amount that the torso moves vertically with each step while running. It's measured in centimeters (cm).
 
@@ -124,7 +118,7 @@ The zones in the table below show the percentile of runners that occupy each zon
 | 5 - 29%            | 9.8 - 11.5 cm |
 | < 5%               | > 11.5 cm     |
 
-### Ground Contact Time (GCT)
+## Ground Contact Time (GCT)
 
 Ground contact time indicates the amount of time that your foot is in contact with the ground on each step, measured in milliseconds (ms). Ground contact time tends to be especially short for elite runners.
 Virtually all experienced runners have ground contact times under 300 ms, likely because they have learned to pick up their feet quickly and not to over-stride as they are landing.
@@ -141,100 +135,17 @@ Adopting a forefoot strike can help to reduce Ground Contact Time (GCT).
 | 5 - 29%            | 273 - 305 ms |
 | < 5%               | > 305 ms     |
 
-### Pace (min/km or mile)
-
-Pace is the time it takes to run one kilometre (min/km) or one mile (min/mile).
-
-```txt
-speed (m/min) = cadence (steps/min) × stride length (m)
-pace (min/km) = 1000 / (cadence × stride length)
-```
-
-Only two numbers set pace: how often your feet land and how far you travel on each step. Ground contact time and vertical ratio are not in the formula. They change what each step costs, not how far it goes.
-
-{{< viz kind="footprints" wide="false" frame="none" title="Closing the gap to a goal" fallback="footprints.svg" alt="Five seconds of footprints for a 25:00 5K today and for a 20:00 goal, reached with 184 spm and 1.36 m steps" caption="Each row is five seconds of running. Step length is speed ÷ cadence. *A bit of both* splits the extra speed evenly between cadence and step length." >}}
-
-Try my next goal, a 5K in 20:00. At 180 spm it still needs 1.39 m per step, so cadence alone does not get there. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
-
-### Heart Rate Zones
-
-Heart rate zones are ranges of heart rates that correspond to different levels of effort, usually divided into 5 zones, from easy (zone 1) to maximum effort (zone 5).
-
-Training in the appropriate heart rate zones can optimize your workout for different goals, such as fat burning, endurance, or speed. It helps prevent overtraining and ensures you're getting the right intensity in your runs.
-
-Zone 1
-
-- Heart rate: 50-65% of max. (90-117 bpm for a max of 180)
-- Effort: 2-3 out of 10. Breathing easily. Speaking full sentences. Feels like you could go all day!
-
-Zone 2
-
-- Heart rate: 65-80% of max. (118-144 bpm for a max of 180)
-
-- Effort: 3-4 out of 10. Easy to steady endurance. Can still speak in complete sentences.
-
-Zone 3
-
-- Heart rate: 80-85% of max. (145-153 bpm for a max of 180)
-- Effort: 4-6 out of 10. Moderate but moving. At the upper end, you get winded quickly if you try to talk and might taste metal.
-
-Zone 4
-
-- Heart rate: 85-92% of max. (154-165 bpm for a max of 180)
-- Effort: 6-7 out of 10. Lactate threshold. This is a workout - sentences are clipped. But it's still mostly aerobic. You can hold it for about one hour.
-
-Zone 5
-
-- Heart rate: 92-100% of max. (166-180 bpm for a max of 180)
-- Effort: 8-10 out of 10. High-intensity. Everything from very hard VO2 intervals to all-out sprints.
-
-The bpm ranges above are for a max of 180. Type yours to get your own. If you do not know your max, the age field uses `220 − age`, the default Strava uses.[^3] A measured max is better.
-
-{{< viz kind="hr-zones" wide="false" frame="none" title="Your heart-rate zones" fallback="hr-zones.svg" alt="Five heart-rate zones for a max of 180 bpm: 90–117, 118–144, 145–153, 154–165, and 166–180, with a 140 bpm run in zone 2" caption="Zones use the percentages above. Type a run's average heart rate to see its zone." >}}
-
-More on zones: <https://stories.strava.com/articles/understanding-heart-rate-zones-and-how-they-impact-your-training>
-
-### Power
-
-Power (measured in watts) reflects the amount of effort or energy output during running.
-
-It allows you to gauge the actual energy you're using to run, independent of pace and terrain. Power-based training can help you improve efficiency, as it enables you to maintain a constant energy output, even if terrain or conditions change.
-
-### Stride Length
-
-This is the distance covered between each step while running, typically measured in meters.
-
-Improving your stride length can increase your speed without significantly increasing effort. However, it needs to be balanced with cadence to maintain efficiency and avoid overstriding, which can lead to injury.
-
-{{< youtube id=Jj9ZgQgQvBk start=207 loading=lazy title="Lift costs less energy">}}
-
-### Time in Power Zone
-
-Power zones are similar to heart rate zones, but based on your power output in watts. Time in power zone refers to how long you spend in each zone.
-
-This metric helps balance your power output during different phases of a run. Spending the right amount of time in different power zones can help with endurance, speed training, and efficient energy use.
+Two videos that helped my form:
 
 {{< youtube id=_kGESn8ArrU start=155 loading=lazy title="Foot placement for running">}}
 
-Above video explains foot placement training for more efficient running.
+The video above explains foot placement training for more efficient running.
 
 {{< youtube id=CCxi9gmuyGQ loading=lazy title="Running is vertical jump" >}}
 
-## Streching
+# Cadence first: running to music
 
-Proper stretching before and after runs plays a vital role in maintaining flexibility, preventing injuries, and enhancing recovery. Here's my approach to stretching before and after my runs.
-
-### Pre-run
-
-{{< youtube id=u-e0ZO5L0s0 loading=lazy >}}
-
-### Post-run
-
-{{< youtube id=taiBlDZhFT4 loading=lazy >}}
-
-## Music
-
-Music plays a crucial role in enhancing my running experience by helping me maintain a consistent pace and cadence. When I began, my average cadence was around 120 steps per minute (spm), placing me in the bottom 5% of runners who maintained cadences below 151 spm. To improve efficiency, focusing on increasing my cadence was essential.
+When I began, my average cadence was around 120 steps per minute (spm), in the bottom 5% of runners (below 151 spm). So cadence was the first metric I worked on. Music helps me hold a steady pace and cadence.
 
 For Spotify users:
 
@@ -249,6 +160,71 @@ By incorporating these music playlists into my runs, I've found that:
 - Time passes more quickly when engaged with captivating tracks that sync with my target cadence.
 - Maintaining a consistent pace and cadence is easier with rhythm-driven songs tailored to specific spm ranges.
 - Staying motivated and enjoying workouts becomes simpler as music helps create a steady internal metronome for efficient running.
+
+# Output metrics
+
+## Pace = cadence × stride length
+
+Pace is the time it takes to run one kilometre (min/km) or one mile (min/mile). Stride length is the distance covered on each step, typically measured in meters.
+
+```txt
+speed (m/min) = cadence (steps/min) × stride length (m)
+pace (min/km) = 1000 / (cadence × stride length)
+```
+
+Only two numbers set pace: how often your feet land and how far you travel on each step. Ground contact time and vertical ratio are not in the formula. They change what each step costs, not how far it goes.
+
+{{< viz kind="footprints" wide="false" frame="none" title="Closing the gap to a goal" fallback="footprints.svg" alt="Five seconds of footprints for a 25:00 5K today and for a 20:00 goal, reached with 184 spm and 1.36 m steps" caption="Each row is five seconds of running. Step length is speed ÷ cadence. *A bit of both* splits the extra speed evenly between cadence and step length." >}}
+
+Try my next goal, a 5K in 20:00. At 180 spm it still needs 1.39 m per step, so cadence alone does not get there. Longer steps can increase speed without much more effort, but they need to be balanced with cadence to avoid overstriding, which can lead to injury. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
+
+{{< youtube id=Jj9ZgQgQvBk start=207 loading=lazy title="Lift costs less energy">}}
+
+## Heart rate zones
+
+Heart rate zones are ranges of heart rates that correspond to different levels of effort, usually divided into 5 zones, from easy (zone 1) to maximum effort (zone 5).
+
+Training in the appropriate heart rate zones can optimize your workout for different goals, such as fat burning, endurance, or speed. It helps prevent overtraining and ensures you're getting the right intensity in your runs.
+
+| Zone | % of max | Effort |
+| ---- | -------- | ------ |
+| 1 | 50-65% | 2-3 out of 10. Breathing easily. Speaking full sentences. Feels like you could go all day! |
+| 2 | 65-80% | 3-4 out of 10. Easy to steady endurance. Can still speak in complete sentences. |
+| 3 | 80-85% | 4-6 out of 10. Moderate but moving. At the upper end, you get winded quickly if you try to talk and might taste metal. |
+| 4 | 85-92% | 6-7 out of 10. Lactate threshold. This is a workout: sentences are clipped. But it's still mostly aerobic. You can hold it for about one hour. |
+| 5 | 92-100% | 8-10 out of 10. High-intensity. Everything from very hard VO2 intervals to all-out sprints. |
+
+Type your max heart rate to get your zones in bpm. If you do not know your max, the age field uses `220 − age`, the default Strava uses.[^3] A measured max is better.
+
+{{< viz kind="hr-zones" wide="false" frame="none" title="Your heart-rate zones" fallback="hr-zones.svg" alt="Five heart-rate zones for a max of 180 bpm: 90–117, 118–144, 145–153, 154–165, and 166–180, with a 140 bpm run in zone 2" caption="Zones use the percentages in the table. The bpm edges round down, so zone 2 for a max of 180 is 118–144 bpm. Type a run's average heart rate to see its zone." >}}
+
+More on zones: <https://stories.strava.com/articles/understanding-heart-rate-zones-and-how-they-impact-your-training>
+
+## Power
+
+Power (measured in watts) reflects the amount of effort or energy output during running.
+
+It allows you to gauge the actual energy you're using to run, independent of pace and terrain. Power-based training can help you improve efficiency, as it enables you to maintain a constant energy output, even if terrain or conditions change.
+
+### Time in power zone
+
+Power zones are similar to heart rate zones, but based on your power output in watts. Time in power zone refers to how long you spend in each zone.
+
+This metric helps balance your power output during different phases of a run. Spending the right amount of time in different power zones can help with endurance, speed training, and efficient energy use.
+
+# Recovery and fuel
+
+## Stretching
+
+Proper stretching before and after runs plays a vital role in maintaining flexibility, preventing injuries, and enhancing recovery. Here's my approach to stretching before and after my runs.
+
+### Pre-run
+
+{{< youtube id=u-e0ZO5L0s0 loading=lazy >}}
+
+### Post-run
+
+{{< youtube id=taiBlDZhFT4 loading=lazy >}}
 
 ## Nutrition
 
@@ -270,7 +246,7 @@ Protein is essential for muscle recovery and growth. After a run, your muscles n
 
 ### Healthy Fats
 
-Fats are another essential energy source and play a crucial role in absorbing fat-soluble vitamins. Incorporate healthy fats like:
+Fats are another essential energy source and play a crucial role in absorbing fat-soluble vitamins.
 
 ### Hydration
 
@@ -284,29 +260,26 @@ Water makes up about 60% of our body weight and plays a vital role in every bodi
 
 Vitamins and minerals are crucial for overall health. Focus on eating a variety of colorful fruits and vegetables to ensure you're getting adequate micronutrients.
 
-# Result
+# What changed
 
 - Completed a **100km challenge** in 30 days (Oct 14, 2024).
 - Reduced BMI from **24.1 to 22.3**.
-- Current medium effort pace: **5K in approximately 35 minutes (7:00 min/km)**.
+- Medium effort pace in October 2024: **5K in approximately 35 minutes (7:00 min/km)**.
 - Resting heart rate (**RHR**) improved to less than **50 beats per minute**.
 
-## Next Steps
+## One goal at a time
 
-1. **Achieved:** 5K in 35 minutes ✅
-2. **Upcoming goal:** 5K under 30 minutes (~6:00 min/km pace) ✅ - Nov 15, 2024
-3. **Future challenges:**
-   - Complete a 5K sub 25 min (<=5:00 min/km pace) ✅ - Dec 4, 2024
-   - Complete a 10K run sub 60 min (<= 6:00 min/km pace) - ✅ - Feb 6, 2025
-   - Complete a 5K run sub 20 min (<= 4:00 min/km pace) - 🚧 - By 2026
+{{< viz kind="progress" wide="false" frame="none" title="My pace, goal by goal" fallback="progress.svg" alt="My pace by goal: 4K at 9:30 per km before the plan, then 5K at 7:00, under 6:00, 4:57, a 10K under 60 minutes, and a sub-20 5K still ahead" caption="Each dot is a goal I set, in the order I set them. The dashed one is still open." >}}
 
-{{< figure src="aws-reinvent-2024-5k.jpg" title="Results" alt="AWS badge showing the 5K run achived in 24 min 45 seconds" >}}
+The next goal is a 5K under 20 minutes (4:00 min/km) by 2026. The footprints figure above shows what it asks for: at 180 spm, 1.39 m per step.
+
+{{< figure src="aws-reinvent-2024-5k.jpg" title="AWS re:Invent 2024 5K" alt="AWS badge showing the 5K run achieved in 24 min 45 seconds" >}}
 
 Thank you, Kush, Dhruv, and Sandeep, for your direct and indirect support throughout this journey.
 
 > "Delulu is the solulu" - Gen Z
 >
-> It’s not a coincidence that most successful people, when looking back at their younger selves, cite the delusional hope they had back then as the fuel that propelled them through the toughest parts of their lives and careers. -- Mark Travers, [Forbs](https://www.forbes.com/sites/traversmark/2023/09/21/is-delulu-really-the-solulu-a-psychologist-explores-the-new-tiktok-trend/)
+> It’s not a coincidence that most successful people, when looking back at their younger selves, cite the delusional hope they had back then as the fuel that propelled them through the toughest parts of their lives and careers. -- Mark Travers, [Forbes](https://www.forbes.com/sites/traversmark/2023/09/21/is-delulu-really-the-solulu-a-psychologist-explores-the-new-tiktok-trend/)
 
 [^1]: <https://www.nytimes.com/athletic/2935360/2021/11/15/what-age-do-players-in-different-positions-peak/>
 

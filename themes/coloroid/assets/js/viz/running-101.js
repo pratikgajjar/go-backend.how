@@ -99,7 +99,7 @@ function initProgress(fig, app) {
   const svg = s('svg', { role: 'img', 'aria-label': 'My running pace by goal: 9:30 per km before the plan, then 7:00, under 6:00, 4:57 for a 5K, a 10K under 60 minutes, and a sub-20 5K still ahead' });
   app.append(h('div', { class: 'v-r101-hero-big' },
     h('span', { class: 'n' }, '9:30'), h('span', { class: 'arr' }, '→'), h('span', { class: 'n' }, '4:57'), h('span', { class: 'u' }, 'min/km')),
-  h('p', { class: 'v-r101-hero-sub' }, 'Four goals, one at a time, October 2024 to February 2025. The next one is a 5K under 20 minutes.'),
+  h('p', { class: 'v-r101-hero-sub' }, 'Four goals reached, one at a time, from October 2024 to February 2025.'),
   svg);
 
   function draw() {

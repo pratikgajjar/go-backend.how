@@ -40,7 +40,7 @@ html[data-force-dark] :is(.viz--progress, .viz--form-check, .viz--footprints, .v
   padding: 0 0 0.35rem; margin: 0 0 0.9rem;
   border-bottom: 2px solid var(--ink);
 }
-:is(.viz--form-check, .viz--footprints, .viz--hr-zones) .wv-title {
+:is(.viz--progress, .viz--form-check, .viz--footprints, .viz--hr-zones) .wv-title {
   font-family: var(--font-display);
   font-size: 15px; letter-spacing: 0.02em; text-transform: none;
 }
