@@ -1,6 +1,6 @@
 +++
 title = "🏎️ Building pre-owned Car Platform With Valkey - Part 2"
-description = "In Part 2, we will focus on building and optimizing the listing page using Valkey. We will explore how to handle complex filters, manage pagination efficiently, and ensure the listing page loads quickly to provide an excellent user experience."
+description = "How we moved the listing page of a used-car marketplace from Django filters on SQL to Valkey: each filter is a sorted set of car ids, a page is their intersection, and a personalised order is computed per request from one unordered set."
 date = 2024-07-17T19:54:52+05:30
 lastmod = 2024-07-17T19:54:52+05:30
 publishDate = "2024-07-17T19:54:52+05:30"
@@ -13,81 +13,40 @@ hnItemId = 41282624
 theme = "coral"
 +++
 
-{{< viz kind="hero" frame="none" fallback="hero.svg" alt="A listing request's four filters drawn as rows of car ids; the cars filled in every row are the page, served from Valkey while the SQL database stays off the read path" caption="Sample data: 12 cars. Each filter you switch on is one sorted set in Valkey, one row here. A car is on the page when its column is full in every row." >}}
+About 40–60% of user interactions begin on the listing page: a grid of cars
+with filters for city, price, make, and features. Each filter change used to
+run a SQL query with several joins, a second query for the count, and a
+serializer on top. This post shows how we moved that read path to Valkey. Each
+filter becomes a sorted set of car ids, a page is the intersection of those
+sets, one `HMGET` fetches the cards, and a personalised order is computed in
+the web server from one unordered set. The list API got 4x faster, and a `wrk`
+benchmark served 6x more requests.
 
-In [Part 1](/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1) of our series, we explored the foundational aspects of our platform's performance optimization. We began by defining our business model, which combines a marketplace and inventory system to facilitate car sales. We detailed the user flow, including how users view ads, generate leads, and book test drives. Our primary focus was on enhancing the performance of _individual car pages_, where we discussed various strategies to reduce latency and improve load times. We examined the impact of client-side versus server-side rendering and outlined initial approaches to optimizing both frontend and backend components.
+We built this in 2021. [Part 1](/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1)
+covers the business, the user flow, and how we made the individual car page
+fast.
 
-In Part 2, we will focus on building and optimizing the listing page using Valkey. We will explore how to handle complex filters, manage pagination efficiently, and ensure the listing page loads quickly to provide an excellent user experience.
+# What the listing page needs
 
-We will review the existing design and discuss how we mapped our business use cases to Valkey to significantly reduce response times. This will include an exploration of how to handle complex filters, manage pagination effectively, and leverage Valkey's capabilities to ensure that the listing page delivers a fast and seamless user experience.
+The listing page shows a list of cars with basic information, and it has to
+load quickly because it is where most visits start. It needs three things:
 
-# What ?
+- **Filters**: city, make, model, price range, colour, features, and so on.
+- **Pagination**: a page of cars at a time, with the total count.
+- **Order**: by price or date, or by a recommendation model that uses the
+  buyer's browsing history.
 
-The listing page is where users first interact with our inventory. It displays a comprehensive list of cars with basic information and provides filters and ordering options to help users refine their search effectively. Our goal is to ensure this page loads quickly and efficiently, as it plays a crucial role in reducing bounce rates.
+# The existing way: Django filters on SQL
 
-# Why ?
+The schema, cut down to what the filters touch: a `car` has a price, a
+colour, a locality (which belongs to a city), and a variant. A variant (for
+example XM) belongs to a model (Nexon), and a model to a make (Tata). Features
+such as AMT are many-to-many, through a `car_features` table.
 
-As we discovered in Part 1, approximately 40-60% of user interactions begin with the listing page. Therefore, optimizing its performance can significantly improve the overall user experience, increase engagement, and ultimately drive more sales.
-
-# Specification
-
-To meet our users' needs, we've identified three key features for the listing page:
-
-**Filters**: Allow users to narrow down their search by applying various filters such as make, model, year, price range, mileage, etc.
-
-**Pagination**: Divide the extensive list of cars into manageable pages to improve load times and user experience.
-
-**Recommendation Model**: Use a recommendation engine to order the cars based on user's browsing history or preferences.
-
-# Filters
-
-In a typical e-commerce site, filters help narrow down the vast inventory by applying complex queries behind the scene. Let's see how we can handle this using SQL Database.
-
-## Database
-
-### Schema
-
-Car
-
-| id  | price  | varient_id | color_id | date_created     |
-| --- | ------ | ---------- | -------- | ---------------- |
-| 1   | 775000 | 123        | 1        | 2020-07-20 02:17 |
-
-Varient
-
-| id  | model_id | name | date_created     |
-| --- | -------- | ---- | ---------------- |
-| 123 | 100      | XM   | 2020-07-20 02:17 |
-
-Model
-
-| id  | make_id | name  | date_created     |
-| --- | ------- | ----- | ---------------- |
-| 100 | 10      | Nexon | 2020-07-20 02:17 |
-
-Make
-
-| id  | name | date_created     |
-| --- | ---- | ---------------- |
-| 10  | Tata | 2020-07-20 02:17 |
-
-Features
-
-| id  | name | date_created     |
-| --- | ---- | ---------------- |
-| 20  | AMT  | 2020-07-20 02:17 |
-
-CarFeatures
-
-| id  | car_id | feature_id |
-| --- | ------ | ---------- |
-| 1   | 1      | 20         |
-
-To simplify and address sufficient edge cases, we've explored a partial schema.
-
-### Backend
-
-In the backend, we are using [Django](https://www.djangoproject.com/) and [Django REST Framework](https://www.django-rest-framework.org/) to create REST APIs, alongside the [django-filter](https://django-filter.readthedocs.io/en/stable/guide/usage.html) library to easily add complex filters.
+The backend uses [Django](https://www.djangoproject.com/) and
+[Django REST Framework](https://www.django-rest-framework.org/), with
+[django-filter](https://django-filter.readthedocs.io/en/stable/guide/usage.html)
+for the filters:
 
 ```py
 from django_filters import rest_framework as filters
@@ -118,16 +77,6 @@ class CarFilterSet(filters.FilterSet):
         ]
 ```
 
-With Django REST Framework ViewSets, each request runs three steps:
-
-1. **Filtering**: We define filters in our serializers or viewsets, which Django Rest Framework applies to our queryset. This means only the relevant objects that match the filtering criteria are considered for further processing.
-
-2. **Pagination**: If pagination is enabled (which it usually is), Django Rest Framework splits up the filtered queryset into smaller, paginated chunks. This helps manage large datasets and improves performance by reducing the amount of data processed at once.
-
-3. **Serialization**: Once we have our paginated queryset, Django Rest Framework serializes these objects into JSON format. In other words, it converts our Django models or querysets into a JSON response that can be easily sent back to the client (your frontend or API consumer).
-
-So, each time you send a request to one of your API endpoints using ViewSets, this series of operations happens behind the scenes: filtering based on defined criteria, paginating the results for efficiency, and then converting those results into JSON format for transmission.
-
 ```py
 from rest_framework import viewsets, mixins
 from rest_framework.filters import OrderingFilter
@@ -135,20 +84,18 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .filters import CarFilterSet
 
 class CarViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
-    """
-    A viewset that provides the standard actions for the User model,
-    including filtering using CarFilterSet.
-    """
     queryset = Car.objects.all() # django lazy queryset
     serializer_class = CarSerializer # converts django orm objects into json
     filter_backends = (DjangoFilterBackend, OrderingFilter) # django filters
     filterset_class = CarFilterSet # custom filterset
     ordering_fields = ["price", "year"]
     pagination_class = CarPagination
-
 ```
 
-### Request
+For each request, the ViewSet filters the queryset, cuts one page out of it,
+and serializes that page to JSON.
+
+## One request
 
 ```sql
 GET https://api.car.com/listing/?city_id=1&price_min=200000&price_max=400000&make=120,121&ordering=price&page=2
@@ -165,11 +112,14 @@ SELECT car.id, car.price, car.varient_id, car.color_id, car.locality_id
 OFFSET 10   -- (page - 1) * page_size; max_page = ceil(count / page_size)
 ```
 
-This is the SQL Django generates for the filter set above. It joins only the tables a filter needs: `city_id` is already a column on `locality`, and `make_id` a column on `model`, so `city` and `make` are never joined. Pagination runs a second query, `COUNT(*)` with the same joins, and the serializer then reads `model_name`, `varient_name` and `city_name`, which costs more joins with `select_related`, or one query per car without it. All of this runs on every request.
+This is the SQL Django generates for the filter set above. It joins only the
+tables a filter needs: `city_id` is already a column on `locality`, and
+`make_id` a column on `model`, so `city` and `make` are never joined. Guess
+the joins for one filter, then switch the others on:
 
 {{< viz kind="sql-joins" fig="1" title="What each filter joins" frame="none" fallback="sql-joins.svg" alt="The car schema as a graph of tables; switching filters on shows which tables Django joins and the SQL it generates" caption="SQL from Django 6.1 and django-filter 26.1 with this post's filter set (SQLite backend, quotes removed). `features` joins the through table, so a car with two of the requested features comes back twice until you add `.distinct()`." >}}
 
-### Response
+The response carries one page of cars and the total count:
 
 ```json
 HTTP 200 OK
@@ -198,7 +148,11 @@ HTTP 200 OK
 }
 ```
 
-To improve SEO performance, we've incorporated dynamic slugs into our URLs, rendering them more intuitive and user-friendly. When a user searches Google for "Used Nexon car," our indexed page's URL now mirrors this exact search query, boosting our visibility in those specific results and aligning our content with the user's intent – ultimately drawing in more relevant traffic.
+## Slugs for search pages
+
+For SEO, a listing page can also have a readable URL. When someone searches
+Google for "used Nexon cars in Mumbai", the page they land on has that phrase
+in its path:
 
 ```sql
 🌐 https://car.com/used-nexon-cars-in-mumbai
@@ -206,7 +160,9 @@ To improve SEO performance, we've incorporated dynamic slugs into our URLs, rend
 GET https://api.car.com/listing/?slug=used-nexon-cars-in-mumbai
 ```
 
-In this case, the `SlugFilter` will parse the tokens from the URL and use a database table to return the appropriate query string. For any given `SlugFilter`, a valid query string combination will always exist as it is a subset of the overall filters.
+The `SlugFilter` splits the slug into tokens and looks each one up in a table
+to get the query string. Every slug maps to a valid combination of the
+filters above.
 
 ```md
 used-nexon-cars-in-mumbai => model=121&city=1
@@ -220,111 +176,126 @@ used-nexon-cars-in-mumbai => model=121&city=1
 | 4   | tata   | make      | 2      |
 | 5   | petrol | fuel_type | 1      |
 
-## ValKey
+## Why this falls short
 
-We'll discuss how to efficiently store and retrieve car data in-memory, aiming to minimize round trips to ValKey[^1] while optimizing space usage.
+Every request does the same work again. The filter query joins up to four
+tables. Pagination runs a second query, `COUNT(*)` with the same joins. The
+serializer then reads `model_name`, `varient_name` and `city_name`, which
+costs more joins with `select_related`, or one query per car without it.
+Many buyers ask for the same popular filter combinations, such as all cars in
+Mumbai, and the database answers each one from scratch.
 
-### Why Use a Hash?
+Two simpler fixes do not work well here:
 
-To serve the car details shown in list responses, we keep one hash, `car:`, with the car id as the field and the listing JSON as the value.
+- **Cache each response by URL.** Page number, ordering, and the order of the
+  query parameters all make new keys for the same result. One sold car makes
+  every cached page that contains it wrong, and there is no cheap way to find
+  those pages.
+- **Precompute every page, as Part 1 did for car pages.** A car page has one
+  key per car. A listing page has one per combination of filters, and the
+  number of combinations can be far larger than the number of cars.
 
-**One round trip per page:** `HMGET car: 101 102 103` returns the JSON for every car on a page in one call. With a maximum page size of 35, that is at most 35 values per `HMGET`. (`MGET` over one string key per car would also be one call.)
+What stays small is the set of cars that match each single filter value.
 
-**Memory:** A hash uses the compact listpack encoding only while it has at most 512 fields (`hash-max-listpack-entries`) and every value is at most 64 bytes (`hash-max-listpack-value`)[^5]. Our `car:` hash holds every live car, and each value is a JSON document longer than 64 bytes, so Valkey stores it as a regular hash table. In a test on Valkey 9.1 with 10,000 sample cars, the hash used about 5% less memory than one string key per car. The large savings Instagram describes come from many small hashes with short values:
+# Filters are sets
 
-> the Redis setting ‘hash-zipmap-max-entries’ configures the maximum number of entries a hash can have while still being encoded efficiently. - [Instagram Blog](https://instagram-engineering.com/storing-hundreds-of-millions-of-simple-key-value-pairs-in-redis-1091ae80f74c)
+Each filter value picks a set of car ids: the cars in Mumbai, the cars priced
+₹4–8 L, the cars with AMT. A page is the cars that are in every set the buyer
+asked for, which is an intersection. A filter with several values, such as
+`make=10,12`, is a union. Try it:
 
-That setting is now called `hash-max-listpack-entries`.
+{{< viz kind="filter-sets" fig="2" title="Filters are sets" frame="none" fallback="filter-sets.svg" alt="A listing request's four filters drawn as rows of car ids; the cars filled in every row are the page, served from Valkey while the SQL database stays off the read path" caption="Sample data: 12 cars. Each filter you switch on is one sorted set in Valkey, one row here. A car is on the page when its column is full in every row." >}}
+
+Valkey[^1] keeps these sets in memory as sorted sets, one per filter
+attribute, with the attribute as the score. A range filter is then a range
+read:
+
+```txt
+ZRANGEBYSCORE car:price 100000 500000   # cars priced 1–5 L
+ZRANGEBYSCORE car:color 5 5             # cars with color_id = 5
+```
+
+These reads are `O(log(N) + M)`, where `N` is the size of the set and `M` the
+number of cars returned. Sorting a list or set with `SORT`[^2] instead costs
+`O(N + M * log(M))`. Set operations[^4] (`ZINTERSTORE`, `ZUNIONSTORE`) combine
+the results.
+
+Features are many-to-many: one car has many features, and one feature belongs
+to many cars. A single `car:feature` sorted set cannot hold that, so we keep
+one set per feature, `car:feature:{id}`, with the car ids as members and a
+score of 1.
+
+# The keys
+
+## `car:` holds the listing JSON
+
+To serve the cards, we keep one hash, `car:`, with the car id as the field and
+the listing JSON as the value. `HMGET car: 101 102 103` returns every card on
+a page in one call; with a maximum page size of 35, that is at most 35 values.
+(`MGET` over one string key per car would also be one call.)
+
+A hash uses the compact listpack encoding only while it has at most 512
+fields (`hash-max-listpack-entries`) and every value is at most 64 bytes
+(`hash-max-listpack-value`)[^5]. Our `car:` hash holds every live car, and
+each value is longer than 64 bytes, so Valkey stores it as a regular hash
+table. In a test on Valkey 9.1 with 10,000 sample cars, the hash used about 5%
+less memory than one string key per car. The large savings in
+[Instagram's post](https://instagram-engineering.com/storing-hundreds-of-millions-of-simple-key-value-pairs-in-redis-1091ae80f74c)
+come from many small hashes with short values; the setting it names,
+`hash-zipmap-max-entries`, is now called `hash-max-listpack-entries`.
 
 {{< viz kind="keys" key="hash" title="The car: hash" frame="none" wide="false" fallback="keys.svg" alt="The car: hash maps car ids to listing JSON; HMGET returns one value per id and nil for a missing id" caption="Sample values. Encodings and replies from Valkey 9.1." >}}
 
-#### Data Consistency and Invalidation
+## `car:<attribute>` holds the indexes
 
-To maintain data consistency, we listen to the database change log. Whenever a detail in the response payload changes, we update that car's field in the `car:` hash. When a car reaches a terminal state (e.g., sold or removed), we delete its field from the hash and its id from the index sets. Cached results (below) still hold that id until their TTL ends, so `HMGET` returns nil for it and the view must skip it.
-
-### Why Use a Sorted Set?
-
-Sorted sets offer efficient data retrieval and filtering in ValKey, making them particularly useful for tasks like pagination and attribute-based searches. Here's why:
-
-#### Efficient Filtering with Set Theory
-
-While we could use sorting (`SORT` command)[^2] on lists or sets to retrieve elements, it's an expensive operation with a time complexity of O(N+M\*log(M)), where:
-
-- N is the number of elements in the list/set to sort
-- M is the number of returned elements
-
-Sorted sets allow us to efficiently filter and retrieve data based on attributes using set theory[^4] operations:
-
-- Retrieve cars with prices between 100K INR and 500K INR:
-
-  ```txt
-  ZRANGEBYSCORE car:price 100000 500000
-  ```
-
-- Fetch cars with color_id = 5:
-
-  ```txt
-  ZRANGEBYSCORE car:color 5 5
-  ```
-
-These operations have a time complexity of O(log(N)+M), making them more efficient than sorting lists/sets. Here, N is the number of elements in the sorted set, and M is the number of returned elements.
-
-#### Optimized Pagination with Caching
-
-When the sort order depends on attributes like price or date_added, we store the filtered, sorted result and use it for every page of that query:
-
-1. Store the result in a sorted set with a key like `page:price:{queryhash}` (where `{queryhash}` identifies the filters) and a TTL.
-2. Read one page with `ZRANGE key start stop` (`ZREVRANGE` for descending order), then fetch those cars with `HMGET` from the `car:` hash.
-3. Use `ZCARD` for the total number of cars in the result.
-
-Later pages of the same query skip the filters. The order depends only on car data, so it is the same for every user who sends that query.
+One sorted set per filter attribute. The members are car ids, and the score is
+the attribute: `car:price` scores by price, `car:city` by city id, `car:make`
+by make id. Each set holds every live car, so it has thousands of members.
 
 {{< viz kind="keys" key="zset" title="The car:price index" frame="none" wide="false" fallback="keys.svg" alt="The car:price sorted set maps car ids to prices; ZRANGEBYSCORE returns the cars in a price range" caption="Sample values. Encodings and replies from Valkey 9.1." >}}
 
-### Why Use Unordered Sets ?
+## Keeping them fresh
 
-When the order comes from personalised recommendations, it depends on the buyer, and it changes every 45 minutes when we retrain our recommendation model. So we do not store the order:
+We listen to the database change log. When a detail in the listing JSON
+changes, we update that car's field in `car:`. When a car reaches a terminal
+state, such as sold or removed, we delete its field from `car:` and its id
+from every index set.
 
-**Query hash from car filters only**: we hash only the car-related filters. This pays off most on popular base pages, such as all cars in Mumbai.
+# Serving one page
 
-**Unordered set of car ids**: we store only the ids that match, with `SADD`. The web server ranks them on each request with the LightFM model it keeps in memory.
+Filtering a sorted set gives the cars in score order, so a price-ordered
+result can be stored once and paged many times:
 
-A stored order would have to exist once per buyer (or buyer group) and be rewritten after every retrain. The set is one key per query, and a retrain writes nothing to Valkey. The cost moves to the web server, which scores every id in the set on each request.
+1. **Key.** Hash the filters into a key such as `page:price:{queryhash}`. The
+   hash must not depend on parameter order, and it leaves out `page` and
+   `ordering`: `F('city_id=1&color=3,4') eq F('color=4,3&city_id=1')`.
+2. **Hit.** If the key exists, read one page with `ZRANGE key start stop`
+   (`ZREVRANGE` for descending order), the total with `ZCARD`, and the cards
+   with `HMGET car: …`.
+3. **Miss.** Build the result from the indexes, store it with a TTL, and
+   continue as for a hit:
 
-{{< viz kind="reco-order" fig="2" frame="none" title="One set, ranked per buyer" fallback="reco-order.svg" alt="One unordered set of nine car ids in Valkey, ranked differently for two buyers and two model versions by LightFM in the web server" caption="Sample scores. The set in Valkey is the same for both buyers and both model versions; only the order in the web server changes. At one retrain every 45 minutes, a day has 32 retrains." >}}
-
-### Cache-Hit
-
-1. Retrieve precomputed filtered car IDs from ValKey using the query string hash as the key.
-2. Provide the fetched car IDs to our recommendation engine for further processing.
-3. Paginate results at the application level using list comprehension to reduce data transfer and improve performance.
-4. Fetch additional car details using `HMGET`, retrieving multiple hash fields efficiently.
-
-### Cache-Miss
-
-If the filtered car set is not cached in ValKey following query string hash calculation, perform the following steps:
-
-1. Calculate the query string hash.
-   - The hash must not depend on filter order (e.g., `F('city_id=1&color=3,4') eq F('color=4,3&city_id=1')`).
-2. Build the target car set with set operations:
-
-   - Intersect sets with `ZINTERSTORE` to combine filters:
-
-     ```txt
-     ZINTERSTORE filtered_cars 2 cars_set_1 cars_set_2 WEIGHTS 1 0
-     ```
-
-     By default, `ZINTERSTORE` adds up a car's scores from every input set. Give weight 1 only to the set whose score is the sort key, such as `car:price`, so the result keeps the price as its score.
-
-   - Combine sets with `ZUNIONSTORE`, for example for `make=10,12`:
+   - `ZUNIONSTORE` for a filter with several values, such as `make=10,12`:
 
      ```txt
      ZUNIONSTORE all_cars 3 cars_set_1 cars_set_2 cars_set_3 AGGREGATE MAX
      ```
 
-3. Fetch car IDs in the required order using `ZRANGE` or `ZRANGEBYSCORE`.
+   - `ZINTERSTORE` to combine the filters:
 
-In some cases, we perform set operations in the web server to compute the resulting list of cars before fetching details with `HMGET`.
+     ```txt
+     ZINTERSTORE filtered_cars 2 cars_set_1 cars_set_2 WEIGHTS 1 0
+     ```
+
+     By default, `ZINTERSTORE` adds up a car's scores from every input set.
+     Give weight 1 only to the set whose score is the sort key, such as
+     `car:price`, so the result keeps the price as its score.
+
+The order depends only on car data, so a stored result is the same for every
+buyer who sends that query, and later pages skip the filters entirely.
+
+Some set operations we do in the web server instead, and fetch the cards with
+`HMGET` afterwards:
 
 ```py
 def filter_by_price(redis_pipe, price_min='-inf', price_max='+inf'):
@@ -335,41 +306,78 @@ def filter_by_price(redis_pipe, price_min='-inf', price_max='+inf'):
     )
 ```
 
-#### Dealing with many-to-many relationship
+A miss sends several commands, 12 in the example below. Valkey pipelining[^3] sends several
+commands without waiting for each reply. It saves network round trips, and it
+saves server work too: Valkey reads many commands with one `read()` system
+call and writes many replies with one `write()`. The Valkey docs report up to
+10 times more queries per second with long pipelines. We send the set
+operations of a miss in one pipeline.
 
-In case you have noticed we have Features table with MxN relationship with Cars table via CarFeatures. As one car can have many features and one feature could be there with multiple cars. How are we filtering here ?
+The figure follows one request over 12 sample cars: a miss, a hit for page 2,
+and what a sale does to a stored result.
 
-In such cases, instead of going with `car:color` sorted set, we keep sorted set of each feature, `car:feature:{id} -> {car_id} -> 1`
+{{< viz kind="listing-request" fig="3" title="One listing request through Valkey" frame="none" fallback="listing-request.svg" alt="A listing request is turned into a canonical key; on a miss, four index sets are intersected and stored with a TTL; page 2 is a hit; a sold car leaves a stale id in the stored result" caption="Sample data. The commands are one way to build the result on the server; every reply shown came from running them on Valkey 9.1 with this data. The key is `sha1` of the canonical query, first 18 hex digits. Use ← and → to step." >}}
 
-Now we can use intersection and union on these sets to compute the filter.
+# Personalised order
 
-#### Reducing network round trips
+When the order comes from the recommendation model, it depends on the buyer,
+and it changes every 45 minutes when we retrain the model. So we do not store
+the order:
 
-Valkey pipelining[^3] sends several commands without waiting for each reply. It saves network round trips, and it saves server work too: Valkey reads many commands with one `read()` system call and writes many replies with one `write()`. The Valkey docs report up to 10 times more queries per second with long pipelines.
+- **Key from car filters only.** We hash only the car-related filters. This
+  pays off most on popular base pages, such as all cars in Mumbai.
+- **Unordered set of car ids.** We store only the ids that match, with `SADD`.
 
-On a cache miss, we send the set operations in one pipeline.
+On each request, the web server reads the set, ranks the ids with the LightFM
+model it keeps in memory, slices out the requested page in Python, and fetches
+those cards with `HMGET`.
 
-### One request, end to end
+A stored order would have to exist once per buyer, or buyer group, and be
+rewritten after every retrain. The set is one key per query, and a retrain
+writes nothing to Valkey. The cost moves to the web server, which scores every
+id in the set on each request.
 
-The figure follows one filtered listing request over 12 sample cars: a miss, a hit for page 2, and what a sale does to a stored result.
+{{< viz kind="reco-order" fig="4" title="One set, ranked per buyer" frame="none" fallback="reco-order.svg" alt="One unordered set of nine car ids in Valkey, ranked differently for two buyers and two model versions by LightFM in the web server" caption="Sample scores. The set in Valkey is the same for both buyers and both model versions; only the order in the web server changes. At one retrain every 45 minutes, a day has 32 retrains." >}}
 
-{{< viz kind="listing-request" fig="3" frame="none" title="One listing request through Valkey" fallback="listing-request.svg" alt="A listing request is turned into a canonical key; on a miss, four index sets are intersected and stored with a TTL; page 2 is a hit; a sold car leaves a stale id in the stored result" caption="Sample data. The commands are one way to build the result on the server; every reply shown came from running them on Valkey 9.1 with this data. The key is `sha1` of the canonical query, first 18 hex digits. Use ← and → to step." >}}
+# Where this hurts
+
+- **Stale ids until the TTL ends.** A stored result is not an index, so the
+  change-log consumer does not update it. A sold car stays in it, `HMGET`
+  returns nil for that id, and the view must skip it. Until the key expires,
+  the page is short and the count is too high (step 8 of Figure 3).
+- **Empty results are never cached.** `ZINTERSTORE` does not store an empty
+  set, so a filter that matches no car misses on every request.
+- **Everything is in memory.** The `car:` hash, one sorted set per filter
+  attribute, one set per feature, and every stored result.
+- **Personalised pages cost CPU.** The web server scores every id in the set
+  on every request, so a broad query with many cars costs more than a narrow
+  one.
 
 # Result
 
 Production numbers from NewRelic, before and after the change.
 
-## Before and after Optimization
-
 {{< figure src="listing-viewset-list.png" title="List API: 4x faster" alt="NewRelic stats" width="auto" caption="Listing page 4x faster" >}}
 {{< figure src="listing-viewset-retrieve.png" title="Retrieve API: 4.7x faster" alt="NewRelic stats" width="auto" caption="Dedicated page 4.7x faster" >}}
 {{< figure src="overall-stats.png" title="Bottleneck moved from database to Python" alt="NewRelic stats" width="auto" caption="Bottleneck moved from database to python" >}}
 
-## Wrk Benchmark
+A `wrk` benchmark of the list API:
 
 {{< figure src="wrk-bench-diff.png" title="List API" alt="Wrk benchmark" width="auto" caption="We can serve 6x more requests" >}}
 
-Working on performance optimization often requires a deep dive into the execution of programs, leading to a more profound understanding of their inner workings. This was a key focus in a project we undertook in 2021.
+# What we showed
+
+1. Django filters on SQL repeat the same joins and the same count for every
+   buyer who asks for the same filters.
+2. A filter value is a set of car ids, and a page is the intersection of those
+   sets. Valkey sorted sets hold the sets, scored by the attribute.
+3. One `car:` hash serves a whole page of cards with one `HMGET`.
+4. A price-ordered result is stored once with a TTL and paged many times; a
+   miss is one pipeline.
+5. A personalised order is computed per request from one unordered set, so a
+   model retrain writes nothing to Valkey.
+6. The list API got 4x faster, and the bottleneck moved from the database to
+   Python.
 
 [^1]: {{< details "[Valkey](https://valkey.io/commands/) COMMAND Ref" >}}
 

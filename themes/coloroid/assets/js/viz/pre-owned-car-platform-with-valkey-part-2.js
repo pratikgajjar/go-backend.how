@@ -6,7 +6,7 @@
  * one row per filter set, one column per car, so an intersection is a
  * column that is filled in every row.
  *
- *   hero             the reader switches filters; each is a set row, and
+ *   filter-sets      the reader switches filters; each is a set row, and
  *                    the full columns are the page
  *   sql-joins        which tables each django-filter filter joins
  *   keys             one card per Valkey key shape (data-key=hash|zset)
@@ -98,11 +98,11 @@ function strip({ rows, cols, cell, head = true, rowCls = () => '' }) {
   return t;
 }
 
-/* ================================================================ HERO */
+/* ========================================================= FILTER SETS */
 
 /* The reader switches filters. Each switched-on filter is one set row;
    the cars whose column is full in every row are the page. */
-function initHero(fig, app) {
+function initFilterSets(fig, app) {
   root(fig);
   const on = { city: true, price: true, make: true, amt: true };
   const LABEL = { city: 'Mumbai', price: '₹4–8 L', make: 'Tata or Hyundai', amt: 'AMT' };
@@ -701,4 +701,4 @@ function initListing(fig, app) {
   go(0);
 }
 
-register({ hero: initHero, 'sql-joins': initSqlJoins, keys: initKeys, 'reco-order': initReco, 'listing-request': initListing });
+register({ 'filter-sets': initFilterSets, 'sql-joins': initSqlJoins, keys: initKeys, 'reco-order': initReco, 'listing-request': initListing });

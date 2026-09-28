@@ -148,7 +148,7 @@ body[class*="theme-"] .v-vk2 code { background: var(--tint2); color: var(--ink);
 .v-vk2-tl.is-cm { color: var(--term-mute); }
 .v-vk2-pr { color: var(--term-mute); }
 
-/* ---------- hero ---------- */
+/* ---------- filter sets ---------- */
 .v-vk2-hmid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
 @media (min-width: 720px) { .v-vk2-hmid { grid-template-columns: minmax(0, 1fr) 230px; } }
 .v-vk2-hphone { max-width: 280px; width: 100%; justify-self: center; min-height: 15.5rem; }
