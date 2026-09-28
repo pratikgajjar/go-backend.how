@@ -1,16 +1,16 @@
 /*
- * Figures for "The Psychology of Seeking Help".
+ * Figures for "The Psychology of Seeking Help" (house style, shared parts).
  *
- *   trails     hero: five people, one failing test, what each did before
- *              asking. Labels sit on the marks; the ask is the only colour.
- *   sorter     retrieval: the reader reads one message at a time, guesses
- *              who wrote it, then sees the phrases that give it away.
- *   last-ask   relevance: the reader answers three questions about their
- *              own last ask and draws their own line, one part per answer.
+ *   trails     Fig. 1: five people, one failing test, what each did before
+ *              asking. Ink marks, labels on the marks, the ask in purple.
+ *   sorter     Fig. 2: predict then see. One sample message at a time; the
+ *              reader guesses the type (ask()), then the clues are marked.
+ *   last-ask   Fig. 3: the reader answers three questions (chips()) about
+ *              their own last ask and draws their own line, one part each.
  *
  * Types, ratings, and traits come from the post. Messages are samples.
  */
-import { h, s, register, REDUCED } from './lib.js';
+import { h, s, btn, chips, ask, colorKey, register, esc } from './lib.js';
 
 const ERR = 'dial tcp 127.0.0.1:5432: connect: connection refused';
 
@@ -35,12 +35,12 @@ const NAMES = {
 function drawTrail(g, id, x0, x1, y, { labels = false } = {}) {
   const sh = SHAPES[id];
   const X = (v) => x0 + (v / 300) * (x1 - x0);
-  const lab = (x, yy, t, anchor = 'middle') => g.append(s('text', { x, y: yy, class: 'v-psh-tl', 'text-anchor': anchor }, t));
+  const lab = (x, yy, t, anchor = 'middle') => g.append(s('text', { x, y: yy, class: 't-xs halo', 'text-anchor': anchor }, t));
   if (sh.past) {
     g.append(
       s('circle', { cx: X(40), cy: y - 14, r: 4.5, class: 'v-psh-past' }),
       s('path', { d: `M${X(46)} ${y - 13} C ${X(66)} ${y - 10}, ${X(82)} ${y - 6}, ${X(98)} ${y - 3}`, class: 'v-psh-link' }),
-      s('path', { d: `M${X(107) - 4} ${y - 7} l 8 8 M${X(107) + 4} ${y - 7} l -8 8`, class: 'v-psh-x' }),
+      s('path', { d: `M${X(107) - 4} ${y - 7} l 8 8 M${X(107) + 4} ${y - 7} l -8 8`, class: 'v-psh-mark' }),
     );
     if (labels) { lab(X(40) + 9, y - 22, 'fixed something like it before', 'start'); lab(X(107), y + 18, 'no link'); }
   }
@@ -48,9 +48,9 @@ function drawTrail(g, id, x0, x1, y, { labels = false } = {}) {
   g.append(s('circle', { cx: X(sh.start), cy: y, r: 3.5, class: 'v-psh-start' }));
   sh.marks.forEach((m, n) => {
     const x = X(m.x);
-    if (m.k === 'try') g.append(s('line', { x1: x, y1: y - m.t / 2 - 2, x2: x, y2: y + m.t / 2 + 2, class: 'v-psh-try' }));
-    if (m.k === 'dead') g.append(s('path', { d: `M${x - 4} ${y - 4} l 8 8 M${x + 4} ${y - 4} l -8 8`, class: 'v-psh-try' }));
-    if (m.k === 'know') g.append(s('path', { d: `M${x - 4} ${y} l 3 4 l 6 -8`, class: 'v-psh-know' }));
+    if (m.k === 'try') g.append(s('line', { x1: x, y1: y - m.t / 2 - 2, x2: x, y2: y + m.t / 2 + 2, class: 'v-psh-mark' }));
+    if (m.k === 'dead') g.append(s('path', { d: `M${x - 4} ${y - 4} l 8 8 M${x + 4} ${y - 4} l -8 8`, class: 'v-psh-mark' }));
+    if (m.k === 'know') g.append(s('path', { d: `M${x - 4} ${y} l 3 4 l 6 -8`, class: 'v-psh-mark' }));
     if (labels && n === 0 && m.k === 'try' && id === 'persistent') lab(x, y - 17, 'an attempt');
     if (labels && n === 0 && m.k === 'dead') lab(x, y - 12, 'a dead end');
     if (labels && m.k === 'know') lab(x, y - 12, 'knows it');
@@ -72,29 +72,31 @@ function initTrails(fig, app) {
     svgs.push([id, svg]);
     const [e, d] = RATE[id];
     return h('li', { class: 'v-psh-row' },
-      h('span', { class: 'v-psh-name' }, NAMES[id]),
-      h('span', { class: 'v-psh-rate' }, `effort ${e} · difficulty ${d}`),
+      h('b', { class: 'v-psh-name' }, NAMES[id]),
+      h('span', { class: 'v-psh-rate t-s' }, 'effort ', h('span', { class: 'c-data' }, e), ' · difficulty ',
+        h('span', { class: d === 'unknown' ? 'c-bad' : 'c-data' }, d)),
       svg);
   });
   // Draw in user units close to the on-screen width, so labels keep one size.
   let drawnW = 0;
   function draw() {
     const px = svgs[0][1].getBoundingClientRect().width || 300;
-    const W = Math.max(300, Math.round(px / 1.15 / 20) * 20);
+    const W = Math.max(300, Math.round(px / 20) * 20);
     if (W === drawnW) return;
     drawnW = W;
     svgs.forEach(([id, svg], n) => {
       svg.replaceChildren();
       svg.setAttribute('viewBox', `0 0 ${W} 50`);
       const ax = drawTrail(svg, id, 0, W, 30, { labels: true });
-      svg.append(s('text', { x: ax, y: 36, class: 'v-psh-ask', 'text-anchor': 'middle' }, SHAPES[id].handoff ? '→' : '?'));
-      if (n === 0) svg.append(s('text', { x: ax, y: 12, class: 'v-psh-tl v-psh-tl-ask', 'text-anchor': 'middle' }, 'asks'));
-      if (id === 'direct') svg.append(s('text', { x: 10, y: 34, class: 'v-psh-tl v-psh-tl-empty' }, 'nothing tried'));
+      svg.append(s('text', { x: ax, y: 36, class: 't-l t-b t-look', 'text-anchor': 'middle' }, SHAPES[id].handoff ? '→' : '?'));
+      if (n === 0) svg.append(s('text', { x: ax, y: 12, class: 't-xs t-b t-look', 'text-anchor': 'middle' }, 'asks'));
+      if (id === 'direct') svg.append(s('text', { x: 10, y: 34, class: 't-xs' }, 'nothing tried'));
     });
   }
   app.append(
-    h('p', { class: 'v-psh-kicker' }, 'Five people hit the same failing test.'),
+    h('div', { class: 'wv-q' }, 'Five people hit the same failing test. What did each do before asking?'),
     h('ol', { class: 'v-psh-rows' }, ...rows),
+    colorKey([['k-ink', 'what they did'], ['k-look', 'the ask'], ['k-data', 'rating from the post'], ['k-gap', 'not known yet']]),
   );
   draw();
   if ('ResizeObserver' in window) new ResizeObserver(draw).observe(svgs[0][1]);
@@ -152,38 +154,28 @@ function codeify(text) {
 function initSorter(fig, app) {
   let idx = 0;
   const picks = [];
-
-  const dots = h('div', { class: 'v-psh-dots', 'aria-hidden': 'true' });
-  const count = h('span', { class: 'v-psh-count' });
-  const msg = h('div', { class: 'v-psh-msg' });
-  const choices = h('div', { class: 'v-psh-choices', role: 'group', 'aria-label': 'Who wrote this?' });
-  const verdict = h('p', { class: 'v-psh-verdict', 'aria-live': 'polite' });
-  const prompt = h('p', { class: 'v-psh-prompt' }, 'Who wrote this?');
-  const next = h('button', { type: 'button', class: 'v-psh-next', onclick: () => go(idx + 1) });
-
-  const btns = Object.keys(NAMES).map((id) => {
-    const b = h('button', { type: 'button', class: 'v-psh-choice', onclick: () => pick(id) }, NAMES[id].replace(/^The /, ''));
-    b.dataset.id = id;
-    choices.append(b);
-    return b;
-  });
+  const pos = h('span', { class: 'wv-pos' });
+  const score = h('span', { class: 'v-psh-score' });
+  const card = h('div', { class: 'wv-card is-data v-psh-msg' });
+  const slot = h('div', { class: 'v-psh-slot' });
+  const next = btn('Next message ▶', () => go(idx + 1));
+  const again = btn('↻ Try again', () => { picks.length = 0; go(0); });
 
   function renderMsg(m, revealed) {
-    msg.replaceChildren(
-      h('div', { class: 'v-psh-meta' }, h('b', null, '#backend'), ` · ${m.time} · sample`),
+    card.replaceChildren(
+      h('h5', null, '#backend', h('span', { class: 'v-psh-meta' }, ` · ${m.time} · sample`)),
       h('p', { class: 'v-psh-body' }, ...m.parts.map((p) => {
         if (typeof p === 'string') return codeify(p);
-        const [t, clue] = p;
+        const [txt, clue] = p;
         return revealed
-          ? h('span', { class: 'v-psh-clue' }, h('mark', null, ...codeify(t)), h('span', { class: 'v-psh-cl' }, clue))
-          : h('span', null, ...codeify(t));
+          ? h('span', null, h('mark', { class: 'v-psh-clue' }, ...codeify(txt)), h('span', { class: 'c-look t-xs t-up' }, ` ${clue} `))
+          : h('span', null, ...codeify(txt));
       })));
   }
 
-  function renderDots() {
-    dots.replaceChildren(...MESSAGES.map((m, k) => h('i', {
-      class: k === idx ? 'is-now' : picks[k] == null ? '' : picks[k] === m.id ? 'is-ok' : 'is-miss',
-    })));
+  function tally() {
+    const right = picks.filter((p, k) => p === MESSAGES[k].id).length;
+    score.textContent = picks.length ? `${right} of ${picks.filter((p) => p != null).length} right` : '';
   }
 
   function go(n) {
@@ -191,56 +183,40 @@ function initSorter(fig, app) {
     idx = n;
     const m = MESSAGES[idx];
     renderMsg(m, false);
-    count.textContent = `Message ${idx + 1} of ${MESSAGES.length}`;
-    btns.forEach((b) => { b.disabled = false; b.className = 'v-psh-choice'; });
-    choices.hidden = false;
-    verdict.replaceChildren();
-    prompt.hidden = false;
-    next.hidden = true;
-    renderDots();
-  }
-
-  function pick(id) {
-    const m = MESSAGES[idx];
-    picks[idx] = id;
-    const ok = id === m.id;
-    renderMsg(m, true);
-    btns.forEach((b) => {
-      b.disabled = true;
-      if (b.dataset.id === m.id) b.classList.add('is-right');
-      else if (b.dataset.id === id) b.classList.add('is-wrong');
+    pos.textContent = `${idx + 1} / ${MESSAGES.length}`;
+    const q = ask('Who wrote this?', Object.keys(NAMES).map((id) => [id, NAMES[id].replace(/^The /, '')]), m.id, (v, right) => {
+      picks[idx] = v;
+      renderMsg(m, true);
+      tally();
+      next.hidden = false;
+      next.textContent = idx === MESSAGES.length - 1 ? 'See the result ▶' : 'Next message ▶';
+      const pair = PAIRS.find(([ids]) => ids.includes(v) && ids.includes(m.id) && !right);
+      return `<b>${right ? 'Yes.' : `This one is ${esc(NAMES[m.id])}.`}</b> ${esc(WHY[m.id])}${pair ? `<br>${esc(pair[1])}` : ''}`;
     });
-    const pair = PAIRS.find(([ids]) => ids.includes(id) && ids.includes(m.id) && id !== m.id);
-    verdict.replaceChildren(...[
-      h('b', null, ok ? 'Yes. ' : `This one is ${NAMES[m.id]}. `),
-      WHY[m.id],
-      pair ? h('span', { class: 'v-psh-pair' }, pair[1]) : null].filter(Boolean));
-    next.textContent = idx === MESSAGES.length - 1 ? 'See how you did →' : 'Next message →';
-    next.hidden = false;
-    renderDots();
-    next.focus({ preventScroll: true });
+    slot.replaceChildren(q.el);
+    next.hidden = true;
+    again.hidden = true;
+    tally();
   }
 
   function finish() {
-    idx = MESSAGES.length;
     const right = picks.filter((p, k) => p === MESSAGES[k].id).length;
-    renderDots();
-    count.textContent = 'Done';
-    choices.hidden = true;
-    prompt.hidden = true;
-    next.hidden = true;
-    msg.replaceChildren(h('p', { class: 'v-psh-score' }, h('b', null, `${right} of ${MESSAGES.length}`), ' placed.'),
+    pos.textContent = 'done';
+    card.className = 'wv-card v-psh-msg';
+    card.replaceChildren(h('h5', null, `${right} of ${MESSAGES.length} placed`),
       h('p', { class: 'v-psh-body' }, 'Every message was about the same failing test. What changed was what the person had done before they wrote it, and that is what the reply should answer.'));
-    verdict.replaceChildren(h('button', { type: 'button', class: 'v-psh-next', onclick: () => { picks.length = 0; go(0); } }, '↺ Try again'));
+    slot.replaceChildren();
+    next.hidden = true;
+    again.hidden = false;
   }
 
   app.append(
-    h('div', { class: 'v-psh-top' }, count, dots),
-    msg,
-    prompt,
-    choices,
-    verdict,
-    h('div', { class: 'v-psh-foot' }, next),
+    h('div', { class: 'wv-bar' }, h('span', { class: 'c-opt t-up t-xs' }, 'Message'), pos, h('span', { class: 'wv-sp' }), score),
+    card,
+    h('div', { class: 'v-psh-gap' }),
+    slot,
+    h('div', { class: 'wv-bar' }, next, again),
+    colorKey([['k-data', 'the message (sample)'], ['k-look', 'what gives it away'], ['k-held', 'the right type'], ['k-gap', 'your wrong guess']]),
   );
   go(0);
 }
@@ -318,11 +294,10 @@ function wrapText(g, x, y, text, max, cls, anchor = 'start') {
 
 function initLastAsk(fig, app) {
   const ans = {};
-  let open = 0;
-  let last = null; // id of the part drawn last: the one highlight
+  let last = null; // the part drawn last is the one highlight
   const stage = h('div', { class: 'v-psh-stage' });
-  const qwrap = h('div', { class: 'v-psh-qs' });
-  const nextBox = h('p', { class: 'v-psh-nextbox', 'aria-live': 'polite' });
+  const qs = h('div', { class: 'v-psh-qs' });
+  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
 
   function draw() {
     const W = stage.clientWidth < 520 ? 340 : 560;
@@ -332,32 +307,29 @@ function initLastAsk(fig, app) {
     const layer = (id) => { const g = s('g', { class: `v-psh-part${last === id ? ' is-new' : ''}` }); svg.append(g); return g; };
     const max = W < 400 ? 22 : 34;
 
-    // placeholders keep the map stable before any answer
     svg.append(
-      s('text', { x: x0, y: y + 30, class: 'v-psh-tl v-psh-dim' }, 'before'),
-      s('text', { x: xe, y: y + 30, class: 'v-psh-tl v-psh-dim', 'text-anchor': 'end' }, 'after the fix'),
+      s('text', { x: x0, y: y + 30, class: 't-xs t-mute' }, 'before'),
+      s('text', { x: xe, y: y + 30, class: 't-xs t-mute', 'text-anchor': 'end' }, 'after the fix'),
     );
-    if (!ans.seeker) svg.append(s('line', { x1: x0, y1: y, x2: xq - 12, y2: y, class: 'v-psh-ghost' }));
-    if (!ans.reaction) svg.append(s('line', { x1: xq + 12, y1: y, x2: xe, y2: y, class: 'v-psh-ghost' }));
-
-    // the ask
-    svg.append(s('text', { x: xq, y: y + 6, class: 'v-psh-ask', 'text-anchor': 'middle' }, '?'));
-    svg.append(s('text', { x: xq, y: y - 16, class: 'v-psh-tl', 'text-anchor': 'middle' }, 'you ask'));
+    if (!ans.seeker) svg.append(s('line', { x1: x0, y1: y, x2: xq - 12, y2: y, class: 'rule dash' }));
+    if (!ans.reaction) svg.append(s('line', { x1: xq + 12, y1: y, x2: xe, y2: y, class: 'rule dash' }));
+    svg.append(s('text', { x: xq, y: y + 7, class: 't-xl t-b', 'text-anchor': 'middle' }, '?'));
+    svg.append(s('text', { x: xq, y: y - 18, class: 't-xs', 'text-anchor': 'middle' }, 'you ask'));
 
     if (ans.seeker) {
       const g = layer('seeker');
       drawTrail(g, ans.seeker, x0, xq - 6, y);
-      wrapText(g, x0, 18, NAMES[ans.seeker], max, 'v-psh-tname');
+      wrapText(g, x0, 18, NAMES[ans.seeker], max, 't-s t-b');
     }
     if (ans.reaction) {
       const g = layer('reaction');
       const r = REACT[ans.reaction];
       const x1 = xq + 12 + (xe - xq - 12) * r.end;
-      g.append(s('line', { x1: xq + 12, y1: y, x2: x1, y2: y, class: `v-psh-line${ans.reaction === 'disinterested' ? ' v-psh-dash' : ''}` }));
-      if (ans.reaction === 'inquisitive') g.append(s('line', { x1: (xq + x1) / 2, y1: y - 7, x2: (xq + x1) / 2, y2: y + 7, class: 'v-psh-try' }));
+      g.append(s('line', { x1: xq + 12, y1: y, x2: x1, y2: y, class: `v-psh-line${ans.reaction === 'disinterested' ? ' dash' : ''}` }));
+      if (ans.reaction === 'inquisitive') g.append(s('line', { x1: (xq + x1) / 2, y1: y - 7, x2: (xq + x1) / 2, y2: y + 7, class: 'v-psh-mark' }));
       g.append(s('circle', { cx: x1, cy: y, r: 4.5, class: ans.reaction === 'disinterested' ? 'v-psh-start' : 'v-psh-end' }));
-      wrapText(g, xe, 18, r.name, max, 'v-psh-tname', 'end');
-      wrapText(g, xe, 36, r.note, max, 'v-psh-tl', 'end');
+      wrapText(g, xe, 18, r.name, max, 't-s t-b', 'end');
+      wrapText(g, xe, 36, r.note, max, 't-xs', 'end');
     }
     if (ans.channel) {
       const g = layer('channel');
@@ -365,56 +337,49 @@ function initLastAsk(fig, app) {
       const py = y + 70;
       const xs = c.n === 1 ? [xq] : [-2, -1, 0, 1, 2].map((k) => xq + k * (W < 400 ? 22 : 30));
       xs.forEach((px) => g.append(
-        s('line', { x1: xq, y1: y + 10, x2: px, y2: py - 7, class: 'v-psh-reach' }),
-        s('circle', { cx: px, cy: py, r: 6, class: 'v-psh-person' })));
-      if (ans.channel === 'call') g.append(s('text', { x: xq + 12, y: py - 10, class: 'v-psh-tl v-psh-bang' }, '!'));
-      const lx = xs[0] - 12;
-      wrapText(g, lx, py - 4, c.note, W < 400 ? 18 : 26, 'v-psh-tl', 'end');
+        s('line', { x1: xq, y1: y + 12, x2: px, y2: py - 7, class: 'v-psh-line' }),
+        s('circle', { cx: px, cy: py, r: 6, class: 'v-psh-start' })));
+      if (ans.channel === 'call') g.append(s('text', { x: xq + 12, y: py - 10, class: 't-s t-b' }, '!'));
+      wrapText(g, xs[0] - 12, py - 4, c.note, W < 400 ? 18 : 26, 't-xs', 'end');
     }
     stage.replaceChildren(svg);
   }
 
-  function nextLine() {
-    if (!(ans.seeker && ans.reaction && ans.channel)) { nextBox.replaceChildren(); return; }
-    const t = NEXT.channel[ans.channel] || NEXT.seeker[ans.seeker] || NEXT.reaction[ans.reaction]
-      || 'You bring what you tried, learn why it broke, and leave the answer where the next person can find it. That is the pattern the post describes.';
-    nextBox.replaceChildren(h('b', null, 'Next time. '), t);
+  function renderNote() {
+    if (!(ans.seeker && ans.reaction && ans.channel)) { note.hidden = true; return; }
+    const t = NEXT.channel[ans.channel] || NEXT.seeker[ans.seeker] || NEXT.reaction[ans.reaction];
+    note.hidden = false;
+    note.className = `wv-note${t ? '' : ' is-good'}`;
+    note.replaceChildren(h('span', { class: 'k' }, 'Next time'),
+      t || 'You bring what you tried, learn why it broke, and leave the answer where the next person can find it. That is the pattern the post describes.');
   }
 
-  function renderQs() {
-    qwrap.replaceChildren(...QUESTIONS.map((qq, n) => {
-      if (n !== open) {
-        const got = ans[qq.id];
-        if (!got) return n < open ? null : h('p', { class: 'v-psh-qline is-todo' }, h('span', { class: 'v-psh-num' }, `${n + 1}`), qq.q);
-        const label = qq.options.find(([v]) => v === got)[1];
-        return h('p', { class: 'v-psh-qline' }, h('span', { class: 'v-psh-num' }, `${n + 1}`),
-          h('span', { class: 'v-psh-got' }, label),
-          h('button', { type: 'button', class: 'v-psh-change', onclick: () => { open = n; renderQs(); } }, 'change'));
-      }
-      return h('fieldset', { class: 'v-psh-q' },
-        h('legend', null, h('span', { class: 'v-psh-num' }, `${n + 1}`), qq.q),
-        ...qq.options.map(([val, label]) => h('button', {
-          type: 'button', class: 'v-psh-opt', 'aria-pressed': String(ans[qq.id] === val),
-          onclick: () => {
-            ans[qq.id] = val; last = qq.id;
-            const nxt = QUESTIONS.findIndex((q2) => !ans[q2.id]);
-            open = nxt;
-            renderQs(); draw(); nextLine();
-          },
-        }, label)));
-    }));
-  }
+  // One question at a time; answered ones stay visible and editable.
+  const blocks = QUESTIONS.map((qq, n) => {
+    const c = chips(qq.options, (v) => {
+      ans[qq.id] = v; last = qq.id;
+      if (blocks[n + 1]) blocks[n + 1].hidden = false;
+      draw(); renderNote();
+    }, { label: qq.q });
+    const el = h('div', { class: 'wv-ask' }, h('p', { class: 'q' }, `${n + 1}. ${qq.q}`), c.el);
+    el.hidden = n > 0;
+    qs.append(el);
+    return el;
+  });
 
   app.append(
-    h('p', { class: 'v-psh-intro' }, 'Think of the last time you asked someone for help at work. Each answer draws one part of your line.'),
-    stage, qwrap, nextBox);
-  renderQs();
-  draw();
+    h('div', { class: 'wv-q' }, 'Think of the last time you asked someone for help at work. Each answer draws one part of your line.'),
+    stage,
+    h('div', { class: 'v-psh-gap' }),
+    qs,
+    note,
+    colorKey([['k-opt', 'your answer'], ['k-look', 'the part you just drew'], ['k-ink', 'your line so far']]),
+  );
+  draw(); renderNote();
   if ('ResizeObserver' in window) {
-    let w = 0;
+    let w = null;
     new ResizeObserver(() => { const nw = stage.clientWidth < 520; if (nw !== w) { w = nw; draw(); } }).observe(stage);
   }
-  if (REDUCED) stage.classList.add('is-still');
 }
 
 register({ trails: initTrails, sorter: initSorter, 'last-ask': initLastAsk });
