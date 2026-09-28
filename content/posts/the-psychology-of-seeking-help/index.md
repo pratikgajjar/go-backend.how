@@ -10,10 +10,10 @@ images = ["og-7ea28dc5.png"]
 theme = "wisteria"
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei sorting help-seekers by type and matching each to the right response" >}}
+{{< viz kind="trails" frame="none" fallback="trails.svg" alt="Five help seekers as lines from the moment a problem appears to the moment they ask: many narrowing attempts, many dead ends, a half-remembered earlier problem, no attempts, and a hand-off" caption="Each line runs from the moment the problem appears to the moment the person asks. Ratings come from the sections below." >}}
 
 
-In my experience as a backend engineer, I've observed various patterns in how people seek help when they encounter problems. Understanding these patterns not only aids in providing effective assistance but also helps in fostering a culture of collaborative problem-solving.
+In my experience as a backend engineer, I've observed various patterns in how people seek help when they encounter problems. Recognising the pattern tells me what kind of help the person needs.
 
 # Types of Help Seekers
 
@@ -82,10 +82,6 @@ This group is familiar with the problem but prefers not to solve it themselves. 
 - Prefers delegation
 - Low engagement in the resolution process
 
-Each type has two ratings: the effort spent before asking, and the difficulty of the problem. On one grid, two things stand out. The Persistent Problem Solver and the Exhausted Effort share a cell; what separates them is whether they still have a lead to follow. The Direct Seeker has no row, because no one has looked at the problem yet.
-
-{{< viz kind="seeker-map" fig="1" title="Help seekers by effort and difficulty" fallback="seeker-map.svg" alt="Grid of the five help seekers by effort before asking and difficulty of the problem" caption="Ratings come from the sections above. Select a type to see what they did before asking and what they want from you." >}}
-
 # Reactions to Solutions
 
 ## The Inquisitive Learner
@@ -122,8 +118,6 @@ This group has no interest in the problem or solution; they just want it resolve
 
 Smart help seekers send a message instead of calling, and post it in a public channel instead of a DM. A message does not force anyone to stop work. Anyone who is free can answer, and the answer stays searchable for the next person who hits the same problem.
 
-{{< viz kind="channel-walk" fig="2" title="One question, three channels" fallback="channel-walk.svg" alt="The same question asked by phone call, direct message, and public channel, followed until a new teammate hits the same error" caption="People, the question, and the fix are samples. Pick a channel, then step through. Search follows Slack: public channel messages show up for every workspace member except guests, and the free plan keeps the last 90 days searchable." >}}
-
 ## Not recommended
 
 - Phone / WhatsApp call
@@ -131,6 +125,8 @@ Smart help seekers send a message instead of calling, and post it in a public ch
 
 # Conclusion
 
-Understanding the psychology behind how people seek help can significantly improve how we assist them. By recognizing these patterns, we can tailor our responses to meet their needs effectively, fostering a more productive and collaborative work environment.
+How someone asks tells you what they need. A persistent solver wants a second opinion. A direct seeker first needs someone to find out how hard the problem is. Recognising the pattern lets you give that help.
 
-What kind of person are you ?
+What kind of person are you?
+
+{{< viz kind="last-ask" frame="none" wide="false" fallback="last-ask.svg" alt="Three questions about the last time you asked for help, and the seeker type, reaction, and channel each answer points to" caption="Answers map to the types above. Nothing you pick leaves this page." >}}

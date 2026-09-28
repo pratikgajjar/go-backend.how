@@ -1,301 +1,251 @@
 /*
  * Figures for "The Psychology of Seeking Help".
  *
- *   seeker-map    the five help seekers placed by effort and difficulty
- *   channel-walk  one question asked by call, by DM, and in a public channel
+ *   trails     hero: what each help seeker did before asking
+ *   last-ask   the reader answers three questions about the last time they
+ *              asked for help and reads which seeker, which reaction, and
+ *              which channel that was, with what the post suggests
  *
- * Ratings and traits come from the post. People, times, and the sample
- * question are samples.
+ * Ratings and traits come from the post.
  */
-import { h, btn, stepper, colorKey, register } from './lib.js';
+import { h, s, register } from './lib.js';
 
-/* =========================================================== SEEKER MAP */
+/* ================================================================ TRAILS */
 
-// effort: 'low' | 'high'; diff: 'low' | 'medium' | 'high' | 'unknown'
-const SEEKERS = [
+// x runs from 0 (problem appears) to 300 (asks). Every ask sits at x = 288.
+const ASK_X = 288;
+const TRAILS = [
   {
-    id: 'persistent', short: 'Persistent', name: 'The Persistent Problem Solver', effort: 'high', diff: 'high',
-    did: ['Tried several approaches', 'Narrowed the issue down', 'Explains what they tried, asks specific questions'],
-    wants: 'Confirmation, or a new angle on a problem they have already narrowed down.',
+    name: 'The Persistent Problem Solver', effort: 'high', diff: 'high', start: 14,
+    // narrowing attempts: taller ticks first, shorter as the issue narrows
+    marks: [[58, 18], [98, 15], [136, 12], [170, 9], [202, 7], [230, 5], [254, 4]].map(([x, t]) => ({ x, t, kind: 'try' })),
+    note: 'narrowed it down',
   },
   {
-    id: 'exhausted', short: 'Exhausted', name: 'The Exhausted Effort', effort: 'high', diff: 'high',
-    did: ['Tried everything they could think of', 'Has a long list of failed fixes'],
-    wants: 'The one piece of advice that unblocks them. They ask as a last resort, and they are frustrated.',
+    name: 'The Exhausted Effort', effort: 'high', diff: 'high', start: 14,
+    marks: [52, 82, 112, 142, 172, 202, 232, 258].map((x) => ({ x, kind: 'dead' })),
+    note: 'out of ideas',
   },
   {
-    id: 'connector', short: 'Connector', name: 'The Unrelated Connector', effort: 'high', diff: 'medium',
-    did: ['Solved related problems before'],
-    wants: 'Help linking this problem to the ones they have already solved.',
+    name: 'The Unrelated Connector', effort: 'high', diff: 'medium', start: 128,
+    marks: [158, 196, 232].map((x) => ({ x, t: 12, kind: 'try' })),
+    past: true,
+    note: 'solved something like it before',
   },
   {
-    id: 'direct', short: 'Direct', name: 'The Direct Seeker', effort: 'low', diff: 'unknown',
-    did: [],
-    wants: 'A ready answer. They assume someone else can solve it faster, and may not know how hard it is.',
+    name: 'The Direct Seeker', effort: 'low', diff: 'unknown', start: 262,
+    marks: [],
+    note: 'asked right away',
   },
   {
-    id: 'delegator', short: 'Delegator', name: 'The Delegator', effort: 'low', diff: 'low',
-    did: ['Recognises the problem'],
-    wants: 'Someone else to do it, because that person is faster or the task is outside their job.',
+    name: 'The Delegator', effort: 'low', diff: 'low', start: 236,
+    marks: [{ x: 258, kind: 'know' }],
+    handoff: true,
+    note: 'knows it, hands it off',
   },
 ];
 
-const PAIR_NOTE = {
-  persistent: 'Shares a cell with the Exhausted Effort. Both tried hard on a hard problem. The persistent solver still has a lead to follow.',
-  exhausted: 'Shares a cell with the Persistent Problem Solver. Both tried hard on a hard problem. The exhausted one has run out of leads.',
-  direct: 'Difficulty is unknown because no one has looked at the problem yet. It could land in any row.',
-};
-
-const DIFF_ROWS = ['high', 'medium', 'low'];
-
-function initSeekerMap(fig, app) {
-  let cur = 'persistent';
-  const chips = {};
-
-  const chip = (sk) => {
-    const b = h('button', {
-      type: 'button',
-      class: `v-psh-chip${sk.diff === 'unknown' ? ' is-unknown' : ''}`,
-      'aria-pressed': 'false',
-      'aria-label': `${sk.name}: ${sk.effort} effort, ${sk.diff} difficulty`,
-      onclick: () => select(sk.id),
-    }, sk.short, sk.diff === 'unknown' ? h('span', { class: 'v-psh-q', 'aria-hidden': 'true' }, 'unknown') : null);
-    chips[sk.id] = b;
-    return b;
-  };
-
-  const grid = h('div', { class: 'v-psh-grid', role: 'group', 'aria-label': 'Help seekers by effort and difficulty' });
-  // header row
-  grid.append(
-    h('div', { class: 'v-psh-ax v-psh-corner' }, 'difficulty'),
-    h('div', { class: 'v-psh-ax v-psh-colhead', style: 'grid-column: 2 / 4' }, 'Low effort'),
-    h('div', { class: 'v-psh-ax v-psh-colhead', style: 'grid-column: 4' }, 'High effort'),
-  );
-  DIFF_ROWS.forEach((d, r) => {
-    const row = r + 2;
-    const last = r === DIFF_ROWS.length - 1 ? ' is-last' : '';
-    grid.append(h('div', { class: `v-psh-ax v-psh-rowhead${last}`, style: `grid-row: ${row}; grid-column: 1` }, d));
-    grid.append(h('div', { class: `v-psh-cell${last}`, style: `grid-row: ${row}; grid-column: 2 / 4` }));
-    const hi = h('div', { class: `v-psh-cell v-psh-stack${last}`, style: `grid-row: ${row}; grid-column: 4` });
-    SEEKERS.filter((sk) => sk.effort === 'high' && sk.diff === d).forEach((sk) => hi.append(chip(sk)));
-    grid.append(hi);
-  });
-  const direct = SEEKERS.find((sk) => sk.id === 'direct');
-  const deleg = SEEKERS.find((sk) => sk.id === 'delegator');
-  grid.append(
-    h('div', { class: 'v-psh-slot v-psh-tall', style: 'grid-row: 2 / 5; grid-column: 2' }, chip(direct)),
-    h('div', { class: 'v-psh-slot', style: 'grid-row: 4; grid-column: 3' }, chip(deleg)),
-  );
-
-  const panel = h('div', { class: 'v-psh-panel', 'aria-live': 'polite' });
-
-  function select(id) {
-    cur = id;
-    for (const [k, b] of Object.entries(chips)) b.setAttribute('aria-pressed', String(k === id));
-    const sk = SEEKERS.find((x) => x.id === id);
-    const did = sk.did.length
-      ? h('ul', { class: 'v-psh-did' }, ...sk.did.map((t) => h('li', null, t)))
-      : h('p', { class: 'v-psh-none' }, 'Nothing yet. They asked as soon as the problem appeared.');
-    panel.replaceChildren(
-      h('h4', null, sk.name),
-      h('dl', { class: 'wv-kv' },
-        h('dt', null, 'effort'), h('dd', { class: 'c-data' }, sk.effort),
-        h('dt', null, 'difficulty'), h('dd', { class: sk.diff === 'unknown' ? 'c-bad' : 'c-data' }, sk.diff)),
-      h('div', { class: 'v-psh-sub' }, 'Already done before asking'),
-      did,
-      h('div', { class: 'v-psh-sub' }, 'What they want from you'),
-      h('p', null, sk.wants),
-      PAIR_NOTE[id] ? h('div', { class: `wv-note${id === 'direct' ? ' is-bad' : ''}` }, PAIR_NOTE[id]) : null,
+function trailSvg(t) {
+  const y = 22;
+  const g = s('svg', { viewBox: '0 0 300 40', class: 'v-psh-trail', 'aria-hidden': 'true' });
+  // the past problem the connector half-remembers
+  if (t.past) {
+    g.append(
+      s('circle', { cx: 40, cy: 8, r: 4.5, class: 'v-psh-past' }),
+      s('path', { d: 'M46 9 C 66 12, 82 16, 98 19', class: 'v-psh-link' }),
+      s('path', { d: 'M103 15 l 8 8 M111 15 l -8 8', class: 'v-psh-x' }),
     );
   }
-
-  app.append(
-    h('div', { class: 'wv-q' }, 'How much has this person done before asking, and how hard is the problem?'),
-    h('div', { class: 'v-psh-map' }, grid, panel),
-    colorKey([['k-opt', 'a type (select one)'], ['k-look', 'selected'], ['k-data', 'rating from the post'], ['k-held', 'done before asking'], ['k-gap', 'difficulty unknown']]),
+  g.append(
+    s('line', { x1: t.start, y1: y, x2: ASK_X - 9, y2: y, class: 'v-psh-line' }),
+    s('circle', { cx: t.start, cy: y, r: 3.5, class: 'v-psh-start' }),
   );
-  select(cur);
+  for (const m of t.marks) {
+    if (m.kind === 'try') g.append(s('line', { x1: m.x, y1: y - m.t / 2 - 2, x2: m.x, y2: y + m.t / 2 + 2, class: 'v-psh-try' }));
+    if (m.kind === 'dead') g.append(s('path', { d: `M${m.x - 4} ${y - 4} l 8 8 M${m.x + 4} ${y - 4} l -8 8`, class: 'v-psh-x' }));
+    if (m.kind === 'know') g.append(s('path', { d: `M${m.x - 4} ${y} l 3 4 l 6 -8`, class: 'v-psh-know' }));
+  }
+  g.append(t.handoff
+    ? s('text', { x: ASK_X, y: y + 5, class: 'v-psh-ask', 'text-anchor': 'middle' }, '→')
+    : s('text', { x: ASK_X, y: y + 5.5, class: 'v-psh-ask', 'text-anchor': 'middle' }, '?'));
+  return g;
 }
 
-/* ========================================================= CHANNEL WALK */
+function initTrails(fig, app) {
+  const rows = TRAILS.map((t) => h('li', { class: 'v-psh-row' },
+    h('div', { class: 'v-psh-who' },
+      h('span', { class: 'v-psh-name' }, t.name),
+      h('span', { class: 'v-psh-rate' },
+        'effort ', h('b', null, t.effort), ' · difficulty ', h('b', { class: t.diff === 'unknown' ? 'v-psh-unk' : '' }, t.diff))),
+    h('div', { class: 'v-psh-path' }, trailSvg(t), h('span', { class: 'v-psh-note' }, t.note))));
+  app.append(
+    h('p', { class: 'v-psh-kicker' }, 'What happened before the question'),
+    h('div', { class: 'v-psh-axis', 'aria-hidden': 'true' }, h('span', null, 'problem appears'), h('span', null, 'asks')),
+    h('ol', { class: 'v-psh-rows' }, ...rows),
+    h('p', { class: 'v-psh-legend' },
+      h('span', null, h('i', { class: 'l-try' }), 'an attempt'),
+      h('span', null, h('i', { class: 'l-dead' }, '×'), 'a dead end'),
+      h('span', null, h('i', { class: 'l-past' }), 'solved before'),
+      h('span', null, h('i', { class: 'l-ask' }, '?'), 'the ask')),
+  );
+}
 
-const QUESTION = 'go test ./... fails with "connection refused" on :5432 after I pulled main. Anyone seen this?';
-const ANSWER = 'The test DB moved to docker compose last week. Run: docker compose up -d postgres';
+/* ============================================================= LAST ASK */
 
-const PEOPLE = [
-  { id: 'A', role: 'asks' },
-  { id: 'B', role: 'knows the fix' },
-  { id: 'C', role: 'knows the fix' },
-  { id: 'D', role: 'teammate' },
-  { id: 'E', role: 'joins next month' },
-];
-
-// Person state: [class, text]. Classes: look, bad, good, seen, idle, away.
-const STEPS = [
-  { label: 'Ask' },
-  { label: 'Reply' },
-  { label: 'Rest of team' },
-  { label: 'Next month' },
-];
-
-const CHANNELS = {
-  call: {
-    name: 'Phone call',
-    steps: [
-      {
-        people: { A: ['look', 'calls B'], B: ['bad', 'stops work to pick up'], C: ['idle', 'unaware'], D: ['idle', 'unaware'], E: ['away', 'not on the team yet'] },
-        record: ['none', 'Nothing written down'],
-        note: 'A call needs B right now. B stops whatever they were doing.',
-        tally: [1, 0, 'nobody'],
-      },
-      {
-        people: { A: ['good', 'has the fix'], B: ['bad', 'explains, then gets back into their task'], C: ['idle', 'knew the fix, never heard the question'], D: ['idle', 'unaware'], E: ['away', 'not on the team yet'] },
-        record: ['none', 'The fix was spoken, not written'],
-        note: 'Only B could answer, because only B was called.',
-        tally: [1, 1, 'nobody'],
-      },
-      {
-        people: { A: ['good', 'has the fix'], B: ['good', 'has the fix'], C: ['idle', 'unaware'], D: ['idle', 'unaware'], E: ['away', 'not on the team yet'] },
-        record: ['none', 'Nothing written down'],
-        note: 'The fix lives in two heads, A and B.',
-        tally: [1, 1, 'nobody'],
-      },
-      {
-        people: { A: ['idle', ''], B: ['bad', 'stops work again'], C: ['idle', ''], D: ['idle', ''], E: ['look', 'hits the same error, calls B'] },
-        record: ['none', 'Nothing to search'],
-        note: 'No one can search a call. E asks B the same question, and B stops work a second time.',
-        tally: [2, 2, 'nobody'],
-      },
+const QUESTIONS = [
+  {
+    id: 'seeker',
+    q: 'Before you asked, what had you done?',
+    options: [
+      ['direct', 'Nothing yet. I asked as soon as it broke.'],
+      ['delegator', 'Nothing. I knew what it needed, but someone else is faster at it, or it is not my job.'],
+      ['connector', 'A little. It looked like something I had fixed before, but I could not connect the two.'],
+      ['persistent', 'Several things. I had narrowed it down and wanted a second opinion.'],
+      ['exhausted', 'Everything I could think of. I was out of ideas.'],
     ],
+  },
+  {
+    id: 'reaction',
+    q: 'When the fix came, what did you do?',
+    options: [
+      ['inquisitive', 'Asked why it broke, and how to stop it happening again.'],
+      ['solution', 'Applied it and got back to work.'],
+      ['disinterested', 'Let them sort it out. I needed it working, not explained.'],
+    ],
+  },
+  {
+    id: 'channel',
+    q: 'Where did you ask?',
+    options: [
+      ['call', 'A phone or WhatsApp call.'],
+      ['dm', 'A direct message or personal email.'],
+      ['public', 'A public channel.'],
+    ],
+  },
+];
+
+const SEEKER = {
+  persistent: {
+    name: 'The Persistent Problem Solver', rate: 'effort high, difficulty high',
+    you: 'You narrowed the issue down first, and came for confirmation or a new angle.',
+    helper: 'The person helping you starts where you stopped, because you told them what you tried.',
+    next: 'Keep doing this. Put what you tried in the first message.',
+  },
+  exhausted: {
+    name: 'The Exhausted Effort', rate: 'effort high, difficulty high',
+    you: 'You tried everything and asked as a last resort, hoping for the one piece of advice that works.',
+    helper: 'The person helping you gets a long list of failed fixes and has to find the one that was close.',
+    next: 'Ask a little earlier, while you still have a lead. Keep the list of what you tried; it is the useful part.',
+  },
+  connector: {
+    name: 'The Unrelated Connector', rate: 'effort high, difficulty medium',
+    you: 'You had solved something like this before, but could not link the two.',
+    helper: 'The person helping you mostly supplies context: how this problem relates to the one you already know.',
+    next: 'Name the earlier problem in your message. It gives the helper the link to check.',
+  },
+  direct: {
+    name: 'The Direct Seeker', rate: 'effort low, difficulty unknown',
+    you: 'You asked before finding out how hard the problem was, assuming someone else could solve it faster.',
+    helper: 'The person helping you starts from zero. It may take them a minute, or it may be much harder than either of you expected.',
+    next: 'Spend a few minutes first. Reproduce it and read the error, so you can say how hard it is.',
+  },
+  delegator: {
+    name: 'The Delegator', rate: 'effort low, difficulty low',
+    you: 'You knew the problem and passed it on, because someone else is faster or it sat outside your job.',
+    helper: 'The person helping you does the work, not just the explaining.',
+    next: 'Say plainly that you are handing it over, and why. Then it reads as a request, not a question.',
+  },
+};
+
+const REACTION = {
+  inquisitive: {
+    name: 'The Inquisitive Learner',
+    you: 'You asked about the details and how to prevent a repeat. The next time this breaks, you may not need to ask.',
+  },
+  solution: {
+    name: 'The Solution Seeker',
+    you: 'You took the fix and moved on. The problem is gone for now, but the knowledge stayed with the person who fixed it.',
+  },
+  disinterested: {
+    name: 'The Disinterested',
+    you: 'You wanted it resolved and left the details to someone else. If it breaks again, you will need the same help again.',
+  },
+};
+
+const CHANNEL = {
+  call: {
+    name: 'a call', tone: 'bad',
+    you: 'A call stops the other person right away, and the answer is not written down anywhere.',
+    next: 'The post suggests a message in a public channel instead.',
   },
   dm: {
-    name: 'Direct message',
-    steps: [
-      {
-        people: { A: ['look', 'sends B a DM'], B: ['good', 'reads it at a break'], C: ['idle', 'cannot see it'], D: ['idle', 'cannot see it'], E: ['away', 'not on the team yet'] },
-        record: ['private', 'DM between A and B'],
-        note: 'A message does not force B to stop. But only B can see it.',
-        tally: [0, 0, 'A, B'],
-      },
-      {
-        people: { A: ['good', 'has the fix'], B: ['good', 'replies in the DM'], C: ['idle', 'knew the fix, never saw the question'], D: ['idle', 'cannot see it'], E: ['away', 'not on the team yet'] },
-        record: ['private', 'DM between A and B'],
-        note: 'If B is busy or on leave, A waits, even though C knew the fix.',
-        tally: [0, 1, 'A, B'],
-      },
-      {
-        people: { A: ['good', 'has the fix'], B: ['good', 'has the fix'], C: ['idle', 'unaware'], D: ['idle', 'unaware'], E: ['away', 'not on the team yet'] },
-        record: ['private', 'DM between A and B'],
-        note: 'The fix is written down, in a place only two people can open.',
-        tally: [0, 1, 'A, B'],
-      },
-      {
-        people: { A: ['idle', ''], B: ['good', 'answers the same question again'], C: ['idle', ''], D: ['idle', ''], E: ['look', 'searches, finds nothing, DMs B'] },
-        record: ['private', 'New DM between E and B'],
-        note: 'Search does not show E a DM between A and B. B writes the same answer twice.',
-        tally: [0, 2, 'A, B'],
-      },
-    ],
+    name: 'a direct message', tone: 'bad',
+    you: 'A message does not stop anyone, but only one person sees it. If they are busy, you wait, and the answer stays private.',
+    next: 'The post suggests the same message in a public channel instead.',
   },
   public: {
-    name: 'Public channel',
-    pick: true,
-    steps: [
-      {
-        people: { A: ['look', 'posts in #backend'], B: ['good', 'busy, keeps working'], C: ['good', 'sees it at a break'], D: ['seen', 'sees it'], E: ['away', 'not on the team yet'] },
-        record: ['public', 'Thread in #backend'],
-        note: 'No one has to stop. Anyone in the channel can pick it up.',
-        tally: [0, 0, 'every member'],
-      },
-      {
-        people: { A: ['good', 'has the fix'], B: ['good', 'never pulled away'], C: ['good', 'replies in the thread'], D: ['seen', 'sees the reply'], E: ['away', 'not on the team yet'] },
-        record: ['public', 'Thread in #backend'],
-        note: 'C was free first, so C answered. B kept working.',
-        tally: [0, 1, 'every member'],
-      },
-      {
-        people: { A: ['good', 'has the fix'], B: ['good', 'has the fix'], C: ['good', 'has the fix'], D: ['good', 'knows the fix before needing it'], E: ['away', 'not on the team yet'] },
-        record: ['public', 'Thread in #backend'],
-        note: 'Everyone who reads the channel learns the fix, including people who never asked.',
-        tally: [0, 1, 'every member'],
-      },
-      {
-        people: { A: ['idle', ''], B: ['good', 'not asked'], C: ['good', 'not asked'], D: ['idle', ''], E: ['look', 'searches "5432", finds the thread'] },
-        record: ['public', 'Thread in #backend'],
-        note: 'Public channel messages show up in search for every workspace member, including people who joined later. On the Slack free plan, search covers the last 90 days.',
-        tally: [0, 1, 'every member'],
-      },
-    ],
+    name: 'a public channel', tone: 'good',
+    you: 'Anyone who is free can answer, no one has to stop work, and the next person can find the answer by search.',
+    next: 'Keep asking there. This is what the post recommends.',
   },
 };
 
-function initChannelWalk(fig, app) {
-  let ch = 'call';
+function initLastAsk(fig, app) {
+  const picked = {};
+  const reading = h('div', { class: 'v-psh-reading', 'aria-live': 'polite' });
 
-  const chBtns = Object.entries(CHANNELS).map(([k, c]) =>
-    btn(c.pick ? h('span', null, c.name, h('span', { class: 'v-psh-rec' }, 'recommended')) : c.name,
-      () => { ch = k; syncBtns(); render(stp.i); }, { 'aria-pressed': String(k === ch), class: `wv-btn${c.pick ? ' v-psh-pickbtn' : ''}` }));
-  const syncBtns = () => Object.keys(CHANNELS).forEach((k, n) => chBtns[n].setAttribute('aria-pressed', String(k === ch)));
+  const qs = QUESTIONS.map((qq, n) => {
+    const name = `v-psh-${qq.id}-${Math.random().toString(36).slice(2, 7)}`;
+    return h('fieldset', { class: 'v-psh-q' },
+      h('legend', null, h('span', { class: 'v-psh-num' }, `${n + 1}`), qq.q),
+      ...qq.options.map(([val, label]) => h('label', { class: 'v-psh-opt' },
+        h('input', { type: 'radio', name, value: val, onchange: () => { picked[qq.id] = val; render(); } }),
+        h('span', null, label))));
+  });
 
-  const msg = h('div', { class: 'v-psh-msgs' });
-  const people = h('div', { class: 'v-psh-people' });
-  const cards = {};
-  for (const p of PEOPLE) {
-    const st = h('span', { class: 'v-psh-st' });
-    const card = h('div', { class: 'v-psh-person' }, h('b', null, p.id), h('span', { class: 'v-psh-role' }, p.role), st);
-    cards[p.id] = { card, st };
-    people.append(card);
-  }
-  const tally = h('div', { class: 'wv-stats v-psh-tally' });
-  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const para = (label, text, cls = '') => h('p', { class: `v-psh-line ${cls}` }, h('span', { class: 'v-psh-lbl' }, label), text);
 
-  function render(i) {
-    const c = CHANNELS[ch];
-    const st = c.steps[i];
-    for (const p of PEOPLE) {
-      const [cls, text] = st.people[p.id];
-      cards[p.id].card.className = `v-psh-person is-${cls}`;
-      cards[p.id].st.textContent = text;
+  function render() {
+    const sk = SEEKER[picked.seeker];
+    const re = REACTION[picked.reaction];
+    const ch = CHANNEL[picked.channel];
+    if (!sk && !re && !ch) {
+      reading.replaceChildren(h('p', { class: 'v-psh-wait' }, 'Your reading appears here as you answer.'));
+      return;
     }
-    const [kind, where] = st.record;
-    const asker = i === 3 && ch !== 'public' ? 'E' : 'A';
-    const q = h('div', { class: 'v-psh-msg' }, h('span', { class: 'v-psh-who' }, asker), h('code', null, QUESTION));
-    const answered = i >= 1;
-    const aWho = ch === 'public' ? 'C' : 'B';
-    const a = answered
-      ? h('div', { class: `v-psh-msg${kind === 'none' ? ' is-spoken' : ''}` }, h('span', { class: 'v-psh-who' }, aWho), h('code', null, ANSWER))
-      : null;
-    msg.replaceChildren(
-      h('div', { class: `v-psh-record is-${kind}` },
-        h('div', { class: 'v-psh-rhead' }, h('span', null, 'Record'), h('span', { class: 'wv-tag' }, where)),
-        q, a,
-        kind === 'none' && answered ? h('div', { class: 'v-psh-lost' }, 'spoken on the call, not saved anywhere') : null,
-        ch === 'public' && i === 3 ? h('div', { class: 'v-psh-found' }, 'E found this thread by search') : null));
-    const [stops, answers, who] = st.tally;
-    tally.replaceChildren(
-      h('div', { class: `wv-stat${stops ? ' is-bad' : ' is-good'}` }, h('span', { class: 'k' }, 'forced to stop work'), h('span', { class: 'v' }, `${stops}×`)),
-      h('div', { class: `wv-stat${answers > 1 ? ' is-bad' : ''}` }, h('span', { class: 'k' }, 'times the fix was given'), h('span', { class: 'v' }, `${answers}`)),
-      h('div', { class: `wv-stat${who === 'nobody' ? ' is-bad' : who === 'every member' ? ' is-good' : ''}` }, h('span', { class: 'k' }, 'who can search the fix'), h('span', { class: 'v' }, who)),
-    );
-    note.className = `wv-note${i === 3 ? (ch === 'public' ? ' is-good' : ' is-bad') : ''}`;
-    note.innerHTML = '';
-    note.append(h('span', { class: 'k' }, `${c.name} · ${String(i + 1).padStart(2, '0')}`), st.note);
+    const head = h('p', { class: 'v-psh-sum' },
+      'You asked as ', sk ? h('b', null, sk.name) : h('span', { class: 'v-psh-blank' }, '…'),
+      ', took the fix as ', re ? h('b', null, re.name) : h('span', { class: 'v-psh-blank' }, '…'),
+      ', and asked in ', ch ? h('b', null, ch.name) : h('span', { class: 'v-psh-blank' }, '…'), '.');
+    const parts = [head];
+    if (sk) {
+      parts.push(h('section', null,
+        h('h4', null, sk.name, h('span', { class: 'v-psh-rt' }, sk.rate)),
+        para('You', sk.you),
+        para('Your helper', sk.helper),
+        para('Next time', sk.next, 'is-next')));
+    }
+    if (re) parts.push(h('section', null, h('h4', null, re.name), para('After the fix', re.you)));
+    if (ch) {
+      parts.push(h('section', null,
+        h('h4', null, `Asked in ${ch.name}`),
+        para(ch.tone === 'good' ? 'Benefit' : 'Cost', ch.you, ch.tone === 'good' ? 'is-good' : 'is-bad'),
+        para('Next time', ch.next, ch.tone === 'good' ? 'is-good' : 'is-next')));
+    }
+    reading.replaceChildren(...parts);
   }
 
-  const stp = stepper(fig, STEPS, (i) => render(i), { interval: 3400 });
   app.append(
-    h('div', { class: 'wv-bar' },
-      h('span', { class: 'c-opt v-psh-lbl' }, 'Where A asks'),
-      h('span', { class: 'wv-seg' }, ...chBtns)),
-    stp.el,
-    msg,
-    people,
-    tally,
-    h('div', { style: 'height:.6rem' }),
-    note,
-    colorKey([['k-opt', 'channel you can pick'], ['k-pick', 'the post recommends'], ['k-data', 'the question and fix'], ['k-look', 'who acts now'], ['k-gap', 'interrupted or lost'], ['k-held', 'not blocked, or has the fix']]),
+    h('p', { class: 'v-psh-intro' }, 'Think of the last time you asked someone for help at work. Pick the answer closest to what you actually did.'),
+    h('div', { class: 'v-psh-qs' }, ...qs),
+    reading,
+    h('p', { class: 'v-psh-legend' },
+      h('span', null, h('i', { class: 'l-you' }), 'your answer'),
+      h('span', null, h('i', { class: 'l-next' }), 'what could help next time'),
+      h('span', null, h('i', { class: 'l-good' }), 'works in your favour'),
+      h('span', null, h('i', { class: 'l-bad' }), 'costs someone time')),
   );
-  stp.go(0);
+  render();
 }
 
-register({ 'seeker-map': initSeekerMap, 'channel-walk': initChannelWalk });
+register({ trails: initTrails, 'last-ask': initLastAsk });

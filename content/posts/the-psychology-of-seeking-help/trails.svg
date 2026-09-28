@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+<rect width="720" height="400" fill="#efeafa"/>
+<text x="20" y="30" font-size="14" font-weight="700" fill="#2a2140">What happened before the question</text>
+<text x="270" y="58" font-size="10" fill="#2a2140">problem appears</text>
+<text x="700" y="58" font-size="10" fill="#2a2140" text-anchor="end">asks</text>
+<line x1="20" y1="66" x2="700" y2="66" stroke="#b9aed6"/>
+<text x="20" y="92" font-size="12" font-weight="700" fill="#2a2140">The Persistent Problem Solver</text>
+<text x="20" y="108" font-size="10" fill="#2a2140">effort high · difficulty high</text>
+<line x1="289.6" y1="94" x2="660.6" y2="94" stroke="#2a2140" stroke-width="1.2"/>
+<circle cx="289.6" cy="94" r="4" fill="#efeafa" stroke="#2a2140" stroke-width="1.4"/>
+<line x1="351.2" y1="83.0" x2="351.2" y2="105.0" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<line x1="407.2" y1="84.5" x2="407.2" y2="103.5" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<line x1="460.4" y1="86.0" x2="460.4" y2="102.0" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<line x1="508.0" y1="87.5" x2="508.0" y2="100.5" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<line x1="552.8" y1="88.5" x2="552.8" y2="99.5" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<line x1="592.0" y1="89.5" x2="592.0" y2="98.5" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<line x1="625.6" y1="90.0" x2="625.6" y2="98.0" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<text x="673.2" y="100" font-size="18" font-weight="800" fill="#5b2a8f" text-anchor="middle">?</text>
+<text x="270" y="116" font-size="10" font-style="italic" fill="#2a2140">narrowed it down</text>
+<line x1="20" y1="126" x2="700" y2="126" stroke="#b9aed6"/>
+<text x="20" y="152" font-size="12" font-weight="700" fill="#2a2140">The Exhausted Effort</text>
+<text x="20" y="168" font-size="10" fill="#2a2140">effort high · difficulty high</text>
+<line x1="289.6" y1="154" x2="660.6" y2="154" stroke="#2a2140" stroke-width="1.2"/>
+<circle cx="289.6" cy="154" r="4" fill="#efeafa" stroke="#2a2140" stroke-width="1.4"/>
+<path d="M338.8 150 l 8 8 M346.8 150 l -8 8" stroke="#a3261c" stroke-width="2" stroke-linecap="round"/>
+<path d="M380.8 150 l 8 8 M388.8 150 l -8 8" stroke="#a3261c" stroke-width="2" stroke-linecap="round"/>
+<path d="M422.8 150 l 8 8 M430.8 150 l -8 8" stroke="#a3261c" stroke-width="2" stroke-linecap="round"/>
+<path d="M464.8 150 l 8 8 M472.8 150 l -8 8" stroke="#a3261c" stroke-width="2" stroke-linecap="round"/>
+<path d="M506.8 150 l 8 8 M514.8 150 l -8 8" stroke="#a3261c" stroke-width="2" stroke-linecap="round"/>
+<path d="M548.8 150 l 8 8 M556.8 150 l -8 8" stroke="#a3261c" stroke-width="2" stroke-linecap="round"/>
+<path d="M590.8 150 l 8 8 M598.8 150 l -8 8" stroke="#a3261c" stroke-width="2" stroke-linecap="round"/>
+<path d="M627.2 150 l 8 8 M635.2 150 l -8 8" stroke="#a3261c" stroke-width="2" stroke-linecap="round"/>
+<text x="673.2" y="160" font-size="18" font-weight="800" fill="#5b2a8f" text-anchor="middle">?</text>
+<text x="270" y="176" font-size="10" font-style="italic" fill="#2a2140">out of ideas</text>
+<line x1="20" y1="186" x2="700" y2="186" stroke="#b9aed6"/>
+<text x="20" y="212" font-size="12" font-weight="700" fill="#2a2140">The Unrelated Connector</text>
+<text x="20" y="228" font-size="10" fill="#2a2140">effort high · difficulty medium</text>
+<circle cx="326.0" cy="200" r="5" fill="#1f6b3f"/>
+<path d="M334.4 201 C 362.4 204, 384.8 208, 407.2 211" stroke="#1f6b3f" stroke-width="1.3" stroke-dasharray="3 3" fill="none"/>
+<path d="M415.8 207 l 8 8 M423.8 207 l -8 8" stroke="#a3261c" stroke-width="2" stroke-linecap="round"/>
+<line x1="449.2" y1="214" x2="660.6" y2="214" stroke="#2a2140" stroke-width="1.2"/>
+<circle cx="449.2" cy="214" r="4" fill="#efeafa" stroke="#2a2140" stroke-width="1.4"/>
+<line x1="491.2" y1="206.0" x2="491.2" y2="222.0" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<line x1="544.4" y1="206.0" x2="544.4" y2="222.0" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<line x1="594.8" y1="206.0" x2="594.8" y2="222.0" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/>
+<text x="673.2" y="220" font-size="18" font-weight="800" fill="#5b2a8f" text-anchor="middle">?</text>
+<text x="270" y="236" font-size="10" font-style="italic" fill="#2a2140">solved something like it before</text>
+<line x1="20" y1="246" x2="700" y2="246" stroke="#b9aed6"/>
+<text x="20" y="272" font-size="12" font-weight="700" fill="#2a2140">The Direct Seeker</text>
+<text x="20" y="288" font-size="10" fill="#2a2140">effort low · difficulty <tspan fill="#a3261c" font-weight="700">unknown</tspan></text>
+<line x1="636.8" y1="274" x2="660.6" y2="274" stroke="#2a2140" stroke-width="1.2"/>
+<circle cx="636.8" cy="274" r="4" fill="#efeafa" stroke="#2a2140" stroke-width="1.4"/>
+<text x="673.2" y="280" font-size="18" font-weight="800" fill="#5b2a8f" text-anchor="middle">?</text>
+<text x="270" y="296" font-size="10" font-style="italic" fill="#2a2140">asked right away</text>
+<line x1="20" y1="306" x2="700" y2="306" stroke="#b9aed6"/>
+<text x="20" y="332" font-size="12" font-weight="700" fill="#2a2140">The Delegator</text>
+<text x="20" y="348" font-size="10" fill="#2a2140">effort low · difficulty low</text>
+<line x1="600.4" y1="334" x2="660.6" y2="334" stroke="#2a2140" stroke-width="1.2"/>
+<circle cx="600.4" cy="334" r="4" fill="#efeafa" stroke="#2a2140" stroke-width="1.4"/>
+<path d="M627.2 334 l 3 4 l 6 -8" stroke="#1f6b3f" stroke-width="2" fill="none" stroke-linecap="round"/>
+<text x="673.2" y="340" font-size="18" font-weight="800" fill="#5b2a8f" text-anchor="middle">→</text>
+<text x="270" y="356" font-size="10" font-style="italic" fill="#2a2140">knows it, hands it off</text>
+<line x1="20" y1="366" x2="700" y2="366" stroke="#b9aed6"/>
+<line x1="22" y1="378" x2="22" y2="390" stroke="#2a2140" stroke-width="2"/>
+<text x="32" y="388" font-size="10" fill="#2a2140">an attempt</text>
+<text x="120" y="388" font-size="12" font-weight="800" fill="#a3261c">×</text>
+<text x="134" y="388" font-size="10" fill="#2a2140">a dead end</text>
+<circle cx="226" cy="384" r="4.5" fill="#1f6b3f"/>
+<text x="236" y="388" font-size="10" fill="#2a2140">solved before</text>
+<text x="340" y="388" font-size="13" font-weight="800" fill="#5b2a8f">?</text>
+<text x="354" y="388" font-size="10" fill="#2a2140">the ask</text>
+</svg>
