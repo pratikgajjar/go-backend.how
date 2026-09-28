@@ -55,13 +55,13 @@ Now, with my customized plan in hand, I have clear guidance on when and how much
 
 > "No man has the right to be an amateur in the matter of physical training. It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable." -- Socrates
 
-Let's look at top line metrics that we should chase to become efficient runner.
+These are the top-line metrics I chase to become a more efficient runner.
 
 {{< figure src="running-101-dark.png" title="Metrics" alt="Running metrics optimize" width="auto" >}}
 
 ## Metrics
 
-Input metrics[^2] are those we should improve upon through continous training.
+Input metrics[^2] are the ones we improve through continuous training.
 
 - Cadence
 - Vertical Ratio
@@ -75,11 +75,15 @@ Output metrics are the effect.
 - Power Zones
 - Stride Length
 
+All four input metrics, and stride length, are measured on the same motion: one step. Fig. 1 follows one step of a sample runner and shows where each number comes from.
+
+{{< viz kind="one-step" fig="1" title="One running step, measured" fallback="one-step.svg" alt="One running step: the torso sinks during 250 ms of ground contact, peaks during 103 ms of flight, and the next foot lands 1.18 m ahead" caption="A sample runner, not my data: 170 spm, 1.18 m stride, 250 ms contact, 8.6 cm bounce. Heights are drawn larger than scale. The flight rise is free fall, `g × t² / 8` for a 103 ms flight. Use ← and → to step." >}}
+
 ### Cadence
 
-Cadence is the number of times each foot touches the ground in a minute during a running activity. It's measured in steps per minute (spm). Garmin has researched many runners of all different levels. In general, more experienced runners tend to have a higher cadence.
+Cadence is the number of steps per minute (spm), both feet counted. Garmin has researched many runners of all different levels. In general, more experienced runners tend to have a higher cadence.
 
-An often-cited target for running cadence is 180 spm. Higher cadences are associated with lower vertical oscillation and shorter ground contact time Taller runners tend to have somewhat lower cadence.
+An often-cited target for running cadence is 180 spm. Higher cadences are associated with lower vertical oscillation and shorter ground contact time. Taller runners tend to have somewhat lower cadence.
 
 The zones in the table below show the percentile of runners that occupy each zone, as well as the cadence ranges for each zone.
 
@@ -102,8 +106,8 @@ The zones in the table below show the percentile of runners that occupy each zon
 | ------------------ | ------------ |
 | > 95%              | < 6.1%       |
 | 70 - 95%           | 6.1% - 7.4%  |
-| 30 - 69%           | 7.4% - 8.6%  |
-| 5 - 29%            | 8.6% - 10.1% |
+| 30 - 69%           | 7.5% - 8.6%  |
+| 5 - 29%            | 8.7% - 10.1% |
 | < 5%               | > 10.1%      |
 
 ### Vertical Oscillation
@@ -117,10 +121,10 @@ The zones in the table below show the percentile of runners that occupy each zon
 | Percentile in Zone | VO Range      |
 | ------------------ | ------------- |
 | > 95%              | < 6.4 cm      |
-| > 70 - 95%         | 6.4 - 8.1 cm  |
-| > 30 - 69%         | 8.1 - 9.7 cm  |
-| > 5 - 29%          | 9.7 - 11.5 cm |
-| > < 5%             | 11.5 cm       |
+| 70 - 95%           | 6.4 - 8.1 cm  |
+| 30 - 69%           | 8.2 - 9.7 cm  |
+| 5 - 29%            | 9.8 - 11.5 cm |
+| < 5%               | > 11.5 cm     |
 
 ### Ground Contact Time (GCT)
 
@@ -141,13 +145,18 @@ Adopting a forefoot strike can help to reduce Ground Contact Time (GCT).
 
 ### Pace (min/km or mile)
 
-This metric represents the time it takes to run one kilometer or mile (min/km). It gives you a clear understanding of how fast you're running.
+Pace is the time it takes to run one kilometre (min/km) or one mile (min/mile).
 
-```latex
-Pace ∝ Cadence / (GCT * Vertical Ratio)
+```txt
+speed (m/min) = cadence (steps/min) × stride length (m)
+pace (min/km) = 1000 / (cadence × stride length)
 ```
 
-Focus one metric at a time during training, target higher cadence or lower ground contact time / vertical ratio. Calisthenics exercises helps build strength to reduce the GCT.
+Only two numbers set pace: how often your feet land and how far you travel on each step. Ground contact time and vertical ratio are not in the formula. They change what each step costs, not how far it goes.
+
+{{< viz kind="pace-map" fig="2" title="Cadence × stride length = pace" fallback="pace-map.svg" alt="Stride length against cadence with one curve per goal pace: 7:00, 6:00, 5:00, and 4:00 per km" caption="Every point on a curve gives the same pace. Green curves are goals from the end of this post that I reached; orange is the next one. Drag the dot or use the sliders. *My start* is the 4K in 38 minutes at about 120 spm from this post, which works out to 0.88 m per step. Percentile bands are Garmin's, from the tables above." >}}
+
+Look at the orange curve. At 180 spm, a 4:00/km pace still needs 1.39 m per step, so cadence alone does not get there. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
 
 ### Heart Rate Zones
 
@@ -162,7 +171,7 @@ Zone 1
 
 Zone 2
 
-- Heart rate: 65-80% of max. (90-144 bpm for a max of 180)
+- Heart rate: 65-80% of max. (118-144 bpm for a max of 180)
 
 - Effort: 3-4 out of 10. Easy to steady endurance. Can still speak in complete sentences.
 
@@ -277,7 +286,7 @@ Vitamins and minerals are crucial for overall health. Focus on eating a variety 
 
 - Completed a **100km challenge** in 30 days (Oct 14, 2024).
 - Reduced BMI from **24.1 to 22.3**.
-- Current medium effort pace: **5K in approximately 35 minutes (7:30 min/km)**.
+- Current medium effort pace: **5K in approximately 35 minutes (7:00 min/km)**.
 - Resting heart rate (**RHR**) improved to less than **50 beats per minute**.
 
 ## Next Steps
@@ -299,4 +308,4 @@ Thank you, Kush, Dhruv, and Sandeep, for your direct and indirect support throug
 
 [^1]: <https://www.nytimes.com/athletic/2935360/2021/11/15/what-age-do-players-in-different-positions-peak/>
 
-[^2]: The Garmin Connect app was used for definitions and estimated metrics about runners.
+[^2]: The Garmin Connect app was used for definitions and estimated metrics about runners. The percentile bands are also in Garmin's watch manuals: <https://www8.garmin.com/manuals/webhelp/forerunner920/EN-US/GUID-2C73735B-C792-412D-AA92-706A8647DD77.html> (cadence, ground contact time) and <https://www8.garmin.com/manuals-apac/webhelp/forerunner965/EN-SG/GUID-70D4A5A7-9C6A-4C0D-8AA9-5B34BDF5A128-1030.html> (vertical oscillation and vertical ratio at the chest). Newer manuals shift the cadence and contact-time bands slightly, for example > 183 spm and < 218 ms for the top 5%.

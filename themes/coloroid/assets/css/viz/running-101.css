@@ -1,0 +1,28 @@
+/* running-101 figures. Classes are prefixed v-r101-. */
+
+.v-r101-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  border: 1.25px solid var(--ink);
+  margin: 0.8rem 0 0.7rem;
+}
+.v-r101-card {
+  padding: 0.45rem 0.65rem;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin: 0 -1px -1px 0;
+  transition: background-color 0.25s;
+}
+.v-r101-card .k { display: block; font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--mute); }
+.v-r101-card .v { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--line); }
+.v-r101-card.is-on .v { color: var(--brown); }
+.v-r101-card.is-hot { background: var(--purple-l); box-shadow: inset 3px 0 var(--purple); }
+.v-r101-card.is-hot .v { color: var(--ink); }
+
+.v-r101-presets { align-items: center; margin: 0.1rem 0 0.8rem; }
+.v-r101-presets .wv-btn { color: var(--blue); border-color: var(--blue); }
+.v-r101-presets .wv-btn:hover { background: var(--blue-l); }
+.v-r101-plabel { font-size: 11.5px; color: var(--mute); margin-right: 0.15rem; }
+.v-r101-need { margin-top: 0.2rem; }
+.v-r101-need .wv-mini { margin-top: 0.5rem; }
+.wv .v-r101-need .wv-mini th { white-space: normal; vertical-align: bottom; }
