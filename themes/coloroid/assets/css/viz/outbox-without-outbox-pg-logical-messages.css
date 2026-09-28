@@ -75,8 +75,6 @@ html[data-force-dark] .viz[class*="viz--oxb-"] {
   .viz[class*="viz--oxb-"] { background-size: 12px 18px, 12px 18px, auto; }
 }
 
-/* the hero sits flush under the title, no header */
-.viz.viz--oxb-hero { margin-top: 1rem; padding-top: 0.7rem; }
 
 /* ---- header: title over an LSN ruler ---- */
 .viz[class*="viz--oxb-"] .wv-head {

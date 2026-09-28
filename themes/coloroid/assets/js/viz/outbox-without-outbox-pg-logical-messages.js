@@ -7,7 +7,7 @@
  * whiteboard sheet (frame="none") and are styled in
  * css/viz/outbox-without-outbox-pg-logical-messages.css.
  *
- *   oxb-hero     end one transaction with COMMIT or ROLLBACK; see where the event goes
+ *   oxb-commit   end one transaction with COMMIT or ROLLBACK; see where the event goes
  *   oxb-ack-lsn  drag the slot along a real WAL layout; the restart rule decides each fate
  *   oxb-follow   one event, five envelopes: the same 225 bytes wrapped at each stop
  *   oxb-race     the reader plays Kafka, acking partitions in any order; two slot rules react
@@ -97,13 +97,13 @@ const bookmark = (y0, y1, label = 'slot') => {
   return g;
 };
 
-/* ================================================================== HERO */
+/* ================================================================ COMMIT */
 
 /* The reader ends one transaction with COMMIT or ROLLBACK and sees where
    the event goes. Both are true on Postgres 17.7: the message record is in
    WAL before COMMIT; ROLLBACK adds a 34-byte ABORT record, and decoding
    drops the transaction. */
-const HERO = {
+const TXN = {
   wide: {
     vb: [960, 318], tape: [16, 944, 168, 50], rec: [178, 208],
     old: [['o', 30, 130], ['m', 130, 263, 'event'], ['c', 263, 285], ['o', 285, 400]],
@@ -124,21 +124,21 @@ const HERO = {
   },
 };
 
-function initHero(fig, app) {
+function initCommit(fig, app) {
   const aid = uid('oxh');
   let state = 'open'; let L = null; let el = null; let cancel = () => {};
   const stage = h('div');
   const ask = h('p', { class: 'o-q' }, 'The row and the event are already in the WAL. End the transaction. Does the event reach Kafka?');
   const bC = btn('COMMIT', () => end('commit'), { class: 'wv-btn o-opt' });
   const bR = btn('ROLLBACK', () => end('rollback'), { class: 'wv-btn o-opt' });
-  const bAgain = btn('↺ again', () => { state = 'open'; draw(L === HERO.tall); }, { class: 'wv-btn o-ghost' });
+  const bAgain = btn('↺ again', () => { state = 'open'; draw(L === TXN.tall); }, { class: 'wv-btn o-ghost' });
   const say = h('p', { class: 'o-note', 'aria-live': 'polite' });
   app.append(ask, h('div', { class: 'o-opts' }, bC, bR, bAgain), stage, say,
     colorKey([['k-data', 'event'], ['k-free', 'other WAL'], ['k-safe', 'slot, ack'], ['k-look', 'your transaction']]));
 
   function draw(vertical) {
     cancel();
-    L = vertical ? HERO.tall : HERO.wide;
+    L = vertical ? TXN.tall : TXN.wide;
     const [W, H] = L.vb;
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': fig.getAttribute('aria-label') || '' });
     svg.innerHTML = arrowDefs(aid);
@@ -217,7 +217,7 @@ function initHero(fig, app) {
     e.slot.setAttribute('transform', `translate(${x},0)`);
     const rc = c ? on(2.6, 3.0) : 0;
     e.recyc.setAttribute('width', Math.max(0, (x - L.tape[0]) * rc));
-    e.recLab.textContent = rc > 0 ? (L === HERO.tall ? 'may be recycled' : 'Postgres may recycle this WAL') : '';
+    e.recLab.textContent = rc > 0 ? (L === TXN.tall ? 'may be recycled' : 'Postgres may recycle this WAL') : '';
     say.innerHTML = open ? 'Both records were written when the statements ran. Nothing has been sent anywhere yet.'
       : c ? 'The COMMIT record makes the transaction visible to decoding. OwlPost reads the event, Kafka stores it, and the ack moves the slot. No outbox table was written, polled, or vacuumed.'
         : 'The event record stays in the WAL, but the ABORT record tells decoding to drop the whole transaction. OwlPost never sees it, and the WAL is recycled like any other.';
@@ -381,7 +381,7 @@ const FORMS = [
     total: 253, frame: true,
     say: 'At COMMIT, the walsender sends the record as a pgoutput MESSAGE. The frame after the XLogData header is <b>253 bytes</b>, and <code>WALStart</code> is <code>0/15A0A88</code>.' },
   { stop: 'OwlPost', where: 'wal.go · handleMessage', wrap: [], tag: true,
-    say: `OwlPost keeps messages with prefix <code>payments-user</code>, unmarshals them, and tags the event with <code>WALStart + 253 = <span class="c-bad">${lsn(EV.ack)}</span></code>: a WAL position plus a frame length. Figure 1 shows why that is too far.`,
+    say: `OwlPost keeps messages with prefix <code>payments-user</code>, unmarshals them, and tags the event with <code>WALStart + 253 = <span class="c-bad">${lsn(EV.ack)}</span></code>: a WAL position plus a frame length. Figure 3 shows why that is too far.`,
     code: ['newXLogPos := xld.WALStart + pglogrepl.LSN(len(xld.WALData))', `// «0/15A0A88» + «253» = ⟦${lsn(EV.ack)}⟧`, 'if ldm.Prefix == w.cfg.OutboxPrefix { w.handleMessage(ctx, ldm.Content, newXLogPos) }'] },
   { stop: 'Kafka', where: 'kafka.go · KafkaEventHandler', wrap: [['key "user-12345"', 10]], headers: true,
     say: `One record on topic <code>payments-user.user</code>. The key <code>user-12345</code> hashes to partition ${PARTITION} (a sample 6-partition topic), so every event for this user keeps its order.`,
@@ -530,7 +530,7 @@ function hexDump() {
 
 /* The reader plays Kafka: each partition acks its records in order, the
    partitions in any order. Two slots react to the same acks. Each event
-   carries its message LSN (the safe choice in Figure 1); values are samples.
+   carries its message LSN (the safe choice in Figure 3); values are samples.
    Here a status update follows every ack. */
 const RACE_L0 = 0x16B2848;
 const RACE = [
@@ -738,6 +738,6 @@ function initBacklog(fig, app) {
 }
 
 register({
-  'oxb-hero': initHero, 'oxb-ack-lsn': initAckLsn, 'oxb-follow': initFollow,
+  'oxb-commit': initCommit, 'oxb-ack-lsn': initAckLsn, 'oxb-follow': initFollow,
   'oxb-race': initRace, 'oxb-replay': initReplay, 'oxb-backlog': initBacklog,
 });
