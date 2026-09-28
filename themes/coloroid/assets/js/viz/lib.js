@@ -173,6 +173,54 @@ export function range(label, { min, max, step = 1, value, fmt: f = String, oninp
   return { el, input, set(v) { input.value = v; sync(); oninput?.(+v); } };
 }
 
+/**
+ * Choice chips. options: [[value, label], …]. multi toggles several.
+ * Returns { el, value, set(v) }. Selected chips are aria-pressed (blue).
+ */
+export function chips(options, onpick, { value = null, multi = false, label } = {}) {
+  let cur = multi ? new Set(value ?? []) : value;
+  const els = options.map(([v, text]) => h('button', {
+    class: 'wv-chip', type: 'button', onclick: () => pick(v),
+  }, text));
+  const el = h('div', { class: 'wv-chips', role: 'group', 'aria-label': label }, ...els);
+  function paint() {
+    options.forEach(([v], i) => els[i].setAttribute('aria-pressed', String(multi ? cur.has(v) : cur === v)));
+  }
+  function pick(v) {
+    if (multi) { if (cur.has(v)) cur.delete(v); else cur.add(v); } else cur = v;
+    paint(); onpick?.(multi ? [...cur] : cur);
+  }
+  paint();
+  return { el, get value() { return multi ? [...cur] : cur; }, set(v) { cur = multi ? new Set(v) : v; paint(); } };
+}
+
+/**
+ * Predict-then-see. The reader picks an answer before seeing it.
+ * choices: [[value, label], …]; answer: correct value; explain(value, right) → html.
+ */
+export function ask(question, choices, answer, explain) {
+  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  note.hidden = true;
+  const els = choices.map(([v, text]) => h('button', { class: 'wv-chip', type: 'button', onclick: () => pick(v) }, text));
+  function pick(v) {
+    const right = v === answer;
+    choices.forEach(([c], i) => {
+      els[i].disabled = true;
+      els[i].classList.toggle('is-right', c === answer);
+      els[i].classList.toggle('is-wrong', c === v && !right);
+    });
+    note.hidden = false;
+    note.className = `wv-note ${right ? 'is-good' : 'is-bad'}`;
+    note.innerHTML = explain(v, right);
+  }
+  function reset() {
+    els.forEach((e) => { e.disabled = false; e.classList.remove('is-right', 'is-wrong'); });
+    note.hidden = true;
+  }
+  const el = h('div', { class: 'wv-ask' }, h('p', { class: 'q' }, question), h('div', { class: 'wv-chips' }, ...els), note);
+  return { el, reset };
+}
+
 /* ---------------------------------------------------------------- mount */
 
 const WIDGETS = {};

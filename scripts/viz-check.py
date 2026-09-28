@@ -32,6 +32,30 @@ CHROMIUM = "/Applications/Chromium.app/Contents/MacOS/Chromium"
 VIEWPORTS = [("phone", 390, 844), ("desktop", 1280, 900)]
 
 
+def house_style(slug: str) -> bool:
+    """Flag per-post CSS that overrides the shared look. Returns True on failure."""
+    import re
+    bad = False
+    css = ROOT / "themes/coloroid/assets/css/viz" / f"{slug}.css"
+    rules = [
+        (r"^\s*--[\w-]+\s*:", "defines a CSS variable (use the shared tokens)"),
+        (r"font-family\s*:", "sets font-family"),
+        (r"box-shadow\s*:", "sets box-shadow"),
+        (r"(?:#[0-9a-fA-F]{3,8}\b|\b(?:rgb|rgba|hsl|hsla|oklch|oklab)\()", "hard-codes a colour"),
+    ]
+    if css.exists():
+        for n, line in enumerate(css.read_text().splitlines(), 1):
+            for pat, why in rules:
+                if re.search(pat, line):
+                    print(f"  STYLE: {css.name}:{n} {why}: {line.strip()[:90]}")
+                    bad = True
+    md = ROOT / "content/posts" / slug / "index.md"
+    if md.exists() and 'frame="none"' in md.read_text():
+        print('  STYLE: index.md uses frame="none"; the house frame is always on')
+        bad = True
+    return bad
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if len(args) != 1:
@@ -57,6 +81,8 @@ def main() -> int:
         print(f"no page at {page_path}")
         return 1
 
+    failed = house_style(slug)
+
     shutil.rmtree(shots, ignore_errors=True)
     shots.mkdir(parents=True)
     class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -68,7 +94,6 @@ def main() -> int:
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     url = f"http://127.0.0.1:{srv.server_address[1]}/posts/{slug}/"
 
-    failed = False
     schemes = ["light", "dark"] if "--dark" in sys.argv else ["light"]
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=CHROMIUM)

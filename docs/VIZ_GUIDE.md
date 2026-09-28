@@ -4,10 +4,11 @@ Read this before adding figures to a post. Also read `docs/WRITING_GUIDE.md`.
 
 The WAL Cake post (`content/posts/wal-cake-lock-free-cdc/index.md`,
 `themes/coloroid/assets/js/walviz.js`) shows the level of care expected.
-It is a bar for quality, not a template. Do not copy its widgets, layout,
-or look. Each post gets the visual that makes sense for its subject: a
-running post, a stereogram post, and a Postgres post should not look like
-the same kit with different labels.
+Its look is the house style for every post: same frame, type, controls,
+and colours. Its widgets are not a template: each post designs the
+interaction and drawing its own idea needs. A running post, a stereogram
+post, and a Postgres post share one visual language and do different things
+with it.
 
 ## Reimagine the post's images
 
@@ -49,12 +50,12 @@ Sources he gave, in his words and in ours:
 - **Audience:** a new engineer should be able to follow it, and an expert
   should still learn something.
 
-## Colour grammar (default)
+## Colour grammar (fixed across the site)
 
-Colour must carry meaning, stated in a key, and mean the same thing in
-every figure of a post. The grammar below is the site default; use it
-unless the post's subject calls for a different one (for example heart-rate
-zones in a running post).
+Colour carries meaning, stated in a key, and means the same thing in every
+figure on the site. Use only the tokens below. If a subject has its own
+scale (for example heart-rate zones), map it onto these tokens and say so
+in the key.
 
 | Colour | Meaning | CSS token / key class |
 |---|---|---|
@@ -71,12 +72,24 @@ colours it uses.
 
 ## Look
 
-- Default: a light whiteboard sheet on the themed page (near-white board,
-  1.5px near-black ink border, hard offset shadow) from `walviz.css` via the
-  `.wv` class. Use it when it fits. Pass `frame="none"` to the shortcode to
-  drop it and design your own frame, type, and layout in
-  `css/viz/<slug>.css` (target `.viz--<kind>`). The page theme's colours are
-  available as CSS variables.
+- One house style, from WAL Cake: a light whiteboard sheet on the themed
+  page (near-white board, 1.5px near-black ink border, hard offset shadow),
+  mono type, the `Fig. N · Title` header, and the shared controls. The
+  shortcode always applies it (`.wv`). There is no unframed mode.
+- Use the shared components in `walviz.css` and `viz/lib.js`: `.wv-btn`,
+  `stepper()`, `range()`, `chips()` / `.wv-chip`, `ask()` (predict then
+  see), `.wv-note` (`is-good`, `is-bad`), `.wv-card` / `.wv-cards`
+  (`is-look`, `is-good`, `is-bad`, `is-pick`, `is-data`), `.wv-table`,
+  `.wv-field` with `select` / number / text inputs, `details`/`summary`,
+  `colorKey()`, `codeBlock()`, `.wv-kv`, `.wv-callout`, and the SVG classes
+  (`.box`, `.edge`, `.t-*`).
+- `css/viz/<slug>.css` is for layout and drawing only (grid, sizes, SVG
+  shapes), with classes prefixed `v-<short-slug>-`. It must not define
+  colour variables, fonts, font sizes outside the `.t-*` scale, borders or
+  shadows for the figure, or its own buttons, chips, sliders or notes. Use
+  `var(--ink)`, `var(--blue)` and the other tokens.
+- If you need a component that does not exist, do not invent a local one.
+  Describe it in your final report and use the closest shared one.
 - Dark ink for text. No grey text on tinted backgrounds.
 - Solid boxes are processes you run. Dashed boxes are data at rest.
 - Label every failure point.
@@ -165,8 +178,8 @@ Interaction there should put the reader inside the argument, for example:
 - the reader makes the choice the essay discusses and sees what follows
 - a before/after the reader can toggle, when the advice is about craft
 
-Keep it calm and in the essay's tone: typographic, light, few controls,
-often `frame="none"`. One interaction that changes how the reader sees
+Keep it calm and in the essay's tone: few controls, more text than
+drawing, same house frame. One interaction that changes how the reader sees
 the idea is enough. Personal and physical posts (running, stereograms)
 sit in between: model the body or the eyes, but keep it human and simple.
 

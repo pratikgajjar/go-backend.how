@@ -393,6 +393,61 @@ body[class*="theme-"] .wv code { background: var(--tint2); color: var(--ink); bo
 .wv-opt .pick { align-self: flex-start; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--board); background: var(--orange); padding: 0.15rem 0.45rem; }
 .wv-callout { margin-top: 0.8rem; padding: 0.55rem 0.8rem; border-left: 3px solid var(--purple); background: var(--purple-l); font-size: 13px; }
 
+/* ==========================================================================
+ * Shared components for per-post figures (viz shortcode). Posts style
+ * layout only; controls, text blocks and colours come from here.
+ * ========================================================================== */
+
+/* choice chips: pick one or toggle; selected = blue (a reader control) */
+.wv-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.7rem; }
+.wv-chip {
+  font: inherit; font-size: 12px; line-height: 1.25; text-align: left;
+  color: var(--ink); background: var(--board);
+  border: 1.25px solid var(--ink); border-radius: 0;
+  padding: 0.5rem 0.7rem; min-height: 34px; cursor: pointer; touch-action: manipulation;
+}
+.wv-chip:hover:not(:disabled) { background: var(--tint2); }
+.wv-chip[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: var(--board); }
+.wv-chip.is-right { background: var(--green-l); border-color: var(--green); color: var(--ink); }
+.wv-chip.is-wrong { background: var(--red-l); border: 1.5px dashed var(--red); color: var(--ink); }
+.wv-chip:disabled { cursor: default; }
+.wv-chip:focus-visible, .wv select:focus-visible, .wv summary:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+
+/* predict-then-see: a question, choices, then the answer in a .wv-note */
+.wv-ask { margin: 0 0 0.8rem; }
+.wv-ask .q { font-weight: 800; margin: 0 0 0.5rem; }
+
+/* form fields */
+.wv select, .wv input[type="number"], .wv input[type="text"] {
+  font: inherit; font-size: 12.5px; color: var(--ink); background: var(--board);
+  border: 1.25px solid var(--ink); border-radius: 0; padding: 0.4rem 0.5rem; min-height: 34px;
+}
+.wv input[type="number"] { width: 6.5em; font-variant-numeric: tabular-nums; }
+.wv-field { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 12px; margin: 0 0.9rem 0.5rem 0; }
+.wv-field label { white-space: nowrap; }
+
+/* panels and cards inside a figure */
+.wv-card { border: 1.25px solid var(--ink); background: var(--board); padding: 0.6rem 0.75rem; }
+.wv-card.is-look { border-color: var(--purple); background: var(--purple-l); }
+.wv-card.is-good { border-color: var(--green); background: var(--green-l); }
+.wv-card.is-bad { border: 1.5px dashed var(--red); background: var(--red-l); }
+.wv-card.is-pick { border: 2.5px solid var(--orange); background: var(--orange-l); }
+.wv-card.is-data { border-color: var(--brown); background: var(--brown-l); }
+.wv-card h5 { margin: 0 0 0.3rem; font-family: var(--font-mono); font-size: 13px; font-weight: 800; }
+.wv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem; }
+
+/* compact data table */
+.wv-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.wv-table th { text-align: left; font-weight: 800; border-bottom: 1.5px solid var(--ink); padding: 0.3rem 0.5rem 0.3rem 0; }
+.wv-table td { border-bottom: 1px solid var(--line); padding: 0.3rem 0.5rem 0.3rem 0; }
+.wv-table tr.is-look td { background: var(--purple-l); }
+.wv-scroll { overflow-x: auto; }
+
+/* progressive disclosure */
+.wv details { border-top: 1px solid var(--line); padding: 0.45rem 0 0; margin-top: 0.6rem; }
+.wv summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--ink); }
+.wv details[open] summary { margin-bottom: 0.4rem; }
+
 .wv-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) {
