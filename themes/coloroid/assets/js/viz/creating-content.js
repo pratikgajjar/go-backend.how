@@ -1,8 +1,8 @@
 /*
  * viz/creating-content — figures for "Creating Content".
  *
- *   who-gets-better  Three short beats on one stable grid (T, K, P rows ×
- *                    Retton, Winston, You columns):
+ *   who-gets-better  Three reader-paced beats on one fixed table (T, K, P
+ *                    rows × Retton, Winston, You columns):
  *                      1. predict: who skis better, the Olympian or Winston?
  *                      2. place yourself: two questions about your writing
  *                      3. retrieve: if you never publish, what does a
@@ -11,9 +11,7 @@
  * The ski story and quotes are from Winston's How to Speak (MIT OCW
  * transcript). Pips mean more or less, not measurements.
  */
-import { h, register } from './lib.js';
-
-/* ------------------------------------------------------ who-gets-better */
+import { h, btn, chips, ask, colorKey, register } from './lib.js';
 
 const ROWS = [
   { id: 't', sym: 'T', name: 'talent', note: 'given' },
@@ -25,177 +23,156 @@ const COLS = [
   { id: 'winston', name: 'Winston', sub: 'MIT professor', v: { t: null, k: 4, p: 4 } },
   { id: 'you', name: 'You', sub: 'writing', v: { t: null, k: 0, p: 0 } },
 ];
-const K_ANS = [['A little', 1], ['Well', 3], ['Deeply', 5]];
-const P_ANS = [['None yet', 0], ['1 to 5', 2], ['More than 5', 4]];
+const K_ANS = [[1, 'A little'], [3, 'Well'], [5, 'Deeply']];
+const P_ANS = [[0, 'None yet'], [2, '1 to 5'], [4, 'More than 5']];
+const BEATS = 3;
 
-function pips(n) {
+function pips(v) {
   const el = h('span', { class: 'v-cc-pips' });
   for (let i = 0; i < 5; i++) el.append(h('i'));
-  const set = (v) => {
-    el.classList.toggle('is-unknown', v == null);
-    el.setAttribute('aria-label', v == null ? 'unknown' : `${v} of 5`);
-    [...el.children].forEach((c, i) => c.classList.toggle('on', v != null && i < v));
+  const set = (n) => {
+    el.classList.toggle('is-unknown', n == null);
+    el.setAttribute('aria-label', n == null ? 'unknown' : `${n} of 5`);
+    [...el.children].forEach((c, i) => c.classList.toggle('on', n != null && i < n));
   };
-  set(n);
+  set(v);
   return { el, set };
 }
 
-function choice(label, onpick) {
-  return h('button', { type: 'button', class: 'v-cc-pick', 'aria-pressed': 'false', onclick: onpick }, label);
-}
-function press(group, btn) {
-  group.querySelectorAll('.v-cc-pick').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+function advice(k, p) {
+  if (p === 0) return ['Start now, and do not wait for it to be perfect.', '#when', 'When to start'];
+  if (k === 1) return ['Pick a topic that interests you, and ask questions. Curiosity drives knowledge.', '#what', 'What to write about'];
+  return ['Keep publishing. Have someone pre-read, then iterate on the feedback.', '#faq', 'FAQ'];
 }
 
 function initWho(fig, app) {
   const st = { beat: 0, guess: null, k: null, p: null, never: null };
 
-  /* --- the grid: stays put in every beat --- */
-  const grid = h('div', { class: 'v-cc-grid', role: 'table', 'aria-label': 'Talent, knowledge and practice for Retton, Winston and you' });
+  /* --- the table: the same in every beat --- */
   const cells = {};
-  const colHead = {};
-  grid.append(h('span', { class: 'v-cc-corner', role: 'columnheader', style: 'grid-row:1;grid-column:1' }));
-  /* Every cell is placed explicitly, so the veil can overlay the You column. */
-  COLS.forEach((c, ci) => {
-    colHead[c.id] = h('span', { class: `v-cc-col v-cc-c-${c.id}`, role: 'columnheader', style: `grid-row:1;grid-column:${ci + 2}` },
-      h('b', null, c.name), h('span', null, c.sub));
-    grid.append(colHead[c.id]);
-  });
-  ROWS.forEach((r, ri) => {
-    grid.append(h('span', { class: `v-cc-row v-cc-r-${r.id}`, role: 'rowheader', style: `grid-row:${ri + 2};grid-column:1` },
-      h('b', { class: 'v-cc-sym' }, r.sym), h('span', null, r.name), h('small', null, r.note)));
-    COLS.forEach((c, ci) => {
-      const pp = pips(c.v[r.id]);
-      const cell = h('span', { class: `v-cc-cell v-cc-c-${c.id} v-cc-r-${r.id}`, role: 'cell', style: `grid-row:${ri + 2};grid-column:${ci + 2}` }, pp.el);
-      cells[`${c.id}.${r.id}`] = { ...pp, cell };
-      grid.append(cell);
-    });
-  });
-  const veil = h('span', { class: 'v-cc-veil', 'aria-hidden': 'true' }, 'not published', h('br'), 'a reader sees nothing');
-  grid.append(veil);
+  const heads = {};
+  const table = h('table', { class: 'wv-table v-cc-grid' },
+    h('thead', null, h('tr', null, h('th', { scope: 'col' }),
+      ...COLS.map((c) => (heads[c.id] = h('th', { scope: 'col', class: 'v-cc-col' },
+        h('span', { class: 't-m t-b' }, c.name), h('br'), h('span', { class: 't-xs' }, c.sub)))))),
+    h('tbody', null, ...ROWS.map((r) => h('tr', { class: `v-cc-r-${r.id}` },
+      h('th', { scope: 'row', class: 'v-cc-rowh' },
+        h('span', { class: 't-l t-b' }, r.sym), ' ', r.name, h('br'),
+        h('span', { class: `t-xs${r.id === 't' ? '' : ' t-safe'}` }, r.note)),
+      ...COLS.map((c) => {
+        const pp = pips(c.v[r.id]);
+        const td = h('td', { class: `v-cc-cell v-cc-c-${c.id}` }, pp.el);
+        cells[`${c.id}.${r.id}`] = { ...pp, td };
+        return td;
+      })))),
+  );
 
-  /* --- the question area: one beat at a time --- */
-  const stage = h('div', { class: 'v-cc-stage', 'aria-live': 'polite' });
-  const dots = h('div', { class: 'v-cc-dots', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'));
-  const nav = h('div', { class: 'v-cc-nav' }, dots);
+  const stage = h('div', { class: 'v-cc-stage' });
+  const back = btn('◀ Back', () => go(st.beat - 1), { 'aria-label': 'Previous part' });
+  const next = btn('Next ▶', () => go(st.beat + 1), { 'aria-label': 'Next part' });
+  const again = btn('↻ Start over', () => { Object.assign(st, { guess: null, k: null, p: null, never: null }); go(0); });
+  const pos = h('span', { class: 'wv-pos', 'aria-live': 'polite' });
 
-  function paintGrid() {
+  function paint() {
     const b = st.beat;
-    const showKnown = b > 0 || st.guess != null;
+    const revealed = b > 0 || st.guess != null;
     COLS.forEach((c) => ROWS.forEach((r) => {
       const x = cells[`${c.id}.${r.id}`];
       let v = c.v[r.id];
-      if (c.id === 'you') {
-        if (r.id === 'k') v = st.k ?? 0;
-        if (r.id === 'p') v = b === 2 ? 0 : (st.p ?? 0);
-      }
-      const hidden = c.id !== 'you' && r.id !== 't' && !showKnown;
-      x.cell.classList.toggle('is-hidden', hidden);
+      if (c.id === 'you' && r.id === 'k') v = st.k ?? 0;
+      if (c.id === 'you' && r.id === 'p') v = b === 2 ? 0 : (st.p ?? 0);
+      const hidden = c.id !== 'you' && r.id !== 't' && !revealed;
+      x.el.classList.toggle('is-hidden', hidden);
       x.set(hidden ? 0 : v);
+      x.td.classList.toggle('is-gap', c.id === 'you' && b === 2 && st.never != null);
     }));
     const focus = b === 0 ? (st.guess != null ? 'winston' : null) : 'you';
     COLS.forEach((c) => {
-      const on = c.id === focus;
-      colHead[c.id].classList.toggle('is-focus', on);
-      grid.querySelectorAll(`.v-cc-cell.v-cc-c-${c.id}`).forEach((e) => e.classList.toggle('is-focus', on));
-      const dim = b > 0 && c.id !== 'you';
-      colHead[c.id].classList.toggle('is-dim', dim);
-      grid.querySelectorAll(`.v-cc-cell.v-cc-c-${c.id}`).forEach((e) => e.classList.toggle('is-dim', dim));
+      const cls = (e) => {
+        e.classList.toggle('is-look', c.id === focus);
+        e.classList.toggle('is-dim', b > 0 && c.id !== 'you');
+      };
+      cls(heads[c.id]);
+      ROWS.forEach((r) => cls(cells[`${c.id}.${r.id}`].td));
     });
-    grid.classList.toggle('is-veiled', b === 2 && st.never != null);
-    [...dots.children].forEach((d, i) => d.classList.toggle('on', i === b));
+    const done = [st.guess != null, st.k != null && st.p != null, true][b];
+    back.disabled = b === 0;
+    next.disabled = !done;
+    next.hidden = b === BEATS - 1;
+    again.hidden = b !== BEATS - 1;
+    pos.textContent = `${b + 1} / ${BEATS}`;
   }
 
-  const next = (label, to) => h('button', { type: 'button', class: 'v-cc-next', onclick: () => go(to) }, label);
+  /* An ask() is fresh each time a beat renders; replay a stored answer. */
+  function replay(a, value, choices) {
+    const i = choices.findIndex(([v]) => v === value);
+    if (i >= 0) a.el.querySelectorAll('.wv-chip')[i].click();
+  }
 
   function beatStory() {
-    const row = h('div', { class: 'v-cc-picks' });
-    const out = h('div', { class: 'v-cc-out' });
-    const pick = (id, btn) => {
-      st.guess = id; press(row, btn); paintGrid();
-      out.replaceChildren(
-        h('p', null, st.guess === 'winston' ? 'Yes, Winston.' : 'Winston, by his own account.'),
-        h('blockquote', { class: 'v-cc-quote' },
-          '“I was a better skier because I had the K, and I had the P, and all she had was the T.”'),
-        next('Now you →', 1),
-      );
-    };
-    COLS.slice(0, 2).forEach((c) => {
-      const b = choice(c.name, () => pick(c.id, b));
-      row.append(b);
+    const choices = [['retton', 'Retton'], ['winston', 'Winston']];
+    const a = ask('Who skis better?', choices, 'winston', (v, right) => {
+      st.guess = v; paint();
+      return `${right ? 'Yes, Winston.' : 'Winston, by his own account.'} <i>“I was a better skier because I had the K, and I had the P, and all she had was the T.”</i>`;
     });
+    replay(a, st.guess, choices);
     return [
-      h('p', { class: 'v-cc-say' },
-        'Sun Valley, Celebrity Weekend. On the novice slope is Mary Lou Retton, an Olympic gymnast with perfect 10s in the vault. Patrick Winston skis there too.'),
-      h('p', { class: 'v-cc-ask' }, 'Who skis better?'),
-      row, out,
+      h('p', null, 'Sun Valley, Celebrity Weekend. On the novice slope is Mary Lou Retton, an Olympic gymnast with perfect 10s in the vault. Patrick Winston skis there too.'),
+      a.el,
     ];
   }
 
-  function advice() {
-    if (st.k == null || st.p == null) return null;
-    if (st.p === 0) return ['Start now, and do not wait for it to be perfect.', '#when', 'When to start'];
-    if (st.k === 1) return ['Pick a topic that interests you, and ask questions. Curiosity drives knowledge.', '#what', 'What to write about'];
-    return ['Keep publishing. Have someone pre-read, then iterate on the feedback.', '#faq', 'FAQ'];
-  }
-
   function beatYou() {
-    const out = h('div', { class: 'v-cc-out' });
-    const qk = h('div', { class: 'v-cc-picks' });
-    const qp = h('div', { class: 'v-cc-picks' });
+    const note = h('div', { class: 'wv-note is-good', 'aria-live': 'polite' });
     const show = () => {
-      paintGrid();
-      const a = advice();
-      out.replaceChildren();
-      if (a) {
-        out.append(
-          h('p', { class: 'v-cc-advice' }, a[0], ' ', h('a', { href: a[1] }, `(${a[2]})`)),
-          next('One question →', 2),
-        );
-      }
+      paint();
+      note.hidden = st.k == null || st.p == null;
+      if (note.hidden) return;
+      const [text, href, label] = advice(st.k, st.p);
+      note.replaceChildren(text, ' ', h('a', { href }, `(${label})`));
     };
-    K_ANS.forEach(([label, v]) => { const b = choice(label, () => { st.k = v; press(qk, b); show(); }); if (st.k === v) b.setAttribute('aria-pressed', 'true'); qk.append(b); });
-    P_ANS.forEach(([label, v]) => { const b = choice(label, () => { st.p = v; press(qp, b); show(); }); if (st.p === v) b.setAttribute('aria-pressed', 'true'); qp.append(b); });
+    const ck = chips(K_ANS, (v) => { st.k = v; show(); }, { value: st.k, label: 'How well you know the topic' });
+    const cp = chips(P_ANS, (v) => { st.p = v; show(); }, { value: st.p, label: 'How much you have published' });
     show();
     return [
-      h('p', { class: 'v-cc-say' }, 'Now you, and writing. Two questions. Talent is not one of them: you cannot change it.'),
-      h('p', { class: 'v-cc-ask' }, 'One topic you could write about: how well do you know it?'), qk,
-      h('p', { class: 'v-cc-ask' }, 'How many pieces have you published?'), qp,
-      out,
+      h('p', null, 'Now you, and writing. Talent is not one of the questions: you cannot change it.'),
+      h('div', { class: 'wv-ask' }, h('p', { class: 'q' }, 'One topic you could write about: how well do you know it?'), ck.el),
+      h('div', { class: 'wv-ask' }, h('p', { class: 'q' }, 'How many pieces have you published?'), cp.el),
+      note,
     ];
   }
 
   function beatNever() {
-    const row = h('div', { class: 'v-cc-picks' });
-    const out = h('div', { class: 'v-cc-out' });
-    const pick = (ans, btn) => {
-      st.never = ans; press(row, btn); paintGrid();
-      out.replaceChildren(
-        h('p', null, ans === 'None' ? 'Yes, none.' : 'None.',
-          ' A reader only meets what you publish. Your knowledge and talent stay in your head.'),
-        h('blockquote', { class: 'v-cc-quote' },
-          '“Talent will not; nothing is more common than unsuccessful men with talent.”',
-          h('span', { class: 'v-cc-src' }, ' Calvin Coolidge')),
-        h('div', { class: 'v-cc-again' }, next('← Back to your answers', 1), next('Start over', -1)),
-      );
-    };
-    ['All of it', 'Some', 'None'].forEach((a) => { const b = choice(a, () => pick(a, b)); row.append(b); });
+    const choices = [['all', 'All of it'], ['some', 'Some'], ['none', 'None']];
+    const a = ask('How much of your knowledge and talent does a reader see?', choices, 'none', (v, right) => {
+      st.never = v; paint();
+      return `${right ? 'Yes, none.' : 'None.'} A reader only meets what you publish. <i>“Talent will not; nothing is more common than unsuccessful men with talent.”</i> Calvin Coolidge`;
+    });
+    replay(a, st.never, choices);
     return [
-      h('p', { class: 'v-cc-say' }, 'Say you never publish. Your practice column is empty.'),
-      h('p', { class: 'v-cc-ask' }, 'How much of your knowledge and talent does a reader see?'),
-      row, out,
+      h('p', null, 'Say you never publish. Your practice column is empty.'),
+      a.el,
     ];
   }
 
   function go(b) {
-    if (b === -1) { Object.assign(st, { guess: null, k: null, p: null, never: null }); b = 0; }
-    st.beat = b;
-    if (b !== 2) st.never = null;
-    stage.replaceChildren(...[beatStory, beatYou, beatNever][b]());
-    paintGrid();
+    st.beat = Math.max(0, Math.min(BEATS - 1, b));
+    if (st.beat !== 2) st.never = null;
+    stage.replaceChildren(...[beatStory, beatYou, beatNever][st.beat]());
+    paint();
   }
 
-  app.append(h('div', { class: 'v-cc-who' }, grid, h('div', { class: 'v-cc-side' }, stage, nav)));
+  app.append(
+    h('div', { class: 'wv-split' }, h('div', { class: 'wv-scroll' }, table), stage),
+    h('div', { class: 'wv-bar v-cc-bar' }, back, pos, h('span', { class: 'wv-sp' }), next, again),
+    colorKey([
+      ['k-ink', 'talent: given'],
+      ['k-safe', 'knowledge, practice: you grow them'],
+      ['k-opt', 'your answers'],
+      ['k-look', 'the column to look at'],
+      ['k-gap', 'not published'],
+    ]),
+  );
   go(0);
 }
 

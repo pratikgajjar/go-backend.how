@@ -42,7 +42,7 @@ The quality of what you create depends on three things: knowledge (K), practice 
 
 He tells a story about it. Guess before you read his answer.
 
-{{< viz kind="who-gets-better" frame="none" fallback="who-gets-better.svg" alt="A grid of talent, knowledge and practice for Mary Lou Retton on skis, Patrick Winston on skis, and you. Retton has the talent; Winston has the knowledge and practice." caption="The story and quotes are from Winston's *How to Speak* lecture. Pips show more or less, not measurements." >}}
+{{< viz kind="who-gets-better" fig="1" title="Talent, knowledge, practice" fallback="who-gets-better.svg" alt="A grid of talent, knowledge and practice for Mary Lou Retton on skis, Patrick Winston on skis, and you. Retton has the talent; Winston has the knowledge and practice." caption="The story and quotes are from Winston's *How to Speak* lecture. Pips show more or less, not measurements." >}}
 
 ## Knowledge
 

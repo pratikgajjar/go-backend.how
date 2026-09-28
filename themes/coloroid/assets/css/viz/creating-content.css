@@ -1,132 +1,39 @@
-/* creating-content. frame="none": the figure sits on the page like part
-   of the essay. Classes: v-cc-*.
-   Colour meaning:
-     ink    structure, and talent (given, you cannot grow it)
-     green  knowledge and practice (you grow them)
-     blue   your answers
-     purple the column to look at now
-     red    not published                                                  */
+/* creating-content — layout and drawing for who-gets-better. Colours are
+   the shared tokens; controls, notes and the table come from walviz.css.
+   Classes: v-cc-*. */
 
-.viz--who-gets-better {
-  --ink: var(--article-text, oklch(26% 0.03 95));
-  --paper: var(--article-bg, oklch(92% 0.04 95));
-  --rule: color-mix(in srgb, var(--ink) 22%, transparent);
-  --faint: color-mix(in srgb, var(--ink) 14%, transparent);
-  --green: oklch(44% 0.12 152);
-  --blue: oklch(42% 0.16 258);
-  --purple: oklch(44% 0.19 305);
-  --red: oklch(48% 0.19 27);
-  --tint: color-mix(in srgb, var(--ink) 6%, var(--paper));
-  --purple-l: color-mix(in srgb, var(--purple) 14%, var(--paper));
-  --blue-l: color-mix(in srgb, var(--blue) 12%, var(--paper));
-  --red-l: color-mix(in srgb, var(--red) 12%, var(--paper));
-  color: var(--ink);
-  font-family: var(--font-mono);
-  line-height: 1.5;
-}
-html[data-force-dark] .viz--who-gets-better {
-  --green: oklch(78% 0.14 152);
-  --blue: oklch(78% 0.12 255);
-  --purple: oklch(78% 0.14 305);
-  --red: oklch(72% 0.17 27);
-}
-.viz--who-gets-better .wv-fallback { max-width: 560px; margin: 0 auto; border: 0; }
-figure.viz--who-gets-better figcaption {
-  opacity: 1; font-style: normal; color: var(--ink);
-  max-width: 40rem; margin: 1rem auto 0; padding-top: 0.5rem;
-  border-top: 1px solid var(--rule); font-size: 12px;
-}
+/* the table stays still while the beats change beside it */
+.v-cc-grid th, .v-cc-grid td { vertical-align: middle; }
+.v-cc-grid .v-cc-col, .v-cc-grid .v-cc-cell { text-align: center; }
+.v-cc-grid .v-cc-rowh { font-weight: 400; }
+.v-cc-grid .is-look { background: var(--purple-l); }
+.v-cc-grid th.is-look .t-b { color: var(--purple); }
+.v-cc-grid .is-dim { opacity: 0.4; }
+.v-cc-grid td.is-gap { background: var(--red-l); }
+.v-cc-grid th, .v-cc-grid td { transition: opacity 0.3s, background-color 0.3s; }
 
-/* ===================================================== who-gets-better */
-.viz--who-gets-better { margin: 2.4rem 0; font-size: 14px; }
-.v-cc-who { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
-@media (min-width: 820px) {
-  .v-cc-who { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); align-items: start; }
-  .v-cc-grid { position: sticky; top: 1rem; }
-}
-
-/* the grid: rows T K P, columns Retton Winston You */
-.v-cc-grid {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(6.2em, auto) repeat(3, minmax(0, 1fr));
-  align-items: stretch;
-  font-size: 12.5px;
-}
-.v-cc-col, .v-cc-row, .v-cc-cell { padding: 0.55rem 0.45rem; transition: opacity 0.3s, background-color 0.3s; }
-.v-cc-col { display: flex; flex-direction: column; align-items: center; text-align: center; border-bottom: 1.5px solid var(--ink); line-height: 1.25; }
-.v-cc-col b { font-size: 13.5px; }
-.v-cc-col span { font-size: 10.5px; }
-.v-cc-corner { border-bottom: 1.5px solid var(--ink); }
-.v-cc-row { display: grid; grid-template-columns: 1.1em auto; column-gap: 0.4em; align-items: baseline; border-bottom: 1px solid var(--rule); line-height: 1.2; }
-.v-cc-row .v-cc-sym { font-family: var(--font-display); font-size: 17px; grid-row: span 2; }
-.v-cc-row small { grid-column: 2; font-size: 10.5px; }
-.v-cc-r-k .v-cc-sym, .v-cc-r-p .v-cc-sym, .v-cc-r-k small, .v-cc-r-p small { color: var(--green); }
-.v-cc-r-t .v-cc-sym { font-style: italic; }
-.v-cc-cell { display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--rule); }
-.v-cc-col.is-focus, .v-cc-cell.is-focus { background: var(--purple-l); }
-.v-cc-col.is-focus { border-bottom-color: var(--purple); }
-.v-cc-col.is-focus b { color: var(--purple); }
-.v-cc-col.is-dim, .v-cc-cell.is-dim { opacity: 0.4; }
+.v-cc-stage { min-height: 15rem; }
+.v-cc-stage > p { margin: 0 0 0.7rem; }
+.v-cc-bar { margin: 0.9rem 0 0; }
 
 /* pips: talent in ink, knowledge and practice in green */
-.v-cc-pips { display: inline-flex; gap: 3px; }
-.v-cc-pips i { width: 9px; height: 13px; border: 1.25px solid var(--faint); transition: background-color 0.3s, border-color 0.3s; }
+.v-cc-pips { position: relative; display: inline-flex; gap: 3px; }
+.v-cc-pips i { width: 9px; height: 13px; border: 1.25px solid var(--line); transition: background-color 0.3s; }
 .v-cc-r-t .v-cc-pips i.on { background: var(--ink); border-color: var(--ink); }
 .v-cc-r-k .v-cc-pips i.on, .v-cc-r-p .v-cc-pips i.on { background: var(--green); border-color: var(--green); }
-.v-cc-pips.is-unknown { position: relative; }
-.v-cc-pips.is-unknown i { border-style: dashed; }
+.v-cc-pips.is-unknown i, .v-cc-pips.is-hidden i { border-style: dashed; }
 .v-cc-pips.is-unknown::after {
-  content: "?"; position: absolute; inset: 0; display: grid; place-items: center;
-  font-weight: 800; font-size: 12px;
+  content: "?"; position: absolute; inset: 0;
+  display: grid; place-items: center; font-weight: 800;
 }
-.v-cc-cell.is-hidden .v-cc-pips i { border-style: dotted; }
+.v-cc-grid td.is-gap .v-cc-pips i { border-color: var(--red); border-style: dashed; background: none; }
 
-/* never published: the You column is covered */
-.v-cc-veil {
-  grid-column: 4; grid-row: 2 / span 3;
-  display: grid; place-items: center; text-align: center;
-  padding: 0.4rem; font-size: 10.5px; font-weight: 700; line-height: 1.3;
-  color: var(--red); background: var(--red-l);
-  border: 1.5px dashed var(--red);
-  position: relative; z-index: 1;
-  opacity: 0; pointer-events: none; transition: opacity 0.35s;
-}
-.v-cc-grid.is-veiled .v-cc-veil { opacity: 0.96; }
-
-/* the question area */
-.v-cc-side { display: grid; gap: 0.8rem; align-content: start; min-height: 17rem; }
-.v-cc-stage { display: grid; gap: 0.6rem; align-content: start; }
-.v-cc-stage p { margin: 0; }
-.v-cc-say { font-size: 14px; }
-.v-cc-ask { font-weight: 700; margin-top: 0.3rem !important; }
-.v-cc-picks { display: flex; flex-wrap: wrap; gap: 0.45rem; }
-.v-cc-pick, .v-cc-next {
-  font: inherit; font-size: 13px; line-height: 1.2;
-  padding: 0.5rem 0.85rem; min-height: 36px;
-  cursor: pointer; touch-action: manipulation; border-radius: 0;
-}
-.v-cc-pick { color: var(--blue); background: transparent; border: 1.5px solid var(--blue); }
-.v-cc-pick:hover { background: var(--blue-l); }
-.v-cc-pick[aria-pressed="true"] { background: var(--blue); color: var(--paper); }
-.v-cc-next { color: var(--ink); background: transparent; border: 0; padding-left: 0; text-decoration: underline; text-underline-offset: 3px; }
-.v-cc-pick:focus-visible, .v-cc-next:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
-.v-cc-out { display: grid; gap: 0.5rem; align-content: start; }
-.v-cc-out:empty { display: none; }
-.viz--who-gets-better blockquote.v-cc-quote {
-  margin: 0; padding: 0.1rem 0 0.1rem 0.8rem;
-  background: none; box-shadow: none; border: 0; border-left: 3px solid var(--purple);
-  border-radius: 0; color: var(--ink); font-style: italic; font-size: 14px; quotes: none;
-}
-.viz--who-gets-better blockquote.v-cc-quote::before,
-.viz--who-gets-better blockquote.v-cc-quote::after { content: none; }
-.v-cc-src { font-style: normal; font-size: 12px; }
-.v-cc-advice { padding: 0.5rem 0.7rem; background: var(--tint); border-left: 3px solid var(--green); }
-.v-cc-again { display: flex; flex-wrap: wrap; gap: 0 1.2rem; }
-.v-cc-dots { display: flex; gap: 6px; }
-.v-cc-dots i { width: 7px; height: 7px; border-radius: 50%; border: 1.25px solid var(--ink); }
-.v-cc-dots i.on { background: var(--ink); }
-
-@media (prefers-reduced-motion: reduce) {
-  .viz--who-gets-better * { transition: none !important; }
+/* phones: the You column must stay on screen, so pips and cells shrink */
+@media (max-width: 480px) {
+  /* main.css sets table width: max-content and cell padding with
+     !important on phones; undo it for this table only. */
+  .wv table.v-cc-grid { width: 100% !important; }
+  .wv .v-cc-grid th, .wv .v-cc-grid td { padding: 0.35rem 0.2rem !important; }
+  .v-cc-pips { gap: 2px; }
+  .v-cc-pips i { width: 6px; height: 11px; }
 }

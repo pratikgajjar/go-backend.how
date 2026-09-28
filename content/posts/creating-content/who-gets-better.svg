@@ -1,71 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 250" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#2b2519">
-<rect width="560" height="250" fill="#f1ead3"/>
-<rect x="286" y="14" width="136" height="206" fill="#e6dcf0"/>
-<text x="218.0" y="34" text-anchor="middle" font-size="14" font-weight="700">Retton</text>
-<text x="218.0" y="52" text-anchor="middle" font-size="11">Olympic gymnast</text>
-<text x="354.0" y="34" text-anchor="middle" font-size="14" font-weight="700" fill="#6b2fa0">Winston</text>
-<text x="354.0" y="52" text-anchor="middle" font-size="11">MIT professor</text>
-<text x="490.0" y="34" text-anchor="middle" font-size="14" font-weight="700">You</text>
-<text x="490.0" y="52" text-anchor="middle" font-size="11">writing</text>
-<line x1="10" y1="64" x2="550" y2="64" stroke="#2b2519" stroke-width="1.5"/>
-<text x="14" y="90" font-size="18" fill="#2b2519" font-style="italic">T</text>
-<text x="38" y="88" font-size="12.5">talent</text><text x="38" y="103" font-size="10.5" fill="#2b2519">given</text>
-<line x1="10" y1="116" x2="550" y2="116" stroke="#c9c0a6"/>
-<rect x="188.0" y="82" width="9" height="13" fill="#2b2519" stroke="#2b2519" stroke-width="1.25"/>
-<rect x="200.0" y="82" width="9" height="13" fill="#2b2519" stroke="#2b2519" stroke-width="1.25"/>
-<rect x="212.0" y="82" width="9" height="13" fill="#2b2519" stroke="#2b2519" stroke-width="1.25"/>
-<rect x="224.0" y="82" width="9" height="13" fill="#2b2519" stroke="#2b2519" stroke-width="1.25"/>
-<rect x="236.0" y="82" width="9" height="13" fill="#2b2519" stroke="#2b2519" stroke-width="1.25"/>
-<rect x="324.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="336.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="348.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="360.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="372.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 256" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#0a0d12">
+<rect width="560" height="256" fill="#fbfaf7"/>
+<rect x="286" y="12" width="136" height="208" fill="#ebdbff"/>
+<text x="218.0" y="34" text-anchor="middle" font-size="14" font-weight="800">Retton</text>
+<text x="218.0" y="52" text-anchor="middle" font-size="10">Olympic gymnast</text>
+<text x="354.0" y="34" text-anchor="middle" font-size="14" font-weight="800" fill="#7024ab">Winston</text>
+<text x="354.0" y="52" text-anchor="middle" font-size="10">MIT professor</text>
+<text x="490.0" y="34" text-anchor="middle" font-size="14" font-weight="800">You</text>
+<text x="490.0" y="52" text-anchor="middle" font-size="10">writing</text>
+<line x1="10" y1="64" x2="550" y2="64" stroke="#0a0d12" stroke-width="1.5"/>
+<text x="14" y="90" font-size="16" font-weight="800">T</text>
+<text x="34" y="89" font-size="12">talent</text><text x="34" y="104" font-size="10" fill="#0a0d12">given</text>
+<line x1="10" y1="116" x2="550" y2="116" stroke="#babec4"/>
+<rect x="188.0" y="82" width="9" height="13" fill="#0a0d12" stroke="#0a0d12" stroke-width="1.25"/>
+<rect x="200.0" y="82" width="9" height="13" fill="#0a0d12" stroke="#0a0d12" stroke-width="1.25"/>
+<rect x="212.0" y="82" width="9" height="13" fill="#0a0d12" stroke="#0a0d12" stroke-width="1.25"/>
+<rect x="224.0" y="82" width="9" height="13" fill="#0a0d12" stroke="#0a0d12" stroke-width="1.25"/>
+<rect x="236.0" y="82" width="9" height="13" fill="#0a0d12" stroke="#0a0d12" stroke-width="1.25"/>
+<rect x="324.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="336.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="348.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="360.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="372.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
 <text x="354.0" y="93" text-anchor="middle" font-size="12" font-weight="800">?</text>
-<rect x="460.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="472.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="484.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="496.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="508.0" y="82" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="460.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="472.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="484.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="496.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="508.0" y="82" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
 <text x="490.0" y="93" text-anchor="middle" font-size="12" font-weight="800">?</text>
-<text x="14" y="142" font-size="18" fill="#1f6b3a">K</text>
-<text x="38" y="140" font-size="12.5">knowledge</text><text x="38" y="155" font-size="10.5" fill="#1f6b3a">you grow it</text>
-<line x1="10" y1="168" x2="550" y2="168" stroke="#c9c0a6"/>
-<rect x="188.0" y="134" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="200.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="212.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="224.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="236.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="324.0" y="134" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="336.0" y="134" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="348.0" y="134" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="360.0" y="134" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="372.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="460.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="472.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="484.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="496.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="508.0" y="134" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
+<text x="14" y="142" font-size="16" font-weight="800">K</text>
+<text x="34" y="141" font-size="12">knowledge</text><text x="34" y="156" font-size="10" fill="#006732">you grow it</text>
+<line x1="10" y1="168" x2="550" y2="168" stroke="#babec4"/>
+<rect x="188.0" y="134" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="200.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="212.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="224.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="236.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="324.0" y="134" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="336.0" y="134" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="348.0" y="134" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="360.0" y="134" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="372.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="460.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="472.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="484.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="496.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="508.0" y="134" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
 <text x="490.0" y="145" text-anchor="middle" font-size="12" font-weight="800">?</text>
-<text x="14" y="194" font-size="18" fill="#1f6b3a">P</text>
-<text x="38" y="192" font-size="12.5">practice</text><text x="38" y="207" font-size="10.5" fill="#1f6b3a">you grow it</text>
-<line x1="10" y1="220" x2="550" y2="220" stroke="#c9c0a6"/>
-<rect x="188.0" y="186" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="200.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="212.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="224.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="236.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="324.0" y="186" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="336.0" y="186" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="348.0" y="186" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="360.0" y="186" width="9" height="13" fill="#1f6b3a" stroke="#1f6b3a" stroke-width="1.25"/>
-<rect x="372.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25"/>
-<rect x="460.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="472.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="484.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="496.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
-<rect x="508.0" y="186" width="9" height="13" fill="none" stroke="#c9c0a6" stroke-width="1.25" stroke-dasharray="3 2"/>
+<text x="14" y="194" font-size="16" font-weight="800">P</text>
+<text x="34" y="193" font-size="12">practice</text><text x="34" y="208" font-size="10" fill="#006732">you grow it</text>
+<line x1="10" y1="220" x2="550" y2="220" stroke="#babec4"/>
+<rect x="188.0" y="186" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="200.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="212.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="224.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="236.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="324.0" y="186" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="336.0" y="186" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="348.0" y="186" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="360.0" y="186" width="9" height="13" fill="#006732" stroke="#006732" stroke-width="1.25"/>
+<rect x="372.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25"/>
+<rect x="460.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="472.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="484.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="496.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
+<rect x="508.0" y="186" width="9" height="13" fill="none" stroke="#babec4" stroke-width="1.25" stroke-dasharray="3 2"/>
 <text x="490.0" y="197" text-anchor="middle" font-size="12" font-weight="800">?</text>
-<text x="280" y="226" text-anchor="middle" font-size="12" font-style="italic">“I was a better skier because I had the K,</text>
-<text x="280" y="242" text-anchor="middle" font-size="12" font-style="italic">and I had the P, and all she had was the T.” — Winston</text>
+<text x="280.0" y="226" text-anchor="middle" font-size="12" font-style="italic">“I was a better skier because I had the K,</text>
+<text x="280.0" y="242" text-anchor="middle" font-size="12" font-style="italic">and I had the P, and all she had was the T.” — Winston</text>
 </svg>
