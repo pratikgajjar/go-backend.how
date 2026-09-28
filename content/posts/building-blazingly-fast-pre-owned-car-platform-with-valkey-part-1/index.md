@@ -211,7 +211,7 @@ Anonymous users
 2. Fetch `JSON` by `key` and return response
 
 ```JavaScript
-key_pattern = "dp:{card_id}"
+key_pattern = "dp:{car_id}"
 expiry = 12 hours
 value = gziped json payload
 "dp:2323" : '{"id":2323, "images": ["url1", "url2", "url3"], "owner": "2nd", "inspection_report": ...}'
@@ -247,32 +247,31 @@ Not yet.
 
 #### Cache Invalidation
 
-We must invalidate the cache whenever changes occur in database that impacts the JSON response.
-Otherwise, users may encounter stale results, leading to undefined behavior and customer dissatisfaction.
+We must update the cache whenever a database change affects the JSON response.
+Otherwise users see stale data, such as an old price or a car that is already sold.
 
-Let's say to compute `JSON` response for given car we use information from below tables
+Say the JSON for one car uses these tables:
 
-1. cars (`id`, `varient_id`, `color_id`, `owner`, `status`) - main car model
+1. cars (`id`, `variant_id`, `color_id`, `owner`, `status`, `price`) - main car model
 2. car_images (`car_id`, `image_url`)
-3. car_features (`card_id`, `feature_id`)
+3. car_features (`car_id`, `feature_id`)
 
-How do we get notified each time a change occurs in above tables ?
+How do we find out about every change to these tables? There are three places to hook in:
 
-Utilise
+1. **Model signals.** Add the logic to the model's `save` method, or to a [signal](https://docs.djangoproject.com/en/5.0/topics/signals/), in the Django app.
+2. **Domain layer.** Following Domain-Driven Design, send every write through a service that also updates the cache.
+3. **Binlog reader.** Attach a program that acts like a MySQL replica and receives every change.
 
-1. Db model abstraction provided in MVC frameworks. Here we can add logic in `save` method of model or use [signals](https://docs.djangoproject.com/en/5.0/topics/signals/)
-2. Architectural pattern like Domain-Driven-Design to add logic that invalidates cache
-3. How database replica functions, we can attach program that acts like replica and get changes.
+{{< viz kind="write-coverage" fig="1" title="Which writes does each hook see?" fallback="write-coverage.svg" alt="Three writers change car 2323 in MySQL. Model signals and a domain layer sit inside the Django app; the binlog reader sits on MySQL and sees every write" caption="Pick a hook, then a write. The writes are samples. The signal results are Django behaviour: `QuerySet.update()` and `bulk_create()` send no `post_save`." >}}
 
-We went with 3rd approach as there were many sources which could update the database, and adding
-cache invalidation logic would become error prone and pollute other business logic.
+We went with the third approach. Many clients write to this database, and cache logic in each of them would be easy to get wrong and would mix with business logic. Every committed write passes through the binlog, whichever client made it.
 
-We can listen to database changes on these 3 tables to invalidate the result stored in cache against given `card_id`.
+We listen to changes on these three tables and rebuild the cached JSON for the affected `car_id`.
 
 In MySQL, we can listen to the binlog[^1] to get notifications about all changes to the database,
 including both DDL (Data Definition Language) and DML (Data Modification Language) operations.
 
-```md
+```txt
 # Data Definition Language
 
 - CREATE | ALTER | DROP TABLE
@@ -282,69 +281,65 @@ including both DDL (Data Definition Language) and DML (Data Modification Languag
 - INSERT | UPDATE | DELETE | REPLACE FROM TABLE
 ```
 
-Using the [mysql-data-stream-kafka](https://github.com/pratikgajjar/mysql-data-stream-kafka) Python library, we attach a program to listen to the MySQL change log and emit changes to Kafka topics. A Kafka topic functions similarly to a log.
+Using the [mysql-data-stream-kafka](https://github.com/pratikgajjar/mysql-data-stream-kafka) Python library, a program reads the MySQL binlog and sends each row change to Kafka. A Kafka topic works like a log.
 
 > What Is a Log?
 > A log is perhaps the simplest possible storage abstraction. It is an append-only, totally-ordered sequence of records ordered by time. - [Jay Kreps, Linkedin](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)
 
-```md
-# Topic Name
+The library uses the table name as the topic and sends one JSON message per changed row:
 
-{database_name}.{table_name}
-
-# Messages
-
-op: insert | delete | update
-before: json payload - column values before update
-with
-key = column name
-value = column value
-after: json payload - column values after update
+```json
+{"schema": "carsdb", "table": "cars", "type": "UpdateRowsEvent",
+  "row": {"before_values": {"id": 2323, "price": 525000, ...},
+          "after_values":  {"id": 2323, "price": 510000, ...}}}
 ```
 
-Program would listen to kafka topics that can affect the response of dedicated page and rebuilds or invalidates the cache.
+An insert (`WriteRowsEvent`) carries `row.values` instead. A consumer reads the topics that affect the car page and rebuilds or invalidates the cached JSON.
+
+{{< viz kind="change-path" fig="2" title="One price change, end to end" fallback="change-path.svg" alt="A price UPDATE flows from MySQL through the binlog, the producer, Kafka and the consumer into Valkey, and the next request reads the new price" caption="Car 2323, prices, binlog positions and offsets are sample values. Producer calls follow mysql-data-stream-kafka and kafka-python 1.4.6, cache calls follow django-redis. The consumer code is a sketch. Use ← and → to step." >}}
 
 ## Infrastructure
 
-We introduced below components.
+We added four components to the existing MySQL database:
 
-1. Consumer node - to listen changes and update cache
-2. Producer node - to listen mysql bin log and push changes to kafka
-3. ValKey server - to store cache data in-memory
-4. Kafka-cluster - to store database change log
+1. Consumer node - reads changes from Kafka and updates the cache
+2. Producer node - reads the MySQL binlog and pushes changes to Kafka
+3. Valkey server - keeps the cache in memory
+4. Kafka cluster - stores the database change log
 5. MySQL database - existing component
 
-Now we have distributed systems, there comes fallacies.
+Each of them can fail on its own, and so can the network between them.
 
 > 1. The network is reliable; - [Wiki](https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing)
 
-### Failure of Consumer Node
+{{< viz kind="fault-map" fig="3" title="Where each failure lives" fallback="change-path.svg" alt="The change pipeline with five numbered failure markers: consumer, producer, Valkey, Kafka and MySQL" caption="Numbers match the sections below. Tap one to see what stops and where it resumes." >}}
 
-We listen to a Kafka topic and commit only after processing changes to build or invalidate the cache, ensuring at-least-once processing.
+### 1. Consumer node fails
 
-### Failure of Producer Node
+The consumer commits the Kafka offset only after it has rebuilt or invalidated the cache, so processing is at-least-once. After a restart it continues from the last committed offset and may rebuild a few cars twice, with the same result. Kafka keeps messages for 7 days by default (`log.retention.hours=168`). An outage longer than that needs a full rebuild.
 
-In a network partition involving MySQL, Kafka, and the producer node, a worker reads from the MySQL change log and pushes changes into Kafka. If it fails to push changes to Kafka, we avoid data loss by committing the bin-log position with each message to the Kafka topic. Upon failure, we resume reading the bin-log from the last committed position.
+### 2. Producer node fails
 
-### Failure of Val-key Server
+The producer reads the binlog and pushes changes into Kafka. If it cannot push, it must not lose its place. We store the binlog position with each message we send to Kafka, and after a failure we resume reading the binlog from the last position Kafka has. A few events can be sent twice, and the consumer handles that. The public library is simpler: it saves the position to a local file when it stops on a signal or an error.
 
-Using AWS managed ElasticCache, or for a self-hosted approach, running Valkey in cluster mode with auto-failover ensures resilience.
-If the consumer node cannot invalidate the payload due to server failure, it will clear the backlog once the server is available.
+### 3. Valkey server fails
 
-For 10,000 active cars, each with a 20K payload, only 2GB of memory is needed.
-To prevent failures from excessive memory use, set the max-memory policy to volatile-lru and with TTL on keys. This helps manage memory by evicting the least recently used keys with a TTL.
+Use a managed service such as AWS ElastiCache, or run Valkey with a replica and automatic failover. If the consumer cannot write to Valkey, it does not commit the offset, and it clears the backlog once Valkey is back. Replication to the replica is asynchronous, so a failover can lose the last few writes. The 12-hour TTL limits how long such a key stays stale.
 
-### Failure of Kafka-cluster
+For 10,000 active cars with a 20 KB payload each, the cache needs about 200 MB before compression.
+To keep memory bounded, set `maxmemory-policy` to `volatile-lru` and give every key a TTL. Valkey then evicts the least recently used keys that have a TTL.
 
-Kafka's resilience comes from having at least 3 brokers and a topic replication factor of at least 2. Higher replication factors increase disk space and network bandwidth usage.
+### 4. Kafka broker fails
 
-### Failure of MySQL
+Run at least 3 brokers, with a topic replication factor of 3 and `min.insync.replicas=2`, and set `acks='all'` on the producer. Then one broker can fail without losing a change. kafka-python defaults to `acks=1`: the leader confirms before any follower has the message, so a leader crash at that moment can drop it. More replicas cost more disk and network bandwidth.
 
-MySQL's bin-log is disk-stored, so a server restart or connection failure won't cause data loss if the bin-log isn't cleared. The producer will resume from the last bin-log position.
+### 5. MySQL fails
 
-To avoid disk space issues during a prolonged producer failure, set up alarms and ensure enough disk space to handle a few hours of bin-log growth.
+The binlog is on disk, so a restart or a dropped connection loses nothing while the binlog files are kept. The producer resumes from its last position.
 
-In case of bin-log loss, a Django management command can rebuild the cache for all active cars.
+A long producer outage lets the binlog grow. Keep enough disk and retention (`binlog_expire_logs_seconds`, 30 days by default in MySQL 8.0) to cover it, and set alarms on disk use.
+
+If binlog is lost anyway, a Django management command rebuilds the cache for all active cars.
 
 ## Optimize Listing Page ?
 
