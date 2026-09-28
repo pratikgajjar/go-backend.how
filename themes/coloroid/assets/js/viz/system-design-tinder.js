@@ -1,54 +1,43 @@
 /*
  * system-design-tinder — figures for "System Design - Tinder".
  *
+ *   arch-paths     (Fig. 1) the architecture, one path at a time, hop by hop
+ *                  at the reader's pace, with the post's peak rate and target.
  *   deck-hero      (Fig. 2) the reader swipes a precomputed deck and sees
- *                  what each swipe costs (one write, one pop per 10 cards)
- *                  next to the offline work that built the deck.
- *   arch-paths     the architecture, one path at a time, hop by hop at the
- *                  reader's pace, with the post's peak rate and target.
- *   geo-reach      predict first, then explore: how far 9 geohash cells
- *                  reach around one user for a radius, precision and city.
- *                  Real geohash encoding; distances on a spherical Earth.
- *   swipe-race     two right swipes at once, as chat bubbles of Redis calls.
- *                  The reader predicts the outcome before the replies show.
- *   chat-timeline  the first message as Arjun's phone, the backend and
- *                  Riya's phone see it, event by event, with a fault to
+ *                  what each swipe costs (one pop per 10 cards, small writes
+ *                  per swipe) next to the offline work that built the deck.
+ *   geo-reach      (Fig. 3) predict first, then explore how far 9 geohash
+ *                  cells reach around one user for a radius, precision and
+ *                  city. Real geohash encoding; spherical-Earth distances.
+ *   swipe-race     (Fig. 4) two right swipes at once, as the Redis calls each
+ *                  request sends. The reader predicts the outcome first.
+ *   chat-timeline  (Fig. 5) the first message as Arjun's phone, the backend
+ *                  and Riya's phone see it, event by event, with a fault to
  *                  pick and a check-yourself question at the end.
+ *
+ * House look only: shared tokens and components from walviz.css and lib.js.
+ * The post CSS does layout and drawing.
  *
  * Checked outside the repo: geohash strings against pygeohash; hash slots
  * against CLUSTER KEYSLOT on Valkey 9.1; the CROSSSLOT reply against a
  * one-node Valkey cluster. IDs, names, times, scores and text are samples.
- * Figures use frame="none"; the look is in css/viz/system-design-tinder.css.
  */
 
-import { h, s, range, register, clamp, esc, uid } from './lib.js';
+import { h, s, range, register, clamp, esc, uid, stepper, chips, ask, colorKey, codeBlock, REDUCED } from './lib.js';
 
 /* ---------------------------------------------------------------- shared */
 
 const P = 'v-tdr-';
-/** 'xs b data' → 'v-tdr-xs v-tdr-b v-tdr-data' */
-const c = (names) => names.split(' ').filter(Boolean).map((n) => P + n).join(' ');
 
-/** Row of blue option chips. options: [[value, label, extraClass?]]. */
-function chips(label, options, value, onpick) {
-  const btns = options.map(([v, text, extra]) => {
-    const b = h('button', { class: `${P}chip${extra ? ` ${extra}` : ''}`, type: 'button', 'aria-pressed': String(v === value) }, text);
-    b.dataset.v = String(v);
-    b.addEventListener('click', () => { set(v); onpick(v); });
-    return b;
-  });
-  function set(v) { btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === String(v)))); }
-  const el = h('div', { class: c('row') }, label ? h('span', { class: c('lab') }, label) : null,
-    h('div', { class: c('chips'), role: 'group', 'aria-label': label || 'Options' }, ...btns));
-  return { el, set };
-}
-
-function key(items) {
-  return h('div', { class: c('key') }, ...items.map(([k, label]) => h('span', null, h('i', { class: k }), label)));
+/** A labelled row of shared chips. */
+function pickRow(label, options, value, onpick) {
+  const ch = chips(options, onpick, { value, label });
+  const el = h('div', { class: `${P}row` }, h('span', { class: `${P}lab` }, label), ch.el);
+  return { el, set: ch.set };
 }
 
 function markers(id) {
-  const m = (name, colour) => s('marker', { id: `${id}-${name}`, viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto-start-reverse' },
+  const m = (name, colour) => s('marker', { id: `${id}-${name}`, viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' },
     s('path', { d: 'M0,0 L8,4 L0,8 z', style: `fill:var(${colour})` }));
   return s('defs', null, m('ink', '--ink'), m('look', '--purple'), m('mute', '--mute'));
 }
@@ -59,12 +48,22 @@ function onBreak(app, bp, cb) {
   new ResizeObserver(() => { const w = app.clientWidth >= bp; if (w !== wide) { wide = w; cb(); } }).observe(app);
 }
 
-/* ================================================================= HERO */
+/** A stepper that can be rebuilt when its steps change (keys stay scoped). */
+function remountStepper(host, steps, onStep, opts) {
+  const box = h('div');
+  const st = stepper(box, steps, onStep, opts);
+  box.append(st.el);
+  host.replaceChildren(box);
+  st.go(0);
+  return st;
+}
+
+/* ================================================================ DECK */
 
 /*
- * The reader swipes their own deck. Each tap shows the one write it costs;
- * every tenth card shows the one pop that refills the phone. The ranking
- * work stays on the offline side and never runs while they swipe.
+ * The reader swipes their own deck. Each tap shows the small writes it
+ * costs; every tenth card shows the one pop that refills the phone. The
+ * ranking work stays offline and never runs while they swipe.
  */
 const DECK_SIZE = 200;
 const PAGE = 10;
@@ -82,61 +81,61 @@ function sampleDeck() {
   }
   return out;
 }
-
-function initDeckHero(fig, app) {
+function initDeck(fig, app) {
   const deck = sampleDeck();
   const st = { redis: deck.slice(PAGE), phone: deck.slice(0, PAGE), swiped: 0, last: null };
-  const card = h('div', { class: c('hcard') });
-  const onPhone = h('div', { class: c('hsub') });
-  const nope = h('button', { class: `${P}hbtn is-no`, type: 'button', 'aria-label': 'Swipe left' }, '✕');
-  const like = h('button', { class: `${P}hbtn is-yes`, type: 'button', 'aria-label': 'Swipe right' }, '♥');
-  const list = h('ol', { class: c('zset') });
-  const more = h('div', { class: c('hsub') });
-  const cmd = h('div', { class: c('hcmd'), 'aria-live': 'polite' });
+  const face = h('div', { class: `${P}face` });
+  const count = h('p', { class: `${P}small` });
+  const nope = h('button', { class: 'wv-btn', type: 'button' }, '✕ Nope');
+  const like = h('button', { class: 'wv-btn', type: 'button' }, '♥ Like');
+  const zset = h('tbody');
+  const more = h('p', { class: `${P}small` });
+  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
   nope.addEventListener('click', () => swipe('left'));
   like.addEventListener('click', () => swipe('right'));
   fig.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') { swipe('left'); e.preventDefault(); }
-    if (e.key === 'ArrowRight') { swipe('right'); e.preventDefault(); }
+    if (e.target.closest('input, select')) return;
+    if (e.key === 'ArrowLeft') { swipe('left'); e.preventDefault(); e.stopPropagation(); }
+    if (e.key === 'ArrowRight') { swipe('right'); e.preventDefault(); e.stopPropagation(); }
   });
 
   app.append(
-    h('div', { class: c('hero') },
-      h('section', { class: c('hzone is-phone') },
+    h('div', { class: 'wv-cards' },
+      h('div', { class: 'wv-card' },
         h('h5', null, 'Your phone'),
-        h('div', { class: c('hphone') }, card, h('div', { class: c('hbtns') }, nope, like)),
-        onPhone, cmd),
-      h('section', { class: c('hzone is-deck') },
+        h('div', { class: `${P}phone` }, face, h('div', { class: `${P}btns` }, nope, like)),
+        count, h('div', { style: 'height:.5rem' }), note),
+      h('div', { class: 'wv-card is-data' },
         h('h5', null, 'Your deck in Redis'),
-        h('div', { class: c('hkey') }, 'deck:u42 · sorted set'),
-        list, more),
-      h('section', { class: c('hzone is-off') },
+        h('p', { class: `${P}small c-data` }, 'deck:u42 · sorted set'),
+        h('table', { class: 'wv-table' }, h('thead', null, h('tr', null, h('th', null, 'member'), h('th', null, 'score'))), zset),
+        more),
+      h('div', { class: 'wv-card' },
         h('h5', null, 'Built offline, every 15 min'),
-        h('ol', { class: c('hsteps') },
+        h('ol', { class: `${P}list` },
           h('li', null, 'Read 9 nearby geohash cells'),
           h('li', null, 'Keep up to 500 candidates'),
-          h('li', null, 'Score each pair: ', h('span', { class: c('hmono') }, 'P(A→B) × P(B→A) × fairness')),
+          h('li', null, 'Score each pair: ', h('code', null, 'P(A→B) × P(B→A) × fairness')),
           h('li', null, 'Write the top 200 into your deck')),
-        h('div', { class: c('hsub') }, 'None of this runs while you swipe.'))),
-    key([['data', 'your deck: IDs and scores (samples)'], ['look', 'the next pop'], ['opt', 'your swipe']]),
+        h('p', { class: `${P}small` }, 'None of this runs while you swipe.'))),
+    colorKey([['k-data', 'your deck: IDs and scores (samples)'], ['k-look', 'the next pop']]),
   );
 
   function render() {
     const top = st.phone[0];
-    if (top) {
-      card.replaceChildren(h('div', { class: c('hface') }), h('b', null, top[0]), h('span', null, `score ${top[1].toFixed(2)}`));
-      card.classList.remove('is-gone');
-    }
-    onPhone.textContent = `${st.phone.length} of ${PAGE} cards left on the phone · ${st.swiped} swiped`;
-    list.replaceChildren(...st.redis.slice(0, 5).map(([id, sc], k) => h('li', { class: k < PAGE && st.phone.length <= 3 ? 'is-next' : '' }, h('span', null, id), h('span', null, sc.toFixed(3)))));
-    more.textContent = st.redis.length > 5 ? `… ${st.redis.length - 5} more · ${st.redis.length} in Redis` : `${st.redis.length} in Redis`;
-    const done = !st.phone.length;
-    nope.disabled = done; like.disabled = done;
-    if (done) card.replaceChildren(h('b', null, 'Deck empty'), h('span', null, 'The next offline run refills it.'));
+    face.replaceChildren(...(top
+      ? [h('span', { class: `${P}avatar` }), h('b', { class: 'c-data' }, top[0]), h('span', { class: 'c-data' }, `score ${top[1].toFixed(2)}`)]
+      : [h('b', null, 'Deck empty'), h('span', null, 'The next offline run refills it.')]));
+    count.textContent = `${st.phone.length} of ${PAGE} cards left on the phone · ${st.swiped} swiped`;
+    const soon = st.phone.length <= 3;
+    zset.replaceChildren(...st.redis.slice(0, 5).map(([id, sc]) => h('tr', { class: soon ? 'is-look' : '' }, h('td', { class: 'c-data' }, id), h('td', { class: 'c-data' }, sc.toFixed(3)))));
+    more.textContent = st.redis.length > 5 ? `… ${st.redis.length - 5} more · ${st.redis.length} in Redis${soon ? ' · highlighted rows are the next pop' : ''}` : `${st.redis.length} in Redis`;
+    nope.disabled = !top; like.disabled = !top;
     const L = st.last;
-    if (!L) cmd.innerHTML = `Opening the app popped your top ${PAGE} cards: <code>ZPOPMAX deck:u42 ${PAGE}</code>. No ranking ran. Swipe with the buttons or the arrow keys.`;
-    else if (L.pop) cmd.innerHTML = `That was your last card on the phone, so the app popped ${PAGE} more: <code>ZPOPMAX deck:u42 ${PAGE}</code>. One read for the next ${PAGE} swipes.`;
-    else cmd.innerHTML = L.dir === 'right'
+    note.className = 'wv-note';
+    if (!L) note.innerHTML = `Opening the app popped your top ${PAGE} cards: <code>ZPOPMAX deck:u42 ${PAGE}</code>. No ranking ran. Swipe with the buttons or the arrow keys.`;
+    else if (L.pop) note.innerHTML = `That was your last card on the phone, so the app popped ${PAGE} more: <code>ZPOPMAX deck:u42 ${PAGE}</code>. One read for the next ${PAGE} swipes.`;
+    else note.innerHTML = L.dir === 'right'
       ? `Your right swipe is two small writes: <code>SADD right:u42 ${L.id}</code> and the match check in Fig. 4. The deck did not change.`
       : `Your left swipe is one small write: <code>SADD left:u42 ${L.id}</code>. The deck did not change.`;
   }
@@ -149,8 +148,8 @@ function initDeckHero(fig, app) {
       st.phone = st.redis.slice(0, PAGE); st.redis = st.redis.slice(PAGE);
       st.last.pop = true;
     }
-    card.classList.add(dir === 'left' ? 'is-left' : 'is-right');
-    setTimeout(() => { card.classList.remove('is-left', 'is-right'); render(); }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180);
+    face.classList.add(dir === 'left' ? 'is-left' : 'is-right');
+    setTimeout(() => { face.classList.remove('is-left', 'is-right'); render(); }, REDUCED ? 0 : 180);
   }
   render();
 }
@@ -245,44 +244,36 @@ const PATHS = {
     ],
   },
 };
-
 function initArchPaths(fig, app) {
   const id = uid('tdr');
   let path = 'swipe'; let hop = 0;
-  const stage = h('div', { class: c('arch') });
-  const load = h('div', { class: c('load') });
-  const cap = h('div', { class: c('hop'), 'aria-live': 'polite' });
-  const trail = h('ol', { class: c('trail') });
-  const back = h('button', { class: c('chip'), type: 'button', 'aria-label': 'Previous hop' }, '◀');
-  const next = h('button', { class: c('chip'), type: 'button', 'aria-label': 'Next hop' }, 'Next hop ▶');
-  back.addEventListener('click', () => go(hop - 1));
-  next.addEventListener('click', () => go(hop + 1));
-  const pick = chips('Follow', Object.entries(PATHS).map(([k, v]) => [k, v.label]), path, (k) => { path = k; go(0); });
+  const stage = h('div');
+  const load = h('dl', { class: 'wv-kv' });
+  const stepHost = h('div');
+  const cap = h('div', { class: 'wv-callout', 'aria-live': 'polite' });
+  const trail = h('ol', { class: `${P}list` });
   const keyHost = h('div');
-  app.append(h('div', { class: c('ctl') }, pick.el), load, stage, h('div', { class: c('hoprow') }, back, cap, next), trail, keyHost);
-  fig.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight') { go(hop + 1); e.preventDefault(); }
-    if (e.key === 'ArrowLeft') { go(hop - 1); e.preventDefault(); }
-  });
+  const pick = pickRow('Follow', Object.entries(PATHS).map(([k, v]) => [k, v.label]), path, (k) => { path = k; mount(); });
+  app.append(pick.el, load, h('div', { style: 'height:.6rem' }), stepHost, stage, cap, trail, keyHost);
 
   const nodeEls = {}; const edgeEls = {}; let numG = null; let wide = false;
   function build() {
     wide = app.clientWidth >= 700;
     stage.replaceChildren();
     numG = null;
-    keyHost.replaceChildren(key([...(wide ? [['ink', 'service'], ['dash', 'data at rest']] : []), ['look', 'this hop'], ['data', 'commands and rates'], ['safe', 'latency target'], ['opt', 'paths']]));
+    keyHost.replaceChildren(colorKey([...(wide ? [['k-ink', 'service (dashed: data at rest)']] : []), ['k-look', 'this hop'], ['k-data', 'commands and rates'], ['k-safe', 'latency target'], ['k-opt', 'paths']]));
     if (!wide) return;
     const svg = s('svg', { viewBox: '0 0 960 534', role: 'img', 'aria-label': fig.getAttribute('aria-label') });
     svg.append(markers(id));
     for (const [eid, pts] of Object.entries(AE)) {
-      const e = s('path', { d: `M${pts.map((q) => q.join(',')).join(' L')}`, class: `${P}edge${CTL.has(eid) ? ' is-ctl' : ''}` });
+      const e = s('path', { d: `M${pts.map((q) => q.join(',')).join(' L')}`, class: CTL.has(eid) ? 'edge-ctl' : 'edge' });
       edgeEls[eid] = e; svg.append(e);
     }
     for (const [nid, [x, y, w, hh, tt, sub, data]] of Object.entries(AN)) {
-      const g = s('g', { class: `${P}node${data ? ' is-data' : ''}` },
-        s('rect', { x, y, width: w, height: hh, rx: 10 }),
-        s('text', { x: x + w / 2, y: y + (hh > 60 ? 26 : hh / 2 + (sub ? -2 : 4)), class: c('s b'), 'text-anchor': 'middle' }, tt));
-      if (sub) g.append(s('text', { x: x + w / 2, y: y + (hh > 60 ? 42 : hh / 2 + 12), class: c(`xs ${data ? 'data mono' : 'mute'}`), 'text-anchor': 'middle' }, sub));
+      const g = s('g', { class: 'node' },
+        s('rect', { x, y, width: w, height: hh, class: `box${data ? ' dash' : ''}` }),
+        s('text', { x: x + w / 2, y: y + (hh > 60 ? 26 : hh / 2 + (sub ? -2 : 4)), class: 't-s t-b', 'text-anchor': 'middle' }, tt));
+      if (sub) g.append(s('text', { x: x + w / 2, y: y + (hh > 60 ? 42 : hh / 2 + 12), class: `t-xs ${data ? 't-data' : 't-mute'}`, 'text-anchor': 'middle' }, sub));
       nodeEls[nid] = g; svg.append(g);
     }
     numG = s('g'); svg.append(numG);
@@ -296,7 +287,7 @@ function initArchPaths(fig, app) {
     }
     return [(best[0][0] + best[1][0]) / 2, (best[0][1] + best[1][1]) / 2];
   }
-  function go(n) {
+  function show(n) {
     const p = PATHS[path];
     hop = clamp(n, 0, p.hops.length - 1);
     const done = p.hops.slice(0, hop + 1).map((x) => x[0]).filter(Boolean);
@@ -304,29 +295,33 @@ function initArchPaths(fig, app) {
     const seen = new Set(['phone', ...done.map((e) => HOPTO[e])]);
     if (numG) {
       Object.entries(nodeEls).forEach(([nid, g]) => {
-        g.classList.toggle('is-on', nid === HOPTO[cur]);
-        g.classList.toggle('is-off', !seen.has(nid));
+        g.classList.toggle('is-focus', nid === HOPTO[cur]);
+        g.classList.toggle('is-dim', !seen.has(nid));
       });
       Object.entries(edgeEls).forEach(([eid, e]) => {
         const isCur = eid === cur; const isDone = done.includes(eid);
-        e.classList.toggle('is-on', isCur); e.classList.toggle('is-done', isDone && !isCur); e.classList.toggle('is-off', !isDone);
+        e.classList.toggle(`${P}cur`, isCur);
+        e.classList.toggle('is-dim', !isDone);
         e.setAttribute('marker-end', isDone ? `url(#${id}-${isCur ? 'look' : 'ink'})` : '');
       });
       numG.replaceChildren();
       p.hops.slice(0, hop + 1).forEach(([eid], i) => {
         if (!eid) return;
         const [x, y] = mid(AE[eid]);
-        numG.append(s('g', { class: `${P}hopnum${i === hop ? ' is-cur' : ''}` }, s('circle', { cx: x, cy: y, r: 9 }), s('text', { x, y: y + 3.5, 'text-anchor': 'middle' }, String(i + 1))));
+        numG.append(s('g', { class: `${P}num${i === hop ? ' is-cur' : ''}` }, s('circle', { cx: x, cy: y, r: 9 }), s('text', { x, y: y + 3.5, 'text-anchor': 'middle', class: 't-xs t-b t-board' }, String(i + 1))));
       });
     }
-    load.innerHTML = `<span class="r">${esc(p.rate)}</span><span class="a">→</span><span class="g">${esc(p.target)}</span>`;
     const [, what, code] = p.hops[hop];
-    cap.innerHTML = `<span class="n">${hop + 1} / ${p.hops.length}</span><b>${esc(what)}</b>${code ? `<code>${esc(code)}</code>` : ''}`;
+    cap.innerHTML = `<b>${hop + 1} · ${esc(what)}</b>${code ? `<br><code>${esc(code)}</code>` : ''}`;
     trail.replaceChildren(...(wide ? [] : p.hops.slice(0, hop).map(([, w]) => h('li', null, w))));
-    back.disabled = hop === 0; next.disabled = hop === p.hops.length - 1;
   }
-  build(); go(0);
-  onBreak(app, 700, () => { build(); go(hop); });
+  function mount() {
+    const p = PATHS[path];
+    load.innerHTML = `<dt>Peak load</dt><dd class="c-data">${esc(p.rate)}</dd><dt>Target</dt><dd class="c-safe">${esc(p.target)}</dd>`;
+    remountStepper(stepHost, p.hops.map(([eid]) => ({ label: eid ? AN[HOPTO[eid]][4] : 'push + sync' })), (i) => show(i), { interval: 2600 });
+  }
+  build(); mount();
+  onBreak(app, 700, () => { build(); show(hop); });
 }
 
 /* ============================================================ GEO REACH */
@@ -391,37 +386,38 @@ function pickPrecision(u, r) {
   return 1;
 }
 const kmTxt = (v) => (v >= 10 ? v.toFixed(0) : v.toFixed(1));
-
 function initGeoReach(fig, app) {
   const st = { city: 1, p: 5, r: 16, u: { ...CITIES[1] } };
   const id = uid('tdr');
-  const stage = h('div', { class: c('map') });
-  const quiz = h('div', { class: c('quiz') });
-  const ctl = h('div', { class: c('ctl') });
-  const keys = h('div', { class: c('keys'), 'aria-live': 'polite' });
-  const say = h('div', { class: c('say'), 'aria-live': 'polite' });
+  const stage = h('div', { class: `${P}map` });
+  const keys = h('div', { 'aria-live': 'polite' });
+  const say = h('div', { class: 'wv-note', 'aria-live': 'polite' });
   let L = null; let svg = null; let M = null; let view = null;
 
-  const cityC = chips('City', CITIES.map((x, i) => [i, x.name]), st.city, (i) => { st.city = i; st.u = { ...CITIES[i] }; where.set('city'); draw(); });
-  const precC = chips('Precision', [4, 5, 6].map((p) => [p, String(p)]), st.p, (p) => { st.p = p; draw(); });
+  const cityC = pickRow('City', CITIES.map((x, i) => [i, x.name]), st.city, (i) => { st.city = i; st.u = { ...CITIES[i] }; where.set('city'); draw(); });
+  const precC = pickRow('Precision', [4, 5, 6].map((p) => [p, String(p)]), st.p, (p) => { st.p = p; draw(); });
   const rad = range('Search radius', { min: 1, max: 50, value: st.r, fmt: (v) => `${v} km${v === 16 ? ' ≈ 10 mi' : ''}`, oninput: (v) => { st.r = v; draw(); } });
-  const where = chips('User at', [['city', 'city centre'], ['c', 'cell centre'], ['k', 'cell corner']], 'city', (v) => {
+  const where = pickRow('User at', [['city', 'city centre'], ['c', 'cell centre'], ['k', 'cell corner']], 'city', (v) => {
     const g = geohash(st.u.lat, st.u.lon, st.p);
     if (v === 'c') st.u = { lat: (g.lat[0] + g.lat[1]) / 2, lon: (g.lon[0] + g.lon[1]) / 2 };
     else if (v === 'k') st.u = { lat: g.lat[1] - (g.lat[1] - g.lat[0]) * 0.02, lon: g.lon[1] - (g.lon[1] - g.lon[0]) * 0.02 };
     else st.u = { ...CITIES[st.city] };
     draw();
   });
+  const ctl = h('div', null, cityC.el, precC.el, rad.el, where.el);
+  const hint = h('p', { class: `${P}small` }, 'Drag the purple dot, or focus the map and use the arrow keys.');
 
-  ctl.append(cityC.el, precC.el, h('div', { class: c('row') }, h('div', { class: c('range') }, rad.el)), where.el);
-  const hint = h('p', { class: c('hint') }, 'Drag the purple dot, or focus the map and use the arrow keys.');
-  app.append(
-    ctl,
-    h('div', { class: c('geo-wrap') },
-      h('div', null, quiz, stage, hint),
-      h('div', { class: c('side') }, keys, say)),
-    key([['ink', 'search circle'], ['data', 'geohash cells and keys'], ['look', 'the user'], ['safe', 'guaranteed reach'], ['bad', 'missed area'], ['opt', 'controls'], ['pick', 'precision to use']]),
-  );
+  /* Predict first: most readers expect nine cells to cover a 10-mile circle. */
+  const q = ask('Before you look: a user in New York searches within 10 miles (16 km). The code reads the 9 precision-5 cells around them. How much of that circle do the 9 cells cover?',
+    [['all', 'All of it'], ['half', 'About half'], ['fifth', 'About a fifth']], 'fifth',
+    (v, right) => (right ? '<b>Right: about a fifth.</b> The map below shows why.' : '<b>They cover about a fifth.</b> The map below shows why.'));
+  q.el.addEventListener('click', (e) => { if (e.target.closest('.wv-chip')) reveal(); });
+  function reveal() { [ctl, stage, hint, keys, say].forEach((el) => { el.hidden = false; }); draw(); }
+  [ctl, stage, hint, keys, say].forEach((el) => { el.hidden = true; });
+
+  app.append(q.el, ctl,
+    h('div', { class: `${P}geo` }, h('div', null, stage, hint), h('div', { class: `${P}side` }, keys, say)),
+    colorKey([['k-ink', 'search circle'], ['k-data', 'geohash cells and keys'], ['k-look', 'the user'], ['k-safe', 'guaranteed reach'], ['k-gap', 'missed area'], ['k-opt', 'controls'], ['k-pick', 'precision to use']]));
 
   function draw() {
     L = app.clientWidth < 700 ? { W: 360, H: 330 } : { W: 440, H: 400 };
@@ -444,17 +440,17 @@ function initGeoReach(fig, app) {
       wire();
     }
     svg.setAttribute('aria-label', `3 by 3 geohash block at precision ${st.p} around a user in ${CITIES[st.city].name}, with a ${r} km search circle`);
-    svg.replaceChildren();
-    svg.append(markers(id));
-    const g = s('g');
+    svg.replaceChildren(markers(id), s('clipPath', { id: `${id}-c` }, s('rect', { x: 0, y: 0, width: L.W, height: MH })));
+    const g = s('g', { 'clip-path': `url(#${id}-c)` });
     svg.append(g);
+    g.append(s('rect', { x: 0, y: 0, width: L.W, height: MH, style: 'fill:var(--tint)' }));
     g.append(s('circle', { cx: X(ux), cy: Y(uy), r: r * sc, style: 'fill:var(--red-l)' }));
-    g.append(s('rect', { x: X(-cw), y: Y(2 * ch), width: 3 * cw * sc, height: 3 * ch * sc, style: 'fill:var(--card)' }));
+    g.append(s('rect', { x: X(-cw), y: Y(2 * ch), width: 3 * cw * sc, height: 3 * ch * sc, style: 'fill:var(--board)' }));
     if (cw * sc >= 4 && ch * sc >= 4) {
       const grid = [];
       for (let i = Math.floor((cx - L.W / 2 / sc) / cw); i <= Math.ceil((cx + L.W / 2 / sc) / cw); i++) grid.push(`M${X(i * cw).toFixed(1)},0 V${MH}`);
       for (let j = Math.floor((cy - MH / 2 / sc) / ch); j <= Math.ceil((cy + MH / 2 / sc) / ch); j++) grid.push(`M0,${Y(j * ch).toFixed(1)} H${L.W}`);
-      g.append(s('path', { d: grid.join(' '), style: 'stroke:var(--line);stroke-width:1;fill:none' }));
+      g.append(s('path', { d: grid.join(' '), class: 'rule' }));
     }
     const bl = [];
     for (let i = -1; i <= 2; i++) bl.push(`M${X(i * cw)},${Y(-ch)} V${Y(2 * ch)}`);
@@ -464,29 +460,30 @@ function initGeoReach(fig, app) {
     g.append(s('circle', { cx: X(ux), cy: Y(uy), r: r * sc, style: 'fill:none;stroke:var(--ink);stroke-width:1.8' }));
     g.append(s('circle', { cx: X(ux), cy: Y(uy), r: M.reach * sc, style: 'fill:none;stroke:var(--green);stroke-width:2.4;stroke-dasharray:6 4' }));
     const top = Y(uy) - r * sc;
-    g.append(s('text', { x: X(ux), y: top > 18 ? top - 6 : top + 16, class: c('s b halo'), 'text-anchor': 'middle' }, `search radius ${r} km`));
-    g.append(s('text', { x: X(ux), y: Y(uy) + M.reach * sc + 15, class: c('xs b safe halo'), 'text-anchor': 'middle' }, `9 cells reach ${kmTxt(M.reach)} km`));
-    g.append(s('text', { x: X(-cw) + 2, y: Y(2 * ch) - 5, class: c('xs b data halo') }, `one cell: ${kmTxt(cw)} × ${kmTxt(ch)} km`));
-    g.append(s('g', { class: c('user') },
+    g.append(s('text', { x: X(ux), y: top > 18 ? top - 6 : top + 16, class: 't-s t-b halo', 'text-anchor': 'middle' }, `search radius ${r} km`));
+    g.append(s('text', { x: X(ux), y: Y(uy) + M.reach * sc + 15, class: 't-xs t-b t-safe halo', 'text-anchor': 'middle' }, `9 cells reach ${kmTxt(M.reach)} km`));
+    g.append(s('text', { x: X(-cw) + 2, y: Y(2 * ch) - 5, class: 't-xs t-b t-data halo' }, `one cell: ${kmTxt(cw)} × ${kmTxt(ch)} km`));
+    g.append(s('g', { class: `${P}user` },
       s('circle', { cx: X(ux), cy: Y(uy), r: 14, style: 'fill:transparent' }),
-      s('circle', { cx: X(ux), cy: Y(uy), r: 6.5, style: 'fill:var(--purple);stroke:var(--card);stroke-width:2.5' })));
+      s('circle', { cx: X(ux), cy: Y(uy), r: 6.5, style: 'fill:var(--purple);stroke:var(--board);stroke-width:2.5' })));
     const nice = [0.5, 1, 2, 5, 10, 20, 50].find((v) => v * sc >= 50) || 50;
     const by = L.H - 8;
-    svg.append(s('rect', { x: 0, y: MH, width: L.W, height: L.H - MH, style: 'fill:var(--card)' }),
-      s('path', { d: `M8,${by - 6} V${by} H${8 + nice * sc} V${by - 6}`, style: 'stroke:var(--ink);stroke-width:1.3;fill:none' }),
-      s('text', { x: 14 + nice * sc, y: by, class: c('xs') }, `${nice} km`),
-      s('text', { x: L.W - 6, y: by, class: c('xs mute'), 'text-anchor': 'end' }, `${CITIES[st.city].name} · ${Math.abs(st.u.lat).toFixed(2)}°${st.u.lat >= 0 ? 'N' : 'S'}`));
+    svg.append(s('path', { d: `M4,${by - 6} V${by} H${4 + nice * sc} V${by - 6}`, class: 'rule-ink' }),
+      s('text', { x: 10 + nice * sc, y: by, class: 't-xs' }, `${nice} km`),
+      s('text', { x: L.W - 4, y: by, class: 't-xs', 'text-anchor': 'end' }, `${CITIES[st.city].name} · ${Math.abs(st.u.lat).toFixed(2)}°${st.u.lat >= 0 ? 'N' : 'S'}`));
 
+    const rows = [0, 1, 2].map((rI) => h('tr', null, ...M.names.slice(rI * 3, rI * 3 + 3).map((n) => h('td', { class: n.dx === 0 && n.dy === 0 ? 'c-look' : 'c-data' }, n.hash))));
+    keys.replaceChildren(h('div', { class: 'wv-card is-data' }, h('h5', null, 'The 9 keys one request reads'),
+      h('table', { class: `wv-table ${P}keys` }, h('tbody', null, ...rows)), h('code', null, 'SMEMBERS active:<cell>:<bucket>')));
     const ok = M.reach >= r;
     const missPct = Math.round(M.missed * 100);
-    keys.innerHTML = `<div class="k">The 9 keys one request reads</div><div class="g">${M.names.map((n) => `<span class="${n.dx === 0 && n.dy === 0 ? 'is-me' : ''}">${n.hash}</span>`).join('')}</div><div class="m">SMEMBERS active:&lt;cell&gt;:&lt;bucket&gt;</div>`;
     const pk = pickPrecision(st.u, r);
     if (ok) {
-      say.className = `${P}say is-good`;
-      say.innerHTML = `<b>The 9 cells hold the whole circle.</b> ${Math.round(M.over * 100)}% of the block lies outside it; those users are read, then dropped by the distance filter.${st.p !== pk ? ` Precision <span class="pk">${pk}</span> would hold it with smaller cells.` : ''}`;
+      say.className = 'wv-note is-good';
+      say.innerHTML = `<b>The 9 cells hold the whole circle.</b> ${Math.round(M.over * 100)}% of the block lies outside it; those users are read, then dropped by the distance filter.${st.p !== pk ? ` Precision <span class="c-pick">${pk}</span> would hold it with smaller cells.` : ''}`;
     } else {
-      say.className = `${P}say is-bad`;
-      say.innerHTML = `${guess ? `${guess} ` : ''}<b>${missPct}% of the search circle is outside the 9 cells.</b> Users there are never candidates. At precision ${st.p}, covering the circle takes ${M.cells.toLocaleString('en-US')} cells, one <code>SMEMBERS</code> each. Here, precision <span class="pk">${pk}</span> is the smallest cell whose 3×3 block holds the circle.`;
+      say.className = 'wv-note is-bad';
+      say.innerHTML = `<b>${missPct}% of the search circle is outside the 9 cells.</b> Users there are never candidates. At precision ${st.p}, covering the circle takes ${M.cells.toLocaleString('en-US')} cells, one <code>SMEMBERS</code> each. Here, precision <span class="c-pick">${pk}</span> is the smallest cell whose 3×3 block holds the circle.`;
     }
   }
 
@@ -515,30 +512,13 @@ function initGeoReach(fig, app) {
     svg.addEventListener('keydown', (e) => {
       const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
       if (!d) return;
-      e.preventDefault();
+      e.preventDefault(); e.stopPropagation();
       const g = M.g;
       st.u = { lat: st.u.lat + d[1] * (g.lat[1] - g.lat[0]) * 0.1, lon: st.u.lon + d[0] * (g.lon[1] - g.lon[0]) * 0.1 };
       where.set(''); draw();
     });
   }
-  /* Predict first: most readers expect nine cells to cover a 10-mile circle. */
-  let guess = '';
-  const opts = [['all', 'All of it'], ['half', 'About half'], ['fifth', 'About a fifth']];
-  const qb = opts.map(([v, label]) => {
-    const b = h('button', { class: c('chip'), type: 'button' }, label);
-    b.addEventListener('click', () => {
-      guess = v === 'fifth' ? '<span class="ok">Right: about a fifth.</span>' : `<span class="no">You guessed “${label.toLowerCase()}”. They cover about a fifth.</span>`;
-      reveal();
-      draw();
-      guess = '';
-    });
-    return b;
-  });
-  quiz.append(h('p', { class: 'q' }, 'Before you look: a user in New York searches within 10 miles (16 km). The code reads the 9 precision-5 cells around them. How much of that circle do the 9 cells cover?'), h('div', { class: c('chips') }, ...qb));
-  function reveal() { quiz.hidden = true; stage.hidden = false; hint.hidden = false; ctl.hidden = false; say.hidden = false; keys.hidden = false; }
-  stage.hidden = true; hint.hidden = true; ctl.hidden = true; say.hidden = true; keys.hidden = true;
-  draw();
-  onBreak(app, 700, draw);
+  onBreak(app, 700, () => { if (!stage.hidden) draw(); });
 }
 
 /* =========================================================== SWIPE RACE */
@@ -601,81 +581,76 @@ function raceText(kind, r, order) {
   if (kind === 'cl') return 'On Redis Cluster, <code>right:A</code> is in slot 10002 and <code>right:B</code> in slot 6001. A transaction may only touch keys in one slot, so <code>EXEC</code> returns <code>CROSSSLOT</code> and neither swipe is saved.';
   return 'Both users build the same key. Redis hashes only the part inside <code>{…}</code>, so the key has one slot and the transaction works on a cluster. Only the second <code>SADD</code> sees <code>SCARD</code> = 2.';
 }
-
 function initSwipeRace(fig, app) {
-  const st = { kind: 'cw', order: 'ABAB', open: false, guess: null };
+  const st = { kind: 'cw', order: 'ABAB', open: false };
   const known = {};
-  const stage = h('div', { class: c('race'), role: 'img' });
-  const say = h('div', { class: c('say'), 'aria-live': 'polite' });
-  const orderRow = h('div', { class: c('row') });
-  const tally = h('p', { class: c('tally') });
-  const kindC = chips('Save a swipe by', Object.entries(RACE).map(([k, v]) => [k, v.label, v.pick ? 'is-pick' : '']), st.kind, (k) => {
+  const orderHost = h('div');
+  const stage = h('div', { class: `${P}race`, role: 'img' });
+  const askHost = h('div');
+  const tally = h('p');
+  const kindC = pickRow('Save a swipe by', Object.entries(RACE).map(([k, v]) => [k, v.pick ? `${v.label} (our pick)` : v.label]), st.kind, (k) => {
     st.kind = k; st.open = false;
     if (RACE[k].atomic) st.order = st.order[0] === 'B' ? 'BA' : 'AB';
     else if (st.order.length < 4) st.order = st.order === 'AB' ? 'ABAB' : 'BABA';
     draw();
   });
-  app.append(h('div', { class: c('ctl') }, kindC.el, orderRow), stage, h('div', { style: 'height:.7rem' }), say, tally,
-    key([['data', 'keys and replies'], ['look', 'a check that saw the like'], ['safe', 'one match'], ['bad', 'missed, doubled, or failed'], ['opt', 'options'], ['pick', 'our pick']]));
+  app.append(kindC.el, orderHost, stage, askHost, tally,
+    colorKey([['k-data', 'keys and replies'], ['k-look', 'a check that saw the like'], ['k-safe', 'one match'], ['k-gap', 'missed, doubled, or failed'], ['k-opt', 'options'], ['k-pick', 'our pick (one key per pair)']]));
 
   function draw() {
     const atomic = RACE[st.kind].atomic;
     const list = atomic ? ['AB', 'BA'] : ORDERS;
-    const oc = chips(atomic ? 'Which EXEC lands first' : 'Order the calls land', list.map((o) => {
-      const rr = race(st.kind, o);
-      return [o, atomic ? `${o[0]} first` : o.split('').join(' '), `is-${OUTCOME[rr.outcome][1]}`];
-    }), st.order, (o) => { st.order = o; st.open = false; draw(); });
-    if (known[st.kind]) oc.el.querySelectorAll('button').forEach((b) => b.prepend(h('span', { class: `${P}dot ${b.classList.contains('is-good') ? 'is-good' : 'is-bad'}`, 'aria-hidden': 'true' })));
-    orderRow.replaceChildren(oc.el);
+    const oc = pickRow(atomic ? 'Which EXEC lands first' : 'Order the calls land', list.map((o) => [o, atomic ? `${o[0]} first` : o.split('').join(' ')]), st.order, (o) => { st.order = o; st.open = false; draw(); });
+    if (known[st.kind]) {
+      oc.el.querySelectorAll('.wv-chip').forEach((b, i) => {
+        const good = race(st.kind, list[i]).outcome === 'one';
+        b.prepend(h('i', { class: `${P}dot ${good ? 'is-good' : 'is-bad'}`, 'aria-hidden': 'true' }));
+      });
+    }
+    orderHost.replaceChildren(oc.el);
 
     const r = race(st.kind, st.order);
-    stage.setAttribute('aria-label', `Calls to Redis for ${RACE[st.kind].label}, order ${st.order}: ${OUTCOME[r.outcome][0]}`);
-    const kids = [
-      h('div', { class: c('who') }, 'A’s request', h('small', null, 'swipes right on B')),
-      h('div', { class: c('redis') }, RACE[st.kind].cluster ? 'Cluster' : 'Redis'),
-      h('div', { class: c('who') }, 'B’s request', h('small', null, 'swipes right on A')),
-    ];
+    stage.setAttribute('aria-label', `Calls to Redis for ${RACE[st.kind].label}, order ${st.order}`);
     const slotTxt = st.kind === 'cl' ? 'right:A → slot 10002 · right:B → slot 6001' : st.kind === 'pk' ? 'likes:{A:B} → slot 10309' : '';
     const base = slotTxt ? 3 : 2;
-    if (slotTxt) kids.push(h('div', { class: c('slots'), style: 'grid-row:2' }, slotTxt));
+    const kids = [
+      h('div', { class: `${P}who` }, h('b', null, 'A’s request'), h('br'), 'swipes right on B'),
+      h('div', { class: `${P}mid` }, h('span', { class: 'wv-tag' }, RACE[st.kind].cluster ? 'cluster' : 'redis')),
+      h('div', { class: `${P}who` }, h('b', null, 'B’s request'), h('br'), 'swipes right on A'),
+    ];
+    if (slotTxt) kids.push(h('p', { class: `${P}slots c-data`, style: 'grid-row:2' }, slotTxt));
     r.rows.forEach((row, k) => {
       const isA = row.u === 'A';
-      const bub = h('div', { class: `${P}bub ${isA ? 'is-a' : 'is-b'}${row.tone === 'bad' ? ' is-err' : ''}`, style: `grid-row:${base + k}` },
-        row.tx ? h('span', { class: 'tx' }, 'MULTI … EXEC') : null,
-        ...row.lines.map((ln) => h('div', null, ln)),
-        st.open ? h('span', { class: `rep${row.tone === 'look' ? ' is-look' : row.tone === 'bad' ? ' is-bad' : ''}` }, `→ ${row.reply}`) : h('span', { class: 'rep is-q' }, '→ ?'));
-      kids.push(bub, h('div', { class: c('t'), style: `grid-row:${base + k}` }, `t${k + 1}`));
+      const replyCls = !st.open ? 'c-look' : row.tone === 'look' ? 'c-look' : row.tone === 'bad' ? 'c-bad' : 'c-data';
+      kids.push(h('div', { class: `wv-card ${P}call ${isA ? 'is-a' : 'is-b'}${st.open && row.tone === 'bad' ? ' is-bad' : ''}`, style: `grid-row:${base + k}` },
+        row.tx ? h('div', null, 'MULTI … EXEC') : null,
+        ...row.lines.map((ln) => h('code', null, ln)),
+        h('div', { class: `${replyCls} ${P}reply` }, st.open ? `→ ${row.reply}` : '→ ?')));
+      kids.push(h('div', { class: `${P}t`, style: `grid-row:${base + k}` }, `t${k + 1}`));
     });
-    if (!st.open) {
-      const qs = [['none', 'No match'], ['one', 'One match'], ['two', 'Two matches'], ['err', 'An error']].map(([v, label]) => {
-        const b = h('button', { class: c('chip'), type: 'button' }, label);
-        b.addEventListener('click', () => { st.guess = v; st.open = true; known[st.kind] = true; draw(); });
-        return b;
+    if (st.open) {
+      ['A', 'B'].forEach((u) => {
+        const v = r.res[u];
+        const [t, tone] = v === 'err' ? ['Error', 'bad'] : v ? ['It’s a Match!', r.matches === 2 ? 'bad' : 'good'] : ['No match', r.outcome === 'none' ? 'bad' : ''];
+        kids.push(h('div', { class: `wv-card ${P}end is-${u.toLowerCase()}${tone ? ` is-${tone}` : ''}`, style: `grid-row:${base + r.rows.length}` }, h('b', null, t)));
       });
-      kids.push(h('div', { class: c('ask'), style: `grid-row:${base + r.rows.length}` }, h('p', null, 'Work it out from the calls. What do A and B end up with?'), h('div', { class: c('chips') }, ...qs),
-        h('button', { class: c('skip'), type: 'button', onclick: () => { st.guess = null; st.open = true; known[st.kind] = true; draw(); } }, 'just show me')));
-      stage.replaceChildren(...kids);
-      say.hidden = true; tally.hidden = true;
-      return;
+      const keysShown = st.kind === 'pk' ? ['likes:{A:B}'] : ['right:A', 'right:B'];
+      kids.push(h('div', { class: `wv-card ${P}state ${r.err ? 'is-bad' : st.kind === 'pk' ? 'is-pick' : 'is-data'}`, style: `grid-row:${base + r.rows.length + 1}` },
+        h('code', null, r.err ? 'nothing saved' : keysShown.map((k) => `${k} = {${[...r.sets[k]].sort().join(', ')}}`).join('   '))));
     }
-    say.hidden = false; tally.hidden = false;
-    ['A', 'B'].forEach((u) => {
-      const v = r.res[u];
-      const [t, tone] = v === 'err' ? ['Error', 'bad'] : v ? ['It’s a Match!', r.matches === 2 ? 'bad' : 'good'] : ['No match', r.outcome === 'none' ? 'bad' : ''];
-      kids.push(h('div', { class: `${P}end is-${u.toLowerCase()}${tone ? ` is-${tone}` : ''}`, style: `grid-row:${base + r.rows.length}` }, t));
-    });
-    const keysShown = st.kind === 'pk' ? ['likes:{A:B}'] : ['right:A', 'right:B'];
-    kids.push(h('div', { class: `${P}state${r.err ? ' is-bad' : ''}`, style: `grid-row:${base + r.rows.length + 1}` }, r.err ? 'nothing saved' : keysShown.map((k) => `${k} = {${[...r.sets[k]].sort().join(', ')}}`).join('   ')));
     stage.replaceChildren(...kids);
 
-    const [title, tone] = OUTCOME[r.outcome];
-    say.className = `${P}say is-${tone}`;
-    const GUESS = { none: 'no match', one: 'one match', two: 'two matches', err: 'an error' };
-    const fb = st.guess == null ? '' : st.guess === r.outcome ? '<span class="ok">You got it.</span> ' : `<span class="no">You said “${GUESS[st.guess]}”.</span> `;
-    say.innerHTML = `${fb}<b>${title}.</b> ${raceText(st.kind, r, st.order)}`;
+    const GUESS = [['none', 'No match'], ['one', 'One match'], ['two', 'Two matches'], ['err', 'An error']];
+    const a = ask('Work it out from the calls. What do A and B end up with?', GUESS, r.outcome, (v, right) => {
+      const [title] = OUTCOME[r.outcome];
+      return `${right ? '<b>You got it.</b> ' : ''}<b>${title}.</b> ${raceText(st.kind, r, st.order)}`;
+    });
+    a.el.addEventListener('click', (e) => { if (e.target.closest('.wv-chip') && !st.open) { st.open = true; known[st.kind] = true; const keep = a.el; draw(); askHost.replaceChildren(keep); } });
+    if (!st.open) askHost.replaceChildren(a.el);
     const counts = {};
     list.forEach((o) => { const k = race(st.kind, o).outcome; counts[k] = (counts[k] || 0) + 1; });
-    tally.innerHTML = `<b>${list.length === 2 ? 'Both orders' : `All ${list.length} orders`}:</b> ${Object.entries(counts).map(([k, n]) => `<span class="${OUTCOME[k][1] === 'good' ? 'g' : 'r'}">${n} × ${OUTCOME[k][0].toLowerCase()}</span>`).join(', ')}.`;
+    tally.hidden = !st.open;
+    tally.innerHTML = `<b>${list.length === 2 ? 'Both orders' : `All ${list.length} orders`}:</b> ${Object.entries(counts).map(([k, n]) => `<span class="${OUTCOME[k][1] === 'good' ? 'c-safe' : 'c-bad'}">${n} × ${OUTCOME[k][0].toLowerCase()}</span>`).join(', ')}.`;
   }
   draw();
 }
@@ -708,7 +683,7 @@ function chatEvents(fault) {
   E.push({ t: '3 ms', who: 'gateway A', what: 'stores the row first', tone: 'safe',
     short: "INSERT INTO messages … 'pending'",
     code: `INSERT INTO messages (conversation_id, message_id, sender_id, content, status)\nVALUES (${MSG.conv}, ${MSG.id},\n        arjun, '${MSG.text}', 'pending');`,
-    say: 'The message is <b class="ok">durable</b> in ScyllaDB. Only now does gateway A tell Arjun’s phone “sent”. Every later step may fail, because every later step can be redone from this row.',
+    say: 'The message is <b class="c-safe">durable</b> in ScyllaDB. Only now does gateway A tell Arjun’s phone “sent”. Every later step may fail, because every later step can be redone from this row.',
     a: 'sent', rn: riyaNet, rv: 'empty' });
   const dropped = fault === 'restart' || fault === 'offline';
   E.push({ t: '4 ms', who: 'gateway A', what: dropped ? 'publishes; nobody is listening' : 'publishes to Riya’s channel', tone: dropped ? 'lost' : '',
@@ -716,8 +691,8 @@ function chatEvents(fault) {
     say: !dropped
       ? 'Redis hands the message to every subscriber connected <b>now</b> and keeps no copy.'
       : fault === 'restart'
-        ? '<b class="no">Gateway B is restarting for a deploy.</b> Nobody subscribes to <code>user:riya</code>, so Redis drops the message: Pub/Sub delivers at most once. The count cannot prove delivery either, because in Redis Cluster it covers only clients on the same node.'
-        : '<b class="no">Riya’s phone is off.</b> No gateway holds a socket for her, so nobody subscribes to <code>user:riya</code> and Redis drops the message.',
+        ? '<b class="c-bad">Gateway B is restarting for a deploy.</b> Nobody subscribes to <code>user:riya</code>, so Redis drops the message: Pub/Sub delivers at most once. The count cannot prove delivery either, because in Redis Cluster it covers only clients on the same node.'
+        : '<b class="c-bad">Riya’s phone is off.</b> No gateway holds a socket for her, so nobody subscribes to <code>user:riya</code> and Redis drops the message.',
     a: 'sent', rn: riyaNet, rv: 'empty' });
   if (!fault) {
     E.push({ t: '5 ms', who: 'gateway B', what: 'writes the frame to Riya’s socket', code: 'conn.write(frame)',
@@ -725,13 +700,13 @@ function chatEvents(fault) {
     E.push({ t: '70 ms', who: 'Riya’s phone', what: 'ACKs; the row becomes delivered', tone: 'safe',
       short: "ACK → status = 'delivered'",
       code: `{"type": "ack", "id": "${SID}"}\nUPDATE messages SET status = 'delivered' WHERE …`,
-      say: 'Only the phone’s ACK marks the row <b class="ok">delivered</b>. Arjun sees two ticks. (70 ms is a sample round trip.)', a: 'delivered', rn: 'ok', rv: 'msg' });
+      say: 'Only the phone’s ACK marks the row <b class="c-safe">delivered</b>. Arjun sees two ticks. (70 ms is a sample round trip.)', a: 'delivered', rn: 'ok', rv: 'msg' });
     return E;
   }
   if (fault === 'switch') {
     E.push({ t: '5 ms', who: 'gateway B', what: 'write() returns OK to a dead socket', tone: 'lost',
       code: 'conn.write(frame)   # OK: the bytes are in the kernel send buffer',
-      say: '<b class="no">Riya walked out of the café and her phone moved to mobile data.</b> Gateway B does not know yet. A successful write means only that the kernel took the bytes; Linux retransmits for 13 to 30 minutes before it reports the connection dead. So a successful write never means “delivered”.',
+      say: '<b class="c-bad">Riya walked out of the café and her phone moved to mobile data.</b> Gateway B does not know yet. A successful write means only that the kernel took the bytes; Linux retransmits for 13 to 30 minutes before it reports the connection dead. So a successful write never means “delivered”.',
       a: 'sent', rn: 'dead', rv: 'empty' });
   }
   const netWait = fault === 'switch' ? 'dead' : riyaNet;
@@ -754,86 +729,62 @@ function chatEvents(fault) {
   E.push({ t: fault === 'offline' ? '2 days' : '9.1 s', who: 'Riya’s phone', what: 'ACKs; the row becomes delivered', tone: 'safe',
     short: "ACK → status = 'delivered'",
     code: `{"type": "ack", "id": "${SID}"}\nUPDATE messages SET status = 'delivered' WHERE …`,
-    say: 'Same ending as with no fault. The live path lost the message; <b class="ok">the stored row and the sync query brought it back.</b>',
+    say: 'Same ending as with no fault. The live path lost the message; <b class="c-safe">the stored row and the sync query brought it back.</b>',
     a: 'delivered', rn: 'back', rv: 'msg' });
   return E;
 }
 
 const FAULTS = [['', 'no fault'], ['restart', 'gateway B restarts'], ['switch', 'Wi-Fi → mobile data'], ['offline', 'phone off for days']];
-
 function initChatTimeline(fig, app) {
-  let fault = ''; let ev = chatEvents(fault); let i = 0;
-  const phoneA = h('div', { class: `${P}phone is-a` });
-  const phoneB = h('div', { class: `${P}phone is-b` });
-  const log = h('ol');
-  const now = h('div', { class: `${P}say ${P}now`, 'aria-live': 'polite' });
-  const ask = h('div', { class: c('ask2') });
-  const ticks = h('div', { class: c('ticks'), role: 'group', 'aria-label': 'Events' });
-  const pos = h('span', { class: c('pos') });
-  const back = h('button', { class: c('chip'), type: 'button', 'aria-label': 'Previous event' }, '◀');
-  const next = h('button', { class: c('chip'), type: 'button', 'aria-label': 'Next event' }, 'Next ▶');
-  back.addEventListener('click', () => go(i - 1));
-  next.addEventListener('click', () => go(i + 1));
-  const faultC = chips('Fault', FAULTS, fault, (f) => { fault = f; ev = chatEvents(f); go(0, true); });
+  let fault = ''; let ev = chatEvents(fault);
+  const phoneA = h('div', { class: `wv-card ${P}ph is-a` });
+  const phoneB = h('div', { class: `wv-card ${P}ph is-b` });
+  const log = h('ol', { class: `${P}events` });
+  const now = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const askHost = h('div');
+  const stepHost = h('div');
+  const faultC = pickRow('Fault', FAULTS, fault, (f) => { fault = f; ev = chatEvents(f); mount(); });
 
-  app.append(h('div', { class: c('ctl') }, faultC.el, h('div', { class: c('steps') }, back, ticks, pos, next)),
-    h('div', { class: c('chat') }, phoneA, h('div', { class: c('log') }, log), phoneB), now, ask,
-    key([['look', 'this event'], ['data', 'commands and IDs'], ['safe', 'durable or delivered'], ['bad', 'where the live path loses it'], ['opt', 'faults to try']]));
-  fig.addEventListener('keydown', (e) => {
-    if (e.target.closest('input')) return;
-    if (e.key === 'ArrowRight') { go(i + 1); e.preventDefault(); }
-    if (e.key === 'ArrowLeft') { go(i - 1); e.preventDefault(); }
-  });
+  app.append(faultC.el, stepHost,
+    h('div', { class: `${P}chat` }, phoneA, h('div', { class: `${P}log` }, log), phoneB),
+    now, askHost,
+    colorKey([['k-look', 'this event'], ['k-data', 'the message and commands'], ['k-safe', 'durable or delivered'], ['k-gap', 'where the live path loses it'], ['k-opt', 'faults to try']]));
 
   function phone(el, name, net, body) {
     const [nt, tone] = NET[net] || ['', ''];
-    el.replaceChildren(...[h('div', { class: 'bar' }, h('i')), h('h5', null, name), nt ? h('div', { class: `net${tone ? ` is-${tone}` : ''}` }, nt) : null, h('div', { class: 'body' }, ...body)].filter(Boolean));
+    el.replaceChildren(...[h('h5', null, name), nt ? h('p', { class: `${P}small${tone ? ' c-bad' : ''}` }, nt) : null, h('div', { class: `${P}body` }, ...body)].filter(Boolean));
   }
-  function go(n, rebuild) {
-    i = clamp(n, 0, ev.length - 1);
-    if (rebuild || ticks.children.length !== ev.length) {
-      ticks.replaceChildren(...ev.map((e, k) => {
-        const b = h('button', { class: `${P}tick${e.tone === 'lost' ? ' is-lost' : ''}`, type: 'button', 'aria-label': `${e.t}: ${e.who} ${e.what}` });
-        b.addEventListener('click', () => go(k));
-        return b;
-      }));
-    }
-    [...ticks.children].forEach((b, k) => { b.classList.toggle('is-now', k === i); b.classList.toggle('is-past', k < i); b.setAttribute('aria-current', k === i ? 'step' : 'false'); });
-    back.disabled = i === 0; next.disabled = i === ev.length - 1;
-    pos.textContent = `${i + 1} / ${ev.length}`;
+  function show(i) {
     const e = ev[i];
-    const status = { sending: ['sending…', ''], sent: ['✓ sent', ''], delivered: ['✓✓ delivered', 'is-safe'] }[e.a];
-    phone(phoneA, 'Arjun', null, [h('div', { class: `${P}msg is-out` }, MSG.text, h('span', { class: `st ${status[1]}` }, status[0]))]);
+    const status = { sending: 'sending…', sent: '✓ sent', delivered: '✓✓ delivered' }[e.a];
+    phone(phoneA, 'Arjun', null, [h('div', { class: 'wv-card is-data' }, h('span', { class: 'c-data' }, MSG.text), h('br'), h('span', { class: e.a === 'delivered' ? 'c-safe' : '' }, status))]);
     const lost = ev.slice(0, i + 1).some((x) => x.tone === 'lost');
-    const rb = e.rv === 'msg' ? [h('div', { class: `${P}msg is-in` }, MSG.text)]
-      : e.rv === 'banner' ? [h('div', { class: `${P}banner` }, h('b', null, 'Tinder · now'), `Arjun: ${MSG.text}`), h('div', { class: `${P}empty` }, 'app closed')]
-        : [h('div', { class: `${P}empty${lost ? ' is-bad' : ''}` }, lost ? 'nothing arrived' : 'waiting…')];
+    const rb = e.rv === 'msg' ? [h('div', { class: 'wv-card is-data' }, h('span', { class: 'c-data' }, MSG.text))]
+      : e.rv === 'banner' ? [h('div', { class: 'wv-card' }, h('b', null, 'Notification'), h('br'), `Arjun: ${MSG.text}`), h('p', { class: `${P}small` }, 'app closed')]
+        : [h('p', { class: lost ? 'c-bad' : '' }, lost ? 'nothing arrived' : 'waiting…')];
     phone(phoneB, 'Riya', e.rn, rb);
-    log.replaceChildren(...ev.slice(0, i + 1).map((x, k) => h('li', { class: `${P}ev${k === i ? ' is-now' : ''}${x.tone === 'lost' ? ' is-lost' : ''}${x.tone === 'safe' ? ' is-safe' : ''}` },
-      h('span', { class: 't' }, x.t), h('span', { class: 'w' }, h('b', null, x.who), ` ${x.what}`), h('span', { class: 'c' }, x.short || x.code))));
-    now.className = `${P}say ${P}now${e.tone === 'lost' ? ' is-bad' : e.tone === 'safe' ? ' is-good' : ''}`;
-    now.innerHTML = `<p>${e.say}</p><pre class="${P}code">${esc(e.code)}</pre>`;
-    ask.replaceChildren();
+    log.replaceChildren(...ev.slice(0, i + 1).map((x, k) => h('li', { class: k === i ? 'wv-card is-look' : '' },
+      h('b', null, x.t), h('span', null, h('b', { class: x.tone === 'lost' ? 'c-bad' : x.tone === 'safe' ? 'c-safe' : '' }, x.who), ` ${x.what}`, h('br'), h('code', null, x.short || x.code)))));
+    now.className = `wv-note${e.tone === 'lost' ? ' is-bad' : e.tone === 'safe' ? ' is-good' : ''}`;
+    now.innerHTML = `<p>${e.say}</p>${codeBlock(e.code.split('\n'))}`;
+    askHost.replaceChildren();
     if (fault && i === ev.length - 1) {
-      const fbk = h('p', { class: 'fb', 'aria-live': 'polite' });
-      const opts = [['ps', 'Redis Pub/Sub'], ['push', 'The push notification'], ['row', 'The stored row and the sync query']].map(([v, label]) => {
-        const b = h('button', { class: c('chip'), type: 'button' }, label);
-        b.addEventListener('click', () => {
-          fbk.innerHTML = v === 'row'
-            ? '<span class="ok">Right.</span> ScyllaDB owns the guarantee. Pub/Sub keeps no copy, and the push only wakes the app.'
-            : v === 'ps' ? '<span class="no">Not Pub/Sub.</span> It delivers at most once and kept no copy; this is where the message was lost.'
-              : '<span class="no">Not the push.</span> It only wakes the app. The message came from the row, through the sync query.';
-        });
-        return b;
-      });
-      ask.append(h('p', { class: 'q' }, 'Check yourself: what brought the message back?'), h('div', { class: c('chips') }, ...opts), fbk);
+      askHost.append(ask('Check yourself: what brought the message back?',
+        [['ps', 'Redis Pub/Sub'], ['push', 'The push notification'], ['row', 'The stored row and the sync query']], 'row',
+        (v) => (v === 'row'
+          ? '<b>Right.</b> ScyllaDB owns the guarantee. Pub/Sub keeps no copy, and the push only wakes the app.'
+          : v === 'ps' ? '<b>Not Pub/Sub.</b> It delivers at most once and kept no copy; this is where the message was lost.'
+            : '<b>Not the push.</b> It only wakes the app. The message came from the row, through the sync query.')).el);
     }
   }
-  go(0, true);
+  function mount() {
+    remountStepper(stepHost, ev.map((x) => ({ label: x.t })), (i) => show(i), { interval: 3200 });
+  }
+  mount();
 }
 
 register({
-  'deck-hero': initDeckHero,
+  'deck-hero': initDeck,
   'arch-paths': initArchPaths,
   'geo-reach': initGeoReach,
   'swipe-race': initSwipeRace,
