@@ -111,6 +111,29 @@ Every number, byte layout, SQL statement, and behaviour shown in a figure
 must be true. Check it against the source, the docs, or a script you run.
 Label sample values as samples.
 
+## Match the interaction to the kind of post
+
+Systems posts (Postgres, Temporal, TigerBeetle, Valkey) explain a
+mechanism, so steppers, state scrubbers, system maps and failure maps fit.
+
+Essays, philosophy, and advice posts (creating content, seeking help,
+learning backend) make an argument about people and habits. The reader is
+not tracing a request; they are testing the idea against their own life.
+Steppers, system maps, and "Fig. N" technical framing are the wrong tool.
+Interaction there should put the reader inside the argument, for example:
+
+- the reader answers a few honest questions and sees where they sit in the
+  post's framework, and what the post suggests for that spot
+- a playable model of the post's claim, where moving one input shows the
+  consequence the essay argues for
+- the reader makes the choice the essay discusses and sees what follows
+- a before/after the reader can toggle, when the advice is about craft
+
+Keep it calm and in the essay's tone: typographic, light, few controls,
+often `frame="none"`. One interaction that changes how the reader sees
+the idea is enough. Personal and physical posts (running, stereograms)
+sit in between: model the body or the eyes, but keep it human and simple.
+
 ## Writing rules (for captions, figure text, and any prose you touch)
 
 - Simple technical English. Short sentences. Answer first.
