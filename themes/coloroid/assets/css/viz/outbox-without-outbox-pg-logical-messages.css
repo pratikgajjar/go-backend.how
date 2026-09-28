@@ -1,396 +1,64 @@
-/* ==========================================================================
- * "The Outbox Without an Outbox" — figures drawn as WAL tape.
- * Every figure is a strip of log tape: perforated edges, an LSN tick ruler
- * under the title, records laid along it. The slot is a green bookmark.
- * Colour keeps the site grammar: brown data, purple look here, green safe,
- * red problem, blue options.
- * ========================================================================== */
+/* "The Outbox Without an Outbox": drawing and layout only.
+ * The figure frame, type, controls and colours come from walviz.css.
+ * Drawing: the WAL is a tape, records sit on it, the slot is a green bookmark. */
 
-.viz[class*="viz--oxb-"] {
-  --paper: oklch(97.4% 0.012 85);
-  --tapec: oklch(93.2% 0.016 85);
-  --ink: oklch(19% 0.02 320);
-  --mute: oklch(40% 0.02 320);
-  --line: oklch(80% 0.02 320);
-  --tint: oklch(94.5% 0.014 85);
-  --tint2: oklch(90% 0.016 85);
-  --board: var(--paper);
-  --blue: oklch(46% 0.16 258);    --blue-l: oklch(93% 0.04 258);
-  --brown: oklch(42% 0.075 55);   --brown-l: oklch(91% 0.045 70);
-  --purple: oklch(45% 0.2 305);   --purple-l: oklch(91.5% 0.06 305);
-  --orange: oklch(56% 0.17 45);   --orange-l: oklch(92% 0.07 65);
-  --green: oklch(45% 0.13 152);   --green-l: oklch(91% 0.075 152);
-  --red: oklch(51% 0.2 27);       --red-l: oklch(92.5% 0.05 25);
-  --hole: var(--article-bg, #c9b3c4);
+/* spacing */
+.v-oxb-gap { margin-top: 0.8rem; }
 
-  position: relative;
-  margin: 2.6rem 0;
-  padding: 0.9rem 1.7rem 1rem;
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.5;
-  background:
-    radial-gradient(circle at 8px 10px, var(--hole) 3.2px, transparent 3.8px) left top / 16px 20px repeat-y,
-    radial-gradient(circle at 8px 10px, var(--hole) 3.2px, transparent 3.8px) right top / 16px 20px repeat-y,
-    var(--paper);
-  box-shadow: 0 1px 0 oklch(0% 0 0 / 0.08), 0 8px 24px -14px oklch(20% 0.05 320 / 0.45);
-}
-/* tear lines inside the sprocket holes */
-.viz[class*="viz--oxb-"]::before,
-.viz[class*="viz--oxb-"]::after {
-  content: ""; position: absolute; top: 0; bottom: 0; width: 0;
-  border-left: 1px dashed var(--line);
-}
-.viz[class*="viz--oxb-"]::before { left: 18px; }
-.viz[class*="viz--oxb-"]::after { right: 18px; }
+/* WAL tape and records */
+.wv .v-oxb-tape { fill: var(--tint); stroke: var(--line); stroke-width: 1; }
+.wv .v-oxb-hole { fill: var(--board); }
+.wv .v-oxb-rec { fill: var(--board); stroke: var(--ink); stroke-width: 1.1; }
+.wv .v-oxb-rec-msg { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.6; }
+.wv .v-oxb-rec-c { fill: var(--tint2); stroke: var(--ink); stroke-width: 1.8; }
+.wv .v-oxb-rec-abort { fill: var(--red-l); stroke: var(--red); stroke-width: 1.6; }
+.wv .v-oxb-rec-msg.is-faded { opacity: 0.35; }
+.wv .v-oxb-env { fill: var(--board); stroke: var(--ink); stroke-width: 1.3; }
+.wv .v-oxb-later { fill: none; stroke: var(--line); stroke-dasharray: 4 4; }
+.wv .v-oxb-recyc { fill: var(--board); opacity: 0.62; }
+.wv .v-oxb-fresh { transition: opacity 0.3s; }
+.wv .v-oxb-fresh.is-void { opacity: 0.4; }
+.wv .v-oxb-fresh.is-void rect { stroke-dasharray: 4 3; }
+.wv .v-oxb-look-box { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.8; }
+.wv .v-oxb-tagbad { fill: var(--red-l); stroke: var(--red); stroke-width: 1.6; }
+.wv .v-oxb-pre { white-space: pre; }
 
-html[data-force-dark] .viz[class*="viz--oxb-"] {
-  --paper: oklch(22% 0.012 320);
-  --tapec: oklch(26.5% 0.014 320);
-  --ink: oklch(94% 0.01 85);
-  --mute: oklch(76% 0.015 85);
-  --line: oklch(42% 0.015 320);
-  --tint: oklch(25.5% 0.012 320);
-  --tint2: oklch(30% 0.014 320);
-  --blue: oklch(77% 0.12 255);    --blue-l: oklch(33% 0.07 258);
-  --brown: oklch(80% 0.075 65);   --brown-l: oklch(34% 0.045 60);
-  --purple: oklch(79% 0.14 305);  --purple-l: oklch(35% 0.1 305);
-  --orange: oklch(79% 0.15 60);   --orange-l: oklch(36% 0.08 55);
-  --green: oklch(79% 0.14 152);   --green-l: oklch(34% 0.07 152);
-  --red: oklch(74% 0.17 27);      --red-l: oklch(35% 0.08 25);
-  box-shadow: 0 8px 24px -12px oklch(0% 0 0 / 0.8);
-}
+/* lines and marks */
+.wv .v-oxb-tick { stroke: var(--mute); stroke-width: 1; }
+.wv .v-oxb-leader { stroke: var(--mute); stroke-width: 1; }
+.wv .v-oxb-brace { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+.wv .v-oxb-drop, .wv .v-oxb-over { fill: none; stroke: var(--purple); stroke-width: 1.6; stroke-dasharray: 3 3; }
+.wv .v-oxb-ack { stroke: var(--purple); stroke-width: 3; }
+.wv .v-oxb-cand { cursor: pointer; }
+.wv .v-oxb-cand circle { fill: var(--purple); }
+.wv .v-oxb-candline { stroke: var(--purple); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.7; }
+.wv .v-oxb-hdr { fill: var(--board); stroke: var(--mute); stroke-width: 1; }
+.wv .v-oxb-hdr.is-lsn { fill: var(--green-l); stroke: var(--green); stroke-width: 1.8; }
 
-@media (min-width: 900px) {
-  .viz[class*="viz--oxb-"].viz--wide {
-    width: min(980px, 100vw - 2rem);
-    margin-left: calc((100% - min(980px, 100vw - 2rem)) / 2);
-  }
-}
-@media (max-width: 640px) {
-  .viz[class*="viz--oxb-"] { margin: 2rem -0.6rem; padding: 0.75rem 1.35rem 0.85rem; font-size: 12.5px; }
-  .viz[class*="viz--oxb-"]::before { left: 14px; }
-  .viz[class*="viz--oxb-"]::after { right: 14px; }
-  .viz[class*="viz--oxb-"] { background-size: 12px 18px, 12px 18px, auto; }
-}
+/* the slot bookmark */
+.wv .v-oxb-slot-line { stroke: var(--green); stroke-width: 3; }
+.wv .v-oxb-slot-flag { fill: var(--green); }
+.wv .v-oxb-slot { transition: transform 0.5s cubic-bezier(.3, 1.3, .5, 1); }
 
+/* draggable handles */
+.wv .v-oxb-drag { cursor: grab; outline: none; }
+.wv .v-oxb-drag:focus-visible .v-oxb-slot-flag, .wv .v-oxb-drag:focus-visible .v-oxb-grip { stroke: var(--purple); stroke-width: 2.5; }
+.wv .v-oxb-hit { fill: transparent; }
+.wv .v-oxb-grip { fill: var(--red); }
+.wv svg:has(.v-oxb-drag) { touch-action: none; user-select: none; -webkit-user-select: none; }
 
-/* ---- header: title over an LSN ruler ---- */
-.viz[class*="viz--oxb-"] .wv-head {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.8rem;
-  padding: 0 0 14px; margin: 0 0 0.8rem; border: 0;
-  font-family: var(--font-display, var(--font-mono));
-  background:
-    repeating-linear-gradient(90deg, var(--ink) 0 1px, transparent 1px 64px) left bottom / 100% 9px no-repeat,
-    repeating-linear-gradient(90deg, var(--mute) 0 1px, transparent 1px 8px) left bottom / 100% 4px no-repeat;
-}
-.viz[class*="viz--oxb-"] .wv-fig { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--purple); font-weight: 400; }
-.viz[class*="viz--oxb-"] .wv-title { font-size: 15px; letter-spacing: 0.02em; color: var(--ink); text-transform: none; }
-.viz[class*="viz--oxb-"] figcaption { margin-top: 0.8rem; font-size: 12px; color: var(--mute); font-style: normal; border: 0; padding: 0; }
-.viz[class*="viz--oxb-"] figcaption code { font-size: 11.5px; }
-.viz[class*="viz--oxb-"] img.wv-fallback { margin: 0; border: 0; border-radius: 0; }
+/* timelines */
+.wv .v-oxb-seg-safe { fill: var(--green-l); stroke: var(--green); }
+.wv .v-oxb-seg-dup { fill: var(--red-l); stroke: var(--red); stroke-width: 1.4; }
+.wv .v-oxb-seg-fly { fill: var(--tint2); stroke: var(--ink); }
+.wv .v-oxb-tickline { stroke: var(--line); stroke-width: 1.5; }
+.wv .v-oxb-tickline.is-sent { stroke: var(--green); stroke-width: 2.5; }
+.wv .v-oxb-crashline { stroke: var(--red); stroke-width: 2.5; stroke-dasharray: 5 3; }
+.wv .v-oxb-markline { stroke: var(--purple); stroke-width: 2; }
 
-/* site resets inside the figure */
-.viz[class*="viz--oxb-"] p { margin: 0; }
-body[class*="theme-"] .viz[class*="viz--oxb-"] code { background: var(--tint2); color: var(--ink); border-radius: 2px; padding: 0 0.25em; white-space: normal; }
-body[class*="theme-"] .viz[class*="viz--oxb-"] pre code { background: none; padding: 0; white-space: pre; display: block; }
-.viz[class*="viz--oxb-"] pre { margin: 0; box-shadow: none; }
-body[class*="theme-"] .viz[class*="viz--oxb-"] table {
-  width: 100% !important; min-width: 0 !important; table-layout: auto !important;
-  border: 0; font-size: 12px !important; border-collapse: collapse; margin: 0;
-}
-body[class*="theme-"] .viz[class*="viz--oxb-"] table thead tr { background: none; color: var(--mute); }
-body[class*="theme-"] .viz[class*="viz--oxb-"] th,
-body[class*="theme-"] .viz[class*="viz--oxb-"] td { border: 0; border-bottom: 1px dotted var(--line); padding: 0.28rem 0.45rem; text-align: left; }
-body[class*="theme-"] .viz[class*="viz--oxb-"] th { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; border-bottom: 1.5px solid var(--ink); }
-.viz[class*="viz--oxb-"] ul { margin: 0; }
-
-/* ---- SVG vocabulary ---- */
-.viz[class*="viz--oxb-"] svg { display: block; width: 100%; height: auto; overflow: visible; }
-.viz[class*="viz--oxb-"] svg text { font-family: var(--font-mono); fill: var(--ink); }
-.viz[class*="viz--oxb-"] .o-xxs { font-size: 8px; }
-.viz[class*="viz--oxb-"] .o-xs { font-size: 10px; }
-.viz[class*="viz--oxb-"] .o-s { font-size: 11.5px; }
-.viz[class*="viz--oxb-"] .o-m { font-size: 13px; }
-.viz[class*="viz--oxb-"] .o-b { font-weight: 800; }
-.viz[class*="viz--oxb-"] .o-up { text-transform: uppercase; letter-spacing: 0.08em; }
-.viz[class*="viz--oxb-"] .o-mute { fill: var(--mute); }
-.viz[class*="viz--oxb-"] .o-data { fill: var(--brown); }
-.viz[class*="viz--oxb-"] .o-look { fill: var(--purple); }
-.viz[class*="viz--oxb-"] .o-safe { fill: var(--green); }
-.viz[class*="viz--oxb-"] .o-bad { fill: var(--red); }
-.viz[class*="viz--oxb-"] .o-paper { fill: var(--paper); }
-
-.viz[class*="viz--oxb-"] .o-tape { fill: var(--tapec); stroke: var(--line); stroke-width: 1; }
-.viz[class*="viz--oxb-"] .o-hole { fill: var(--paper); }
-.viz[class*="viz--oxb-"] .o-rec { fill: var(--paper); stroke: var(--ink); stroke-width: 1.1; }
-.viz[class*="viz--oxb-"] .o-rec-msg { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.6; }
-.viz[class*="viz--oxb-"] .o-rec-c { fill: var(--tint2); stroke: var(--ink); stroke-width: 1.8; }
-.viz[class*="viz--oxb-"] .o-later { fill: none; stroke: var(--line); stroke-dasharray: 4 4; }
-.viz[class*="viz--oxb-"] .o-recyc { fill: var(--paper); opacity: 0.62; }
-.viz[class*="viz--oxb-"] .o-tick { stroke: var(--mute); stroke-width: 1; }
-.viz[class*="viz--oxb-"] .o-box { fill: var(--paper); stroke: var(--ink); stroke-width: 1.4; }
-.viz[class*="viz--oxb-"] .o-dash { stroke-dasharray: 5 4; }
-.viz[class*="viz--oxb-"] .o-look-box { stroke: var(--purple); stroke-width: 1.8; fill: var(--purple-l); }
-.viz[class*="viz--oxb-"] .o-edge { stroke: var(--ink); stroke-width: 1.6; fill: none; }
-.viz[class*="viz--oxb-"] .o-edge-ack { stroke: var(--green); stroke-width: 2; fill: none; }
-.viz[class*="viz--oxb-"] .o-drop { stroke: var(--purple); stroke-width: 1.6; fill: none; stroke-dasharray: 3 3; }
-.viz[class*="viz--oxb-"] .o-over { stroke: var(--purple); stroke-width: 1.6; stroke-dasharray: 4 3; fill: none; }
-.viz[class*="viz--oxb-"] .o-ack { stroke: var(--purple); stroke-width: 3; }
-.viz[class*="viz--oxb-"] .o-flow { stroke-dasharray: 4 5; animation: oxb-flow 0.9s linear infinite; }
-@keyframes oxb-flow { to { stroke-dashoffset: -18; } }
-.viz[class*="viz--oxb-"] .o-slot-line { stroke: var(--green); stroke-width: 3; }
-.viz[class*="viz--oxb-"] .o-slot-flag { fill: var(--green); }
-.viz[class*="viz--oxb-"] .o-slot { transition: transform 0.5s cubic-bezier(.3,1.3,.5,1); }
-
-/* follow: stations on a path */
-.viz[class*="viz--oxb-"] .o-st { fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; transition: fill 0.25s, stroke 0.25s; }
-.viz[class*="viz--oxb-"] .o-station.is-on .o-st { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2.6; }
-.viz[class*="viz--oxb-"] .o-path { opacity: 0.35; transition: opacity 0.3s; }
-.viz[class*="viz--oxb-"] .o-path.is-done { opacity: 1; }
-.viz[class*="viz--oxb-"] .o-tok { fill: var(--brown); stroke: var(--paper); stroke-width: 2; }
-.viz[class*="viz--oxb-"] .o-tok.is-ack { fill: var(--green); }
-
-/* replay + backlog bars */
-.viz[class*="viz--oxb-"] .o-seg-safe { fill: var(--green-l); stroke: var(--green); }
-.viz[class*="viz--oxb-"] .o-seg-dup { fill: var(--red-l); stroke: var(--red); stroke-width: 1.4; }
-.viz[class*="viz--oxb-"] .o-seg-fly { stroke: var(--ink); }
-.viz[class*="viz--oxb-"] .o-seg-none { fill: none; }
-.viz[class*="viz--oxb-"] .o-seg-kept { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.4; }
-.viz[class*="viz--oxb-"] .o-tickline { stroke: var(--line); stroke-width: 1.5; }
-.viz[class*="viz--oxb-"] .o-tickline.is-sent { stroke: var(--green); stroke-width: 2.5; }
-.viz[class*="viz--oxb-"] .o-crashline { stroke: var(--red); stroke-width: 2.5; stroke-dasharray: 5 3; }
-.viz[class*="viz--oxb-"] .o-markline { stroke: var(--purple); stroke-width: 2; }
-
-/* ---- HTML blocks ---- */
-.viz[class*="viz--oxb-"] .o-q { font-weight: 800; font-size: 14px; margin: 0 0 0.7rem; }
-.viz[class*="viz--oxb-"] .o-cap { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; color: var(--mute); margin: 0.9rem 0 0.35rem; }
-.viz[class*="viz--oxb-"] .o-lab { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; color: var(--blue); margin-right: 0.2rem; }
-.viz[class*="viz--oxb-"] .o-small { font-size: 11.5px; color: var(--mute); margin-top: 0.4rem; }
-.viz[class*="viz--oxb-"] .o-note { margin-top: 0.7rem; font-size: 13px; padding-left: 0.7rem; border-left: 3px solid var(--ink); }
-.viz[class*="viz--oxb-"] .o-note.is-bad { border-left-color: var(--red); }
-.viz[class*="viz--oxb-"] .o-stepn { color: var(--purple); margin-right: 0.3rem; }
-.viz[class*="viz--oxb-"] .o-verdict { margin-top: 0.8rem; padding: 0.5rem 0.75rem; font-weight: 800; font-size: 13px; border-radius: 3px; }
-.viz[class*="viz--oxb-"] .o-verdict.is-bad { color: var(--red); background: var(--red-l); }
-.viz[class*="viz--oxb-"] .o-verdict.is-good { color: var(--green); background: var(--green-l); }
-.viz[class*="viz--oxb-"] .o-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.2rem; }
-@media (min-width: 760px) { .viz[class*="viz--oxb-"] .o-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-.viz[class*="viz--oxb-"] .o-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.viz[class*="viz--oxb-"] .c-data { color: var(--brown); font-weight: 700; }
-.viz[class*="viz--oxb-"] .c-safe { color: var(--green); font-weight: 700; }
-.viz[class*="viz--oxb-"] .c-bad { color: var(--red); font-weight: 700; }
-.viz[class*="viz--oxb-"] .o-table tr.is-hot td { background: var(--purple-l); }
-.viz[class*="viz--oxb-"] .o-table tr.is-data td { background: var(--brown-l); }
-.viz[class*="viz--oxb-"] .o-table tr.is-hit td { color: var(--red); font-weight: 800; }
-.viz[class*="viz--oxb-"] .o-table td:last-child { color: var(--mute); }
-.viz[class*="viz--oxb-"] .o-kv td:first-child { color: var(--mute); width: 9.5em; }
-.viz[class*="viz--oxb-"] .o-kv td:last-child { color: var(--brown); overflow-wrap: anywhere; word-break: break-all; }
-.viz[class*="viz--oxb-"] table.o-kv { table-layout: fixed !important; margin-top: 0.6rem; }
-
-/* code: a carbon slip */
-.viz[class*="viz--oxb-"] pre.wv-code {
-  margin-top: 0.3rem; padding: 0.55rem 0.7rem; font-size: 12px; line-height: 1.6;
-  background: var(--tint); border: 0; border-left: 2px dotted var(--mute);
-  overflow-x: auto; white-space: pre; color: var(--ink);
-}
-.viz[class*="viz--oxb-"] pre.wv-code .ln { display: block; padding: 0 0.4rem; margin: 0 -0.4rem; }
-.viz[class*="viz--oxb-"] pre.wv-code .ln.is-hot { background: var(--purple-l); box-shadow: inset 3px 0 var(--purple); }
-.viz[class*="viz--oxb-"] pre.wv-code .cm { color: var(--mute); }
-.viz[class*="viz--oxb-"] pre.wv-code .ok { color: var(--green); font-weight: 800; }
-.viz[class*="viz--oxb-"] pre.wv-code .bad { color: var(--red); font-weight: 800; }
-.viz[class*="viz--oxb-"] pre.wv-code .dt { color: var(--brown); font-weight: 700; }
-
-/* ---- controls: blue, rounded, unlike the tape ---- */
-.viz[class*="viz--oxb-"] .o-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0 0 0.7rem; }
-.viz[class*="viz--oxb-"] .wv-btn {
-  font: inherit; font-size: 12px; line-height: 1.2; min-height: 34px; padding: 0.4rem 0.8rem;
-  color: var(--blue); background: var(--paper); border: 1.5px solid var(--blue); border-radius: 999px;
-  cursor: pointer; touch-action: manipulation; white-space: normal; text-align: left;
-}
-.viz[class*="viz--oxb-"] .wv-btn:not([aria-pressed="true"]):hover:not(:disabled) { background: var(--blue-l); }
-.viz[class*="viz--oxb-"] .wv-btn[aria-pressed="true"] { background: var(--blue); color: var(--paper); }
-.viz[class*="viz--oxb-"] .wv-btn:disabled { opacity: 0.35; cursor: default; }
-.viz[class*="viz--oxb-"] .wv-btn code { background: none !important; color: inherit !important; padding: 0 !important; }
-.viz[class*="viz--oxb-"] .wv-btn small { display: block; font-size: 10.5px; opacity: 0.85; }
-.viz[class*="viz--oxb-"] .o-crashrow { margin-top: 0.6rem; }
-.viz[class*="viz--oxb-"] .wv-btn.o-crash { color: var(--red); border-color: var(--red); }
-.viz[class*="viz--oxb-"] .wv-btn.o-crash:not([aria-pressed="true"]):hover:not(:disabled) { background: var(--red-l); }
-.viz[class*="viz--oxb-"] .wv-btn.o-crash[aria-pressed="true"] { background: var(--red); color: var(--paper); }
-.viz[class*="viz--oxb-"] :focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
-
-/* the stepper becomes a step ruler: marks on a line, the cursor in purple */
-.viz[class*="viz--oxb-"] .wv-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0 0 0.6rem; }
-.viz[class*="viz--oxb-"] .wv-pills { display: flex; flex: 1 1 100%; overflow-x: auto; scrollbar-width: none; border: 0; border-top: 2px solid var(--ink); scroll-behavior: smooth; }
-.viz[class*="viz--oxb-"] .wv-pills::-webkit-scrollbar { display: none; }
-.viz[class*="viz--oxb-"] .wv-pill {
-  font: inherit; font-size: 11px; flex: 1 0 auto; padding: 0.5rem 0.45rem 0.3rem; border: 0; border-radius: 0;
-  background: none; color: var(--mute); cursor: pointer; white-space: nowrap; position: relative; text-transform: none; letter-spacing: 0;
-}
-.viz[class*="viz--oxb-"] .wv-pill::before { content: ""; position: absolute; left: 50%; top: -2px; width: 1.5px; height: 7px; background: var(--ink); }
-.viz[class*="viz--oxb-"] .wv-pill .n { display: none; }
-.viz[class*="viz--oxb-"] .wv-pill.is-past { color: var(--ink); }
-.viz[class*="viz--oxb-"] .wv-pill[aria-current="step"] { color: var(--purple); font-weight: 800; background: none; }
-.viz[class*="viz--oxb-"] .wv-pill[aria-current="step"]::before { width: 12px; height: 12px; top: -7px; margin-left: -6px; border-radius: 50%; background: var(--purple); }
-.viz[class*="viz--oxb-"] .wv-bar > .wv-btn { border-radius: 999px; padding: 0.3rem 0.7rem; min-height: 30px; }
-.viz[class*="viz--oxb-"] .wv-pos { font-size: 11px; color: var(--mute); }
-.viz[class*="viz--oxb-"] .wv-sp { flex: 1 1 auto; }
-
-/* sliders */
-.viz[class*="viz--oxb-"] .o-ranges { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.1rem 1.4rem; margin: 0 0 0.6rem; }
-.viz[class*="viz--oxb-"] .wv-range { display: flex; align-items: center; gap: 0.55rem; font-size: 12px; }
-.viz[class*="viz--oxb-"] .wv-range label { white-space: nowrap; min-width: 7.5em; }
-.viz[class*="viz--oxb-"] .wv-range output { min-width: 5.5em; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; }
-.viz[class*="viz--oxb-"] input[type="range"] { -webkit-appearance: none; appearance: none; flex: 1 1 100px; min-width: 80px; height: 28px; background: transparent; cursor: pointer; margin: 0; }
-.viz[class*="viz--oxb-"] input[type="range"]::-webkit-slider-runnable-track { height: 3px; background: var(--blue); border-radius: 2px; }
-.viz[class*="viz--oxb-"] input[type="range"]::-moz-range-track { height: 3px; background: var(--blue); }
-.viz[class*="viz--oxb-"] input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7.5px; border-radius: 50%; background: var(--paper); border: 2.5px solid var(--blue); }
-.viz[class*="viz--oxb-"] input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--paper); border: 2.5px solid var(--blue); }
-
-/* colour key */
-.viz[class*="viz--oxb-"] .wv-key { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; font-size: 11px; color: var(--mute); margin: 0.6rem 0 0; }
-.viz[class*="viz--oxb-"] .wv-key span { white-space: nowrap; }
-.viz[class*="viz--oxb-"] .wv-key i { display: inline-block; width: 1.4em; height: 0.85em; margin-right: 0.35em; vertical-align: -0.08em; border: 1px solid var(--ink); border-radius: 2px; }
-
-/* follow: inspector + hex */
-.viz[class*="viz--oxb-"] .o-insp { display: grid; gap: 0.55rem; margin-top: 0.8rem; min-height: 16rem; }
-.viz[class*="viz--oxb-"] .o-insp h4 { margin: 0; font-family: var(--font-mono); font-size: 14px; font-weight: 800; display: flex; flex-wrap: wrap; gap: 0.2rem 0.7rem; align-items: baseline; }
-.viz[class*="viz--oxb-"] .o-insp h4 .where { font-weight: 400; font-size: 11.5px; color: var(--mute); }
-.viz[class*="viz--oxb-"] .o-hex { font-size: 12px; line-height: 1.8; display: flex; flex-wrap: wrap; gap: 0.2rem 0.25rem; }
-.viz[class*="viz--oxb-"] .o-fld { padding: 0 0.25rem; border: 1px solid var(--line); cursor: help; word-break: break-all; border-radius: 2px; }
-.viz[class*="viz--oxb-"] .o-fld.v { background: var(--brown-l); color: var(--brown); border-color: var(--brown); font-weight: 700; }
-.viz[class*="viz--oxb-"] .o-fld.is-hot { outline: 2px solid var(--purple); outline-offset: 1px; }
-.viz[class*="viz--oxb-"] .o-hexl { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; font-size: 11.5px; color: var(--mute); }
-.viz[class*="viz--oxb-"] .o-hexl i { display: inline-block; width: 0.9em; height: 0.9em; margin-right: 0.35em; vertical-align: -0.1em; border: 1px solid var(--line); background: var(--paper); }
-.viz[class*="viz--oxb-"] .o-hexl i.v { background: var(--brown-l); border-color: var(--brown); }
-.viz[class*="viz--oxb-"] .o-hexl .lab { color: var(--purple); font-weight: 700; }
-
-/* race: the WAL stream as a tape of event cells, with a slot bookmark */
-.viz[class*="viz--oxb-"] .o-rtape {
-  display: flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.55rem 0.5rem;
-  background:
-    radial-gradient(circle, var(--paper) 1.6px, transparent 2px) 0 3px / 12px 100% repeat-x,
-    radial-gradient(circle, var(--paper) 1.6px, transparent 2px) 0 calc(100% - 3px) / 12px 100% repeat-x,
-    var(--tapec);
-  background-size: 12px 6px, 12px 6px, auto;
-  background-position: 0 1px, 0 calc(100% - 1px), 0 0;
-  background-repeat: repeat-x, repeat-x, no-repeat;
-}
-.viz[class*="viz--oxb-"] .o-cell {
-  display: flex; flex-direction: column; min-width: 5.3rem; flex: 1 0 5.3rem; padding: 0.25rem 0.4rem;
-  border: 1.4px solid var(--brown); font-size: 10.5px; line-height: 1.35; border-radius: 2px;
-  transition: background-color 0.3s, border-color 0.3s;
-}
-.viz[class*="viz--oxb-"] .o-cell b { font-size: 13px; }
-.viz[class*="viz--oxb-"] .o-cell .l { color: var(--brown); font-weight: 700; }
-.viz[class*="viz--oxb-"] .o-cell.is-fly { background: repeating-linear-gradient(-45deg, var(--tint2) 0 3px, var(--paper) 3px 7px); }
-.viz[class*="viz--oxb-"] .o-cell.is-ok { background: var(--green-l); border-color: var(--green); }
-.viz[class*="viz--oxb-"] .o-cell.is-gap { background: var(--red-l); border: 1.8px dashed var(--red); }
-.viz[class*="viz--oxb-"] .o-cell.is-gap b { color: var(--red); }
-.viz[class*="viz--oxb-"] .o-cell.is-now { outline: 2.5px solid var(--purple); outline-offset: 1px; }
-.viz[class*="viz--oxb-"] .o-bm { display: flex; align-items: stretch; border-left: 4px solid var(--green); margin: -0.3rem 0; }
-.viz[class*="viz--oxb-"] .o-bm span { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--paper); background: var(--green); padding: 0.2rem 0.1rem; writing-mode: vertical-rl; transform: rotate(180deg); }
-.viz[class*="viz--oxb-"] .o-parts { display: grid; gap: 0.3rem; }
-.viz[class*="viz--oxb-"] .o-lane { display: flex; gap: 0.35rem; align-items: center; border-bottom: 1px dotted var(--line); padding-bottom: 0.3rem; }
-.viz[class*="viz--oxb-"] .o-lane .p { font-size: 11px; font-weight: 800; width: 2rem; }
-.viz[class*="viz--oxb-"] .o-rec2 { font-size: 11.5px; font-weight: 700; padding: 0.12rem 0.5rem; border: 1.3px solid var(--ink); border-radius: 2px; }
-.viz[class*="viz--oxb-"] .o-rec2.is-fly { background: repeating-linear-gradient(-45deg, var(--tint2) 0 3px, var(--paper) 3px 7px); }
-.viz[class*="viz--oxb-"] .o-rec2.is-ok { background: var(--green-l); border-color: var(--green); color: var(--green); }
-.viz[class*="viz--oxb-"] .o-kv2 { display: grid; grid-template-columns: auto 1fr; gap: 0.1rem 0.9rem; font-size: 12px; margin: 0.6rem 0 0; }
-.viz[class*="viz--oxb-"] .o-kv2 dt { color: var(--mute); }
-.viz[class*="viz--oxb-"] .o-kv2 dd { margin: 0; font-weight: 800; }
-.viz[class*="viz--oxb-"] .o-out tr.is-bad td { color: var(--red); font-weight: 800; background: var(--red-l); }
-.viz[class*="viz--oxb-"] .o-out tr.is-dup td:last-child { color: var(--ink); font-weight: 700; }
-
-/* replay stats */
-.viz[class*="viz--oxb-"] .o-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
-.viz[class*="viz--oxb-"] .o-stat { padding: 0.4rem 0.6rem; border-left: 4px solid var(--ink); background: var(--tint); }
-.viz[class*="viz--oxb-"] .o-stat .k { display: block; font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--mute); }
-.viz[class*="viz--oxb-"] .o-stat .v { display: block; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.viz[class*="viz--oxb-"] .o-stat .u { display: block; font-size: 11px; color: var(--mute); }
-.viz[class*="viz--oxb-"] .o-stat.is-dup { border-left-color: var(--red); }
-.viz[class*="viz--oxb-"] .o-stat.is-dup .v { color: var(--red); }
-.viz[class*="viz--oxb-"] .o-stat.is-ok { border-left-color: var(--green); }
-.viz[class*="viz--oxb-"] .o-stat.is-ok .v { color: var(--green); }
-
-.viz[class*="viz--oxb-"] .wv-key i.k-free { background: var(--paper); border-color: var(--ink); }
-
-@media (prefers-reduced-motion: reduce) {
-  .viz[class*="viz--oxb-"] *, .viz[class*="viz--oxb-"] *::before { animation: none !important; transition: none !important; }
-}
-
-/* ==== reader-driven pieces ==== */
-.viz[class*="viz--oxb-"] .o-pre { white-space: pre; }
-.viz[class*="viz--oxb-"] .o-rec-abort { fill: var(--red-l); stroke: var(--red); stroke-width: 1.6; }
-.viz[class*="viz--oxb-"] .o-fresh { transition: opacity 0.3s; }
-.viz[class*="viz--oxb-"] .o-fresh.is-void { opacity: 0.4; }
-.viz[class*="viz--oxb-"] .o-fresh.is-void rect { stroke-dasharray: 4 3; }
-.viz[class*="viz--oxb-"] .wv-btn.o-ghost { border-style: dashed; color: var(--ink); border-color: var(--mute); }
-.viz[class*="viz--oxb-"] .wv-btn.o-opt:disabled:not([aria-pressed="true"]) { opacity: 0.35; }
-.viz[class*="viz--oxb-"] .wv-btn.o-opt[aria-pressed="true"]:disabled { opacity: 1; }
-
-/* draggable handles: the slot and the crash */
-.viz[class*="viz--oxb-"] .o-drag { cursor: grab; outline: none; }
-.viz[class*="viz--oxb-"] .o-drag:focus-visible .o-slot-flag,
-.viz[class*="viz--oxb-"] .o-drag:focus-visible .o-grip { stroke: var(--purple); stroke-width: 2.5; }
-.viz[class*="viz--oxb-"] .o-hit { fill: transparent; }
-.viz[class*="viz--oxb-"] .o-grip { fill: var(--red); }
-.viz[class*="viz--oxb-"] svg:has(.o-drag) { touch-action: none; user-select: none; -webkit-user-select: none; }
-.viz[class*="viz--oxb-"] .o-cand { cursor: pointer; }
-.viz[class*="viz--oxb-"] .o-cand circle { fill: var(--purple); }
-.viz[class*="viz--oxb-"] .o-candline { stroke: var(--purple); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.7; }
-
-/* envelopes */
-.viz[class*="viz--oxb-"] .o-env { fill: var(--paper); stroke: var(--ink); stroke-width: 1.3; }
-.viz[class*="viz--oxb-"] .o-leader { stroke: var(--mute); stroke-width: 1; }
-.viz[class*="viz--oxb-"] .o-brace { fill: none; stroke: var(--ink); stroke-width: 1.4; }
-.viz[class*="viz--oxb-"] .o-tagbad { fill: var(--red-l); stroke: var(--red); stroke-width: 1.6; }
-.viz[class*="viz--oxb-"] .o-hdr { fill: var(--paper); stroke: var(--mute); stroke-width: 1; }
-.viz[class*="viz--oxb-"] .o-hdr.is-lsn { stroke: var(--green); stroke-width: 1.8; fill: var(--green-l); }
-.viz[class*="viz--oxb-"] .o-rec-msg.is-faded { opacity: 0.35; }
-.viz[class*="viz--oxb-"] .o-stops { display: flex; flex-wrap: wrap; gap: 0; margin: 0 0 0.6rem; border-top: 2px solid var(--ink); }
-.viz[class*="viz--oxb-"] .o-stopbtn {
-  font: inherit; font-size: 12px; flex: 1 0 auto; padding: 0.55rem 0.5rem 0.35rem; border: 0; background: none; color: var(--blue);
-  cursor: pointer; position: relative; min-height: 36px;
-}
-.viz[class*="viz--oxb-"] .o-stopbtn::before { content: ""; position: absolute; left: 50%; top: -2px; width: 1.5px; height: 8px; background: var(--ink); }
-.viz[class*="viz--oxb-"] .o-stopbtn b { margin-right: 0.15em; }
-.viz[class*="viz--oxb-"] .o-stopbtn.is-past { color: var(--ink); }
-.viz[class*="viz--oxb-"] .o-stopbtn[aria-current="step"] { color: var(--purple); font-weight: 800; }
-.viz[class*="viz--oxb-"] .o-stopbtn[aria-current="step"]::before { width: 12px; height: 12px; top: -7px; margin-left: -6px; border-radius: 50%; background: var(--purple); }
-.viz[class*="viz--oxb-"] .o-where { color: var(--mute); font-size: 11.5px; }
-
-/* race: partitions the reader clicks, and two lanes */
-.viz[class*="viz--oxb-"] .o-partrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; margin: 0.7rem 0; }
-.viz[class*="viz--oxb-"] .o-part {
-  font: inherit; font-size: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; justify-content: center;
-  padding: 0.5rem; min-height: 44px; border: 1.5px solid var(--blue); border-radius: 10px; background: var(--paper); color: var(--blue); cursor: pointer;
-}
-.viz[class*="viz--oxb-"] .o-part:hover:not(:disabled) { background: var(--blue-l); }
-.viz[class*="viz--oxb-"] .o-part:disabled { opacity: 0.55; cursor: default; }
-.viz[class*="viz--oxb-"] .o-part span { padding: 0 0.3rem; border: 1px solid var(--ink); color: var(--ink); background: repeating-linear-gradient(-45deg, var(--tint2) 0 3px, var(--paper) 3px 7px); }
-.viz[class*="viz--oxb-"] .o-part span.is-ok { background: var(--green-l); border-color: var(--green); color: var(--green); }
-.viz[class*="viz--oxb-"] .o-part small { flex-basis: 100%; text-align: center; font-size: 10px; }
-.viz[class*="viz--oxb-"] .o-lanes { display: grid; gap: 0.6rem; }
-.viz[class*="viz--oxb-"] .o-lanebox { padding: 0.35rem 0.4rem 0.4rem; border-left: 4px solid transparent; }
-.viz[class*="viz--oxb-"] .o-lanebox.is-bad { border-left-color: var(--red); background: var(--red-l); }
-.viz[class*="viz--oxb-"] .o-lanet { font-size: 12px; margin-bottom: 0.3rem; }
-.viz[class*="viz--oxb-"] .o-lanet span { color: var(--mute); }
-.viz[class*="viz--oxb-"] .o-lanes .o-cell { min-width: 3.1rem; flex: 1 0 3.1rem; align-items: center; }
-.viz[class*="viz--oxb-"] .o-cell .r { font-size: 10.5px; font-weight: 800; color: var(--ink); }
-.viz[class*="viz--oxb-"] .o-cell .r.ok { color: var(--green); }
-.viz[class*="viz--oxb-"] .o-cell .r.bad { color: var(--red); }
-
-/* detail on demand */
-.viz[class*="viz--oxb-"] details.o-more { margin-top: 0.7rem; }
-.viz[class*="viz--oxb-"] details.o-more > summary { cursor: pointer; font-size: 12px; color: var(--blue); font-weight: 700; list-style: none; }
-.viz[class*="viz--oxb-"] details.o-more > summary::before { content: "+ "; }
-.viz[class*="viz--oxb-"] details.o-more[open] > summary::before { content: "− "; }
-.viz[class*="viz--oxb-"] details.o-more > summary::-webkit-details-marker { display: none; }
-.viz[class*="viz--oxb-"] .o-jump { margin-top: 0.6rem; }
-.viz[class*="viz--oxb-"] .o-verdict:empty { display: none; }
-@media (max-width: 640px) {
-  .viz[class*="viz--oxb-"] .o-stops { flex-wrap: nowrap; }
-  .viz[class*="viz--oxb-"] .o-stopbtn { font-size: 10.5px; padding: 0.55rem 0.1rem 0.3rem; flex: 1 1 auto; }
-  .viz[class*="viz--oxb-"] .o-stopbtn b { display: block; margin: 0; }
-}
+/* race lanes */
+.wv .v-oxb-cell { fill: var(--board); stroke: var(--brown); stroke-width: 1.4; }
+.wv .v-oxb-cell.is-ok { fill: var(--green-l); stroke: var(--green); }
+.wv .v-oxb-cell.is-gap { fill: var(--red-l); stroke: var(--red); stroke-dasharray: 4 3; stroke-width: 1.8; }
+.wv .v-oxb-cell.is-now { stroke: var(--purple); stroke-width: 3; }
+.wv .v-oxb-lanebad { fill: var(--red-l); }

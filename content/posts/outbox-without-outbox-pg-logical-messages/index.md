@@ -208,7 +208,7 @@ Three properties matter:
 Property 1 is the reason the outbox pattern exists. End the transaction
 below both ways:
 
-{{< viz kind="oxb-commit" fig="1" frame="none" title="COMMIT or ROLLBACK?" fallback="oxb-commit.svg" alt="A transaction has written a row and an event record to the WAL; the reader picks COMMIT, and OwlPost reads the event into Kafka and the slot moves, or ROLLBACK, and the event record stays in WAL but is never decoded" caption="Record sizes are from Postgres 17.7: the event record is written when the `SELECT` runs; COMMIT adds 46 bytes, ROLLBACK a 34-byte ABORT record. The layout is not to scale." >}}
+{{< viz kind="oxb-commit" fig="1" title="COMMIT or ROLLBACK?" fallback="oxb-commit.svg" alt="A transaction has written a row and an event record to the WAL; the reader picks COMMIT, and OwlPost reads the event into Kafka and the slot moves, or ROLLBACK, and the event record stays in WAL but is never decoded" caption="Record sizes are from Postgres 17.7: the event record is written when the `SELECT` runs; COMMIT adds 46 bytes, ROLLBACK a 34-byte ABORT record. The layout is not to scale." >}}
 
 This is not Debezium-style row-level CDC: we are not decoding row
 writes on an outbox table. We are inserting an application-defined
@@ -563,7 +563,7 @@ when Kafka acks out of order, and what a crash or a Kafka outage costs.
 
 ## Scenario 1: the happy path
 
-{{< viz kind="oxb-follow" fig="2" frame="none" title="One event, five envelopes" fallback="oxb-follow.svg" alt="One user.created event from the producer's transaction through WAL records, pgoutput frames, OwlPost, a Kafka partition, the ack loop, and the replication slot" caption="One `user.created` event from `Emit()` to `confirmed_flush_lsn`, drawn to one byte scale. The 225 bytes of protobuf stay put; each stop wraps them differently. LSNs, sizes and frame bytes come from one run on Postgres 17.7; the event values and the 6-partition topic are samples." >}}
+{{< viz kind="oxb-follow" fig="2" title="One event, five envelopes" fallback="oxb-follow.svg" alt="One user.created event from the producer's transaction through WAL records, pgoutput frames, OwlPost, a Kafka partition, the ack loop, and the replication slot" caption="One `user.created` event from `Emit()` to `confirmed_flush_lsn`, drawn to one byte scale. The 225 bytes of protobuf stay put; each stop wraps them differently. LSNs, sizes and frame bytes come from one run on Postgres 17.7; the event values and the 6-partition topic are samples." >}}
 
 OwlPost produces to Kafka asynchronously (franz-go, `acks=all`, idempotent
 producer), so each partition stays ordered and a success callback means the
@@ -588,7 +588,7 @@ transaction commits inside those 205 bytes, confirming this LSN skips it.
 Concurrency makes that possible: B writes its message first, A commits,
 and B commits right after.
 
-{{< viz kind="oxb-ack-lsn" fig="3" frame="none" title="Which LSN is safe to confirm?" fallback="oxb-ack-lsn.svg" alt="WAL records of two concurrent transactions A and B drawn to scale, with three possible ACK positions and what Postgres sends again after a restart" caption="Records drawn to scale, 8-byte aligned. LSNs, sizes and frames come from one run on Postgres 17.7 (`pgoutput`, `proto_version 1`, `messages 'true'`). The restart outcome of each choice was checked on the same server." >}}
+{{< viz kind="oxb-ack-lsn" fig="3" title="Which LSN is safe to confirm?" fallback="oxb-ack-lsn.svg" alt="WAL records of two concurrent transactions A and B drawn to scale, with three possible ACK positions and what Postgres sends again after a restart" caption="Records drawn to scale, 8-byte aligned. LSNs, sizes and frames come from one run on Postgres 17.7 (`pgoutput`, `proto_version 1`, `messages 'true'`). The restart outcome of each choice was checked on the same server." >}}
 
 I checked each choice the same way: confirm the LSN, disconnect, and
 stream again from the slot. With `WALStart + len(WALData)`, Postgres
@@ -636,7 +636,7 @@ func (w *WALSubscriber) onKafkaAck(lsn pglogrepl.LSN) {
 w.SendStandbyStatusUpdate(w.safe)      // everything <= safe is durable
 ```
 
-{{< viz kind="oxb-race" fig="4" frame="none" title="Kafka acks out of order" fallback="oxb-race.svg" alt="You ack six events on three Kafka partitions in any order; one slot follows the latest ack, the other the contiguous acked prefix; a crash shows which events are lost or sent twice" caption="Six events from six transactions; keys hash to a 3-partition topic. Both rules use the message LSN from Figure 3, and here a status update follows every ack. At a crash, records Kafka has not acked are gone." >}}
+{{< viz kind="oxb-race" fig="4" title="Kafka acks out of order" fallback="oxb-race.svg" alt="You ack six events on three Kafka partitions in any order; one slot follows the latest ack, the other the contiguous acked prefix; a crash shows which events are lost or sent twice" caption="Six events from six transactions; keys hash to a 3-partition topic. Both rules use the message LSN from Figure 3, and here a status update follows every ack. At a crash, records Kafka has not acked are gone." >}}
 
 Even in stream order, `safe` can move backwards, because message LSNs
 follow write order. That is harmless: Postgres ignores a confirm below the
@@ -663,7 +663,7 @@ same as the table-based pattern. Figure 1 shows both endings.
 
 ## Scenario 3: consumer crash post-Kafka, pre-LSN-ack
 
-{{< viz kind="oxb-replay" fig="5" frame="none" title="A crash between the Kafka ack and the status update" fallback="oxb-replay.svg" alt="Timeline of events read from the WAL with a status update every second; a crash after the last update resends the events Kafka already stored since then" caption="A model of the 1-second status tick, not a benchmark. Events Kafka stored after the last status update are sent again; nothing before the slot is lost. The SQL result tags are from Postgres 17.7." >}}
+{{< viz kind="oxb-replay" fig="5" title="A crash between the Kafka ack and the status update" fallback="oxb-replay.svg" alt="Timeline of events read from the WAL with a status update every second; a crash after the last update resends the events Kafka already stored since then" caption="A model of the 1-second status tick, not a benchmark. Events Kafka stored after the last status update are sent again; nothing before the slot is lost. The SQL result tags are from Postgres 17.7." >}}
 
 The same event is produced to Kafka twice, by design: this is at-least-once,
 so the consumer must be idempotent. Dedupe on `event.Id` (a UUIDv7). For
@@ -678,7 +678,7 @@ already handled; keep the table as the authority.
 
 ## Scenario 4: Kafka down for hours
 
-{{< viz kind="oxb-backlog" fig="6" frame="none" title="Kafka is down: how long until something breaks?" fallback="oxb-backlog.svg" alt="WAL kept behind a stalled slot grows with outage length and WAL rate, against the 1 GiB alert, the 5 GiB page, max_slot_wal_keep_size, and free disk" caption="WAL per event uses the record layout in section 8, one event per commit. Other WAL stands for the rest of the cluster's writes; a stalled slot keeps all of it. Invalidation under `max_slot_wal_keep_size` and the error after it were checked on Postgres 17.7." >}}
+{{< viz kind="oxb-backlog" fig="6" title="Kafka is down: how long until something breaks?" fallback="oxb-backlog.svg" alt="WAL kept behind a stalled slot grows with outage length and WAL rate, against the 1 GiB alert, the 5 GiB page, max_slot_wal_keep_size, and free disk" caption="WAL per event uses the record layout in section 8, one event per commit. Other WAL stands for the rest of the cluster's writes; a stalled slot keeps all of it. Invalidation under `max_slot_wal_keep_size` and the error after it were checked on Postgres 17.7." >}}
 
 While Kafka is down, OwlPost reads up to **1000** events into the
 `w.events` channel (a buffered Go channel; sends block past that),

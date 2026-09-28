@@ -24,7 +24,7 @@
  * max_slot_wal_keep_size were checked on the same server. Code refers to
  * github.com/fampay-inc/factlib at cd2934e.
  */
-import { h, s, colorKey, codeBlock, register, esc, lsn, tween, ease, btn, uid, range, clamp, fmt } from './lib.js';
+import { h, s, colorKey, codeBlock, register, esc, lsn, tween, ease, btn, uid, range, clamp, fmt, stepper, chips, hatchDefs } from './lib.js';
 
 const hex2 = (b) => b.toString(16).padStart(2, '0');
 const hexOf = (str) => str.match(/../g);
@@ -40,9 +40,9 @@ const arrowDefs = (id) => `<defs>
 /** Holes along both edges of a tape band. */
 function tapeBand(x0, x1, y, hgt) {
   const g = s('g');
-  g.append(s('rect', { x: x0, y, width: x1 - x0, height: hgt, class: 'o-tape' }));
+  g.append(s('rect', { x: x0, y, width: x1 - x0, height: hgt, class: 'v-oxb-tape' }));
   for (let x = x0 + 7; x < x1 - 3; x += 14) {
-    g.append(s('circle', { cx: x, cy: y + 4.5, r: 1.8, class: 'o-hole' }), s('circle', { cx: x, cy: y + hgt - 4.5, r: 1.8, class: 'o-hole' }));
+    g.append(s('circle', { cx: x, cy: y + 4.5, r: 1.8, class: 'v-oxb-hole' }), s('circle', { cx: x, cy: y + hgt - 4.5, r: 1.8, class: 'v-oxb-hole' }));
   }
   return g;
 }
@@ -88,12 +88,12 @@ function svgPt(svg, e) {
   const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
   return p.matrixTransform(svg.getScreenCTM().inverse());
 }
-const details = (summary, ...kids) => h('details', { class: 'o-more' }, h('summary', null, summary), ...kids);
+const details = (summary, ...kids) => h('details', null, h('summary', null, summary), ...kids);
 const bookmark = (y0, y1, label = 'slot') => {
-  const g = s('g', { class: 'o-slot' });
-  g.append(s('line', { x1: 0, x2: 0, y1: y0, y2: y1, class: 'o-slot-line' }),
-    s('path', { d: `M0,${y0} l36,0 l-6,7 l6,7 l-36,0 z`, class: 'o-slot-flag' }),
-    T(4, y0 + 10.5, 'o-xs o-b o-paper', label));
+  const g = s('g', { class: 'v-oxb-slot' });
+  g.append(s('line', { x1: 0, x2: 0, y1: y0, y2: y1, class: 'v-oxb-slot-line' }),
+    s('path', { d: `M0,${y0} l36,0 l-6,7 l6,7 l-36,0 z`, class: 'v-oxb-slot-flag' }),
+    T(4, y0 + 10.5, 't-xs t-b t-board', label));
   return g;
 };
 
@@ -128,12 +128,12 @@ function initCommit(fig, app) {
   const aid = uid('oxh');
   let state = 'open'; let L = null; let el = null; let cancel = () => {};
   const stage = h('div');
-  const ask = h('p', { class: 'o-q' }, 'The row and the event are already in the WAL. End the transaction. Does the event reach Kafka?');
-  const bC = btn('COMMIT', () => end('commit'), { class: 'wv-btn o-opt' });
-  const bR = btn('ROLLBACK', () => end('rollback'), { class: 'wv-btn o-opt' });
-  const bAgain = btn('↺ again', () => { state = 'open'; draw(L === TXN.tall); }, { class: 'wv-btn o-ghost' });
-  const say = h('p', { class: 'o-note', 'aria-live': 'polite' });
-  app.append(ask, h('div', { class: 'o-opts' }, bC, bR, bAgain), stage, say,
+  const ask = h('p', { class: 'wv-q' }, 'The row and the event are already in the WAL. End the transaction. Does the event reach Kafka?');
+  const bC = btn('COMMIT', () => end('commit'));
+  const bR = btn('ROLLBACK', () => end('rollback'));
+  const bAgain = btn('↺ again', () => { state = 'open'; draw(L === TXN.tall); }, { class: 'wv-btn wv-btn--ghost' });
+  const say = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  app.append(ask, h('div', { class: 'wv-bar' }, bC, bR, bAgain), stage, say,
     colorKey([['k-data', 'event'], ['k-free', 'other WAL'], ['k-safe', 'slot, ack'], ['k-look', 'your transaction']]));
 
   function draw(vertical) {
@@ -143,47 +143,47 @@ function initCommit(fig, app) {
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': fig.getAttribute('aria-label') || '' });
     svg.innerHTML = arrowDefs(aid);
     const [tx0, tx1, ty, th] = L.tape; const [ry0, ry1] = L.rec;
-    svg.append(T(tx0 + 4, ty - 8, 'o-s o-b', 'WAL'), T(tx1, ty - 8, 'o-xs o-mute', vertical ? 'LSN →' : 'append-only · LSN →', 'end'));
+    svg.append(T(tx0 + 4, ty - 8, 't-s t-b', 'WAL'), T(tx1, ty - 8, 't-xs t-mute', vertical ? 'LSN →' : 'append-only · LSN →', 'end'));
     svg.append(tapeBand(tx0, tx1, ty, th));
     const rec = ([k, x0, x1, label], extra = '') => {
       const g = s('g', { class: extra });
-      g.append(s('rect', { x: x0, y: ry0, width: x1 - x0, height: ry1 - ry0, class: k === 'm' ? 'o-rec o-rec-msg' : k === 'c' ? 'o-rec o-rec-c' : 'o-rec' }));
-      if (label) g.append(T((x0 + x1) / 2, (ry0 + ry1) / 2 + 4, `o-xs o-b${k === 'm' ? ' o-data' : ''}`, label, 'middle'));
+      g.append(s('rect', { x: x0, y: ry0, width: x1 - x0, height: ry1 - ry0, class: k === 'm' ? 'v-oxb-rec v-oxb-rec-msg' : k === 'c' ? 'v-oxb-rec v-oxb-rec-c' : 'v-oxb-rec' }));
+      if (label) g.append(T((x0 + x1) / 2, (ry0 + ry1) / 2 + 4, `t-xs t-b${k === 'm' ? ' t-data' : ''}`, label, 'middle'));
       svg.append(g); return g;
     };
     L.old.forEach((r) => rec(r));
-    const recyc = s('rect', { x: tx0, y: ty, width: 0, height: th, class: 'o-recyc' }); svg.append(recyc);
-    const fresh = L.fresh.map((r) => rec(r, 'o-fresh'));
+    const recyc = s('rect', { x: tx0, y: ty, width: 0, height: th, class: 'v-oxb-recyc' }); svg.append(recyc);
+    const fresh = L.fresh.map((r) => rec(r, 'v-oxb-fresh'));
     const endRec = s('g'); svg.append(endRec);
     const ev = L.fresh[2];
-    const evTag = T((ev[1] + ev[2]) / 2, ry1 + 16, 'o-xs o-b o-look', 'waits for COMMIT', 'middle'); svg.append(evTag);
+    const evTag = T((ev[1] + ev[2]) / 2, ry1 + 16, 't-xs t-b t-look', 'waits for COMMIT', 'middle'); svg.append(evTag);
     // the transaction card
     const [cx, cy, cw, ch] = L.card;
-    svg.append(s('rect', { x: cx, y: cy, width: cw, height: ch, class: 'o-box o-look-box' }));
+    svg.append(s('rect', { x: cx, y: cy, width: cw, height: ch, class: 'box v-oxb-look-box' }));
     const lines = ['BEGIN;', 'INSERT INTO users …;', 'SELECT pg_logical_emit_message(', "    true, 'payments-user', event);"];
-    lines.forEach((ln, k) => svg.append(s('text', { x: cx + 12, y: cy + 22 + k * 19, class: `o-s o-pre${k >= 2 ? ' o-data o-b' : ''}` }, ln)));
-    const last = s('text', { x: cx + 12, y: cy + 22 + 4 * 19, class: 'o-s o-b o-look' }, '▢ COMMIT or ROLLBACK?'); svg.append(last);
+    lines.forEach((ln, k) => svg.append(s('text', { x: cx + 12, y: cy + 22 + k * 19, class: `t-s v-oxb-pre${k >= 2 ? ' t-data t-b' : ''}` }, ln)));
+    const last = s('text', { x: cx + 12, y: cy + 22 + 4 * 19, class: 't-s t-b t-look' }, '▢ COMMIT or ROLLBACK?'); svg.append(last);
     for (const r of L.fresh.filter((x) => x[3] !== '' || true)) {
       const x = (r[1] + r[2]) / 2;
       if (r[3] === 'idx' || (vertical && r !== ev)) continue;
-      svg.append(s('path', { d: `M${x},${cy + ch} L${x},${ry0 - 3}`, class: 'o-drop', 'marker-end': `url(#${aid}-p)` }));
+      svg.append(s('path', { d: `M${x},${cy + ch} L${x},${ry0 - 3}`, class: 'v-oxb-drop', 'marker-end': `url(#${aid}-p)` }));
     }
     // OwlPost and Kafka
     const box = ([x, y, w, hh], t1, cls) => {
-      svg.append(s('rect', { x, y, width: w, height: hh, class: cls }), T(x + w / 2, y + 21, 'o-m o-b', t1, 'middle'));
-      const sub = T(x + w / 2, y + 38, 'o-xs o-mute', '', 'middle'); svg.append(sub); return sub;
+      svg.append(s('rect', { x, y, width: w, height: hh, class: cls }), T(x + w / 2, y + 21, 't-m t-b', t1, 'middle'));
+      const sub = T(x + w / 2, y + 38, 't-xs t-mute', '', 'middle'); svg.append(sub); return sub;
     };
-    const owlSub = box(L.owl, 'OwlPost', 'o-box');
-    const kafSub = box(L.kafka, 'Kafka', 'o-box o-dash');
+    const owlSub = box(L.owl, 'OwlPost', 'box');
+    const kafSub = box(L.kafka, 'Kafka', 'box dash');
     const [ox, oy, ow, oh] = L.owl; const [kx, ky, , kh] = L.kafka;
     const evx = (ev[1] + ev[2]) / 2;
-    const read = s('path', { d: `M${evx},${ry1 + 22} L${clamp(evx, ox + 20, ox + ow - 20)},${oy}`, class: 'o-edge', 'marker-end': `url(#${aid}-i)` });
-    const prod = s('path', { d: vertical ? `M${ox + ow},${oy + oh / 2} L${kx},${ky + kh / 2}` : `M${ox + ow},${oy + oh / 2} L${kx},${ky + kh / 2}`, class: 'o-edge', 'marker-end': `url(#${aid}-i)` });
-    const ack = s('path', { d: `M${L.ackPath.map((q) => q.join(',')).join(' L')}`, class: 'o-edge-ack', 'marker-end': `url(#${aid}-g)` });
-    const ackLab = vertical ? T(278, 300, 'o-xs o-safe o-b', 'ack → slot', 'end') : T(746, 246, 'o-xs o-safe o-b', 'ack → status update');
+    const read = s('path', { d: `M${evx},${ry1 + 22} L${clamp(evx, ox + 20, ox + ow - 20)},${oy}`, class: 'edge', 'marker-end': `url(#${aid}-i)` });
+    const prod = s('path', { d: vertical ? `M${ox + ow},${oy + oh / 2} L${kx},${ky + kh / 2}` : `M${ox + ow},${oy + oh / 2} L${kx},${ky + kh / 2}`, class: 'edge', 'marker-end': `url(#${aid}-i)` });
+    const ack = s('path', { d: `M${L.ackPath.map((q) => q.join(',')).join(' L')}`, class: 'edge-ack', 'marker-end': `url(#${aid}-g)` });
+    const ackLab = vertical ? T(278, 300, 't-xs t-safe t-b', 'ack → slot', 'end') : T(746, 246, 't-xs t-safe t-b', 'ack → status update');
     [read, prod, ack, ackLab].forEach((x) => { x.style.opacity = 0; svg.append(x); });
     const slot = bookmark(ty - 16, ty + th + 6); slot.setAttribute('transform', `translate(${L.slot0},0)`); svg.append(slot);
-    const recLab = T(tx0 + 4, ty + th + 16, 'o-xs o-safe o-b', ''); svg.append(recLab);
+    const recLab = T(tx0 + 4, ty + th + 16, 't-xs t-safe t-b', ''); svg.append(recLab);
     stage.replaceChildren(svg);
     el = { svg, fresh, endRec, evTag, last, owlSub, kafSub, read, prod, ack, ackLab, slot, recyc, recLab };
     paint(state === 'open' ? 0 : 99);
@@ -192,26 +192,26 @@ function initCommit(fig, app) {
   function paint(t) {
     const e = el; const on = (a, b) => clamp((t - a) / (b - a), 0, 1);
     const open = state === 'open';
-    bC.disabled = !open; bR.disabled = !open; bAgain.style.visibility = open ? 'hidden' : 'visible';
+    bC.disabled = !open && state !== 'commit'; bR.disabled = !open && state !== 'rollback'; bAgain.style.visibility = open ? 'hidden' : 'visible';
     bC.setAttribute('aria-pressed', String(state === 'commit')); bR.setAttribute('aria-pressed', String(state === 'rollback'));
     const [, , ty] = L.tape; const [ry0, ry1] = L.rec;
     e.endRec.replaceChildren();
     if (!open) {
       const w = state === 'commit' ? L.commitW : L.abortW;
-      e.endRec.append(s('rect', { x: L.end, y: ry0, width: w, height: ry1 - ry0, class: state === 'commit' ? 'o-rec o-rec-c' : 'o-rec o-rec-abort' }));
-      e.endRec.append(T(L.end + w, ty - 21, `o-xs o-b ${state === 'commit' ? '' : 'o-bad'}`, state === 'commit' ? 'COMMIT 46 B' : 'ABORT 34 B', 'end'));
+      e.endRec.append(s('rect', { x: L.end, y: ry0, width: w, height: ry1 - ry0, class: state === 'commit' ? 'v-oxb-rec v-oxb-rec-c' : 'v-oxb-rec v-oxb-rec-abort' }));
+      e.endRec.append(T(L.end + w, ty - 21, `t-xs t-b ${state === 'commit' ? '' : 't-bad'}`, state === 'commit' ? 'COMMIT 46 B' : 'ABORT 34 B', 'end'));
     }
     e.last.textContent = open ? '▢ COMMIT or ROLLBACK?' : state === 'commit' ? 'COMMIT;' : 'ROLLBACK;';
     e.fresh.forEach((g) => g.classList.toggle('is-void', state === 'rollback'));
     e.evTag.textContent = open ? 'waits for COMMIT' : state === 'commit' ? 'decoded at COMMIT' : 'in WAL, never decoded';
-    e.evTag.setAttribute('class', `o-xs o-b ${open ? 'o-look' : state === 'commit' ? 'o-data' : 'o-mute'}`);
+    e.evTag.setAttribute('class', `t-xs t-b ${open ? 't-look' : state === 'commit' ? 't-data' : 't-mute'}`);
     const c = state === 'commit';
     e.read.style.opacity = c ? on(0.2, 0.8) : 0;
     e.prod.style.opacity = c ? on(0.8, 1.4) : 0;
     e.ack.style.opacity = c ? on(1.4, 2.0) : 0; e.ackLab.style.opacity = e.ack.style.opacity;
     e.owlSub.textContent = open ? 'sees nothing yet' : c ? 'prefix payments-user ✓' : 'sees nothing';
     e.kafSub.textContent = open ? '' : c ? (on(0.8, 1.4) >= 1 ? '+1 record: user.created' : '') : 'nothing arrives';
-    e.kafSub.setAttribute('class', `o-xs o-b ${c ? 'o-safe' : 'o-mute'}`);
+    e.kafSub.setAttribute('class', `t-xs t-b ${c ? 't-safe' : 't-mute'}`);
     const slotTo = L.end + L.commitW;
     const x = c ? L.slot0 + (slotTo - L.slot0) * ease(on(2.0, 2.6)) : L.slot0;
     e.slot.setAttribute('transform', `translate(${x},0)`);
@@ -224,6 +224,7 @@ function initCommit(fig, app) {
   }
 
   function end(which) {
+    if (state !== 'open') return;
     state = which;
     cancel();
     cancel = tween(which === 'commit' ? 3000 : 400, (k) => paint(k * (which === 'commit' ? 3 : 1)));
@@ -245,11 +246,11 @@ const CANDS = [
 function initAckLsn(fig, app) {
   const L0 = 0x15A06F8; const L1 = 0x15A0BD0;
   let ack = L0 + 16; let moved = false; let V = false; let G = null;
-  const stage = h('div', { class: 'o-ruler' });
-  const q = h('p', { class: 'o-q' }, 'A is in Kafka. B is still in flight. Drag the green slot to where OwlPost should confirm, then look under each COMMIT.');
-  const jump = CANDS.map((c) => btn(h('span', null, h('b', null, `${c.n} `), h('code', null, c.name)), () => { set(c.at); }, { class: 'wv-btn o-opt' }));
-  const verdict = h('div', { class: 'o-verdict', 'aria-live': 'polite' });
-  const why = h('p', { class: 'o-note' });
+  const stage = h('div');
+  const q = h('p', { class: 'wv-q' }, 'A is in Kafka. B is still in flight. Drag the green slot to where OwlPost should confirm, then look under each COMMIT.');
+  const jump = chips(CANDS.map((c) => [c.at, `${c.n} · ${c.name}`]), (v) => set(v), { label: 'Jump to a mark' });
+  const verdict = h('div', { class: 'wv-verdict', 'aria-live': 'polite' });
+  const why = h('div', { class: 'wv-note' });
 
   function draw(vertical) {
     V = vertical;
@@ -261,60 +262,60 @@ function initAckLsn(fig, app) {
     const box = (l0, l1, c0, c1) => (vertical ? { x: c0, y: P(l0), width: c1 - c0, height: P(l1) - P(l0) } : { x: P(l0), y: c0, width: P(l1) - P(l0), height: c1 - c0 });
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'WAL records of transactions A and B with a movable slot' });
     const aid = uid('oxa'); svg.innerHTML = arrowDefs(aid);
-    for (const tx of ['A', 'B']) svg.append(s('rect', { ...box(L0, L1, TR[tx][0] - 7, TR[tx][1] + 7), class: 'o-tape' }));
+    for (const tx of ['A', 'B']) svg.append(s('rect', { ...box(L0, L1, TR[tx][0] - 7, TR[tx][1] + 7), class: 'v-oxb-tape' }));
     if (vertical) {
-      svg.append(T(126, 24, 'o-m o-b', 'A', 'middle'), T(126, 38, 'o-xs o-mute', 'commits 1st', 'middle'), T(226, 24, 'o-m o-b', 'B', 'middle'), T(226, 38, 'o-xs o-mute', 'commits 2nd', 'middle'), T(4, 56, 'o-xs o-mute', 'LSN ↓'));
+      svg.append(T(126, 24, 't-m t-b', 'A', 'middle'), T(126, 38, 't-xs t-mute', 'commits 1st', 'middle'), T(226, 24, 't-m t-b', 'B', 'middle'), T(226, 38, 't-xs t-mute', 'commits 2nd', 'middle'), T(4, 56, 't-xs t-mute', 'LSN ↓'));
     } else {
-      svg.append(s('text', { x: m0, y: TR.A[0] - 14, class: 'o-s' }, s('tspan', { class: 'o-b' }, 'A '), s('tspan', { class: 'o-mute' }, 'user-12345 · commits first · in Kafka')),
-        s('text', { x: m0, y: TR.B[0] - 14, class: 'o-s' }, s('tspan', { class: 'o-b' }, 'B '), s('tspan', { class: 'o-mute' }, 'user-12346 · writes first, commits second · in flight')),
-        T(m1, H - 4, 'o-xs o-mute', 'LSN →', 'end'));
+      svg.append(s('text', { x: m0, y: TR.A[0] - 14, class: 't-s' }, s('tspan', { class: 't-b' }, 'A '), s('tspan', { class: 't-mute' }, 'user-12345 · commits first · in Kafka')),
+        s('text', { x: m0, y: TR.B[0] - 14, class: 't-s' }, s('tspan', { class: 't-b' }, 'B '), s('tspan', { class: 't-mute' }, 'user-12346 · writes first, commits second · in flight')),
+        T(m1, H - 4, 't-xs t-mute', 'LSN →', 'end'));
     }
     const later = box(WAL_END, L1, TR.A[0], TR.B[1]);
-    svg.append(s('rect', { ...later, class: 'o-later' }), vertical ? T(later.x + later.width / 2, later.y + later.height - 8, 'o-xs o-mute', 'later WAL', 'middle') : T(later.x + 6, TR.A[0] + 14, 'o-xs o-mute', 'later WAL'));
+    svg.append(s('rect', { ...later, class: 'v-oxb-later' }), vertical ? T(later.x + later.width / 2, later.y + later.height - 8, 't-xs t-mute', 'later WAL', 'middle') : T(later.x + 6, TR.A[0] + 14, 't-xs t-mute', 'later WAL'));
     for (const r of WAL) {
       const b = box(r.at, r.at + Math.ceil(r.len / 8) * 8, ...TR[r.tx]);
-      svg.append(s('rect', { ...b, class: r.kind === 'MESSAGE' ? 'o-rec o-rec-msg' : r.kind === 'COMMIT' ? 'o-rec o-rec-c' : 'o-rec' }));
+      svg.append(s('rect', { ...b, class: r.kind === 'MESSAGE' ? 'v-oxb-rec v-oxb-rec-msg' : r.kind === 'COMMIT' ? 'v-oxb-rec v-oxb-rec-c' : 'v-oxb-rec' }));
       const cx = b.x + b.width / 2; const cy = b.y + b.height / 2;
-      if (r.kind === 'MESSAGE') svg.append(T(cx, cy + 4, 'o-xs o-data o-b', vertical ? 'event' : `event · ${r.len} B`, 'middle'));
-      else if (r.kind !== 'COMMIT') svg.append(T(cx, cy + 3.5, 'o-xs', vertical ? '' : r.kind, 'middle'));
+      if (r.kind === 'MESSAGE') svg.append(T(cx, cy + 4, 't-xs t-data t-b', vertical ? 'event' : `event · ${r.len} B`, 'middle'));
+      else if (r.kind !== 'COMMIT') svg.append(T(cx, cy + 3.5, 't-xs', vertical ? '' : r.kind, 'middle'));
     }
     // COMMIT labels and fates, right next to each COMMIT record
     const fates = {};
     for (const tx of ['A', 'B']) {
       const b = box(COMMIT_OF[tx], COMMIT_OF[tx] + 48, ...TR[tx]);
       if (vertical) {
-        svg.append(T(b.x + b.width / 2, b.y + b.height / 2 + 3.5, 'o-xs o-b', 'COMMIT', 'middle'));
-        fates[tx] = T(276, b.y + b.height / 2 + 4, 'o-s o-b', '?', 'start');
+        svg.append(T(b.x + b.width / 2, b.y + b.height / 2 + 3.5, 't-xs t-b', 'COMMIT', 'middle'));
+        fates[tx] = T(276, b.y + b.height / 2 + 4, 't-s t-b', '?', 'start');
       } else {
-        svg.append(T(b.x + b.width / 2, TR[tx][1] + 20, 'o-xs o-b', 'COMMIT', 'middle'));
-        fates[tx] = T(b.x + b.width / 2, TR[tx][1] + 34, 'o-s o-b', '?', 'middle');
+        svg.append(T(b.x + b.width / 2, TR[tx][1] + 20, 't-xs t-b', 'COMMIT', 'middle'));
+        fates[tx] = T(b.x + b.width / 2, TR[tx][1] + 34, 't-s t-b', '?', 'middle');
       }
       svg.append(fates[tx]);
     }
     // candidate marks: numbered purple ticks on the axis
     for (const c of CANDS) {
       const v = P(c.at);
-      const g = s('g', { class: 'o-cand', role: 'button', tabindex: -1 });
-      if (vertical) g.append(s('circle', { cx: 68, cy: v, r: 7 }), T(68, v + 3.5, 'o-xs o-b o-paper', String(c.n), 'middle'), s('line', { x1: 72, x2: 272, y1: v, y2: v, class: 'o-candline' }));
-      else g.append(s('circle', { cx: v, cy: TR.B[1] + 56, r: 8 }), T(v, TR.B[1] + 59.5, 'o-xs o-b o-paper', String(c.n), 'middle'), s('line', { x1: v, x2: v, y1: TR.A[0] - 8, y2: TR.B[1] + 48, class: 'o-candline' }));
+      const g = s('g', { class: 'v-oxb-cand', role: 'button', tabindex: -1 });
+      if (vertical) g.append(s('circle', { cx: 68, cy: v, r: 7 }), T(68, v + 3.5, 't-xs t-b t-board', String(c.n), 'middle'), s('line', { x1: 72, x2: 272, y1: v, y2: v, class: 'v-oxb-candline' }));
+      else g.append(s('circle', { cx: v, cy: TR.B[1] + 56, r: 8 }), T(v, TR.B[1] + 59.5, 't-xs t-b t-board', String(c.n), 'middle'), s('line', { x1: v, x2: v, y1: TR.A[0] - 8, y2: TR.B[1] + 48, class: 'v-oxb-candline' }));
       g.addEventListener('click', () => set(c.at));
       svg.append(g);
     }
     // the slot the reader drags
-    const slot = s('g', { class: 'o-drag', tabindex: 0, role: 'slider', 'aria-label': 'Slot position (LSN)', 'aria-valuemin': L0, 'aria-valuemax': L1 });
+    const slot = s('g', { class: 'v-oxb-drag', tabindex: 0, role: 'slider', 'aria-label': 'Slot position (LSN)', 'aria-valuemin': L0, 'aria-valuemax': L1 });
     if (vertical) {
-      slot.append(s('rect', { x: 66, y: -12, width: 220, height: 24, class: 'o-hit' }), s('line', { x1: 70, x2: 280, y1: 0, y2: 0, class: 'o-slot-line' }),
-        s('path', { d: 'M2,-9 l54,0 l0,18 l-54,0 z', class: 'o-slot-flag' }), T(6, 4, 'o-xs o-b o-paper', 'slot ↕'));
+      slot.append(s('rect', { x: 66, y: -12, width: 220, height: 24, class: 'v-oxb-hit' }), s('line', { x1: 70, x2: 280, y1: 0, y2: 0, class: 'v-oxb-slot-line' }),
+        s('path', { d: 'M2,-9 l54,0 l0,18 l-54,0 z', class: 'v-oxb-slot-flag' }), T(6, 4, 't-xs t-b t-board', 'slot ↕'));
     } else {
-      slot.append(s('rect', { x: -12, y: 20, width: 24, height: TR.B[1] - 12, class: 'o-hit' }), s('line', { x1: 0, x2: 0, y1: 18, y2: TR.B[1] + 8, class: 'o-slot-line' }),
-        s('path', { d: 'M0,4 l58,0 l-7,8 l7,8 l-58,0 z', class: 'o-slot-flag' }), T(5, 16, 'o-xs o-b o-paper', 'slot ↔'));
+      slot.append(s('rect', { x: -12, y: 20, width: 24, height: TR.B[1] - 12, class: 'v-oxb-hit' }), s('line', { x1: 0, x2: 0, y1: 18, y2: TR.B[1] + 8, class: 'v-oxb-slot-line' }),
+        s('path', { d: 'M0,4 l58,0 l-7,8 l7,8 l-58,0 z', class: 'v-oxb-slot-flag' }), T(5, 16, 't-xs t-b t-board', 'slot ↔'));
     }
-    const lab = T(0, 0, 'o-s o-b o-safe', ''); svg.append(slot, lab);
+    const lab = T(0, 0, 't-s t-b t-safe', ''); svg.append(slot, lab);
     // dragging
     const toL = (e) => { const p = svgPt(svg, e); return clamp(inv(vertical ? p.y : p.x), L0, L1); };
     const snap = (l) => { for (const c of CANDS) if (Math.abs(P(l) - P(c.at)) < 9) return c.at; return Math.round(l / 8) * 8; };
     let drag = false;
-    svg.addEventListener('pointerdown', (e) => { if (e.target.closest('.o-cand')) return; drag = true; svg.setPointerCapture(e.pointerId); set(snap(toL(e))); e.preventDefault(); });
+    svg.addEventListener('pointerdown', (e) => { if (e.target.closest('.v-oxb-cand')) return; drag = true; svg.setPointerCapture(e.pointerId); set(snap(toL(e))); e.preventDefault(); });
     svg.addEventListener('pointermove', (e) => { if (drag) set(snap(toL(e))); });
     svg.addEventListener('pointerup', () => { drag = false; });
     slot.addEventListener('keydown', (e) => {
@@ -337,15 +338,16 @@ function initAckLsn(fig, app) {
     else { const right = v > W * 0.8; lab.setAttribute('x', right ? v - 6 : v + 64); lab.setAttribute('y', 16); lab.setAttribute('text-anchor', right ? 'end' : 'start'); }
     // Postgres sends a transaction again iff its COMMIT starts at or after the slot.
     const againA = COMMIT_OF.A >= ack; const againB = COMMIT_OF.B >= ack;
-    const set1 = (t, txt, cls) => { t.textContent = moved ? txt : '?'; t.setAttribute('class', `o-s o-b ${moved ? cls : 'o-look'}`); };
-    set1(fates.A, againA ? 'sent again' : 'in Kafka ✓', againA ? '' : 'o-safe');
-    set1(fates.B, againB ? 'sent again ✓' : 'LOST', againB ? 'o-safe' : 'o-bad');
+    const set1 = (t, txt, cls) => { t.textContent = moved ? txt : '?'; t.setAttribute('class', `t-s t-b ${moved ? cls : 't-look'}`); };
+    set1(fates.A, againA ? 'sent again' : 'in Kafka ✓', againA ? '' : 't-safe');
+    set1(fates.B, againB ? 'sent again ✓' : 'LOST', againB ? 't-safe' : 't-bad');
     const c = CANDS.find((x) => x.at === ack);
-    jump.forEach((b, k) => b.setAttribute('aria-pressed', String(CANDS[k].at === ack)));
-    if (!moved) { verdict.className = 'o-verdict'; verdict.textContent = ''; why.innerHTML = 'The marks 1–3 are LSNs OwlPost can compute. Try each, or anywhere else.'; return; }
-    if (!againB) { verdict.className = 'o-verdict is-bad'; verdict.textContent = 'B is lost. Its COMMIT is before the slot, so Postgres will not send B again, and Kafka never got it.'; }
-    else if (againA) { verdict.className = 'o-verdict is-good'; verdict.textContent = 'Safe. Postgres sends A again once (consumers drop the copy by event.Id) and sends B.'; }
-    else { verdict.className = 'o-verdict is-good'; verdict.textContent = 'Safe and exact. A is not repeated; B’s COMMIT starts at or after the slot, so B is sent again.'; }
+    jump.set(c ? c.at : null);
+    verdict.hidden = !moved;
+    if (!moved) { verdict.textContent = ''; why.innerHTML = 'The marks 1–3 are LSNs OwlPost can compute. Try each, or anywhere else.'; return; }
+    if (!againB) { verdict.className = 'wv-verdict is-bad'; verdict.textContent = 'B is lost. Its COMMIT is before the slot, so Postgres will not send B again, and Kafka never got it.'; }
+    else if (againA) { verdict.className = 'wv-verdict is-good'; verdict.textContent = 'Safe. Postgres sends A again once (consumers drop the copy by event.Id) and sends B.'; }
+    else { verdict.className = 'wv-verdict is-good'; verdict.textContent = 'Safe and exact. A is not repeated; B’s COMMIT starts at or after the slot, so B is sent again.'; }
     why.innerHTML = c ? `<b>${c.n} · ${esc(c.name)}</b>, ${esc(c.who)}: ${c.why}` : 'Rule: after a restart, Postgres sends a transaction again only if its COMMIT record starts at or after <code>confirmed_flush_lsn</code>.';
   }
   function set(l) { ack = l; moved = true; paint(); }
@@ -356,8 +358,8 @@ function initAckLsn(fig, app) {
     `newXLogPos := xld.WALStart                                   // 2: «${lsn(A_MSG_LSN)}»`,
     `txEnd := commitMsg.TransactionEndLSN                         // 3: «${lsn(COMMIT_OF.A + 48)}»`,
   ], [1]) });
-  const stream = h('div', { class: 'o-scroll', html: `<table class="o-table"><thead><tr><th>#</th><th>frame</th><th>WALStart</th><th></th></tr></thead><tbody>${STREAM.map((r, j) => `<tr><td>${j + 1}</td><td><b>${r.tx}</b> ${r.f}</td><td class="c-data">${lsn(r.at)}</td><td>${esc(r.note)}</td></tr>`).join('')}</tbody></table><p class="o-small">B arrives second, but its message LSN is lower than A’s: message LSNs follow write order, the stream follows commit order.</p>` });
-  app.append(q, stage, verdict, why, h('div', { class: 'o-opts o-jump' }, h('span', { class: 'o-lab' }, 'jump to'), ...jump),
+  const stream = h('div', { class: 'wv-scroll', html: `<table class="wv-table"><thead><tr><th>#</th><th>frame</th><th>WALStart</th><th></th></tr></thead><tbody>${STREAM.map((r, j) => `<tr><td>${j + 1}</td><td><b>${r.tx}</b> ${r.f}</td><td class="c-data">${lsn(r.at)}</td><td>${esc(r.note)}</td></tr>`).join('')}</tbody></table><p>B arrives second, but its message LSN is lower than A’s: message LSNs follow write order, the stream follows commit order.</p>` });
+  app.append(q, stage, verdict, why, h('div', { class: 'wv-title v-oxb-gap' }, 'Jump to a mark'), jump.el,
     details('The code behind 1–3, and the frames in stream order', code, stream),
     colorKey([['k-data', 'event'], ['k-free', 'other WAL'], ['k-safe', 'slot / safe'], ['k-look', 'LSNs OwlPost can compute'], ['k-gap', 'lost'], ['k-opt', 'controls']]));
   responsive(app, draw);
@@ -393,10 +395,8 @@ const FORMS = [
 
 function initFollow(fig, app) {
   let i = 0; let V = false;
-  const stops = FORMS.map((f, k) => btn(h('span', null, h('b', null, `${k + 1}`), ` ${f.stop}`), () => go(k), { class: 'o-stopbtn' }));
-  const nav = h('div', { class: 'o-stops', role: 'group', 'aria-label': 'Stops' }, ...stops);
   const stage = h('div');
-  const say = h('p', { class: 'o-note', 'aria-live': 'polite' });
+  const say = h('div', { class: 'wv-note', 'aria-live': 'polite' });
   const more = h('div');
   function draw(vertical = V) {
     V = vertical;
@@ -413,58 +413,58 @@ function initFollow(fig, app) {
       let x = c0; const small = [];
       CORE.forEach(([name, n]) => {
         const w = n * k;
-        svg.append(s('rect', { x, y: y0, width: w, height: hh, class: 'o-rec o-rec-msg' }));
-        if (w >= name.length * 6.2 + 8) svg.append(T(x + w / 2, y0 + hh / 2 + 4, 'o-xs o-data o-b', name, 'middle'));
+        svg.append(s('rect', { x, y: y0, width: w, height: hh, class: 'v-oxb-rec v-oxb-rec-msg' }));
+        if (w >= name.length * 6.2 + 8) svg.append(T(x + w / 2, y0 + hh / 2 + 4, 't-xs t-data t-b', name, 'middle'));
         else small.push([name, n, x + w / 2]);
         x += w;
       });
       // labels sit left of their leader; leftmost on the top row, so no leader crosses a label
       small.forEach(([name, n, lx], r) => {
         const ly = y0 + hh + 14 + r * 12;
-        svg.append(s('line', { x1: lx, x2: lx, y1: y0 + hh, y2: ly - 9, class: 'o-leader' }), T(lx - 2, ly, 'o-xs o-data', `${name} · ${n} B`, 'end'));
+        svg.append(s('line', { x1: lx, x2: lx, y1: y0 + hh, y2: ly - 9, class: 'v-oxb-leader' }), T(lx - 2, ly, 't-xs t-data', `${name} · ${n} B`, 'end'));
       });
-      svg.append(s('path', { d: `M${c0},${y0 - 4} L${c0},${y0 - 12} L${c0 + coreW},${y0 - 12} L${c0 + coreW},${y0 - 4}`, class: 'o-brace' }),
-        T(c0 + coreW / 2, y0 - 18, 'o-s o-b o-data', '225 B protobuf · OutboxEvent', 'middle'));
+      svg.append(s('path', { d: `M${c0},${y0 - 4} L${c0},${y0 - 12} L${c0 + coreW},${y0 - 12} L${c0 + coreW},${y0 - 4}`, class: 'v-oxb-brace' }),
+        T(c0 + coreW / 2, y0 - 18, 't-s t-b t-data', '225 B protobuf · OutboxEvent', 'middle'));
     } else {
-      svg.append(s('rect', { x: c0, y: y0, width: coreW, height: hh, class: 'o-rec o-rec-msg' }));
+      svg.append(s('rect', { x: c0, y: y0, width: coreW, height: hh, class: 'v-oxb-rec v-oxb-rec-msg' }));
     }
-    if (!f.coreFields) svg.append(T(c0 + coreW / 2, y0 + hh / 2 + 5, 'o-m o-b o-data', 'event · 225 B', 'middle'));
+    if (!f.coreFields) svg.append(T(c0 + coreW / 2, y0 + hh / 2 + 5, 't-m t-b t-data', 'event · 225 B', 'middle'));
     // the envelope, to the left of the core; labels climb a staircase so none overlap
     const n = f.wrap.length;
     let x = c0 - f.wrap.reduce((m, [, b]) => m + Math.max(b * k, 3), 0);
     f.wrap.forEach(([name, b], j) => {
       const w = Math.max(b * k, 3);
-      svg.append(s('rect', { x, y: y0, width: w, height: hh, class: 'o-rec o-env' }));
+      svg.append(s('rect', { x, y: y0, width: w, height: hh, class: 'v-oxb-rec v-oxb-env' }));
       const lx = x + w / 2; const ly = y0 - 12 - (n - 1 - j) * 13;
-      svg.append(s('line', { x1: lx, x2: lx, y1: y0, y2: ly + 3, class: 'o-leader' }), T(lx - 2, ly, 'o-xs', `${name} · ${b} B`));
+      svg.append(s('line', { x1: lx, x2: lx, y1: y0, y2: ly + 3, class: 'v-oxb-leader' }), T(lx - 2, ly, 't-xs', `${name} · ${b} B`));
       x += w;
     });
     if (f.total) {
       const start = c0 - (f.total - 225) * k; const by = y0 + hh + 8;
-      svg.append(s('path', { d: `M${start},${by - 4} L${start},${by + 4} L${c0 + coreW},${by + 4} L${c0 + coreW},${by - 4}`, class: 'o-brace' }),
-        T((start + c0 + coreW) / 2, by + 18, 'o-s o-b', f.frame ? '253 B pgoutput MESSAGE' : '292 B WAL record', 'middle'));
+      svg.append(s('path', { d: `M${start},${by - 4} L${start},${by + 4} L${c0 + coreW},${by + 4} L${c0 + coreW},${by - 4}`, class: 'v-oxb-brace' }),
+        T((start + c0 + coreW) / 2, by + 18, 't-s t-b', f.frame ? '253 B pgoutput MESSAGE' : '292 B WAL record', 'middle'));
     }
     if (f.lsnFrom) {
-      svg.append(T(c0 - 67 * k, y0 + hh + 46, 'o-xs o-data o-b', `▲ ${lsn(f.lsnFrom)}`, 'start'), T(c0 + coreW, y0 + hh + 46, 'o-xs o-data o-b', `${lsn(f.lsnTo)} ▲`, 'end'));
+      svg.append(T(c0 - 67 * k, y0 + hh + 46, 't-xs t-data t-b', `▲ ${lsn(f.lsnFrom)}`, 'start'), T(c0 + coreW, y0 + hh + 46, 't-xs t-data t-b', `${lsn(f.lsnTo)} ▲`, 'end'));
     }
     if (f.frame) {
       const ws = c0 - 28 * k;
-      svg.append(T(ws, y0 + hh + 46, 'o-xs o-data o-b', `▲ WALStart ${lsn(A_MSG_LSN)}`, 'start'));
+      svg.append(T(ws, y0 + hh + 46, 't-xs t-data t-b', `▲ WALStart ${lsn(A_MSG_LSN)}`, 'start'));
     }
     if (f.tag) {
-      svg.append(s('rect', { x: c0 - (vertical ? 92 : 190), y: y0 + 6, width: vertical ? 86 : 180, height: hh - 12, class: 'o-rec o-tagbad' }),
-        T(c0 - (vertical ? 49 : 100), y0 + hh / 2 + 4, 'o-xs o-b o-bad', vertical ? lsn(EV.ack) : `XLogPos ${lsn(EV.ack)}`, 'middle'),
-        T(c0 - (vertical ? 49 : 100), y0 - 10, 'o-xs', vertical ? 'XLogPos' : 'WALStart + 253', 'middle'));
+      svg.append(s('rect', { x: c0 - (vertical ? 92 : 190), y: y0 + 6, width: vertical ? 86 : 180, height: hh - 12, class: 'v-oxb-rec v-oxb-tagbad' }),
+        T(c0 - (vertical ? 49 : 100), y0 + hh / 2 + 4, 't-xs t-b t-bad', vertical ? lsn(EV.ack) : `XLogPos ${lsn(EV.ack)}`, 'middle'),
+        T(c0 - (vertical ? 49 : 100), y0 - 10, 't-xs', vertical ? 'XLogPos' : 'WALStart + 253', 'middle'));
     }
     if (f.headers) {
       const hs = ['event_id', 'event_type', `LSN ${lsn(EV.ack)}`, 'trace_id', 'span_id', 'parent_op', 'is_sampled'];
-      svg.append(T(c0 - 10 * k - 6, y0 + hh / 2 + 4, 'o-xs o-mute', vertical ? '' : 'P1 ·', 'end'));
+      svg.append(T(c0 - 10 * k - 6, y0 + hh / 2 + 4, 't-xs t-mute', vertical ? '' : 'P1 ·', 'end'));
       let hx = vertical ? 10 : c0 - 10 * k; let hy = y0 + hh + 36;
-      svg.append(T(hx, hy - 17, 'o-xs o-mute', vertical ? `headers · partition ${PARTITION}` : `headers · topic payments-user.user · partition ${PARTITION}`));
+      svg.append(T(hx, hy - 17, 't-xs t-mute', vertical ? `headers · partition ${PARTITION}` : `headers · topic payments-user.user · partition ${PARTITION}`));
       for (const t of hs) {
         const w = t.length * 6.2 + 12;
         if (hx + w > W - 8) { hx = vertical ? 10 : c0 - 10 * k; hy += 20; }
-        svg.append(s('rect', { x: hx, y: hy - 11, width: w, height: 16, rx: 8, class: t.startsWith('LSN') ? 'o-hdr is-lsn' : 'o-hdr' }), T(hx + w / 2, hy + 1, `o-xs${t.startsWith('LSN') ? ' o-b' : ''}`, t, 'middle'));
+        svg.append(s('rect', { x: hx, y: hy - 11, width: w, height: 16, rx: 8, class: t.startsWith('LSN') ? 'v-oxb-hdr is-lsn' : 'v-oxb-hdr' }), T(hx + w / 2, hy + 1, `t-xs${t.startsWith('LSN') ? ' t-b' : ''}`, t, 'middle'));
         hx += w + 5;
       }
     }
@@ -474,33 +474,29 @@ function initFollow(fig, app) {
       svg.append(tapeBand(c0 - 60 * k, c0 + coreW, ty, 30));
       const b = bookmark(ty - 12, ty + 34);
       b.setAttribute('transform', `translate(${c0 + coreW - 10},0)`);
-      svg.append(b, T(c0 + coreW - 16, ty + 20, 'o-xs o-b o-safe', `confirmed_flush_lsn = ${lsn(EV.ack)}`, 'end'));
-      svg.append(s('rect', { x: c0 + coreW - 118, y: y0 - 30, width: 110, height: 18, rx: 9, class: 'o-hdr is-lsn' }), T(c0 + coreW - 63, y0 - 17, 'o-xs o-b', `LSN ${lsn(EV.ack)}`, 'middle'),
-        s('path', { d: `M${c0 + coreW - 63},${y0 - 12} C${c0 + coreW - 63},${ty - 30} ${c0 + coreW - 10},${ty - 30} ${c0 + coreW - 10},${ty - 14}`, class: 'o-edge-ack', 'marker-end': `url(#${aid}-g)` }));
-      svg.querySelectorAll('.o-rec-msg').forEach((r) => r.classList.add('is-faded'));
+      svg.append(b, T(c0 + coreW - 16, ty + 20, 't-xs t-b t-safe', `confirmed_flush_lsn = ${lsn(EV.ack)}`, 'end'));
+      svg.append(s('rect', { x: c0 + coreW - 118, y: y0 - 30, width: 110, height: 18, rx: 9, class: 'v-oxb-hdr is-lsn' }), T(c0 + coreW - 63, y0 - 17, 't-xs t-b', `LSN ${lsn(EV.ack)}`, 'middle'),
+        s('path', { d: `M${c0 + coreW - 63},${y0 - 12} C${c0 + coreW - 63},${ty - 30} ${c0 + coreW - 10},${ty - 30} ${c0 + coreW - 10},${ty - 14}`, class: 'edge-ack', 'marker-end': `url(#${aid}-g)` }));
+      svg.querySelectorAll('.v-oxb-rec-msg').forEach((r) => r.classList.add('is-faded'));
     }
     stage.replaceChildren(svg);
   }
   function go(n) {
     i = clamp(n, 0, FORMS.length - 1);
-    stops.forEach((b, k) => { b.setAttribute('aria-current', k === i ? 'step' : 'false'); b.classList.toggle('is-past', k < i); });
     draw();
     const f = FORMS[i];
-    say.innerHTML = `<b class="o-stepn">${i + 1} · ${esc(f.stop)}</b> <span class="o-where">${esc(f.where)}</span><br>${f.say}`;
+    say.innerHTML = `<span class="k">${String(i + 1).padStart(2, '0')} · ${esc(f.where)}</span>${f.say}`;
     more.replaceChildren();
     if (f.code) more.append(details('code', h('div', { html: codeBlock(f.code, [1]) })));
     if (i === 2) more.append(details('the bytes of this frame', h('div', { html: hexDump() })));
   }
-  fig.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight') { go(i + 1); e.preventDefault(); }
-    if (e.key === 'ArrowLeft') { go(i - 1); e.preventDefault(); }
-  });
-  app.append(nav, stage, say, more, colorKey([['k-data', 'the event’s 225 bytes'], ['k-free', 'envelope'], ['k-gap', 'the LSN from WALStart + 253'], ['k-safe', 'slot'], ['k-opt', 'stops']]));
+  const stp = stepper(fig, FORMS.map((f) => ({ label: f.stop })), (n) => go(n), { interval: 4200 });
+  app.append(stp.el, stage, colorKey([['k-data', 'the event’s 225 bytes'], ['k-free', 'envelope'], ['k-gap', 'the LSN from WALStart + 253'], ['k-safe', 'slot']]), say, more);
   responsive(app, draw);
-  go(0);
-  more.addEventListener('mouseover', (e) => { const fld = e.target.closest('.o-fld'); if (fld) hot(fld); });
-  more.addEventListener('focusin', (e) => { const fld = e.target.closest('.o-fld'); if (fld) hot(fld); });
-  function hot(fld) { more.querySelectorAll('.o-fld').forEach((o) => o.classList.toggle('is-hot', o === fld)); const l = more.querySelector('.o-hexl .lab'); if (l) l.textContent = fld.dataset.l; }
+  stp.go(0);
+  more.addEventListener('mouseover', (e) => { const fld = e.target.closest('.fld'); if (fld) hot(fld); });
+  more.addEventListener('focusin', (e) => { const fld = e.target.closest('.fld'); if (fld) hot(fld); });
+  function hot(fld) { more.querySelectorAll('.fld').forEach((o) => o.classList.toggle('is-hot', o === fld)); const l = more.querySelector('.hexlabel'); if (l) l.textContent = fld.dataset.l; }
 }
 
 /* The M frame exactly as received for event A, split into fields. */
@@ -521,9 +517,9 @@ const M_FIELDS = [
 function hexDump() {
   const spans = M_FIELDS.map(([cls, label, bytes]) => {
     const shown = bytes.length > 20 ? `${bytes.slice(0, 10).join(' ')} … ${bytes.slice(-3).join(' ')}` : bytes.join(' ');
-    return `<span class="o-fld ${cls}" tabindex="0" data-l="${esc(label)} · ${bytes.length} B">${shown}</span>`;
+    return `<span class="fld ${cls}" tabindex="0" data-l="${esc(label)} · ${bytes.length} B">${shown}</span>`;
   }).join(' ');
-  return `<div class="o-hex">${spans}</div><div class="o-hexl"><span><i></i>pgoutput header</span><span><i class="v"></i>protobuf</span><span class="lab">Hover or focus a field.</span></div>`;
+  return `<div class="wv-hex"><div class="row">${spans}</div></div><div class="wv-legend"><span><i style="background:var(--board)"></i>pgoutput header</span><span><i style="background:var(--brown-l);border-color:var(--brown)"></i>protobuf</span><span class="hexlabel">Hover or focus a field.</span></div>`;
 }
 
 /* ================================================================== RACE */
@@ -539,12 +535,13 @@ const RACE = [
 ].map((x, k) => ({ ...x, lsn: RACE_L0 + (k + 1) * 0x1F8 }));
 
 function initRace(fig, app) {
-  let acked = []; let crashed = false;
-  const partBtns = [0, 1, 2].map((p) => btn('', () => ackNext(p), { class: 'o-part' }));
-  const lanes = h('div', { class: 'o-lanes' });
-  const say = h('p', { class: 'o-note', 'aria-live': 'polite' });
-  const kill = btn('kill -9', () => { crashed = true; render(); }, { class: 'wv-btn o-crash' });
-  const reset = btn('↺ start over', () => { acked = []; crashed = false; render(); }, { class: 'wv-btn o-ghost' });
+  let acked = []; let crashed = false; let V = false;
+  const hid = uid('oxq');
+  const partBtns = [0, 1, 2].map((p) => btn('', () => ackNext(p)));
+  const stage = h('div');
+  const say = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const kill = btn('kill -9', () => { crashed = true; render(); }, { class: 'wv-btn wv-btn--bad' });
+  const reset = btn('↺ start over', () => { acked = []; crashed = false; render(); }, { class: 'wv-btn wv-btn--ghost' });
   function ackNext(p) {
     if (crashed) return;
     const k = RACE.findIndex((x, j) => x.p === p && !acked.includes(j));
@@ -556,44 +553,73 @@ function initRace(fig, app) {
     for (let j = 0; j < RACE.length && acked.includes(j); j++) prefix = RACE[j].lsn;
     return { latest, prefix };
   };
-  function lane(title, tag, slot) {
+  /* One lane: six event cells on a WAL tape, the slot bookmark between them. */
+  function lane(svg, y, W, title, slot) {
+    const x0 = V ? 4 : 10; const x1 = W - x0; const gap = 16;
+    const cw = (x1 - x0 - gap - 5 * 6) / 6;
     const behind = (k) => RACE[k].lsn < slot;
     const idx = RACE.filter((_, k) => behind(k)).length;
-    const cells = RACE.map((x, k) => {
-      const inK = acked.includes(k); const gap = behind(k) && !inK;
-      let res = '';
-      if (crashed) {
-        const again = x.lsn >= slot;
-        res = inK && again ? '<span class="r">twice</span>' : inK ? '<span class="r ok">once</span>' : again ? '<span class="r ok">once</span>' : '<span class="r bad">LOST</span>';
-      }
-      return `<span class="o-cell ${inK ? 'is-ok' : 'is-fly'}${gap ? ' is-gap' : ''}${acked[acked.length - 1] === k && !crashed ? ' is-now' : ''}"><b>${x.e}</b><span>P${x.p}</span>${res}</span>`;
-    });
-    cells.splice(idx, 0, '<span class="o-bm"><span>slot</span></span>');
     const lost = RACE.some((x, k) => !acked.includes(k) && x.lsn < slot);
-    return `<div class="o-lanebox${crashed && lost ? ' is-bad' : ''}"><div class="o-lanet"><b>${title}</b> <span>${tag}</span></div><div class="o-rtape">${cells.join('')}</div></div>`;
+    if (crashed && lost) svg.append(s('rect', { x: 0, y: y - 18, width: W, height: 92, class: 'v-oxb-lanebad' }));
+    svg.append(T(x0, y - 4, 't-s t-b', title));
+    svg.append(tapeBand(x0, x1, y, 66));
+    let x = x0 + 4;
+    RACE.forEach((ev, k) => {
+      if (k === idx) {
+        svg.append(s('line', { x1: x + 4, x2: x + 4, y1: y - 6, y2: y + 72, class: 'v-oxb-slot-line' }), s('path', { d: `M${x + 4},${y - 6} l${V ? 12 : 30},0 l-5,6 l5,6 l-${V ? 12 : 30},0 z`, class: 'v-oxb-slot-flag' }));
+        if (!V) svg.append(T(x + 7, y + 4, 't-xs t-b t-board', 'slot'));
+        x += gap;
+      }
+      const inK = acked.includes(k); const gapCell = behind(k) && !inK;
+      const cell = s('rect', { x, y: y + 9, width: cw, height: 48, class: `v-oxb-cell${inK ? ' is-ok' : ''}${gapCell ? ' is-gap' : ''}${acked[acked.length - 1] === k && !crashed ? ' is-now' : ''}` });
+      if (!inK && !gapCell) cell.style.fill = `url(#${hid})`;
+      svg.append(cell, T(x + cw / 2, y + 25, `t-s t-b halo${gapCell ? ' t-bad' : ''}`, ev.e, 'middle'), T(x + cw / 2, y + 38, 't-xs halo', `P${ev.p}`, 'middle'));
+      if (crashed) {
+        const again = ev.lsn >= slot;
+        const r = inK && again ? ['twice', ''] : inK || again ? ['once', ' t-safe'] : ['LOST', ' t-bad'];
+        svg.append(T(x + cw / 2, y + 51, `t-xs t-b halo${r[1]}`, r[0], 'middle'));
+      }
+      x += cw + 6;
+    });
+    if (idx === RACE.length) svg.append(s('line', { x1: x + 2, x2: x + 2, y1: y - 6, y2: y + 72, class: 'v-oxb-slot-line' }));
+  }
+  function draw(vertical = V) {
+    V = vertical;
+    const W = vertical ? 360 : 960; const H = 214;
+    const { latest, prefix } = slots();
+    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Two slots over the same six events' });
+    svg.innerHTML = `<defs>${hatchDefs(hid)}</defs>`;
+    lane(svg, 26, W, vertical ? 'Latest ack (factlib main)' : 'Slot follows the latest ack · factlib main', latest);
+    lane(svg, 132, W, vertical ? 'Contiguous prefix (the fix)' : 'Slot follows the contiguous acked prefix · the fix', prefix);
+    stage.replaceChildren(svg);
   }
   function render() {
     const { latest, prefix } = slots();
     partBtns.forEach((b, p) => {
       const q = RACE.map((x, k) => [x, k]).filter(([x]) => x.p === p);
-      b.innerHTML = `<b>P${p}</b> ${q.map(([x, k]) => `<span class="${acked.includes(k) ? 'is-ok' : ''}">${x.e}</span>`).join('')}<small>${q.every(([, k]) => acked.includes(k)) ? 'done' : 'ack next →'}</small>`;
-      b.disabled = crashed || q.every(([, k]) => acked.includes(k));
+      const done = q.every(([, k]) => acked.includes(k));
+      b.innerHTML = `<b>P${p}</b> ${q.map(([x, k]) => (acked.includes(k) ? `<span class="c-safe">${x.e} ✓</span>` : x.e)).join(' ')} · ${done ? 'done' : 'ack next'}`;
+      b.disabled = crashed || done;
     });
-    lanes.innerHTML = lane('Slot follows the latest ack', 'factlib main', latest) + lane('Slot follows the contiguous acked prefix', 'the fix', prefix);
+    draw();
     kill.disabled = crashed;
     const lostLatest = RACE.some((x, k) => !acked.includes(k) && x.lsn < latest);
+    say.className = 'wv-note';
     if (!acked.length && !crashed) say.innerHTML = 'You are Kafka. Each partition acks its own records in order; the partitions finish in any order. Click a partition to ack its next record, then press <b>kill -9</b>. Can you make an event disappear?';
     else if (!crashed) say.innerHTML = latest > prefix ? '<b class="c-bad">The two slots disagree.</b> The latest-ack slot has passed an event that Kafka has not stored.' : 'Both slots agree so far. Try acking P1 or P2 before P0.';
-    else say.innerHTML = lostLatest
-      ? '<b class="c-bad">The latest-ack slot lost an event:</b> it moved past a record Kafka never stored, and Postgres will not send it again. The prefix slot resends it; a few events arrive twice instead.'
-      : 'Nothing is lost this time, because the acks you gave left no gap behind the latest ack. Start over and ack P1 or P2 first.';
+    else {
+      say.className = `wv-note ${lostLatest ? 'is-bad' : 'is-good'}`;
+      say.innerHTML = lostLatest
+        ? '<b>The latest-ack slot lost an event:</b> it moved past a record Kafka never stored, and Postgres will not send it again. The prefix slot resends it; a few events arrive twice instead.'
+        : 'Nothing is lost this time, because the acks you gave left no gap behind the latest ack. Start over and ack P1 or P2 first.';
+    }
   }
-  app.append(say, h('div', { class: 'o-partrow' }, ...partBtns), lanes, h('div', { class: 'o-opts' }, kill, reset),
-    details('the code of each rule', h('div', { class: 'o-cols' },
+  app.append(say, h('div', { class: 'wv-bar' }, ...partBtns), stage, h('div', { class: 'wv-bar' }, kill, reset),
+    colorKey([['k-run', 'in flight'], ['k-held', 'in Kafka'], ['k-safe', 'slot'], ['k-gap', 'behind the slot, not in Kafka'], ['k-look', 'last ack'], ['k-opt', 'your moves']]),
+    details('The code of each rule', h('div', { class: 'wv-split' },
       h('div', { html: codeBlock(['// factlib main · listenEventAck', 'case ackPos := <-w.AckXLogPos:', '    w.xLogPos = *ackPos      // the latest ack wins', 'case <-ticker.C:             // every 1 s', '    w.SendStandbyStatusUpdate()'], [2]) }),
-      h('div', { html: codeBlock(['// contiguous acked prefix', 'w.acked[lsn] = true', 'for len(w.pending) > 0 && w.acked[w.pending[0]] {', '    w.safe = w.pending[0]', '    delete(w.acked, w.pending[0])', '    w.pending = w.pending[1:]', '}'], [2, 3]) }))),
-    colorKey([['k-run', 'in flight'], ['k-held', 'in Kafka'], ['k-safe', 'slot'], ['k-gap', 'behind the slot, not in Kafka'], ['k-opt', 'your moves']]));
-  render();
+      h('div', { html: codeBlock(['// contiguous acked prefix', 'w.acked[lsn] = true', 'for len(w.pending) > 0 && w.acked[w.pending[0]] {', '    w.safe = w.pending[0]', '    delete(w.acked, w.pending[0])', '    w.pending = w.pending[1:]', '}'], [2, 3]) }))));
+  responsive(app, (v) => { V = v; render(); });
 }
 
 /* ================================================================ REPLAY */
@@ -605,7 +631,7 @@ function initReplay(fig, app) {
   const P = { c: 2.42, R: 10000 }; const d = 0.02;
   let V = false; let G = null;
   const stage = h('div');
-  const stats = h('div', { class: 'o-stats', 'aria-live': 'polite' });
+  const stats = h('div', { class: 'wv-stats', 'aria-live': 'polite' });
   const rate = range('your events/sec', { min: 500, max: 50000, step: 500, value: P.R, fmt, oninput: (v) => { P.R = v; paint(); } });
   function draw(vertical) {
     V = vertical;
@@ -615,15 +641,15 @@ function initReplay(fig, app) {
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Timeline of status updates and a crash you can drag' });
     const aid = uid('oxr'); svg.innerHTML = arrowDefs(aid);
     const ty = 50; const th = 44;
-    svg.append(T(x0, 18, 'o-xs o-mute', 'events read from the WAL, by time →'), tapeBand(x0, x1, ty, th));
+    svg.append(T(x0, 18, 't-xs t-mute', 'events read from the WAL, by time →'), tapeBand(x0, x1, ty, th));
     const segs = s('g'); svg.append(segs);
-    for (let t = 0; t <= 3; t++) svg.append(T(X(t), ty + th + 20, 'o-xs o-b o-safe', t === 0 ? '0 s' : `${t} s`, 'middle'));
+    for (let t = 0; t <= 3; t++) svg.append(T(X(t), ty + th + 20, 't-xs t-b t-safe', t === 0 ? '0 s' : `${t} s`, 'middle'));
     const ticks = s('g'); svg.append(ticks);
-    const last = T(0, ty - 10, 'o-xs o-safe o-b', ''); svg.append(last);
-    const crash = s('g', { class: 'o-drag', tabindex: 0, role: 'slider', 'aria-label': 'Crash time', 'aria-valuemin': 0.05, 'aria-valuemax': 2.95 });
-    crash.append(s('rect', { x: -12, y: ty - 26, width: 24, height: th + 60, class: 'o-hit' }), s('line', { x1: 0, x2: 0, y1: ty - 20, y2: ty + th + 26, class: 'o-crashline' }),
-      s('path', { d: `M-9,${ty + th + 26} l18,0 l-9,-10 z`, class: 'o-grip' }));
-    const clab = T(0, ty + th + 44, 'o-s o-bad o-b', ''); crash.append(clab);
+    const last = T(0, ty - 10, 't-xs t-safe t-b', ''); svg.append(last);
+    const crash = s('g', { class: 'v-oxb-drag', tabindex: 0, role: 'slider', 'aria-label': 'Crash time', 'aria-valuemin': 0.05, 'aria-valuemax': 2.95 });
+    crash.append(s('rect', { x: -12, y: ty - 26, width: 24, height: th + 60, class: 'v-oxb-hit' }), s('line', { x1: 0, x2: 0, y1: ty - 20, y2: ty + th + 26, class: 'v-oxb-crashline' }),
+      s('path', { d: `M-9,${ty + th + 26} l18,0 l-9,-10 z`, class: 'v-oxb-grip' }));
+    const clab = T(0, ty + th + 44, 't-s t-bad t-b', ''); crash.append(clab);
     svg.append(crash);
     let drag = false;
     const setc = (v) => { P.c = clamp(Math.round(v * 100) / 100, 0.05, 2.95); paint(); };
@@ -640,9 +666,9 @@ function initReplay(fig, app) {
     const { c, R } = P; const k = Math.floor(c);
     segs.replaceChildren();
     const seg = (a, b, cls) => { if (b > a) segs.append(s('rect', { x: X(a), y: ty + 10, width: X(b) - X(a), height: th - 20, class: cls })); };
-    seg(0, Math.max(0, k - d), 'o-seg-safe'); seg(Math.max(0, k - d), Math.max(0, c - d), 'o-seg-dup'); seg(Math.max(0, c - d), c, 'o-seg-fly');
+    seg(0, Math.max(0, k - d), 'v-oxb-seg-safe'); seg(Math.max(0, k - d), Math.max(0, c - d), 'v-oxb-seg-dup'); seg(Math.max(0, c - d), c, 'v-oxb-seg-fly');
     ticks.replaceChildren();
-    for (let t = 0; t <= 3; t++) ticks.append(s('line', { x1: X(t), x2: X(t), y1: ty - 4, y2: ty + th + 4, class: t <= k ? 'o-tickline is-sent' : 'o-tickline' }));
+    for (let t = 0; t <= 3; t++) ticks.append(s('line', { x1: X(t), x2: X(t), y1: ty - 4, y2: ty + th + 4, class: t <= k ? 'v-oxb-tickline is-sent' : 'v-oxb-tickline' }));
     last.setAttribute('x', X(k) + 4); last.textContent = V ? `update · ${k} s` : `last status update · ${k} s`;
     crash.setAttribute('transform', `translate(${X(c)},0)`);
     crash.setAttribute('aria-valuenow', c); crash.setAttribute('aria-valuetext', `${c.toFixed(2)} seconds`);
@@ -650,8 +676,8 @@ function initReplay(fig, app) {
     clab.setAttribute('x', right ? -6 : 6); clab.setAttribute('text-anchor', right ? 'end' : 'start');
     clab.textContent = `kill -9 · ${c.toFixed(2)} s  (drag)`;
     const dup = Math.round(R * (c - k));
-    stats.innerHTML = `<div class="o-stat is-dup"><span class="k">sent twice</span><span class="v">≈ ${fmt(dup)}</span><span class="u">${fmt(R)}/s × ${(c - k).toFixed(2)} s since the last update</span></div>
-      <div class="o-stat is-ok"><span class="k">lost</span><span class="v">0</span><span class="u">the slot never passed an event Kafka did not store</span></div>`;
+    stats.innerHTML = `<div class="wv-stat is-bad"><span class="k">sent twice</span><span class="v">≈ ${fmt(dup)}</span><span class="k">${fmt(R)}/s × ${(c - k).toFixed(2)} s since the last update</span></div>
+      <div class="wv-stat is-good"><span class="k">lost</span><span class="v">0</span><span class="k">the slot never passed an event Kafka did not store</span></div>`;
   }
   const dedupe = codeBlock([
     'INSERT INTO processed_events (id, processed_at)',
@@ -660,8 +686,8 @@ function initReplay(fig, app) {
     '⟪INSERT 0 1⟫   -- first copy: handle it',
     '⟦INSERT 0 0⟧   -- second copy: skip it',
   ], [3, 4]);
-  app.append(h('div', { class: 'o-ranges' }, rate.el), stage, stats,
-    h('div', { class: 'o-cap' }, 'The consumer drops the second copy by event.Id, in the same transaction as its side effect'), h('div', { html: dedupe }),
+  app.append(h('div', { class: 'wv-grid-ctrl' }, rate.el), stage, stats,
+    h('div', { class: 'wv-title v-oxb-gap' }, 'The consumer drops the second copy by event.Id, in the same transaction as its side effect'), h('div', { html: dedupe }),
     colorKey([['k-safe', 'confirmed'], ['k-gap', 'in Kafka, not confirmed'], ['k-run', 'in flight (20 ms)'], ['k-opt', 'drag / set']]));
   responsive(app, draw);
 }
@@ -680,8 +706,8 @@ function eventBytes(payload) {
 function initBacklog(fig, app) {
   const P = { eps: 10000, payload: 500, other: 5, cap: 1, disk: 500 };
   let V = false;
-  const stage = h('div'); const verdict = h('div', { class: 'o-verdict', 'aria-live': 'polite' }); const math = h('p', { class: 'o-small' });
-  const capBtns = CAPS.map(([, lab], k) => btn(h('code', null, lab), () => { P.cap = k; capBtns.forEach((b, j) => b.setAttribute('aria-pressed', String(j === k))); draw(V); }, { 'aria-pressed': String(k === P.cap), class: 'wv-btn o-opt' }));
+  const stage = h('div'); const verdict = h('div', { class: 'wv-verdict', 'aria-live': 'polite' }); const math = h('p', { class: 'v-oxb-gap' });
+  const cap = chips(CAPS.map(([, lab], k) => [k, lab]), (k) => { P.cap = k; draw(V); }, { value: P.cap, label: 'max_slot_wal_keep_size' });
   const sl = [
     range('events/sec', { min: 500, max: 50000, step: 500, value: P.eps, fmt, oninput: (v) => { P.eps = v; draw(V); } }),
     range('payload', { min: 100, max: 10000, step: 100, value: P.payload, fmt: (v) => `${fmt(v)} B`, oninput: (v) => { P.payload = v; draw(V); } }),
@@ -704,11 +730,11 @@ function initBacklog(fig, app) {
     const X = (sec) => x0 + ((Math.log10(clamp(sec, 30, 7 * 86400)) - lo) / (hi - lo)) * (x1 - x0);
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'How long Kafka can be down before each threshold' });
     const ty = 46; const th = 36;
-    svg.append(T(x0, 16, 'o-xs o-mute', 'Kafka has been down for … (log scale) →'), tapeBand(x0, x1, ty, th));
-    svg.append(s('rect', { x: x0, y: ty + 8, width: X(fail) - x0, height: th - 16, class: 'o-seg-safe' }));
-    if (fail < 7 * 86400) svg.append(s('rect', { x: X(fail), y: ty + 8, width: x1 - X(fail), height: th - 16, class: 'o-seg-dup' }));
+    svg.append(T(x0, 16, 't-xs t-mute', 'Kafka has been down for … (log scale) →'), tapeBand(x0, x1, ty, th));
+    svg.append(s('rect', { x: x0, y: ty + 8, width: X(fail) - x0, height: th - 16, class: 'v-oxb-seg-safe' }));
+    if (fail < 7 * 86400) svg.append(s('rect', { x: X(fail), y: ty + 8, width: x1 - X(fail), height: th - 16, class: 'v-oxb-seg-dup' }));
     for (const [sec, lab] of [[60, '1 min'], [600, '10 min'], [3600, '1 h'], [6 * 3600, '6 h'], [86400, '1 day'], [7 * 86400, '7 days']]) {
-      svg.append(s('line', { x1: X(sec), x2: X(sec), y1: ty + th, y2: ty + th + 5, class: 'o-tick' }), T(X(sec), ty + th + 16, 'o-xs o-mute', lab, sec === 7 * 86400 ? 'end' : 'middle'));
+      svg.append(s('line', { x1: X(sec), x2: X(sec), y1: ty + th, y2: ty + th + 5, class: 'v-oxb-tick' }), T(X(sec), ty + th + 16, 't-xs t-mute', lab, sec === 7 * 86400 ? 'end' : 'middle'));
     }
     const human = (sec) => (sec < 60 ? `${Math.round(sec)} s` : sec < 600 ? `${(sec / 60).toFixed(1)} min` : sec < 5400 ? `${Math.round(sec / 60)} min` : sec < 172800 ? `${(sec / 3600).toFixed(1)} h` : `${(sec / 86400).toFixed(1)} days`);
     let prevX = -99; let row = 0;
@@ -716,22 +742,22 @@ function initBacklog(fig, app) {
       const sec = at(g); if (sec > 7 * 86400) return;
       const x = X(sec); row = x - prevX < (vertical ? 70 : 110) ? row + 1 : 0; prevX = x;
       const y = ty - 8 - row * 12;
-      svg.append(s('line', { x1: x, x2: x, y1: y + 2, y2: ty + th, class: kind === 'bad' ? 'o-crashline' : 'o-markline' }),
-        T(x, y, `o-xs o-b ${kind === 'bad' ? 'o-bad' : 'o-look'}`, `${lab} · ${human(sec)}`, x > W * 0.8 ? 'end' : x < W * 0.15 ? 'start' : 'middle'));
+      svg.append(s('line', { x1: x, x2: x, y1: y + 2, y2: ty + th, class: kind === 'bad' ? 'v-oxb-crashline' : 'v-oxb-markline' }),
+        T(x, y, `t-xs t-b ${kind === 'bad' ? 't-bad' : 't-look'}`, `${lab} · ${human(sec)}`, x > W * 0.8 ? 'end' : x < W * 0.15 ? 'start' : 'middle'));
     });
-    svg.append(T(x0, H - 6, 'o-xs o-safe o-b', `Kafka can be down for ${human(fail)} before something breaks`));
+    svg.append(T(x0, H - 6, 't-xs t-safe t-b', `Kafka can be down for ${human(fail)} before something breaks`));
     stage.replaceChildren(svg);
     math.innerHTML = `${fmt(bpe)} B of WAL per event (record + COMMIT) × ${fmt(P.eps)}/s + ${P.other} MB/s other WAL = <b>${(rate / 1e6).toFixed(1)} MB/s</b> kept behind the slot.`;
     if (cap && at(cap) <= at(P.disk)) {
-      verdict.className = 'o-verdict is-bad';
+      verdict.className = 'wv-verdict is-bad';
       verdict.textContent = `After ${human(at(cap))} the slot passes max_slot_wal_keep_size. At the next checkpoint Postgres invalidates it and removes the WAL; OwlPost can no longer stream, and those events need a backfill. Postgres keeps running.`;
     } else {
-      verdict.className = 'o-verdict is-bad';
+      verdict.className = 'wv-verdict is-bad';
       verdict.textContent = `After ${human(at(P.disk))} pg_wal fills the disk. Postgres cannot write WAL and stops, and every writer on the cluster stops with it.`;
     }
   }
-  app.append(h('div', { class: 'o-cap' }, 'Your workload'), h('div', { class: 'o-ranges' }, ...sl.slice(0, 3).map((x) => x.el)),
-    h('div', { class: 'o-cap' }, 'Your settings'), h('div', { class: 'o-opts' }, h('span', { class: 'o-lab' }, 'max_slot_wal_keep_size'), ...capBtns), h('div', { class: 'o-ranges' }, sl[3].el),
+  app.append(h('div', { class: 'wv-title' }, 'Your workload'), h('div', { class: 'wv-grid-ctrl' }, ...sl.slice(0, 3).map((x) => x.el)),
+    h('div', { class: 'wv-title' }, 'Your settings: max_slot_wal_keep_size'), cap.el, h('div', { class: 'wv-grid-ctrl' }, sl[3].el),
     stage, verdict, math,
     colorKey([['k-held', 'safe to wait'], ['k-gap', 'past the first failure'], ['k-look', 'alert / page'], ['k-opt', 'your inputs']]));
   responsive(app, draw);
