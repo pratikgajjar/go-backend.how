@@ -23,7 +23,13 @@
 
   let W = innerWidth, H = innerHeight, DPR = Math.min(2, devicePixelRatio || 1);
   const MOBILE = () => W <= 768;
-  let S = MOBILE() ? 0.8 : 1.15;             // character scale
+  let S0 = MOBILE() ? 0.8 : 1.15, S = S0;   // character scale (S = S0 × gear scale)
+  /* gear visuals: current (GV) eased toward target (GT) every frame */
+  const GV = { tint: 0, tr: 1, tg: 1, tb: 1, cloud: 0, outl: 0, bulk: 0, gs: 1, a0: 2.1, h0: 3.1, a1: 2.1, h1: 3.1 };
+  const GT = Object.assign({}, GV);
+  function gearReset() { Object.assign(GT, { tint: 0, cloud: 0, outl: 0, bulk: 0, gs: 1, a0: 2.1, h0: 3.1, a1: 2.1, h1: 3.1 }); }
+  function gearTint(r, g, b, a) { GT.tr = GV.tr = r; GT.tg = GV.tg = g; GT.tb = GV.tb = b; GT.tint = a; }
+  const queue = [];
   const G = 2300;                          // gravity px/s²
   const FOOT = 25.5, SEAT = 19.5;              // local: feet / bottom below body centre
 
@@ -57,7 +63,7 @@
   const FS = `precision ${PREC} float;
 uniform vec2 uRes; uniform float uDpr, uS, uSeed;
 uniform vec3 uInk, uPaper, uRed;
-uniform vec4 uBody, uSq, uEye, uMouth, uHat, uShadow, uMisc;
+uniform vec4 uBody, uSq, uEye, uMouth, uHat, uShadow, uMisc, uTint, uGear, uArmR;
 uniform vec2 uA0[7]; uniform vec2 uA1[7]; uniform vec2 uSc[8];
 uniform vec4 uLeg[2];
 float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
@@ -86,10 +92,13 @@ void main(){
   p += nz*1.25*uMisc.x;                                   /* hand-drawn line boil */
   float S=uS, face=uBody.w, sx=uSq.x, sy=uSq.y, ms=S*min(sx,sy);
   vec2 q = rotv(p-uBody.xy, -uBody.z)/S; q.x/=sx; q.y=(q.y-19.5)/sy+19.5;
-  float dB = bodyL(q)*ms;
+  float dB0 = bodyL(q);
+  if (uGear.y>.01){ for (int i=0;i<9;i++){ float a=mix(-3.35,.21,float(i)/8.); vec2 c=vec2(0.,-9.)+vec2(cos(a),sin(a))*vec2(19.,17.);
+    dB0=smin(dB0, length(q-c)-(5.+1.3*sin(float(i)*2.3+1.))*uGear.y, 1.2); } }   /* gear-5 cloud hair */
+  float dB = dB0*ms;
   float dL = 1e5;
-  for (int i=0;i<6;i++){ dL=min(dL, sdSeg(p,uA0[i],uA0[i+1])-2.1*S); dL=min(dL, sdSeg(p,uA1[i],uA1[i+1])-2.1*S); }
-  dL=min(dL, length(p-uA0[6])-3.1*S); dL=min(dL, length(p-uA1[6])-3.1*S);
+  for (int i=0;i<6;i++){ dL=min(dL, sdSeg(p,uA0[i],uA0[i+1])-uArmR.x*S); dL=min(dL, sdSeg(p,uA1[i],uA1[i+1])-uArmR.z*S); }
+  dL=min(dL, length(p-uA0[6])-uArmR.y*S); dL=min(dL, length(p-uA1[6])-uArmR.w*S);
   for (int i=0;i<2;i++){ dL=min(dL, sdSeg(p,uLeg[i].xy,uLeg[i].zw)-2.4*S); dL=min(dL, length((p-uLeg[i].zw+vec2(0.,.4*S))/vec2(1.3,1.))-2.6*S); }
   float dInk = smin(dB, dL, 2.4*S);
   float dS = 1e5;
@@ -101,7 +110,9 @@ void main(){
   /* sticker halo in the page colour: invisible on the page, separates him from images/code */
   col=over(col,uPaper,cov(min(dInk,dS)-1.3*S)*.9);
   col=over(col,uRed,cov(dS));
-  col=over(col,uInk,cov(dInk));
+  col=over(col,mix(uInk,uTint.rgb,uTint.a),cov(dInk));
+  col=over(col,vec3(.08),cov(abs(dInk)-.55*S)*uGear.x);
+  vec3 eyeC=mix(uPaper,vec3(.08),uGear.x);
   /* scarf wrap + knot, clipped to the body */
   float band=max(sdSeg(q,vec2(-15.,7.8),vec2(15.,7.8))-2.5, bodyL(q)-.6);
   float knot=length(q-vec2(face*8.,8.6))-2.8;
@@ -118,14 +129,14 @@ void main(){
   else { dE=min(max(abs(length(e1-vec2(0.,-1.6))-2.4)-.68, -1.6-e1.y), max(abs(length(e2-vec2(0.,-1.6))-2.4)-.68, -1.6-e2.y)); }
   float dBl=min(length((q-(ec+vec2(-8.4,3.)))/vec2(1.9,1.))-1.25, length((q-(ec+vec2(8.4,3.)))/vec2(1.9,1.))-1.25);
   col=over(col, mix(uRed,vec3(1.,.62,.72),.55), cov(dBl*ms)*uSq.z*.85);
-  col=over(col,uPaper,cov(dE*ms));
+  col=over(col,eyeC,cov(dE*ms));
   vec2 m=q-(ec+vec2(0.,5.4)); float mm=uMouth.x, mo=uMouth.y;
   if (mm>.5){
     float dM;
     if (mm<1.5) dM=max(abs(length(m-vec2(0.,-1.4))-2.1)-.62, -1.4-m.y);
     else if (mm<2.5){ float rr=1.3+2.4*mo; dM=max(length(m-vec2(0.,-.8))-rr, -.8-m.y); }
     else { vec2 rr=vec2(1.1+.9*mo, 1.3+1.5*mo); dM=(length(m/rr)-1.)*min(rr.x,rr.y); }
-    col=over(col,uPaper,cov(dM*ms));
+    col=over(col,eyeC,cov(dM*ms));
     if (mm>1.5 && mm<2.5 && mo>.25){ float rr=1.3+2.4*mo; float dT=max(length(m-vec2(0.,1.2+1.9*mo))-1.4*mo, max(length(m-vec2(0.,-.8))-rr+.75, -.8-m.y)); col=over(col,uRed,cov(dT*ms)); }
   }
   /* straw hat — wide brim, dome crown, red band, woven straw, ink outline */
@@ -169,12 +180,12 @@ void main(){
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   const aLoc = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(aLoc); gl.vertexAttribPointer(aLoc, 2, gl.FLOAT, false, 0, 0);
   const U = {};
-  ['uRes', 'uDpr', 'uS', 'uSeed', 'uInk', 'uPaper', 'uRed', 'uBody', 'uSq', 'uEye', 'uMouth', 'uHat', 'uShadow', 'uMisc', 'uA0', 'uA1', 'uSc', 'uLeg']
+  ['uRes', 'uDpr', 'uS', 'uSeed', 'uInk', 'uPaper', 'uRed', 'uBody', 'uSq', 'uEye', 'uMouth', 'uHat', 'uShadow', 'uMisc', 'uTint', 'uGear', 'uArmR', 'uA0', 'uA1', 'uSc', 'uLeg']
     .forEach((n) => { U[n] = gl.getUniformLocation(prog, n) || gl.getUniformLocation(prog, n + '[0]'); });
   const fA0 = new Float32Array(14), fA1 = new Float32Array(14), fSc = new Float32Array(16), fLeg = new Float32Array(8);
 
   function resize() {
-    W = innerWidth; H = innerHeight; DPR = Math.min(2, devicePixelRatio || 1); S = MOBILE() ? 0.8 : 1.15;
+    W = innerWidth; H = innerHeight; DPR = Math.min(2, devicePixelRatio || 1); S0 = MOBILE() ? 0.8 : 1.15; S = S0 * GV.gs;
     canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
     gl.viewport(0, 0, canvas.width, canvas.height);
   }
@@ -194,7 +205,7 @@ void main(){
   const startedAt = now();
 
   function l2w(lx, ly) {
-    const sq = B.sq, sx = 1 - sq * 0.55, sy = 1 + sq;
+    const sq = B.sq, sx = (1 - sq * 0.55) * (1 + 0.28 * GV.bulk), sy = (1 + sq) * (1 + 0.08 * GV.bulk);
     const x = lx * sx, y = (ly - SEAT) * sy + SEAT, c = Math.cos(B.rot), s = Math.sin(B.rot);
     return [B.x + (c * x - s * y) * S, B.y + (s * x + c * y) * S];
   }
@@ -226,6 +237,9 @@ void main(){
       case 'hat': return fr ? [s * 2, -24] : [s * 17, 4 + Math.sin(t * 20) * 3];
       case 'shrug': return [s * 19, -3];
       case 'sleep': return [s * 8.5, 15];
+      case 'bite': return fr ? [s * 4, 3] : [s * 14.5, 13];
+      case 'giant': return fr ? [s * 17, -32] : [s * 14.5, 12];
+      case 'boundman': return [s * 20, 1 + Math.sin(t * 8 + s) * 1.5];
       case 'lotus': return [s * (18.5 + Math.sin(t * 0.9) * 0.6), 12.5 + Math.sin(t * 1.1 + s) * 0.9];
       case 'swing': return [s * 20 + Math.sin(t * 5 + s) * 3, 2 + Math.cos(t * 4) * 5];
       default: {
@@ -360,6 +374,18 @@ void main(){
       d.style.setProperty('--dx', ((dir || (Math.random() < 0.5 ? -1 : 1)) * rnd(6, 20)).toFixed(0) + 'px');
       fx.appendChild(d); d.addEventListener('animationend', () => d.remove());
     }
+  }
+  function steam(n) {
+    for (let i = 0; i < (n || 1); i++) {
+      const e = document.createElement('span'); e.className = 'kz-steam'; const p2 = l2w(rnd(-13, 13), rnd(-16, 8));
+      e.style.left = p2[0] + 'px'; e.style.top = p2[1] + 'px'; e.style.setProperty('--dx', rnd(-16, 16).toFixed(0) + 'px');
+      fx.appendChild(e); e.addEventListener('animationend', () => e.remove());
+    }
+  }
+  function speedLine() {
+    const e = document.createElement('span'); e.className = 'kz-speed'; const p2 = l2w(0, rnd(-12, 16));
+    e.style.left = (p2[0] - B.face * 22 * S - 11) + 'px'; e.style.top = p2[1] + 'px'; e.style.setProperty('--dx', (-B.face * 46) + 'px');
+    fx.appendChild(e); e.addEventListener('animationend', () => e.remove());
   }
   function confetti(x, y, n) {
     const cols = ['#e8453c', '#f4b400', '#3aa6ff', '#2bb673', `rgb(${INK.map((v) => (v * 255) | 0)})`];
@@ -824,7 +850,7 @@ void main(){
       lookAt = tp; lookLock = now() + 1500; this.dur = rnd(9000, 16000);
       reach(this.arm, barTip, 2400, () => {
         const a = this.arm; B.mode = 'hang'; B.surf = null; a.load = true; a.stiff = 150;
-        a.rope = hyp(a.pts[6].x - B.x, a.pts[6].y - B.y); this.target = clamp(H * 0.26, 110, 210) * S; kick(5); say(pick(['wheee', 'yohoo!', '♪']));
+        a.rope = hyp(a.pts[6].x - B.x, a.pts[6].y - B.y); this.target = (readingMode() ? 85 : clamp(H * 0.26, 110, 210)) * S; kick(5); say(pick(['wheee', 'yohoo!', '♪']));
       });
     },
     update(t) {
@@ -947,6 +973,104 @@ void main(){
     end() { if (this.arm) { this.arm.carry = null; letGo(this.arm); } B.hatFree = null; B.eye = 0; B.mouth = 0; },
   });
 
+  /* ───────────────────────── mini gears (a tribute) ───────────────────────── */
+  function myGutter() { let best = null, bd = 1e9; for (const z of gutters()) { const d = B.x < z[0] ? z[0] - B.x : B.x > z[1] ? B.x - z[1] : 0; if (d < bd) { bd = d; best = z; } } return best; }
+  /* gear 2: pump, flush red, steam, jet dash + jet pistol */
+  const gear2 = () => ({
+    name: 'gear2',
+    start() { neutral(); this.ph = 'pump'; this.k = now(); this.p = 0; say('gear 2', 'kz-big'); gearTint(0.96, 0.36, 0.42, 0.55); },
+    update(t) {
+      const e = t - this.k;
+      if (Math.random() < 0.35) steam(1);
+      if (this.ph === 'pump') {
+        B.eye = 3; B.walkPh += 0.5;
+        if (t > this.p) { this.p = t + 160; kick(-4.5); }
+        if (e > 800) {
+          const z = myGutter(), lo = z ? z[0] : Math.max(24, B.x - 90), hi = z ? z[1] : Math.min(W - 80, B.x + 90);
+          this.tx = B.x - lo > hi - B.x ? lo : hi; this.ph = 'jet'; this.k = t; B.eye = 0; B.mouth = 1;
+        }
+      } else if (this.ph === 'jet') {
+        const dx = this.tx - B.x; B.want = sgn(dx) * 950 * S; B.face = sgn(dx);
+        if (Math.random() < 0.8) speedLine(); if (Math.random() < 0.3) dust(B.x - B.face * 10, B.y + FOOT * S, 1, -B.face);
+        if (Math.abs(dx) < 12 || e > 1500) {
+          B.want = 0; B.vx = 0; kick(-5); this.ph = 'pistol'; this.k = t;
+          const a = armFor(frontSide()), up = [B.x + B.face * 30 * S, B.y - 170 * S]; this.arm = a;
+          reach(a, () => up, 5200, () => { say('jet pistol!'); dust(up[0], up[1], 4); letGo(a); });
+        }
+      } else if (this.ph === 'pistol') { if (e > 700) { this.ph = 'cool'; this.k = t; GT.tint = 0; } }
+      else if (e > 900) return true;
+    },
+    end() { B.want = 0; gearReset(); if (this.arm) letGo(this.arm); B.eye = 0; B.mouth = 0; },
+  });
+  /* gear 3: bite thumb, blow up a giant fist, punch, then shrink to chibi */
+  const gear3 = () => ({
+    name: 'gear3',
+    start() { neutral(); this.ph = 'bite'; this.k = now(); B.pose = 'bite'; B.mouth = 2; B.mouthO = 0.5; say('gear 3', 'kz-big'); this.ai = frontSide() < 0 ? 0 : 1; },
+    update(t) {
+      const e = t - this.k, A = this.ai ? 'a1' : 'a0', Hd = this.ai ? 'h1' : 'h0';
+      if (this.ph === 'bite') { if (e > 450) { this.ph = 'blow'; this.k = t; B.pose = 'giant'; B.mouth = 3; B.mouthO = 1; } }
+      else if (this.ph === 'blow') {
+        GT[A] = 5; GT[Hd] = 13.5; if (Math.random() < 0.25) steam(1);
+        if (e > 750) {
+          this.ph = 'punch'; this.k = t; B.mouth = 2; B.mouthO = 0.8;
+          const z = myGutter(), room = B.face > 0 ? (z ? z[1] : W - 80) - B.x : B.x - (z ? z[0] : 20);
+          const tgt = room > 140 ? [B.x + B.face * Math.min(260, room), B.y - 30 * S] : [B.x + B.face * 10, B.y - 230 * S];
+          const quiet = readingMode(); this.arm = arms[this.ai];
+          reach(this.arm, () => tgt, 2600, () => { say('gigant pistol!'); kick(-4); dust(tgt[0], tgt[1], 6); if (!quiet) quake(tgt[0], tgt[1], 0.7); letGo(this.arm); });
+        }
+      } else if (this.ph === 'punch') { if (this.arm.mode === 'pose' && e > 300) { this.ph = 'deflate'; this.k = t; GT[A] = 2.1; GT[Hd] = 3.1; steam(3); } }
+      else if (this.ph === 'deflate') { if (e > 450) { this.ph = 'chibi'; this.k = t; GT.gs = 0.55; say('poof'); steam(4); B.eye = 1; B.mouth = 2; B.mouthO = 0.6; } }
+      else if (this.ph === 'chibi') { B.want = e < 1800 ? Math.sin(e / 260) * 40 : 0; if (e > 2400) { this.ph = 'back'; this.k = t; GT.gs = 1; kick(-6); } }
+      else if (e > 500) return true;
+    },
+    end() { B.want = 0; gearReset(); if (this.arm) letGo(this.arm); B.pose = 'rest'; B.eye = 0; B.mouth = 0; },
+  });
+  /* gear 4: bulk up (boundman), steam, bounce bounce, then deflate exhausted */
+  const gear4 = () => ({
+    name: 'gear4',
+    start() { neutral(); this.ph = 'bite'; this.k = now(); B.pose = 'bite'; say('gear 4', 'kz-big'); },
+    update(t) {
+      const e = t - this.k;
+      if (this.ph === 'bite') {
+        if (e > 400) { this.ph = 'pump'; this.k = t; Object.assign(GT, { bulk: 1, a0: 3.4, h0: 5.4, a1: 3.4, h1: 5.4 }); gearTint(0.5, 0.08, 0.1, 0.28); B.pose = 'boundman'; B.eye = 3; steam(6); }
+      } else if (this.ph === 'pump') { if (Math.random() < 0.5) steam(1); if (e > 600) { this.ph = 'bounce'; this.k = t; this.n = 0; B.eye = 0; B.mouth = 1; } }
+      else if (this.ph === 'bounce') {
+        if (Math.random() < 0.3) steam(1);
+        if (B.mode === 'ground' && t > (this.nx || 0)) {
+          if (this.n >= 4) { this.ph = 'deflate'; this.k = t; gearReset(); steam(8); say('pshhh…'); B.eye = 2; B.pose = 'sleep'; B.sit = 1; return false; }
+          this.n++; kick(-5); this.nx = t + 130; this.go = t + 110;
+        }
+        if (this.go && t > this.go && B.mode === 'ground') { this.go = 0; B.vy = -620; B.vx = rnd(-40, 40); B.mode = 'air'; B.surf = null; kick(8); if (this.n === 1) say('boing!'); }
+      } else if (this.ph === 'deflate') { if (e > 1600) return true; }
+    },
+    end() { gearReset(); B.pose = 'rest'; B.eye = 0; B.mouth = 0; B.sit = 0; },
+  });
+  /* gear 5: drums of liberation → white, cloud hair, laughing; then the rubber run (or a toon bounce) */
+  const toon = () => ({
+    name: 'toon',
+    start() { this.n = 0; say('ha ha ha!'); B.eye = 1; B.mouth = 2; B.pose = 'wide'; },
+    update(t) {
+      B.mouthO = 0.6 + Math.sin(t / 60) * 0.4;
+      if (B.mode === 'ground' && t > (this.nx || 0)) { if (this.n >= 3) return true; this.n++; this.nx = t + 220; B.vy = -520; B.mode = 'air'; B.surf = null; B.rv = (Math.random() < 0.5 ? -1 : 1) * Math.PI * 2 / 0.45; kick(9); }
+    },
+    end() { B.pose = 'rest'; B.mouth = 0; B.eye = 0; },
+  });
+  const g5revert = () => ({ name: 'g5revert', start() { gearReset(); steam(5); B.eye = 1; B.mouth = 1; }, update(t) { return t - this.t0 > 900; }, end() { B.eye = 0; B.mouth = 0; } });
+  const gear5x = (rubberRun) => ({
+    name: 'gear5x',
+    start() { neutral(); this.d = 0; say('♪ don-don ♪'); Object.assign(GT, { outl: 1, cloud: 1 }); gearTint(1, 1, 1, 1); B.eye = 1; B.mouth = 2; },
+    update(t) {
+      const e = t - this.t0; B.mouthO = 0.6 + Math.sin(t / 50) * 0.35;
+      if (t > this.d) { this.d = t + 260; kick(Math.random() < 0.5 ? 3 : -3); }
+      if (e > 550 && !this.s) { this.s = 1; say('gear 5!', 'kz-big'); steam(6); }
+      if (e > 1500) { this.pushed = true; queue.push(rubberRun && pickLine() ? gear5() : toon(), g5revert()); return true; }
+    },
+    end() { if (!this.pushed) gearReset(); },
+  });
+  function gearAct(n, invited) { return n === 2 ? gear2() : n === 3 ? gear3() : n === 4 ? gear4() : gear5x(invited || !readingMode()); }
+  function runGear(n, invited) { queue.length = 0; const a = gearAct(n, invited); if (B.mode === 'ground' && !drag) run(a); else queue.push(a); }
+  function readingMode() { if (!IS_ARTICLE) return false; const p = articleProgress(); return p > 0.03 && p < 0.97; }
+
   /* ───────────────────────── brain ───────────────────────── */
   let omReadyAt = now() + 25000, bigReadyAt = now() + 14000, swingReadyAt = now() + 8000, rocketReadyAt = now() + 9000, hatReadyAt = now() + 20000;
   const busy = () => now() - lastScrollAt < 2600;
@@ -964,14 +1088,24 @@ void main(){
     }
     if (idleFor > 18000 && idleFor < 45000 && t > omReadyAt && !B.surf) { omReadyAt = t + rnd(80000, 140000); return run(meditate(rnd(14000, 22000))); }
     if (idleFor > 45000) return run(sleep(rnd(30000, 90000)));
-    const r = Math.random(), sel = String(getSelection && getSelection()).trim();
-    if (busy() && t > swingReadyAt && barOK() && r < 0.4) { swingReadyAt = t + rnd(45000, 80000); return run(swing()); }
-    if (t > bigReadyAt && !busy() && !sel && r < 0.4) {
-      bigReadyAt = t + rnd(30000, 60000);
+    const r = Math.random(), sel = String(getSelection && getSelection()).trim(), reading = readingMode();
+    const tipFree = () => { if (!reading) return true; const tp = barTip(), m = (document.querySelector('main') || document.body).getBoundingClientRect(); return tp && (tp[0] < m.left - 30 || tp[0] > m.right + 30); };
+    if (busy() && t > swingReadyAt && barOK() && r < (reading ? 0.1 : 0.4) && tipFree()) { swingReadyAt = t + (reading ? rnd(150000, 300000) : rnd(45000, 80000)); return run(swing()); }
+    if (t > bigReadyAt && !busy() && !sel && r < (reading ? 0.15 : 0.4) && (!reading || t - startedAt > 60000)) {
+      bigReadyAt = t + (reading ? rnd(120000, 240000) : rnd(30000, 60000));
       const r2 = Math.random();
-      if (r2 < 0.5) return run(pluck());
-      if (r2 < 0.8) return run(gear5());
-      return run(rocket());
+      if (reading) return run(gearAct(r2 < 0.3 ? 2 : r2 < 0.6 ? 3 : r2 < 0.85 ? 4 : 5, false));   // gutter-only tricks, never the text
+      if (r2 < 0.3) return run(pluck());
+      if (r2 < 0.5) return run(gear5x(true));
+      if (r2 < 0.65) return run(rocket());
+      return run(gearAct(pick([2, 3, 4])));
+    }
+    if (reading) {                                   // quiet companion: stay in the gutter, be still
+      if (B.surf) { const z = myGutter(); return run(hopTo({ x: z ? rnd(z[0], z[1]) : (B.x < W / 2 ? 40 : W - 100), y: floorY() })); }
+      if (r < 0.25) { const z = myGutter(); return run(walkTo(z ? rnd(z[0], z[1]) : B.x)); }
+      if (r < 0.35 && !busy() && t > omReadyAt) { omReadyAt = t + rnd(60000, 120000); return run(meditate(rnd(12000, 20000))); }
+      if (r < 0.75) return run(idle(rnd(4000, 9000)));
+      return run(sit(rnd(5000, 10000)));
     }
     if (B.surf) {
       if (r < 0.45) return run(sit(rnd(3000, 7000)));
@@ -1020,7 +1154,7 @@ void main(){
   addEventListener('scroll', () => { lastScrollAt = now(); if (act && act.name === 'sleep' && !act.wake && now() - act.t0 > 3000) act.wake = now(); }, { passive: true });
   addEventListener('keydown', () => { lastInputAt = now(); }, { passive: true });
 
-  let pets = 0, petAt = 0;
+  let pets = 0, petAt = 0, lastTapAt = 0, petTimer = 0, gearIdx = 0;
   function pet() {
     const t = now(); pets = t - petAt < 4000 ? pets + 1 : 1; petAt = t;
     if (act && act.name === 'sleep') { act.wake = t; return; }
@@ -1038,7 +1172,7 @@ void main(){
     if (!drag) return;
     drag.x = e.clientX; drag.y = e.clientY; drag.hist.push([now(), e.clientX, e.clientY]); if (drag.hist.length > 8) drag.hist.shift();
     if (!drag.moved && hyp(e.clientX - drag.sx, e.clientY - drag.sy) > 5) {
-      drag.moved = true; run(null); resetArms(); neutral(); restoreLine(); dropWord();
+      drag.moved = true; queue.length = 0; run(null); gearReset(); resetArms(); neutral(); restoreLine(); dropWord();
       B.mode = 'held'; B.surf = null; B.pose = 'flail'; B.eye = 3; B.mouth = 3; B.mouthO = 0.7; root.classList.add('kz-held');
       if (Math.random() < 0.5) say(pick(['hey!', 'whoa', 'wheee']));
     }
@@ -1047,7 +1181,11 @@ void main(){
     if (!drag) return;
     try { hit.releasePointerCapture(e.pointerId); } catch (err) { /* noop */ }
     const d = drag; drag = null; root.classList.remove('kz-held');
-    if (!d.moved) { pet(); return; }
+    if (!d.moved) {                                   // tap = say hi; double-tap = next gear
+      if (now() - lastTapAt < 330) { clearTimeout(petTimer); lastTapAt = 0; runGear([2, 3, 4, 5][gearIdx++ % 4], true); }
+      else { lastTapAt = now(); clearTimeout(petTimer); petTimer = setTimeout(pet, 330); }
+      return;
+    }
     run(wait(250));
     let vx = B.vx, vy = B.vy;
     if (d.hist.length >= 2) { const a = d.hist[0], b = d.hist[d.hist.length - 1], dt = Math.max(16, b[0] - a[0]) / 1000; vx = (b[1] - a[1]) / dt; vy = (b[2] - a[2]) / dt; }
@@ -1087,10 +1225,10 @@ void main(){
     gl.disable(gl.SCISSOR_TEST); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     if (!B.visible) return;
     const sqR = B.sq + (B.mode === 'ground' ? Math.sin(T * 2.3) * 0.016 : 0);
-    const sx = 1 - sqR * 0.55, sy = 1 + sqR;
+    const sx = (1 - sqR * 0.55) * (1 + 0.28 * GV.bulk), sy = (1 + sqR) * (1 + 0.08 * GV.bulk);
     let x0 = B.x - 40 * S, x1 = B.x + 40 * S, y0 = B.y - 52 * S, y1 = B.y + 40 * S;
     const grow = (x, y, m) => { if (x - m < x0) x0 = x - m; if (x + m > x1) x1 = x + m; if (y - m < y0) y0 = y - m; if (y + m > y1) y1 = y + m; };
-    for (let i = 0; i < 7; i++) { fA0[i * 2] = arms[0].pts[i].x; fA0[i * 2 + 1] = arms[0].pts[i].y; fA1[i * 2] = arms[1].pts[i].x; fA1[i * 2 + 1] = arms[1].pts[i].y; grow(fA0[i * 2], fA0[i * 2 + 1], 6); grow(fA1[i * 2], fA1[i * 2 + 1], 6); }
+    for (let i = 0; i < 7; i++) { fA0[i * 2] = arms[0].pts[i].x; fA0[i * 2 + 1] = arms[0].pts[i].y; fA1[i * 2] = arms[1].pts[i].x; fA1[i * 2 + 1] = arms[1].pts[i].y; grow(fA0[i * 2], fA0[i * 2 + 1], (GV.h0 + 3) * S); grow(fA1[i * 2], fA1[i * 2 + 1], (GV.h1 + 3) * S); }
     for (let i = 0; i < 8; i++) { fSc[i * 2] = scarf[i].x; fSc[i * 2 + 1] = scarf[i].y; grow(scarf[i].x, scarf[i].y, 6); }
     for (let k = 0; k < 2; k++) for (let j = 0; j < 4; j++) fLeg[k * 4 + j] = legs[k][j];
     // hat
@@ -1124,6 +1262,7 @@ void main(){
     gl.uniform4f(U.uHat, hx, hy, hr, hs);
     gl.uniform4f(U.uShadow, shX, shY, shW, shA);
     gl.uniform4f(U.uMisc, REDUCE ? 0 : 1, hatOn, 0, 0);
+    gl.uniform4f(U.uTint, GV.tr, GV.tg, GV.tb, GV.tint); gl.uniform4f(U.uGear, GV.outl, GV.cloud, 0, 0); gl.uniform4f(U.uArmR, GV.a0, GV.h0, GV.a1, GV.h1);
     gl.uniform2fv(U.uA0, fA0); gl.uniform2fv(U.uA1, fA1); gl.uniform2fv(U.uSc, fSc); gl.uniform4fv(U.uLeg, fLeg);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
@@ -1171,7 +1310,9 @@ void main(){
     if (blinkT >= 0) { const e = (tn - blinkT) / 140; B.blink = e >= 1 ? 1 : Math.abs(1 - 2 * e); if (e >= 1) blinkT = -1; } else B.blink = 1;
 
     // brain
-    if (B.mode !== 'held') { if (!act || act.update(tn)) { if (act && act.end) act.end(); act = null; think(); } }
+    for (const k of ['tint', 'cloud', 'outl', 'bulk', 'a0', 'h0', 'a1', 'h1']) GV[k] += (GT[k] - GV[k]) * Math.min(1, dt * 7);
+    GV.gs += (GT.gs - GV.gs) * Math.min(1, dt * 10); S = S0 * GV.gs;
+    if (B.mode !== 'held') { if (!act || act.update(tn)) { if (act && act.end) act.end(); act = null; if (queue.length) run(queue.shift()); else think(); } }
     if (tn > msAt) { msAt = tn + 300; milestones(); }
     paintWord(); placeBanner();
 
@@ -1217,11 +1358,11 @@ void main(){
     end() { pendingHello = visits >= 2 ? (visits % 10 === 0 ? `visit #${visits}! ♥` : 'welcome back!') : visits === 1 ? 'hi! I’m Kaze' : null; },
   });
 
-  // hash triggers (for demos): #pluck #rocket #swing #gear5 #hat #finale #love #hello #om
+  // hash triggers (for demos): #pluck #rocket #swing #gear2 #gear3 #gear4 #gear5 #rubber #hat #finale #love #hello #om
   function fireHash() {
     const h = location.hash.slice(1); const go = () => {
       if (B.mode !== 'ground') return setTimeout(go, 300);
-      ({ pluck: () => run(pluck()), play: () => run(pluck()), rocket: () => run(rocket()), swing: () => run(swing()), hang: () => run(swing()), gear5: () => run(gear5()), rubber: () => run(gear5()),
+      ({ pluck: () => run(pluck()), play: () => run(pluck()), rocket: () => run(rocket()), swing: () => run(swing()), hang: () => run(swing()), gear2: () => runGear(2, true), gear3: () => runGear(3, true), gear4: () => runGear(4, true), gear5: () => runGear(5, true), rubber: () => run(gear5()),
         hat: () => { blowHat(B.x < W / 2 ? rnd(250, 450) : rnd(-450, -250), -1050); run(chaseHat()); }, finale: () => run(finale(false)), banner: () => run(finale(false)), love: () => run(love()), om: () => run(meditate(22000)), meditate: () => run(meditate(22000)), zen: () => run(meditate(22000)), hello: () => run(wave('hi! I’m Kaze', 2200)) }[h] || (() => {}))();
     };
     if (h) setTimeout(go, 900);

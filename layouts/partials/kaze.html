@@ -14,8 +14,12 @@
       them back), "rockets" itself across the page by grabbing a far corner,
       and hangs off the reading-progress bar while you read — swinging as
       the bar grows.
-    - Gear-5 rubber run: treats a line of text as the ground, plows the words
-      into a pile, then gets launched by the snap-back and bonks the wall.
+    - Mini gears (double-click to cycle): Gear 2 steam + jet dash, Gear 3
+      giant balloon fist then chibi, Gear 4 bulked-up bounce, Gear 5 white
+      cloud form + the rubber run: treats a line of text as the ground, plows
+      the words into a pile, gets launched by the snap-back, bonks the wall.
+    - Reading mode (inside an article): never touches the text, stays in the
+      gutter, big tricks only every few minutes.
     - Scroll is wind: scarf streams, he squints, holds his hat — scroll hard
       enough and the hat blows away; he stretches an arm to catch it.
     - Drag & FLING him. Hard landings make the page ripple like rubber.
@@ -24,7 +28,7 @@
     - Stays out of your way while you're actively reading (attention budget).
     - Meditates when you pause: lotus pose, levitates, chants ॐ with aura
       ripples; the scroll wind can't touch him (pets get a "shh… ☮").
-  Hash triggers: #pluck #rocket #swing #gear5 #hat #finale #love #hello #om
+  Hash triggers: #pluck #rocket #swing #gear2 #gear3 #gear4 #gear5 #rubber #hat #finale #love #hello #om
 
   Remove completely: delete this file + assets/js/kaze.js + the include in
     layouts/partials/xiaohei.html (which is what baseof.html calls).
@@ -32,7 +36,7 @@
 */ -}}
 <div id="kaze" aria-hidden="true" data-article="{{ if .IsPage }}1{{ end }}">
   <canvas class="kz-canvas"></canvas>
-  <div class="kz-hit" title="Kaze — drag &amp; fling me, click to say hi"></div>
+  <div class="kz-hit" title="Kaze — drag &amp; fling me · click to say hi · double-click for gears"></div>
 </div>
 <style>
   #kaze{ position:fixed; inset:0; z-index:60; pointer-events:none; }
@@ -54,6 +58,10 @@
   #kz-fx .kz-g.kz-big{ font-size:16px; }
   #kz-fx .kz-dust{ position:absolute; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%;
     background:var(--article-text,#222); opacity:.35; animation:kz-puff .55s ease-out forwards; }
+  #kz-fx .kz-steam{ position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%;
+    background:color-mix(in srgb, var(--article-text,#222) 20%, transparent); animation:kz-steam 1.1s ease-out forwards; }
+  #kz-fx .kz-speed{ position:absolute; width:22px; height:2px; margin-top:-1px; border-radius:2px; background:var(--article-text,#222);
+    opacity:.45; animation:kz-speed .35s linear forwards; }
   #kz-fx .kz-conf{ position:absolute; width:6px; height:10px; margin:-5px 0 0 -3px; border-radius:1px;
     animation:kz-conf 1.9s cubic-bezier(.15,.7,.35,1) forwards; }
   #kz-fx .kz-word{ position:absolute; left:0; top:0; white-space:nowrap; transform-origin:center; will-change:transform; }
@@ -71,6 +79,8 @@
   @keyframes kz-float{ 0%{opacity:0; transform:translate(-50%,8px) scale(.85)} 25%{opacity:.85}
     100%{opacity:0; transform:translate(calc(-50% + var(--dx,0px) * .4),-78px) scale(1.18)} }
   @keyframes kz-aura{ 0%{opacity:.32; transform:translate(-50%,-50%) scale(.4)} 100%{opacity:0; transform:translate(-50%,-50%) scale(2.7)} }
+  @keyframes kz-steam{ 0%{opacity:.9; transform:scale(.5)} 100%{opacity:0; transform:translate(var(--dx,0px),-40px) scale(2.2)} }
+  @keyframes kz-speed{ to{ opacity:0; transform:translateX(var(--dx,0px)) scaleX(.3) } }
   @keyframes kz-puff{ 0%{opacity:.45; transform:scale(.5)} 100%{opacity:0; transform:translate(var(--dx,0px),-4px) scale(1.7)} }
   @keyframes kz-conf{ 0%{transform:translate(0,0) rotate(0); opacity:1}
     35%{transform:translate(calc(var(--dx)*.6), var(--up)) rotate(calc(var(--r)*.4)); opacity:1}
