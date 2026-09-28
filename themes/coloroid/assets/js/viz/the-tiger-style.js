@@ -4,7 +4,7 @@
  * Every figure is a pane of Zig source on the dark tiger page, and each one
  * asks the reader to do something before it shows the answer:
  *
- *   ts-hero      ordinary code → Tiger Style, one rule per step. The reader
+ *   ts-queue     ordinary code → Tiger Style, one rule per step. The reader
  *                taps the line they think the rule changes, then sees the
  *                diff. A goal meter fills in order: safety, performance, DX.
  *   ts-tripwire  one transfer, three faults, two assertions. The reader
@@ -101,7 +101,7 @@ const STEPS = [
 const GOALS = [['safety', 'safety'], ['perf', 'performance'], ['dx', 'developer experience']];
 const rowAt = (row, k) => { let v = null; for (const [st, t] of row) if (st <= k) v = t; return v; };
 
-function initHero(fig, app) {
+function initQueue(fig, app) {
   const N = STEPS.length - 1;
   let k = 0;            // state shown
   let phase = 'guess';  // guess | shown
@@ -118,7 +118,8 @@ function initHero(fig, app) {
     return el;
   });
   const bar = h('div', { class: `${P}hbar` });
-  app.append(meter, prompt, code, bar);
+  app.append(meter, prompt, code, bar,
+    key([['look', 'lines the rule changed'], ['gap', 'a wrong guess'], ['safe', 'assertions; rules applied'], ['opt', 'what you can do']]));
 
   const changed = (step) => HERO_ROWS.map((r, i) => (rowAt(r, step) !== rowAt(r, step - 1) ? i : -1)).filter((i) => i >= 0);
   /** Rows the reader may tap for a step: changed rows that exist now, or the row next to an insertion. */
@@ -235,7 +236,8 @@ function initTripwire(fig, app) {
   const grid = s('svg', { class: `${P}space`, viewBox: '0 0 420 160', role: 'group', 'aria-label': 'Cases you have tried' });
   const found = h('span');
   app.append(prompt, svg, out,
-    h('div', { class: `${P}spacewrap` }, h('div', { class: `${P}lbl` }, 'cases you have tried · ', found), grid));
+    h('div', { class: `${P}spacewrap` }, h('div', { class: `${P}lbl` }, 'cases you have tried · ', found), grid),
+    key([['data', 'the transfer (sample values)'], ['gap', 'fault or harm'], ['safe', 'armed assertion, or caught'], ['opt', 'tap to change'], ['look', 'your prediction'], ['pick', "TigerBeetle's choice"]]));
 
   let tokT = 1; let cancel = () => {};
   const mode = () => MODES.findIndex(([a, b]) => a === st.A && b === st.B);
@@ -417,7 +419,8 @@ function initNapkin(fig, app) {
   const svg = s('svg', { class: `${P}chart`, role: 'img', 'aria-label': 'Per-transfer cost of each resource as the batch grows' });
   const read = h('p', { class: `${P}verdict`, 'aria-live': 'polite' });
   const explore = h('div', { class: `${P}explore`, hidden: true }, sentence, h('p', { class: `${P}hint` }, 'Drag the blue numbers, or drag across the chart.'));
-  app.append(ask, explore, svg, read);
+  app.append(ask, explore, svg, read,
+    key([['ink', 'cost per transfer, by resource'], ['look', 'the largest cost'], ['opt', 'what you can change'], ['data', 'sample numbers']]));
   let shown = false;
 
   function reveal() { shown = true; ask.hidden = true; explore.hidden = false; draw(); }
@@ -536,7 +539,7 @@ function initStruct(fig, app) {
   app.append(h('div', { class: `${P}struct` },
     h('div', null, h('div', { class: `${P}lbl` }, 'transfer.zig · abridged · tap the blue parts ', reset), src),
     h('div', null, h('div', { class: `${P}lbl` }, 'bytes, 16 per row · after the last build'), map, term)),
-  why);
+  why, key([['data', 'field bytes'], ['gap', 'padding, or a failing assertion'], ['safe', 'assertion holds'], ['opt', 'edit this'], ['pick', 'the shipped layout']]));
 
   src.addEventListener('click', (e) => { const b = e.target.closest('[data-edit]'); if (!b) return; E[b.dataset.edit] = !E[b.dataset.edit]; dirty = true; guess = null; paint(); });
   term.addEventListener('click', (e) => { const b = e.target.closest('[data-guess]'); if (b) build(b.dataset.guess === 'just' ? null : b.dataset.guess); });
@@ -618,4 +621,4 @@ function initStruct(fig, app) {
   paint();
 }
 
-register({ 'ts-hero': initHero, 'ts-tripwire': initTripwire, 'ts-napkin': initNapkin, 'ts-struct': initStruct });
+register({ 'ts-queue': initQueue, 'ts-tripwire': initTripwire, 'ts-napkin': initNapkin, 'ts-struct': initStruct });

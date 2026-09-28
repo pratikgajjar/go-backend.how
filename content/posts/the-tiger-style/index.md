@@ -11,8 +11,16 @@ images = ["og-a635eef8.png"]
 theme = "tiger"
 +++
 
-{{< viz kind="ts-hero" frame="none" title="Nine rules, one small queue" fallback="ts-hero.svg" alt="Ordinary Zig code for a small queue, changed into Tiger Style one rule at a time: five rules for safety, one for performance, three for developer experience" caption="Ordinary code for a small queue, then nine rules from this guide, one at a time. For each rule, tap the line you think it changes. Written for this post: every step compiles with Zig 0.16 and passes `zig fmt --check`." >}}
+TigerBeetle is a database for financial transactions, and TigerStyle is the guide its team writes
+code by. It ranks three goals, safety, then performance, then developer experience, and turns each
+into concrete rules: assert what every function expects, put a limit on every loop and queue,
+allocate all memory at startup, batch the work, and get the names right.
 
+This post reposts the guide under its Apache 2.0 license, with four figures where a rule is easier
+to try than to read. By the end you will know why TigerBeetle asserts the same property in two
+places, what its compile-time assertions catch in a 128-byte struct, and why batching changes which
+cost you should cut first. The guide keeps evolving; the latest version is in the [TigerBeetle
+repository](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md).
 
 # The Essence Of Style
 
@@ -101,6 +109,8 @@ made is indeed progress.
 [NASA's Power of Ten — Rules for Developing Safety Critical
 Code](https://spinroot.com/gerard/pdf/P10.pdf) will change the way you code forever. To expand:
 
+## Control Flow And Limits
+
 - Use **only very simple, explicit control flow** for clarity. **Do not use recursion** to ensure
   that all executions that should be bounded are bounded. Use **only a minimum of excellent
   abstractions** but only if they make the best sense of the domain. Abstractions are [never zero
@@ -115,40 +125,46 @@ Code](https://spinroot.com/gerard/pdf/P10.pdf) will change the way you code fore
 
 - Use explicitly-sized types like `u32` for everything, avoid architecture-specific `usize`.
 
-- **Assertions detect programmer errors. Unlike operating errors, which are expected and which must
-  be handled, assertion failures are unexpected. The only correct way to handle corrupt code is to
-  crash. Assertions downgrade catastrophic correctness bugs into liveness bugs. Assertions are a
-  force multiplier for discovering bugs by fuzzing.**
+## Assertions
 
-  - **Assert all function arguments and return values, pre/postconditions and invariants.** A
-    function must not operate blindly on data it has not checked. The purpose of a function is to
-    increase the probability that a program is correct. Assertions within a function are part of how
-    functions serve this purpose. The assertion density of the code must average a minimum of two
-    assertions per function.
+**Assertions detect programmer errors. Unlike operating errors, which are expected and which must
+be handled, assertion failures are unexpected. The only correct way to handle corrupt code is to
+crash. Assertions downgrade catastrophic correctness bugs into liveness bugs. Assertions are a
+force multiplier for discovering bugs by fuzzing.**
 
-  - **[Pair assertions](https://tigerbeetle.com/blog/2023-12-27-it-takes-two-to-contract/).** For
-    every property you want to enforce, try to find at least two different code paths where an
-    assertion can be added. For example, assert validity of data right before writing it to disk,
-    and also immediately after reading from disk.
+- **Assert all function arguments and return values, pre/postconditions and invariants.** A
+  function must not operate blindly on data it has not checked. The purpose of a function is to
+  increase the probability that a program is correct. Assertions within a function are part of how
+  functions serve this purpose. The assertion density of the code must average a minimum of two
+  assertions per function.
 
-  - On occasion, you may use a blatantly true assertion instead of a comment as stronger
-    documentation where the assertion condition is critical and surprising.
-
-  - **Assert the relationships of compile-time constants** as a sanity check, and also to document
-    and enforce [subtle
-    invariants](https://github.com/tigerbeetle/tigerbeetle/blob/db789acfb93584e5cb9f331f9d6092ef90b53ea6/src/vsr/journal.zig#L45-L47)
-    or [type
-    sizes](https://github.com/tigerbeetle/tigerbeetle/blob/578ac603326e1d3d33532701cb9285d5d2532fe7/src/ewah.zig#L41-L53).
-    Compile-time assertions are extremely powerful because they are able to check a program's design
-    integrity _before_ the program even executes.
-
-  - **The golden rule of assertions is to assert the _positive space_ that you do expect AND to
-    assert the _negative space_ that you do not expect** because where data moves across the
-    valid/invalid boundary between these spaces is where interesting bugs are often found. This is
-    also why **tests must test exhaustively**, not only with valid data but also with invalid data,
-    and as valid data becomes invalid.
+- **[Pair assertions](https://tigerbeetle.com/blog/2023-12-27-it-takes-two-to-contract/).** For
+  every property you want to enforce, try to find at least two different code paths where an
+  assertion can be added. For example, assert validity of data right before writing it to disk,
+  and also immediately after reading from disk.
 
 {{< viz kind="ts-tripwire" frame="none" fig="1" title="One transfer, three faults, two assertions" fallback="ts-tripwire.svg" alt="The lifeline of one transfer from request to use, with an assertion before the write and one after the read, and which faults each one catches" caption="A model of the pair above: assert right before the write, and again right after the read. Tap a red fault, or switch an assertion on or off, then predict where the transfer stops. Transfer values are samples. TigerBeetle checksums all data and repairs a corrupt block from another replica ([safety](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/concepts/safety.md))." >}}
+
+- On occasion, you may use a blatantly true assertion instead of a comment as stronger
+  documentation where the assertion condition is critical and surprising.
+
+- **Assert the relationships of compile-time constants** as a sanity check, and also to document
+  and enforce [subtle
+  invariants](https://github.com/tigerbeetle/tigerbeetle/blob/db789acfb93584e5cb9f331f9d6092ef90b53ea6/src/vsr/journal.zig#L45-L47)
+  or [type
+  sizes](https://github.com/tigerbeetle/tigerbeetle/blob/578ac603326e1d3d33532701cb9285d5d2532fe7/src/ewah.zig#L41-L53).
+  Compile-time assertions are extremely powerful because they are able to check a program's design
+  integrity _before_ the program even executes.
+
+{{< viz kind="ts-struct" frame="none" fig="2" title="Edit the 128-byte Transfer" fallback="ts-struct.svg" alt="Byte map of TigerBeetle's 128-byte Transfer, 16 bytes per row, and the three compile-time assertions that guard it" caption="Fields and assertions from [`src/tigerbeetle.zig`](https://github.com/tigerbeetle/tigerbeetle/blob/47aeb2212a255273dda508288412e537d11e4b7c/src/tigerbeetle.zig#L85-L116), abridged. Edit the blue parts, predict which assertion stops the build, then build. Each of the 16 possible edits was compiled with Zig 0.16 to check its offsets; the `zig build` output is from Zig 0.16 with paths shortened." >}}
+
+- **The golden rule of assertions is to assert the _positive space_ that you do expect AND to
+  assert the _negative space_ that you do not expect** because where data moves across the
+  valid/invalid boundary between these spaces is where interesting bugs are often found. This is
+  also why **tests must test exhaustively**, not only with valid data but also with invalid data,
+  and as valid data becomes invalid.
+
+## Memory, Scope, And Size
 
 - All memory must be statically allocated at startup. **No memory may be dynamically allocated (or
   freed and reallocated) after initialization.** This avoids unpredictable behavior that can
@@ -171,7 +187,7 @@ Code](https://spinroot.com/gerard/pdf/P10.pdf) will change the way you code fore
   also improves performance for the same reason (you get to batch, instead of context switching on
   every event). Additionally, this makes it easier to maintain bounds on work done per time period.
 
-Beyond these rules:
+## Beyond The Power Of Ten
 
 - Compound conditions that evaluate multiple booleans make it difficult for the reader to verify
   that all cases are handled. Split compound conditions into simple conditions using nested
@@ -235,6 +251,8 @@ Beyond these rules:
   compensating for the frequency of usage, because faster resources may be used many times more. For
   example, a memory cache miss may be as expensive as a disk fsync, if it happens many times more.
 
+{{< viz kind="ts-napkin" frame="none" fig="3" title="A napkin sketch: which cost wins as the batch grows" fallback="ts-napkin.svg" alt="Per-transfer cost of network, disk, memory, and CPU as the batch grows from 1 to 8,189 transfers" caption="A sketch, not a benchmark: one batch at a time, no overlap. Sample costs: a 500 µs round trip and 100 ns per cache miss ([latency numbers](https://gist.github.com/jboner/2841832)), 10 Gbit/s network, 2 GB/s disk and 20 GB/s memory bandwidth, and 100 ns of CPU per transfer. 8,189 is the default `create_transfers` batch limit ([requests](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/coding/requests.md#batching-events))." >}}
+
 - Distinguish between the control plane and data plane. A clear delineation between control plane
   and data plane through the use of batching enables a high level of assertion safety without losing
   performance. See our [July 2021 talk on Zig SHOWTIME](https://youtu.be/BH2jvJ74npM?t=1958) for
@@ -244,8 +262,6 @@ Beyond these rules:
 
 - Let the CPU be a sprinter doing the 100m. Be predictable. Don't force the CPU to zig zag and
   change lanes. Give the CPU large enough chunks of work. This comes back to batching.
-
-{{< viz kind="ts-napkin" frame="none" fig="2" title="A napkin sketch: which cost wins as the batch grows" fallback="ts-napkin.svg" alt="Per-transfer cost of network, disk, memory, and CPU as the batch grows from 1 to 8,189 transfers" caption="A sketch, not a benchmark: one batch at a time, no overlap. Sample costs: a 500 µs round trip and 100 ns per cache miss ([latency numbers](https://gist.github.com/jboner/2841832)), 10 Gbit/s network, 2 GB/s disk and 20 GB/s memory bandwidth, and 100 ns of CPU per transfer. 8,189 is the default `create_transfers` batch limit ([requests](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/coding/requests.md#batching-events))." >}}
 
 - Be explicit. Minimize dependence on the compiler to do the right thing for you.
 
@@ -356,9 +372,8 @@ Beyond these rules:
 - Be on your guard for **[buffer bleeds](https://en.wikipedia.org/wiki/Heartbleed)**. This is a
   buffer underflow, the opposite of a buffer overflow, where a buffer is not fully utilized, with
   padding not zeroed correctly. This may not only leak sensitive information, but may cause
-  deterministic guarantees as required by TigerBeetle to be violated.
-
-{{< viz kind="ts-struct" frame="none" fig="3" title="Edit the 128-byte Transfer" fallback="ts-struct.svg" alt="Byte map of TigerBeetle's 128-byte Transfer, 16 bytes per row, and the three compile-time assertions that guard it" caption="Fields and assertions from [`src/tigerbeetle.zig`](https://github.com/tigerbeetle/tigerbeetle/blob/47aeb2212a255273dda508288412e537d11e4b7c/src/tigerbeetle.zig#L85-L116), abridged. Edit the blue parts, predict which assertion stops the build, then build. Each of the 16 possible edits was compiled with Zig 0.16 to check its offsets; the `zig build` output is from Zig 0.16 with paths shortened." >}}
+  deterministic guarantees as required by TigerBeetle to be violated. The `amount: u64` edit in
+  Figure 2 makes one: 8 bytes of padding that no field sets.
 
 - Use newlines to **group resource allocation and deallocation**, i.e. before the resource
   allocation and after the corresponding `defer` statement, to make leaks easier to spot.
@@ -418,6 +433,12 @@ hitting a Bash/Shell/OS-specific issue.
 Standardizing on Zig for tooling is important to ensure that we reduce dimensionality, as the team,
 and therefore the range of personal tastes, grows. This may be slower for you in the short term, but
 makes for more velocity for the team in the long term.
+
+# The Rules On One Queue
+
+Here are nine of the rules above, applied one at a time to ordinary code for a small queue.
+
+{{< viz kind="ts-queue" fig="4" frame="none" title="Nine rules, one small queue" fallback="ts-queue.svg" alt="Ordinary Zig code for a small queue, changed into Tiger Style one rule at a time: five rules for safety, one for performance, three for developer experience" caption="Written for this post: every step compiles with Zig 0.16 and passes `zig fmt --check`." >}}
 
 # The Last Stage
 
