@@ -1,18 +1,18 @@
 /*
  * temporal-under-the-hood — figures for "Temporal — Under the Hood".
  *
- * Visual language: the paper trail. Temporal's event history is a receipt
- * tape, every SQL statement is a tally mark, and Postgres is where the
- * meter ticks. Figures sit on receipt paper (frame="none"), not on the
- * shared whiteboard sheet.
+ * House look (walviz.css); this file only decides what each figure does.
+ * The recurring drawing: Temporal's history is a tape of events, and every
+ * SQL statement is a tally mark on the way to Postgres.
  *
- *   tuth-receipts  one order, two receipts (events vs checkpoints)
- *   tuth-request   a plain request and its failure points
+ *   tuth-request   tap a failure point; each box shows what is left behind
  *   tuth-services  Temporal's services and the one database they share
  *   tuth-tape      the event history of one workflow; N activities
- *   tuth-trip      one activity as a sequence diagram with SQL tallies
- *   tuth-crash     the worker dies during step 3: replay vs checkpoints
- *   tuth-cost      SQL statements per unit of work, measured and fitted
+ *   tuth-trip      guess, then one activity as a sequence diagram with tallies
+ *   tuth-crash     the worker dies during step 3: replay vs checkpoints,
+ *                  with predict-then-see in the clock variant
+ *   tuth-cost      SQL statements per workflow, measured and fitted
+ *   tuth-receipts  one order: the events Temporal keeps vs Absurd's checkpoints
  *   tuth-deploy    what you deploy for each system
  *
  * Behaviour follows Temporal v1.28.2 (service/history, common/persistence/sql),
@@ -21,124 +21,9 @@
  * sample values.
  */
 
-import { h, s, codeBlock, register, esc, fmt, clamp } from './lib.js';
+import { h, s, uid, stepper, colorKey, codeBlock, range, chips, ask, register, esc, fmt } from './lib.js';
 
 const P = 'v-tuth-';
-let UID = 0;
-
-/* ================================================================ shared */
-
-/** Colour key. kinds: proc, table, data, look, safe, bad, opt, line, dash. */
-function legend(items) {
-  return h('div', { class: `${P}key` }, ...items.map(([k, label]) => h('span', null, h('i', { class: `${P}sw ${P}sw-${k}` }), label)));
-}
-
-/** Previous / next with a position readout. Arrow keys work inside the figure. */
-function stepNav(fig, labels, onStep) {
-  let i = -1;
-  const prev = h('button', { class: `${P}btn`, type: 'button', 'aria-label': 'Previous step' }, '◀');
-  const next = h('button', { class: `${P}btn`, type: 'button', 'aria-label': 'Next step' }, '▶');
-  const pos = h('span', { class: `${P}pos`, 'aria-live': 'polite' });
-  function go(n) {
-    n = clamp(n, 0, labels.length - 1);
-    if (n === i) return;
-    i = n;
-    prev.disabled = i === 0;
-    next.disabled = i === labels.length - 1;
-    pos.innerHTML = `<b>${i + 1}</b>/${labels.length} · ${esc(labels[i])}`;
-    onStep(i);
-  }
-  prev.addEventListener('click', () => go(i - 1));
-  next.addEventListener('click', () => go(i + 1));
-  fig.addEventListener('keydown', (e) => {
-    if (e.target.closest('input')) return;
-    if (e.key === 'ArrowRight') { go(i + 1); e.preventDefault(); }
-    if (e.key === 'ArrowLeft') { go(i - 1); e.preventDefault(); }
-  });
-  return { el: h('div', { class: `${P}nav` }, prev, pos, next), go, get i() { return i; } };
-}
-
-function slider(label, { min, max, step = 1, value, show, oninput }) {
-  const out = h('output');
-  const input = h('input', { type: 'range', min, max, step, value, 'aria-label': label });
-  const sync = () => { out.textContent = show(+input.value); };
-  input.addEventListener('input', () => { sync(); oninput(+input.value); });
-  sync();
-  return { el: h('label', { class: `${P}slider` }, h('span', null, label), input, out), input };
-}
-
-/** Tally marks: groups of five. `mine` of them are drawn in the look colour. */
-function tallyHTML(n, mine = 0, approx = false) {
-  let out = approx ? '<span class="ap">≈</span>' : '';
-  for (let k = 0; k < n; k++) {
-    if (k && k % 5 === 0) out += '<span class="gap"></span>';
-    out += `<span class="st${k >= n - mine ? ' is-new' : ''}${approx && k === n - 1 ? ' is-ap' : ''}"></span>`;
-  }
-  return `<span class="${P}tally">${out}</span>`;
-}
-
-function marker(id, color) {
-  return s('marker', { id, viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' },
-    s('path', { d: 'M0,0 L8,4 L0,8 z', style: `fill:${color}` }));
-}
-
-/* ======================================================= static diagrams */
-
-/*
- * A diagram spec has a wide and a tall layout. nodes: {x,y,w,h,kind,lines};
- * kind is 'proc' (solid) or 'db' (dashed). edges: {pts,label,lx,ly,anchor}.
- * marks: {x,y,n,bad,label,lx,ly,anchor}. notes: {x,y,text,cls,anchor}.
- */
-function drawDiagram(L, label) {
-  const [W, H] = L.vb;
-  const id = `${P}m${++UID}`;
-  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': label, class: `${P}diagram` });
-  svg.append(s('defs', null, marker(id, 'var(--t-ink)')));
-  for (const n of L.titles || []) svg.append(s('text', { x: n.x, y: n.y, class: `${P}t-title`, 'text-anchor': n.anchor || 'start' }, n.text));
-  for (const r of L.rules || []) svg.append(s('path', { d: `M${r.map((q) => q.join(',')).join(' L')}`, class: `${P}rule` }));
-  for (const e of L.edges) {
-    svg.append(s('path', { d: `M${e.pts.map((q) => q.join(',')).join(' L')}`, class: `${P}edge`, 'marker-end': e.noArrow ? null : `url(#${id})` }));
-    if (e.label) svg.append(s('text', { x: e.lx, y: e.ly, class: `${P}t-edge`, 'text-anchor': e.anchor || 'start' }, e.label));
-  }
-  for (const n of L.nodes) {
-    const g = s('g');
-    g.append(s('rect', { x: n.x, y: n.y, width: n.w, height: n.h, class: `${n.kind === 'db' ? `${P}db` : `${P}proc`}${n.tone ? ` is-${n.tone}` : ''}` }));
-    const lines = n.lines;
-    const total = 15 + (lines.length - 1) * 13;
-    let y = n.y + n.h / 2 - total / 2 + 11;
-    lines.forEach((t, k) => {
-      g.append(s('text', { x: n.x + n.w / 2, y, class: k ? (n.tone ? `${P}t-${n.tone}` : `${P}t-sub`) : `${P}t-name`, 'text-anchor': 'middle' }, t));
-      y += k ? 13 : 15;
-    });
-    svg.append(g);
-  }
-  for (const m of L.marks || []) {
-    const g = m.k ? s('g', { class: `${P}hit${m.on ? ' is-on' : ''}`, role: 'button', tabindex: 0, 'data-k': m.k, 'aria-label': m.aria || m.label }) : svg;
-    if (m.k) g.append(s('circle', { cx: m.x, cy: m.y, r: 18, class: `${P}hit-area` }));
-    g.append(s('circle', { cx: m.x, cy: m.y, r: m.k ? 11 : 9, class: m.bad ? `${P}mk-bad` : `${P}mk` }));
-    g.append(s('text', { x: m.x, y: m.y + 3.6, class: `${P}t-mk`, 'text-anchor': 'middle' }, String(m.n)));
-    if (m.label) g.append(s('text', { x: m.lx, y: m.ly, class: m.bad ? `${P}t-bad` : `${P}t-sub`, 'text-anchor': m.anchor || 'start' }, m.label));
-    if (m.k) svg.append(g);
-  }
-  for (const n of L.notes || []) svg.append(s('text', { x: n.x, y: n.y, class: n.cls, 'text-anchor': n.anchor || 'start' }, n.text));
-  return svg;
-}
-
-function staticDiagram(spec, keyItems) {
-  return (fig, app) => {
-    const stage = h('div');
-    let cur = null;
-    const draw = () => {
-      const L = app.clientWidth < (spec.breakAt || 560) ? spec.tall : spec.wide;
-      if (L === cur) return;
-      cur = L;
-      stage.replaceChildren(drawDiagram(L, fig.getAttribute('aria-label') || ''));
-    };
-    app.append(stage, legend(keyItems));
-    new ResizeObserver(draw).observe(app);
-    draw();
-  };
-}
 
 const REQUEST = {
   breakAt: 520,
@@ -201,34 +86,6 @@ const REQ_OUT = {
   },
 };
 
-function initRequest(fig, app) {
-  let sel = null; let L = null;
-  const stage = h('div');
-  const out = h('p', { class: `${P}note`, 'aria-live': 'polite' });
-  function draw() {
-    const base = app.clientWidth < REQUEST.breakAt ? REQUEST.tall : REQUEST.wide;
-    L = {
-      ...base,
-      nodes: base.nodes.map((n, k) => {
-        const o = sel && REQ_OUT[sel].subs[k];
-        return o ? { ...n, lines: [n.lines[0], o[0]], tone: o[1] || undefined } : n;
-      }),
-      marks: base.marks.map((m) => ({ ...m, on: m.k && m.k === sel })),
-    };
-    stage.replaceChildren(drawDiagram(L, fig.getAttribute('aria-label') || ''));
-    stage.querySelectorAll('[data-k]').forEach((g) => {
-      const pick = () => { sel = g.dataset.k; draw(); stage.querySelector(`[data-k="${sel}"]`)?.focus(); };
-      g.addEventListener('click', pick);
-      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { pick(); e.preventDefault(); } });
-    });
-    out.className = `${P}note${sel && REQ_OUT[sel].bad ? ' is-bad' : ''}`;
-    out.innerHTML = sel ? REQ_OUT[sel].text : '<b>Tap a red mark.</b> Each box then shows what that failure leaves behind.';
-  }
-  let wasTall = null;
-  new ResizeObserver(() => { const tall = app.clientWidth < REQUEST.breakAt; if (tall !== wasTall) { wasTall = tall; draw(); } }).observe(app);
-  app.append(stage, out, legend([['proc', 'process'], ['table', 'data at rest'], ['bad', 'failure, or work lost'], ['safe', 'durable']]));
-  draw();
-}
 
 const SERVICES = {
   wide: {
@@ -247,9 +104,9 @@ const SERVICES = {
       { pts: [[240, 252], [330, 300]] }, { pts: [[450, 252], [450, 300]] }, { pts: [[660, 252], [570, 300]] },
     ],
     notes: [
-      { x: 762, y: 214, text: 'stateless:', cls: `${P}t-sub`, anchor: 'start' },
-      { x: 762, y: 228, text: 'add replicas', cls: `${P}t-sub`, anchor: 'start' },
-      { x: 662, y: 341, text: 'all durable state', cls: `${P}t-safe` },
+      { x: 762, y: 214, text: 'stateless:', cls: 't-xs t-mute', anchor: 'start' },
+      { x: 762, y: 228, text: 'add replicas', cls: 't-xs t-mute', anchor: 'start' },
+      { x: 662, y: 341, text: 'all durable state', cls: 't-s t-b t-safe' },
     ],
   },
   tall: {
@@ -273,8 +130,8 @@ const SERVICES = {
       { pts: [[342, 440], [322, 440]] },
     ],
     notes: [
-      { x: 180, y: 384, text: 'stateless: add replicas to scale', cls: `${P}t-sub`, anchor: 'middle' },
-      { x: 180, y: 510, text: 'all durable state', cls: `${P}t-safe`, anchor: 'middle' },
+      { x: 180, y: 384, text: 'stateless: add replicas to scale', cls: 't-xs t-mute', anchor: 'middle' },
+      { x: 180, y: 510, text: 'all durable state', cls: 't-s t-b t-safe', anchor: 'middle' },
     ],
   },
 };
@@ -324,7 +181,6 @@ const DEPLOY = {
   },
 };
 
-/* ================================================== the event history */
 
 const ACT = ['ProcessPayment', 'ReserveInventory', 'SendNotification'];
 const actName = (k) => ACT[k - 1] || `Activity${k}`;
@@ -353,66 +209,6 @@ const WHY = ['workflow decided to run it', 'worker picked it up', 'worker return
   'worker runs the workflow code', 'workflow made its next decision'];
 const MEASURED_NODES = { 1: 6, 3: 12, 5: 18 };
 
-function initTape(fig, app) {
-  let n = 3;
-  const read = h('div', { class: `${P}read`, 'aria-live': 'polite' });
-  const tape = h('div', { class: `${P}tape`, role: 'list' });
-  const sl = slider('activities, N', { min: 1, max: 10, value: n, show: (v) => String(v), oninput: (v) => { n = v; draw(); } });
-  app.append(h('div', { class: `${P}ctl` }, sl.el), read, tape,
-    legend([['data', 'event IDs, history_node rows'], ['look', 'the 6 events of one activity'], ['opt', 'control']]));
-
-  function row(id, name, nodeId, isFirst, why) {
-    return `<div class="${P}ev${why ? ' is-look' : ''}${isFirst ? ' is-first' : ''}" role="listitem">`
-      + `<span class="nd">${isFirst ? `node ${nodeId}` : ''}</span><span class="id">${id}</span>`
-      + `<span class="nm">${esc(name)}${why ? `<em>${esc(why)}</em>` : ''}</span></div>`;
-  }
-  function draw() {
-    const { ev, node } = historyOf(n);
-    const E = 4 + 6 * n + 1; const R = 3 + 3 * n;
-    read.innerHTML = `<span><b>${E}</b> events = 4 + 6 × ${n} + 1</span><span><b>${R}</b> history_node rows = 3 + 3 × ${n}${MEASURED_NODES[n] ? ` <i>(measured: ${MEASURED_NODES[n]})</i>` : ''}</span>`;
-    const show = (id) => n <= 4 || id <= 16 || id >= 5 + 6 * (n - 1);
-    let html = ''; let hidden = false; let lastNode = -1;
-    const head = (t) => `<div class="${P}grp">${esc(t)}</div>`;
-    html += head('start and first workflow task · 4 events');
-    for (const [id, name] of ev) {
-      const k = Math.floor((id - 5) / 6) + 1; // activity index for ids 5..4+6n
-      if (id >= 5 && id <= 4 + 6 * n && (id - 5) % 6 === 0) {
-        if (show(id)) html += head(`activity ${k}: ${actName(k)} · 6 events`);
-      }
-      if (id === 5 + 6 * n) html += head('close · 1 event');
-      if (!show(id)) {
-        if (!hidden) {
-          html += `<div class="${P}skip">activities 3–${n - 1}: the same 6 events each, IDs 17–${4 + 6 * (n - 1)}</div>`;
-          hidden = true;
-        }
-        continue;
-      }
-      const first = node[id] !== lastNode;
-      lastNode = node[id];
-      const why = id >= 5 && id <= 10 ? WHY[id - 5] : '';
-      html += row(id, name, node[id], first, why);
-    }
-    tape.innerHTML = html;
-  }
-  draw();
-}
-
-/* ======================================================== the receipts */
-
-function initReceipts(fig, app) {
-  const { ev } = historyOf(3);
-  const line = (a, b = '', cls = '') => `<div class="ln ${cls}"><span>${a}</span><span>${b}</span></div>`;
-  const t = `<div class="${P}rcpt"><div class="hd"><b>TEMPORAL</b><span>OrderFulfillmentWorkflow</span><span>3 activities · 1 order</span></div>`
-    + `<div class="body">${ev.map(([id, name]) => `<div class="ev"><span class="id">${id}</span><span class="nm">${esc(name.replace(' · ', ' '))}</span></div>`).join('')}</div>`
-    + `<div class="ft">${line('history events', '<b>23</b>')}${line('history_node rows', '<b>12</b>')}${line('tables touched', '<b>16</b> of 37')}${line('SQL statements', '<b>≈ 145</b>', 'big')}</div></div>`;
-  const a = `<div class="${P}rcpt"><div class="hd"><b>ABSURD</b><span>order-fulfillment</span><span>3 steps · 1 order</span></div>`
-    + `<div class="body">${[['t_', 'task row'], ['r_', 'run row'], ['c_', 'process-payment'], ['c_', 'reserve-inventory'], ['c_', 'send-notification']]
-      .map(([id, name]) => `<div class="ev"><span class="id">${id}</span><span class="nm">${name}</span></div>`).join('')}</div>`
-    + `<div class="ft">${line('checkpoints', '<b>3</b>')}${line('rows written', '<b>5</b>')}${line('tables touched', '<b>3</b> of 5')}${line('SQL statements', '<b>≈ 32</b>', 'big')}</div></div>`;
-  app.innerHTML = `<div class="${P}pair">${t}${a}</div>`;
-}
-
-/* ===================================================== ONE ACTIVITY TRIP */
 
 const LANES = [['worker', 'your worker'], ['fe', 'frontend'], ['hist', 'history'], ['match', 'matching'], ['pg', 'Postgres']];
 const LX = { worker: 0.09, fe: 0.27, hist: 0.46, match: 0.66, pg: 0.87 };
@@ -538,138 +334,6 @@ const TRIP = [
 /* Measured per-activity deltas (the post's N=1 vs N=5 table), by table. */
 const TRIP_MEASURED = { shards: '4', cur: '8', exe: '8', hn: '4', aim: '3', tt: '2', tmr: '3', mq: '2.1' };
 
-function initTrip(fig, app) {
-  let cur = 0; let W = 0; let guess = 0;
-  const GUESSES = [5, 15, 35, 80];
-  const guessRow = h('div', { class: `${P}guess` }, h('span', null, 'Guess first. SQL statements for one activity:'),
-    ...GUESSES.map((g) => {
-      const b = h('button', { class: `${P}opt`, type: 'button', 'aria-pressed': 'false' }, `≈ ${g}`);
-      b.addEventListener('click', () => {
-        guess = g;
-        guessRow.querySelectorAll('button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-        paint();
-      });
-      return b;
-    }));
-  const meter = h('div', { class: `${P}meter`, 'aria-live': 'polite' });
-  const lanesHead = h('div', { class: `${P}lanes-h` });
-  const seq = h('div', { class: `${P}seq` });
-  const detail = h('div', { class: `${P}detail` });
-  const bands = TRIP.map((st, k) => {
-    const b = h('div', { class: `${P}band`, role: 'button', tabindex: 0, 'aria-label': `Step ${k + 1}: ${st.label}` });
-    b.addEventListener('click', () => nav.go(k));
-    b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { nav.go(k); e.preventDefault(); } });
-    seq.append(b);
-    return b;
-  });
-  const nav = stepNav(fig, TRIP.map((t) => t.label), (i) => { cur = i; paint(); });
-  app.append(guessRow, h('div', { class: `${P}bar` }, nav.el, meter), lanesHead, seq,
-    legend([['proc', 'process'], ['table', 'database'], ['look', 'this step'], ['line', 'earlier steps'], ['data', 'SQL statements (tally), events']]));
-
-  const totals = (upTo) => {
-    const t = {};
-    for (let k = 0; k <= upTo; k++) for (const [id, n] of Object.entries(TRIP[k].touch)) t[id] = (t[id] || 0) + n;
-    return t;
-  };
-
-  function drawLanes() {
-    const svg = s('svg', { viewBox: `0 0 ${W} 30`, class: `${P}lanes-svg`, 'aria-hidden': 'true' });
-    for (const [id, name] of LANES) {
-      const x = LX[id] * W; const w = Math.min(W * 0.18, 118);
-      svg.append(s('rect', { x: x - w / 2, y: 2, width: w, height: 24, class: id === 'pg' ? `${P}db` : `${P}proc` }));
-      svg.append(s('text', { x, y: 18, class: `${P}t-lane`, 'text-anchor': 'middle' }, W < 480 && id === 'worker' ? 'worker' : name));
-    }
-    lanesHead.replaceChildren(svg);
-  }
-
-  function drawBand(k) {
-    const st = TRIP[k];
-    const rowH = 34; const top = 22;
-    const H = top + st.msgs.length * rowH + 4;
-    const id = `${P}a${++UID}`;
-    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: `${P}band-svg`, 'aria-hidden': 'true' });
-    svg.append(s('defs', null, marker(`${id}i`, 'var(--t-ink)'), marker(`${id}p`, 'var(--t-purple)')));
-    for (const [lid] of LANES) svg.append(s('line', { x1: LX[lid] * W, x2: LX[lid] * W, y1: 0, y2: H, class: `${P}life` }));
-    svg.append(s('text', { x: 4, y: 14, class: `${P}t-step` }, `${String(k + 1).padStart(2, '0')} ${st.label.toUpperCase()}`));
-    const col = k === cur ? 'p' : 'i';
-    st.msgs.forEach((m, r) => {
-      const y = top + r * rowH + 18;
-      const x1 = LX[m.from] * W; const x2 = LX[m.to] * W;
-      if (m.self) {
-        svg.append(s('path', { d: `M${x1},${y - 8} h26 v12 h-22`, class: `${P}msg${m.reply ? ' is-reply' : ''}`, 'marker-end': `url(#${id}${col})` }));
-        svg.append(s('text', { x: x1 + 32, y: y, class: `${P}t-msg` }, m.label));
-        return;
-      }
-      const dir = Math.sign(x2 - x1);
-      svg.append(s('path', { d: `M${x1},${y} L${x2 - dir * 3},${y}`, class: `${P}msg${m.reply || m.maybe ? ' is-reply' : ''}`, 'marker-end': `url(#${id}${col})` }));
-      if (m.via) svg.append(s('circle', { cx: LX[m.via] * W, cy: y, r: 3, class: `${P}via` }));
-      const mid = (x1 + x2) / 2;
-      svg.append(s('text', { x: m.db ? Math.min(mid, W - 8) : mid, y: y - 6, class: `${P}t-msg halo`, 'text-anchor': m.db && mid + 60 > W ? 'end' : 'middle' }, m.label));
-      if (m.db) {
-        // tally under the arrowhead: one stroke per SQL statement
-        const n = m.db; const sp = 3.6; const gap = 4;
-        const width = n * sp + Math.floor((n - 1) / 5) * gap;
-        let x = x2 - width - 6;
-        for (let j = 0; j < n; j++) {
-          if (j && j % 5 === 0) x += gap;
-          svg.append(s('line', { x1: x, x2: x, y1: y + 4, y2: y + 14, class: `${P}tick${m.maybe ? ' is-maybe' : ''}` }));
-          x += sp;
-        }
-        svg.append(s('text', { x: x2 - 2, y: y + 14, class: `${P}t-tick`, 'text-anchor': 'start' }, `${m.maybe ? '≈' : ''}${n}`));
-      }
-    });
-    return svg;
-  }
-
-  function detailHTML(i) {
-    const st = TRIP[i];
-    const tot = totals(i);
-    const last = i === TRIP.length - 1;
-    const ledger = TABLES.map(([id, name]) => {
-      const n = tot[id] || 0; const add = st.touch[id] || 0;
-      return `<div class="${P}lg${add ? ' is-on' : ''}${n ? '' : ' is-zero'}${last ? ' has-m' : ''}"><span class="nm">${name}</span>${tallyHTML(n, add, id === 'mq' && n > 0)}<span class="n">${id === 'mq' && n ? '≈ ' : ''}${n}</span>${last ? `<span class="m">${TRIP_MEASURED[id]}</span>` : ''}</div>`;
-    }).join('') + (last ? `<div class="${P}lg has-m is-tot"><span class="nm">total</span><span></span><span class="n">≈ 34</span><span class="m">≈ 34</span></div>` : '');
-    const body = st.sql
-      ? codeBlock(st.sql, st.hot)
-      : codeBlock([
-        'workflow.ExecuteActivity(ctx, ProcessPayment, params).Get(ctx, &p)  // «result from event 7»',
-        'workflow.ExecuteActivity(ctx, ReserveInventory, params).Get(ctx, &i) // step 1 again',
-      ], [0, 1]) + '<p>The right column is the benchmark: the per-activity delta between N = 1 and N = 5. The four transactions account for all of it.</p>';
-    const guessLine = i === TRIP.length - 1 && guess
-      ? `<p class="${P}note ${Math.abs(guess - 34) <= 5 ? 'is-good' : ''}">You guessed <b>${guess}</b>. One activity costs <b>≈ 34</b> statements: four transactions, and each one starts with the same five fencing statements.</p>`
-      : '';
-    return `<p class="${P}call">${st.call}</p>${guessLine}`
-      + `<div class="${P}split"><div>${body}</div><div class="${P}ledger"><div class="hd${last ? ' has-m' : ''}"><span>statements this activity, by table</span>${last ? '<span>source</span><span>measured</span>' : ''}</div>${ledger}</div></div>`
-      + (st.note ? `<p class="${P}note">${st.note}</p>` : '');
-  }
-
-  function paint() {
-    bands.forEach((b, k) => {
-      b.classList.toggle('is-on', k === cur);
-      b.classList.toggle('is-past', k < cur);
-      b.classList.toggle('is-future', k > cur);
-      if (W) b.replaceChildren(drawBand(k));
-    });
-    detail.innerHTML = detailHTML(cur);
-    bands[cur].after(detail);
-    const sum = Object.values(totals(cur)).reduce((a, b) => a + b, 0);
-    const digits = String(sum).padStart(3, '0').split('').map((d) => `<i>${d}</i>`).join('');
-    meter.innerHTML = `<span>SQL this activity</span><span class="dg">${cur >= 1 ? '<em>≈</em>' : ''}${digits}</span>${guess ? `<span class="${P}yours">your guess ${guess}</span>` : ''}`;
-  }
-
-  function resize() {
-    const w = Math.round(seq.clientWidth);
-    if (!w || w === W) return;
-    W = w;
-    drawLanes();
-    paint();
-  }
-  new ResizeObserver(resize).observe(seq);
-  nav.go(0);
-  resize();
-}
-
-/* ========================================================= CRASH REPLAY */
 
 const T_CODE = {
   det: [['sig', 'func Order(ctx workflow.Context) error {'], ['p', '    exec(ctx, ProcessPayment)'], ['i', '    exec(ctx, ReserveInventory)'],
@@ -686,27 +350,13 @@ const A_CODE = {
     ['e', '        step(t, "send-email", email)'], ['fi', '    }'], ['ret', '    return nil'], ['end', '}']],
 };
 
-/* Annotations go after the line, or on their own line when the column is narrow. */
-function annotated(src, ann = {}, hot = [], narrow = false) {
-  const lines = []; const idx = [];
-  for (const [k, t] of src) {
-    const on = hot.includes(k);
-    if (on) idx.push(lines.length);
-    if (ann[k] && narrow) {
-      lines.push(t);
-      if (on) idx.push(lines.length);
-      lines.push(`${t.match(/^ */)[0]}  // ${ann[k]}`);
-    } else lines.push(ann[k] ? `${t}  // ${ann[k]}` : t);
-  }
-  return codeBlock(lines, idx);
-}
 
 const T_BASE = [['ev', '1–16', 'earlier events'], ['ev', '17', 'ActivityTaskScheduled · SendNotification']];
 const A_BASE = [['ev', 'c_', 'process-payment'], ['ev', 'c_', 'reserve-inventory']];
 
 const CR_STOPS = [
-  { label: 'run', t: '11:59:40' }, { label: 'crash', t: '11:59:41', bad: true }, { label: 'timeout', t: '12:00:10' },
-  { label: 'retry', t: '12:00:11' }, { label: 'sticky', t: '12:00:16' }, { label: 'replay', t: '12:00:16' }, { label: 'result', t: '' },
+  { label: 'Run', t: '11:59:40' }, { label: 'Crash', t: '11:59:41', bad: true }, { label: 'Timeout', t: '12:00:10' },
+  { label: 'Retry', t: '12:00:11' }, { label: 'Sticky', t: '12:00:16' }, { label: 'Replay', t: '12:00:16' }, { label: 'Result', t: '' },
 ];
 
 /* One state per stop for each system. rows: [kind, id, text]; kind is
@@ -763,7 +413,7 @@ function crState(i, v) {
       A.hot = clock ? ['p', 'i', 'if', 'e'] : ['p', 'i', 'n'];
       A.rows.push(...aDone.map((r, k) => (k === 0 || k === 2 ? ['new', r[1], r[2]] : r)));
       A.note = clock
-        ? 'Worker B runs <code>order()</code> from the first line. The first two steps return their checkpoints. The clock now says 12:00, so the code takes the other branch and runs <code>send-email</code>, which has no checkpoint. <b class="bad">The customer may get a notification and an email.</b>'
+        ? 'Worker B runs <code>order()</code> from the first line. The first two steps return their checkpoints. The clock now says 12:00, so the code takes the other branch and runs <code>send-email</code>, which has no checkpoint. <b class="c-bad">The customer may get a notification and an email.</b>'
         : 'Worker B runs <code>order()</code> from the first line. <code>step()</code> reads each checkpoint first. The first two return their stored results. <code>send-notification</code> has none, so its body runs again, and the result is saved. Then <code>complete_run</code> finishes the task.';
       break;
     case 4:
@@ -823,85 +473,375 @@ const PREDICT = {
   },
 };
 
+
+const MEASURED = { T: [[1, 75.7], [3, 144.8], [5, 214.0], [10, 385.2]], A: [[1, 17.7], [3, 32.0], [5, 46.1], [10, 81.2]] };
+const MODEL = { T: (n) => 40 + 35 * n, A: (n) => 11 + 7 * n };
+const RATES = [1, 10, 50, 100, 250, 500, 1000, 2500, 5000];
+const NMAX = 30; const YMAX = 1100;
+
+
+/* ================================================================ shared */
+
+/** Tally marks in groups of five; the last `mine` are this step's. */
+function tallyHTML(n, mine = 0, approx = false) {
+  let out = approx ? '<span class="c-data">≈</span>' : '';
+  for (let k = 0; k < n; k++) {
+    if (k && k % 5 === 0) out += '<span class="gap"></span>';
+    out += `<span class="st${k >= n - mine ? ' is-new' : ''}"></span>`;
+  }
+  return `<span class="${P}tally">${out}</span>`;
+}
+
+function marker(id, color) {
+  return s('marker', { id, viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' },
+    s('path', { d: 'M0,0 L8,4 L0,8 z', style: `fill:${color}` }));
+}
+
+const TONE = {
+  bad: 'fill:var(--red-l);stroke:var(--red);stroke-width:2',
+  safe: 'fill:var(--green-l);stroke:var(--green);stroke-width:2',
+};
+
+/* ======================================================= static diagrams */
+
+/*
+ * A diagram spec has a wide and a tall layout. nodes: {x,y,w,h,kind,lines,tone};
+ * kind 'db' draws a dashed box (data at rest). marks with k are clickable.
+ */
+function drawDiagram(L, label) {
+  const [W, H] = L.vb;
+  const id = uid('tuth');
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': label });
+  svg.append(s('defs', null, marker(id, 'var(--ink)')));
+  for (const n of L.titles || []) svg.append(s('text', { x: n.x, y: n.y, class: 't-xs t-b t-up', 'text-anchor': n.anchor || 'start' }, n.text));
+  for (const r of L.rules || []) svg.append(s('path', { d: `M${r.map((q) => q.join(',')).join(' L')}`, class: 'rule dash' }));
+  for (const e of L.edges) {
+    svg.append(s('path', { d: `M${e.pts.map((q) => q.join(',')).join(' L')}`, class: 'edge', 'marker-end': e.noArrow ? null : `url(#${id})` }));
+    if (e.label) svg.append(s('text', { x: e.lx, y: e.ly, class: 't-xs t-mute', 'text-anchor': e.anchor || 'start' }, e.label));
+  }
+  for (const n of L.nodes) {
+    const g = s('g', { class: 'node' });
+    g.append(s('rect', { x: n.x, y: n.y, width: n.w, height: n.h, class: n.kind === 'db' ? 'box dash' : 'box', style: n.tone ? TONE[n.tone] : null }));
+    const total = 15 + (n.lines.length - 1) * 13;
+    let y = n.y + n.h / 2 - total / 2 + 11;
+    n.lines.forEach((t, k) => {
+      const cls = !k ? 't-m t-b' : n.tone === 'bad' ? 't-xs t-b t-bad' : n.tone === 'safe' ? 't-xs t-b t-safe' : 't-xs t-mute';
+      g.append(s('text', { x: n.x + n.w / 2, y, class: cls, 'text-anchor': 'middle' }, t));
+      y += k ? 13 : 15;
+    });
+    svg.append(g);
+  }
+  for (const m of L.marks || []) {
+    const g = s('g', m.k
+      ? { class: `mark${m.on ? ' is-on' : ''}`, role: 'button', tabindex: 0, 'data-k': m.k, 'aria-label': m.aria || m.label }
+      : { class: 'mark', style: 'cursor:default' });
+    if (m.k) g.append(s('circle', { cx: m.x, cy: m.y, r: 18, class: `${P}hit` }));
+    g.append(s('circle', { cx: m.x, cy: m.y, r: m.k ? 11 : 9, style: m.bad ? null : 'fill:var(--ink)' }));
+    g.append(s('text', { x: m.x, y: m.y + 3.6, 'text-anchor': 'middle' }, String(m.n)));
+    svg.append(g);
+    if (m.label) svg.append(s('text', { x: m.lx, y: m.ly, class: `t-s t-b halo ${m.bad ? 't-bad' : 't-mute'}`, 'text-anchor': m.anchor || 'start' }, m.label));
+  }
+  for (const n of L.notes || []) svg.append(s('text', { x: n.x, y: n.y, class: n.cls, 'text-anchor': n.anchor || 'start' }, n.text));
+  return svg;
+}
+
+function staticDiagram(spec, keyItems) {
+  return (fig, app) => {
+    const stage = h('div');
+    let cur = null;
+    const draw = () => {
+      const L = app.clientWidth < (spec.breakAt || 560) ? spec.tall : spec.wide;
+      if (L === cur) return;
+      cur = L;
+      stage.replaceChildren(drawDiagram(L, fig.getAttribute('aria-label') || ''));
+    };
+    app.append(stage, colorKey(keyItems));
+    new ResizeObserver(draw).observe(app);
+    draw();
+  };
+}
+
+function initRequest(fig, app) {
+  let sel = null;
+  const stage = h('div');
+  const out = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  function draw() {
+    const base = app.clientWidth < REQUEST.breakAt ? REQUEST.tall : REQUEST.wide;
+    const L = {
+      ...base,
+      nodes: base.nodes.map((n, k) => {
+        const o = sel && REQ_OUT[sel].subs[k];
+        return o ? { ...n, lines: [n.lines[0], o[0]], tone: o[1] || undefined } : n;
+      }),
+      marks: base.marks.map((m) => ({ ...m, on: m.k && m.k === sel })),
+    };
+    stage.replaceChildren(drawDiagram(L, fig.getAttribute('aria-label') || ''));
+    stage.querySelectorAll('[data-k]').forEach((g) => {
+      const pick = () => { sel = g.dataset.k; draw(); stage.querySelector(`[data-k="${sel}"]`)?.focus(); };
+      g.addEventListener('click', pick);
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { pick(); e.preventDefault(); } });
+    });
+    out.className = `wv-note${sel && REQ_OUT[sel].bad ? ' is-bad' : ''}`;
+    out.innerHTML = sel ? REQ_OUT[sel].text : '<span class="k">Try it</span>Tap a red mark. Each box then shows what that failure leaves behind.';
+  }
+  let wasTall = null;
+  new ResizeObserver(() => { const tall = app.clientWidth < REQUEST.breakAt; if (tall !== wasTall) { wasTall = tall; draw(); } }).observe(app);
+  app.append(stage, colorKey([['k-ink', 'solid box: process · dashed: data at rest'], ['k-gap', 'failure, or work lost'], ['k-held', 'durable']]),
+    h('div', { style: 'height:.6rem' }), out);
+  draw();
+}
+
+/* ======================================================== the event tape */
+
+function initTape(fig, app) {
+  let n = 3;
+  const read = h('dl', { class: 'wv-kv', 'aria-live': 'polite' });
+  const tape = h('div', { class: `${P}tape`, role: 'list' });
+  const sl = range('activities, N', { min: 1, max: 10, value: n, oninput: (v) => { n = v; draw(); } });
+  app.append(sl.el, h('div', { style: 'height:.5rem' }), read, h('div', { style: 'height:.6rem' }), tape,
+    colorKey([['k-data', 'event IDs, history_node rows'], ['k-look', 'the 6 events of one activity'], ['k-opt', 'control']]));
+
+  function row(id, name, nodeId, isFirst, why) {
+    return `<div class="${P}ev${why ? ' is-look' : ''}${isFirst ? ' is-first' : ''}" role="listitem">`
+      + `<span class="nd c-data t-xs">${isFirst ? `node ${nodeId}` : ''}</span><span class="id c-data">${id}</span>`
+      + `<span class="nm">${esc(name)}${why ? `<span class="why t-xs">${esc(why)}</span>` : ''}</span></div>`;
+  }
+  function draw() {
+    const { ev, node } = historyOf(n);
+    const E = 4 + 6 * n + 1; const R = 3 + 3 * n;
+    read.innerHTML = `<dt>events = 4 + 6 × ${n} + 1</dt><dd class="c-data">${E}</dd>`
+      + `<dt>history_node rows = 3 + 3 × ${n}</dt><dd class="c-data">${R}${MEASURED_NODES[n] ? ` <span class="t-xs">(measured ${MEASURED_NODES[n]})</span>` : ''}</dd>`;
+    const show = (id) => n <= 4 || id <= 16 || id >= 5 + 6 * (n - 1);
+    let html = ''; let hidden = false; let lastNode = -1;
+    const head = (t) => `<div class="${P}grp t-xs t-b t-up">${esc(t)}</div>`;
+    html += head('start and first workflow task · 4 events');
+    for (const [id, name] of ev) {
+      const k = Math.floor((id - 5) / 6) + 1;
+      if (id >= 5 && id <= 4 + 6 * n && (id - 5) % 6 === 0 && show(id)) html += head(`activity ${k}: ${actName(k)} · 6 events`);
+      if (id === 5 + 6 * n) html += head('close · 1 event');
+      if (!show(id)) {
+        if (!hidden) { html += `<div class="${P}skip">activities 3–${n - 1}: the same 6 events each, IDs 17–${4 + 6 * (n - 1)}</div>`; hidden = true; }
+        continue;
+      }
+      const first = node[id] !== lastNode;
+      lastNode = node[id];
+      html += row(id, name, node[id], first, id >= 5 && id <= 10 ? WHY[id - 5] : '');
+    }
+    tape.innerHTML = html;
+  }
+  draw();
+}
+
+/* ======================================================== the receipts */
+
+function initReceipts(fig, app) {
+  const { ev } = historyOf(3);
+  const list = (rows) => `<div class="${P}lines">${rows.map(([id, name]) => `<span class="c-data">${id}</span><span>${esc(name)}</span>`).join('')}</div>`;
+  const kv = (rows) => `<dl class="wv-kv">${rows.map(([a, b]) => `<dt>${a}</dt><dd class="c-data">${b}</dd>`).join('')}</dl>`;
+  app.innerHTML = `<div class="wv-cards ${P}pair">`
+    + `<div class="wv-card"><h5>Temporal</h5><p class="t-xs">OrderFulfillmentWorkflow</p>${list(ev.map(([id, name]) => [id, name.replace(' · ', ' ')]))}`
+    + `${kv([['history events', '23'], ['node rows', '12'], ['tables', '16 / 37'], ['SQL', '≈ 145']])}</div>`
+    + `<div class="wv-card"><h5>Absurd</h5><p class="t-xs">order-fulfillment</p>${list([['t_', 'task row'], ['r_', 'run row'], ['c_', 'process-payment'], ['c_', 'reserve-inventory'], ['c_', 'send-notification']])}`
+    + `${kv([['checkpoints', '3'], ['rows written', '5'], ['tables', '3 / 5'], ['SQL', '≈ 32']])}</div></div>`;
+  app.append(colorKey([['k-data', 'stored records and counts']]));
+}
+
+/* ===================================================== ONE ACTIVITY TRIP */
+
+function initTrip(fig, app) {
+  let cur = 0; let W = 0; let guess = 0;
+  const q = ask('Guess first. How many SQL statements does one activity cost?',
+    [[5, '≈ 5'], [15, '≈ 15'], [35, '≈ 35'], [80, '≈ 80']], 35,
+    (v, right) => { guess = v; paint(); return right ? 'Close. Step through to see where the ≈ 34 come from.' : `The source says ≈ 34. Step through to see where they come from.`; });
+  const stat = h('div', { class: 'wv-stats', 'aria-live': 'polite' });
+  const lanesHead = h('div', { class: `${P}lanes` });
+  const seq = h('div');
+  const detail = h('div', { class: `wv-card ${P}detail` });
+  const bands = TRIP.map((st, k) => {
+    const b = h('div', { class: `${P}band`, role: 'button', tabindex: 0, 'aria-label': `Step ${k + 1}: ${st.label}` });
+    b.addEventListener('click', () => { nav.stop(); nav.go(k); });
+    b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { nav.go(k); e.preventDefault(); } });
+    seq.append(b);
+    return b;
+  });
+  const nav = stepper(fig, TRIP, (i) => { cur = i; paint(); }, { interval: 4200 });
+  app.append(q.el, nav.el, stat, h('div', { style: 'height:.6rem' }), lanesHead, seq,
+    colorKey([['k-ink', 'solid box: process · dashed: database'], ['k-look', 'this step'], ['k-data', 'SQL statements (one tally mark each)'], ['k-opt', 'your guess']]));
+
+  const totals = (upTo) => {
+    const t = {};
+    for (let k = 0; k <= upTo; k++) for (const [id, n] of Object.entries(TRIP[k].touch)) t[id] = (t[id] || 0) + n;
+    return t;
+  };
+
+  function drawLanes() {
+    const svg = s('svg', { viewBox: `0 0 ${W} 30`, 'aria-hidden': 'true' });
+    for (const [id, name] of LANES) {
+      const x = LX[id] * W; const w = Math.min(W * 0.18, 118);
+      svg.append(s('rect', { x: x - w / 2, y: 2, width: w, height: 24, class: id === 'pg' ? 'box dash' : 'box' }));
+      svg.append(s('text', { x, y: 18, class: 't-s t-b', 'text-anchor': 'middle' }, W < 480 && id === 'worker' ? 'worker' : name));
+    }
+    lanesHead.replaceChildren(svg);
+  }
+
+  function drawBand(k) {
+    const st = TRIP[k];
+    const rowH = 34; const top = 22;
+    const H = top + st.msgs.length * rowH + 4;
+    const id = uid('tuth');
+    const on = k === cur;
+    const ink = on ? 'var(--purple)' : 'var(--ink)';
+    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
+    svg.append(s('defs', null, marker(id, ink)));
+    for (const [lid] of LANES) svg.append(s('line', { x1: LX[lid] * W, x2: LX[lid] * W, y1: 0, y2: H, class: 'rule dash' }));
+    svg.append(s('text', { x: 4, y: 14, class: `t-xs t-b t-up${on ? ' t-look' : ''}` }, `${String(k + 1).padStart(2, '0')} ${st.label}`));
+    st.msgs.forEach((m, r) => {
+      const y = top + r * rowH + 18;
+      const x1 = LX[m.from] * W; const x2 = LX[m.to] * W;
+      const line = `fill:none;stroke:${ink};stroke-width:${on ? 2.4 : 1.6}`;
+      if (m.self) {
+        svg.append(s('path', { d: `M${x1},${y - 8} h26 v12 h-22`, style: line, 'marker-end': `url(#${id})` }));
+        svg.append(s('text', { x: x1 + 32, y, class: `t-xs${on ? ' t-b' : ''}` }, m.label));
+        return;
+      }
+      const dir = Math.sign(x2 - x1);
+      svg.append(s('path', { d: `M${x1},${y} L${x2 - dir * 3},${y}`, style: line, class: m.reply || m.maybe ? 'dash' : null, 'marker-end': `url(#${id})` }));
+      if (m.via) svg.append(s('circle', { cx: LX[m.via] * W, cy: y, r: 3, style: `fill:var(--board);stroke:${ink};stroke-width:1.4` }));
+      const mid = (x1 + x2) / 2;
+      svg.append(s('text', { x: m.db ? Math.min(mid, W - 8) : mid, y: y - 6, class: `t-xs halo${on ? ' t-b' : ''}`, 'text-anchor': m.db && mid + 60 > W ? 'end' : 'middle' }, m.label));
+      if (m.db) {
+        const n = m.db; const sp = 3.6; const gap = 4;
+        const width = n * sp + Math.floor((n - 1) / 5) * gap;
+        let x = x2 - width - 6;
+        for (let j = 0; j < n; j++) {
+          if (j && j % 5 === 0) x += gap;
+          svg.append(s('line', { x1: x, x2: x, y1: y + 4, y2: y + 14, style: 'stroke:var(--brown);stroke-width:1.8', class: m.maybe ? 'dash' : null }));
+          x += sp;
+        }
+        svg.append(s('text', { x: x2 - 2, y: y + 14, class: 't-xs t-b t-data' }, `${m.maybe ? '≈' : ''}${n}`));
+      }
+    });
+    return svg;
+  }
+
+  function detailHTML(i) {
+    const st = TRIP[i];
+    const tot = totals(i);
+    const last = i === TRIP.length - 1;
+    const rows = TABLES.map(([id, name]) => {
+      const n = tot[id] || 0; const add = st.touch[id] || 0;
+      return `<tr${add ? ' class="is-look"' : ''}><td>${name}</td><td>${tallyHTML(n, add, id === 'mq' && n > 0)}</td><td class="c-data">${id === 'mq' && n ? '≈ ' : ''}${n}</td>${last ? `<td class="c-data">${TRIP_MEASURED[id]}</td>` : ''}</tr>`;
+    }).join('') + (last ? '<tr><td><b>total</b></td><td></td><td class="c-data"><b>≈ 34</b></td><td class="c-data"><b>≈ 34</b></td></tr>' : '');
+    const table = `<div class="wv-scroll"><table class="wv-table"><thead><tr><th>table</th><th>this activity</th><th>${last ? 'source' : ''}</th>${last ? '<th>measured</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    const body = st.sql
+      ? codeBlock(st.sql, st.hot)
+      : codeBlock([
+        'workflow.ExecuteActivity(ctx, ProcessPayment, params).Get(ctx, &p)  // «result from event 7»',
+        'workflow.ExecuteActivity(ctx, ReserveInventory, params).Get(ctx, &i) // step 1 again',
+      ], [0, 1]) + '<p class="wv-callout">The measured column is the per-activity delta between N = 1 and N = 5. The four transactions account for all of it.</p>';
+    const guessLine = last && guess
+      ? `<div class="wv-note ${Math.abs(guess - 34) <= 5 ? 'is-good' : ''}">You guessed <b>≈ ${guess}</b>. One activity costs <b>≈ 34</b> statements: four transactions, and each starts with the same five fencing statements.</div>`
+      : '';
+    return `<p>${st.call}</p>${guessLine}<div class="${P}split"><div>${body}</div>${table}</div>${st.note ? `<div class="wv-note">${st.note}</div>` : ''}`;
+  }
+
+  function paint() {
+    bands.forEach((b, k) => {
+      b.classList.toggle('is-on', k === cur);
+      b.classList.toggle('is-future', k > cur);
+      if (W) b.replaceChildren(drawBand(k));
+    });
+    detail.innerHTML = detailHTML(cur);
+    bands[cur].after(detail);
+    const sum = Object.values(totals(cur)).reduce((a, b) => a + b, 0);
+    stat.innerHTML = `<div class="wv-stat"><span class="k">SQL this activity</span><span class="v c-data">${cur >= 1 ? '≈ ' : ''}${sum}</span></div>`
+      + `<div class="wv-stat"><span class="k">your guess</span><span class="v c-opt">${guess ? `≈ ${guess}` : '—'}</span></div>`;
+  }
+
+  function resize() {
+    const w = Math.round(seq.clientWidth);
+    if (!w || w === W) return;
+    W = w;
+    drawLanes();
+    paint();
+  }
+  new ResizeObserver(resize).observe(seq);
+  nav.go(0);
+  resize();
+}
+
+/* ========================================================= CRASH REPLAY */
+
+/* Annotations go after the line, or on their own line when the card is narrow. */
+function annotated(src, ann = {}, hot = [], narrow = false) {
+  const lines = []; const idx = [];
+  for (const [k, t] of src) {
+    const on = hot.includes(k);
+    if (on) idx.push(lines.length);
+    if (ann[k] && narrow) {
+      lines.push(t);
+      if (on) idx.push(lines.length);
+      lines.push(`${t.match(/^ */)[0]}  // ${ann[k]}`);
+    } else lines.push(ann[k] ? `${t}  // ${ann[k]}` : t);
+  }
+  return codeBlock(lines, idx);
+}
+
 function initCrash(fig, app) {
   let v = 'det'; let i = 0;
   const answer = { T: null, A: null };
-  const opts = [['det', 'deterministic'], ['clock', 'reads time.Now()']];
-  const optBtns = opts.map(([k, label]) => {
-    const b = h('button', { class: `${P}opt`, type: 'button', 'aria-pressed': String(k === v) }, label);
-    b.addEventListener('click', () => { v = k; optBtns.forEach((o, j) => o.setAttribute('aria-pressed', String(opts[j][0] === v))); show(); });
-    return b;
-  });
-  const ruler = h('div', { class: `${P}ruler`, role: 'group', 'aria-label': 'Timeline' });
-  const stopEls = CR_STOPS.map((st, k) => {
-    const b = h('button', { class: `${P}stop${st.bad ? ' is-bad' : ''}`, type: 'button' },
-      h('span', { class: 'dot' }), h('span', { class: 'lb' }, st.label), h('span', { class: 'tm' }, st.t || '—'));
-    b.addEventListener('click', () => nav.go(k));
-    ruler.append(b);
-    return b;
-  });
-  const banner = h('div', { class: `${P}banner`, 'aria-live': 'polite' });
-  const col = (name) => {
-    const el = h('div', { class: `${P}col` });
-    const stamp = h('span', { class: `${P}stamp` });
+  const opt = chips([['det', 'deterministic'], ['clock', 'reads time.Now()']], (x) => { v = x; show(); }, { value: v, label: 'Code between steps' });
+  const banner = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const card = (name) => {
+    const el = h('div', { class: 'wv-card' });
+    const tag = h('span', { class: 'wv-tag' });
     const codeEl = h('div');
-    const rows = h('div', { class: `${P}rows` });
-    const note = h('p', { class: `${P}note` });
-    el.append(h('div', { class: `${P}col-h` }, h('b', null, name), stamp), codeEl, h('div', { class: `${P}store` }, rows), note);
-    return { el, stamp, codeEl, rows, note };
+    const rows = h('div', { class: 'wv-scroll' });
+    const note = h('div');
+    el.append(h('h5', { class: `${P}card-h` }, h('span', null, name), tag), codeEl, rows, note);
+    return { el, tag, codeEl, rows, note };
   };
-  const CT = col('Temporal'); const CA = col('Absurd');
-  CT.rows.parentNode.prepend(h('span', { class: `${P}store-h` }, 'history_node · timer_tasks'));
-  CA.rows.parentNode.prepend(h('span', { class: `${P}store-h` }, 'c_default · r_default'));
-  const cols = h('div', { class: `${P}cols` }, CT.el, CA.el);
-  const nav = stepNav(fig, CR_STOPS.map((x) => x.label), (k) => { i = k; show(); });
-
-  app.append(h('div', { class: `${P}bar` }, h('div', { class: `${P}opts` }, h('span', null, 'code between steps'), ...optBtns), nav.el),
-    ruler, banner, cols,
-    legend([['look', 'this moment: code run, rows written'], ['data', 'stored rows'], ['safe', 'result reused, completed'], ['bad', 'failure, runs again'], ['opt', 'option']]));
+  const CT = card('Temporal · history_node, timer_tasks'); const CA = card('Absurd · c_default, r_default');
+  const cols = h('div', { class: `wv-cards ${P}cols` }, CT.el, CA.el);
+  const nav = stepper(fig, CR_STOPS, (k) => { i = k; show(); }, { interval: 5200 });
+  app.append(h('div', { class: 'wv-field' }, h('label', null, 'Code between steps'), opt.el), nav.el, banner, h('div', { style: 'height:.6rem' }), cols,
+    colorKey([['k-look', 'this moment: code run, rows written'], ['k-data', 'stored rows'], ['k-held', 'result reused, completed'], ['k-gap', 'failure, runs again'], ['k-opt', 'option']]));
 
   function paint(C, st) {
-    C.stamp.textContent = st.status;
-    C.stamp.className = `${P}stamp ${st.status === 'completed' ? 'is-safe' : st.status === 'down' || st.status === 'blocked' ? 'is-bad' : ''}`;
-    C.el.classList.toggle('is-down', st.status === 'down');
+    C.tag.textContent = st.status;
+    C.tag.className = `wv-tag ${st.status === 'completed' ? 'c-safe' : st.status === 'down' || st.status === 'blocked' ? 'c-bad' : ''}`;
+    C.el.className = `wv-card${st.status === 'down' ? ' is-bad' : ''}`;
     C.codeEl.innerHTML = annotated(st.code, st.ann, st.hot, C.el.clientWidth < 440);
-    C.rows.innerHTML = st.rows.map(([k, id, t]) => `<div class="${P}row ${P}r-${k}"><span class="id">${esc(id)}</span>${esc(t)}</div>`).join('');
-    C.note.className = `${P}note${st.tone === 'bad' ? ' is-bad' : st.tone === 'good' ? ' is-good' : ''}`;
+    C.rows.innerHTML = `<table class="wv-table"><tbody>${st.rows.map(([k, id, t]) => `<tr${k === 'new' ? ' class="is-look"' : ''}><td class="${k === 'bad' ? 'c-bad' : k === 'task' ? '' : 'c-data'}">${esc(id)}</td><td${k === 'bad' ? ' class="c-bad"' : ''}>${k === 'task' ? 'pending · ' : ''}${esc(t)}</td></tr>`).join('')}</tbody></table>`;
+    C.note.className = `wv-note${st.tone === 'bad' ? ' is-bad' : st.tone === 'good' ? ' is-good' : ''}`;
     C.note.innerHTML = st.note;
   }
-  /** Replace a column's note with the question; the state shown is the stop before. */
-  function ask(C, sys) {
+  const gate = (sys) => v === 'clock' && i === PREDICT[sys].at && answer[sys] === null;
+  function askIn(C, sys) {
     const pr = PREDICT[sys];
-    C.note.className = `${P}note ${P}ask`;
-    C.note.innerHTML = `<b>Predict.</b> ${pr.q}`;
-    const row = h('span', { class: `${P}choices` });
-    pr.choices.forEach(([label], k) => {
-      const b = h('button', { class: `${P}opt`, type: 'button' }, label);
-      b.addEventListener('click', () => { answer[sys] = k; show(); });
-      row.append(b);
-    });
-    C.note.append(row);
+    const correct = pr.choices.findIndex(([, ok]) => ok);
+    const qq = ask(pr.q.replace(/<\/?code>/g, ''), pr.choices.map(([label], k) => [k, label]), correct,
+      (k) => { answer[sys] = k; setTimeout(show, 900); return pr.choices[k][1] ? 'Right. Showing what happens…' : 'Not quite. Showing what happens…'; });
+    C.note.className = '';
+    C.note.replaceChildren(qq.el);
   }
-  const verdict = (sys) => {
-    const pr = PREDICT[sys]; const k = answer[sys];
-    const ok = pr.choices[k][1];
-    return `<span class="${P}verdict ${ok ? 'is-good' : 'is-bad'}">You said: ${esc(pr.choices[k][0])}. ${ok ? 'Right.' : 'Not quite.'}</span> `;
-  };
   function show() {
-    const gate = (sys) => v === 'clock' && i === PREDICT[sys].at && answer[sys] === null;
     const st = crState(i, v);
     const T = gate('T') ? crState(PREDICT.T.from, v).T : st.T;
     const A = gate('A') ? crState(PREDICT.A.from, v).A : st.A;
     const cs = CR_STOPS[i];
-    stopEls.forEach((b, k) => { b.classList.toggle('is-on', k === i); b.classList.toggle('is-past', k < i); b.setAttribute('aria-current', k === i ? 'step' : 'false'); });
+    banner.className = `wv-note${cs.t ? '' : ' is-good'}`;
     banner.innerHTML = cs.t
-      ? `<b>${cs.t}</b> <span>sample time</span>`
-      : '<b>Result.</b> Both systems start the interrupted step twice, so step bodies must be idempotent. They differ on the code between steps: Temporal runs it again and checks it against history; Absurd runs it again and trusts it.';
+      ? `<span class="k">${cs.t}</span>sample time`
+      : '<span class="k">Result</span>Both systems start the interrupted step twice, so step bodies must be idempotent. They differ on the code between steps: Temporal runs it again and checks it against history; Absurd runs it again and trusts it.';
     paint(CT, T); paint(CA, A);
     for (const [sys, C] of [['T', CT], ['A', CA]]) {
-      if (v !== 'clock') continue;
-      if (gate(sys)) ask(C, sys);
-      else if (i === PREDICT[sys].at && answer[sys] !== null) C.note.insertAdjacentHTML('afterbegin', verdict(sys));
+      if (v !== 'clock' || i !== PREDICT[sys].at) continue;
+      if (gate(sys)) askIn(C, sys);
+      else {
+        const k = answer[sys]; const ok = PREDICT[sys].choices[k][1];
+        C.note.insertAdjacentHTML('afterbegin', `<b class="${ok ? 'c-safe' : 'c-bad'}">You said: ${esc(PREDICT[sys].choices[k][0])}. ${ok ? 'Right.' : 'Not quite.'}</b> `);
+      }
     }
   }
   let wasNarrow = null;
@@ -911,23 +851,16 @@ function initCrash(fig, app) {
 
 /* =========================================================== COST MODEL */
 
-const MEASURED = { T: [[1, 75.7], [3, 144.8], [5, 214.0], [10, 385.2]], A: [[1, 17.7], [3, 32.0], [5, 46.1], [10, 81.2]] };
-const MODEL = { T: (n) => 40 + 35 * n, A: (n) => 11 + 7 * n };
-const RATES = [1, 10, 50, 100, 250, 500, 1000, 2500, 5000];
-const NMAX = 30; const YMAX = 1100;
-
 function initCost(fig, app) {
   const S = { n: 20, r: 6 };
-  const svg = s('svg', { role: 'img', 'aria-label': 'SQL statements per unit of work against the number of activities or steps', class: `${P}chart` });
-  const meters = h('div', { class: `${P}meters`, 'aria-live': 'polite' });
-  const note = h('p', { class: `${P}note` });
-  const rn = slider('activities per workflow, N', { min: 1, max: NMAX, value: S.n, show: (x) => String(x), oninput: (x) => { S.n = x; draw(); } });
-  const rr = slider('your workflows per second', { min: 0, max: RATES.length - 1, value: S.r, show: (x) => `${fmt(RATES[x])}/s`, oninput: (x) => { S.r = x; draw(); } });
-  app.append(h('div', { class: `${P}ctl` }, rn.el, rr.el), meters, svg, note,
-    legend([['data', 'measured'], ['line', 'Temporal, fitted'], ['dash', 'Absurd, fitted'], ['look', 'your N'], ['opt', 'controls']]));
-
-  const dial = (name, formula, per, total, meas) => `<div class="${P}dial"><div class="nm">${name}</div><div class="f">${formula} = <b>${fmt(per)}</b> per unit${meas ? ` · measured ${meas}` : ''}</div>`
-    + `<div class="dg">${fmt(total).split('').map((c) => (c === ',' ? '<span class="cm">,</span>' : `<i>${c}</i>`)).join('')}<span class="u">SQL/s</span></div></div>`;
+  const svg = s('svg', { role: 'img', 'aria-label': 'SQL statements per workflow against the number of activities' });
+  const stats = h('div', { class: 'wv-stats', 'aria-live': 'polite' });
+  const note = h('div', { class: 'wv-note' });
+  const rn = range('activities per workflow, N', { min: 1, max: NMAX, value: S.n, oninput: (x) => { S.n = x; draw(); } });
+  const rr = range('your workflows per second', { min: 0, max: RATES.length - 1, value: S.r, fmt: (x) => `${fmt(RATES[x])}/s`, oninput: (x) => { S.r = x; draw(); } });
+  app.append(h('div', { class: 'wv-grid-ctrl' }, rn.el, rr.el), stats, h('div', { style: 'height:.6rem' }), svg,
+    colorKey([['k-data', 'measured'], ['k-line-ink', 'fitted line (Absurd dashed)'], ['k-look', 'your N'], ['k-opt', 'controls']]),
+    h('div', { style: 'height:.6rem' }), note);
 
   function draw() {
     const Wd = Math.max(300, app.clientWidth);
@@ -936,31 +869,35 @@ function initCost(fig, app) {
     const x = (n) => m.l + (n / NMAX) * (Wd - m.l - m.r);
     const y = (q) => Ht - m.b - (q / YMAX) * (Ht - m.t - m.b);
     svg.setAttribute('viewBox', `0 0 ${Wd} ${Ht}`);
-    let o = `<rect x="${x(10)}" y="${m.t}" width="${x(NMAX) - x(10)}" height="${Ht - m.t - m.b}" class="${P}extra"/>`;
-    o += `<text x="${x(NMAX) - 6}" y="${Ht - m.b - 8}" class="${P}t-sub" text-anchor="end">not measured past N = 10</text>`;
+    let o = `<rect x="${x(10)}" y="${m.t}" width="${x(NMAX) - x(10)}" height="${Ht - m.t - m.b}" style="fill:var(--tint)"/>`;
+    o += `<text x="${x(NMAX) - 6}" y="${Ht - m.b - 8}" class="t-xs t-mute" text-anchor="end">not measured past N = 10</text>`;
     for (let q = 0; q <= YMAX; q += 200) {
-      o += `<line x1="${m.l}" x2="${Wd - m.r}" y1="${y(q)}" y2="${y(q)}" class="${P}grid"/>`;
-      o += `<text x="${m.l - 6}" y="${y(q) + 3.5}" class="${P}t-sub" text-anchor="end">${q}</text>`;
+      o += `<line x1="${m.l}" x2="${Wd - m.r}" y1="${y(q)}" y2="${y(q)}" class="rule" style="opacity:.5"/>`;
+      o += `<text x="${m.l - 6}" y="${y(q) + 3.5}" class="t-xs t-mute" text-anchor="end">${q}</text>`;
     }
-    for (let n = 0; n <= NMAX; n += 5) o += `<text x="${x(n)}" y="${Ht - m.b + 15}" class="${P}t-sub" text-anchor="middle">${n}</text>`;
-    o += `<text x="${Wd - m.r}" y="${Ht - 4}" class="${P}t-sub" text-anchor="end">activities or steps per unit, N →</text>`;
-    o += `<text x="${m.l}" y="${m.t - 7}" class="${P}t-sub">↑ SQL statements per unit</text>`;
-    o += `<rect x="${m.l}" y="${m.t}" width="${Wd - m.l - m.r}" height="${Ht - m.t - m.b}" class="${P}axis"/>`;
-    o += `<path d="M${x(0)},${y(MODEL.T(0))} L${x(NMAX)},${y(MODEL.T(NMAX))}" class="${P}fit"/>`;
-    o += `<path d="M${x(0)},${y(MODEL.A(0))} L${x(NMAX)},${y(MODEL.A(NMAX))}" class="${P}fit is-dash"/>`;
+    for (let n = 0; n <= NMAX; n += 5) o += `<text x="${x(n)}" y="${Ht - m.b + 15}" class="t-xs t-mute" text-anchor="middle">${n}</text>`;
+    o += `<text x="${Wd - m.r}" y="${Ht - 4}" class="t-xs t-mute" text-anchor="end">activities or steps per unit, N →</text>`;
+    o += `<text x="${m.l}" y="${m.t - 7}" class="t-xs t-mute">↑ SQL statements per unit</text>`;
+    o += `<rect x="${m.l}" y="${m.t}" width="${Wd - m.l - m.r}" height="${Ht - m.t - m.b}" class="rule-ink"/>`;
+    o += `<path d="M${x(0)},${y(MODEL.T(0))} L${x(NMAX)},${y(MODEL.T(NMAX))}" style="fill:none;stroke:var(--ink);stroke-width:2"/>`;
+    o += `<path d="M${x(0)},${y(MODEL.A(0))} L${x(NMAX)},${y(MODEL.A(NMAX))}" style="fill:none;stroke:var(--ink);stroke-width:2;stroke-dasharray:7 4"/>`;
     const tn = Wd < 500 ? 13 : 17;
-    o += `<text x="${x(tn) + 8}" y="${y(MODEL.T(tn)) + 18}" class="${P}t-name halo">Temporal 40 + 35·N</text>`;
-    o += `<text x="${x(NMAX) - 6}" y="${y(MODEL.A(NMAX - 2)) - 12}" class="${P}t-name halo" text-anchor="end">Absurd 11 + 7·N</text>`;
-    for (const [n, q] of [...MEASURED.T, ...MEASURED.A]) o += `<circle cx="${x(n)}" cy="${y(q)}" r="4.5" class="${P}pt"/>`;
+    o += `<text x="${x(tn) + 8}" y="${y(MODEL.T(tn)) + 18}" class="t-s t-b halo">Temporal 40 + 35·N</text>`;
+    o += `<text x="${x(NMAX) - 6}" y="${y(MODEL.A(NMAX - 2)) - 12}" class="t-s t-b halo" text-anchor="end">Absurd 11 + 7·N</text>`;
+    for (const [n, q] of [...MEASURED.T, ...MEASURED.A]) o += `<circle cx="${x(n)}" cy="${y(q)}" r="4.5" style="fill:var(--brown-l);stroke:var(--brown);stroke-width:1.8"/>`;
     const cx = x(S.n);
-    o += `<line x1="${cx}" x2="${cx}" y1="${m.t}" y2="${Ht - m.b}" class="${P}cursor"/>`;
-    for (const f of [MODEL.T, MODEL.A]) o += `<circle cx="${cx}" cy="${y(f(S.n))}" r="5" class="${P}cur-pt"/>`;
+    o += `<line x1="${cx}" x2="${cx}" y1="${m.t}" y2="${Ht - m.b}" style="stroke:var(--purple);stroke-width:1.5"/>`;
+    for (const f of [MODEL.T, MODEL.A]) o += `<circle cx="${cx}" cy="${y(f(S.n))}" r="5" style="fill:var(--purple);stroke:var(--board);stroke-width:2"/>`;
     svg.innerHTML = o;
 
     const R = RATES[S.r]; const t = MODEL.T(S.n); const a = MODEL.A(S.n);
     const mt = MEASURED.T.find(([n]) => n === S.n); const ma = MEASURED.A.find(([n]) => n === S.n);
-    meters.innerHTML = dial('Temporal', `40 + 35 × ${S.n}`, t, t * R, mt && mt[1]) + dial('Absurd', `11 + 7 × ${S.n}`, a, a * R, ma && ma[1]);
-    note.innerHTML = `Your Postgres at ${fmt(R)} workflows/s. Temporal runs <b>${(t / a).toFixed(1)}×</b> as many statements; the ratio tends to 35 / 7 = 5 as N grows. This counts statements, not their cost.`;
+    const stat = (k, v, cls = 'c-data') => `<div class="wv-stat"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
+    stats.innerHTML = stat('Temporal, per workflow', `${fmt(t)}${mt ? ` <span class="t-xs">(measured ${mt[1]})</span>` : ''}`)
+      + stat('Temporal, your Postgres', `${fmt(t * R)}/s`)
+      + stat('Absurd, per task', `${fmt(a)}${ma ? ` <span class="t-xs">(measured ${ma[1]})</span>` : ''}`)
+      + stat('Absurd, your Postgres', `${fmt(a * R)}/s`);
+    note.innerHTML = `Temporal: 40 + 35 × ${S.n} = ${fmt(t)}. Absurd: 11 + 7 × ${S.n} = ${fmt(a)}. At ${fmt(R)} workflows/s, Temporal runs <b>${(t / a).toFixed(1)}×</b> as many statements; the ratio tends to 35 / 7 = 5 as N grows. This counts statements, not their cost.`;
   }
   new ResizeObserver(() => draw()).observe(app);
   draw();
@@ -969,10 +906,10 @@ function initCost(fig, app) {
 register({
   'tuth-receipts': initReceipts,
   'tuth-request': initRequest,
-  'tuth-services': staticDiagram(SERVICES, [['proc', 'process you run'], ['table', 'database'], ['safe', 'durable state']]),
+  'tuth-services': staticDiagram(SERVICES, [['k-ink', 'solid box: process you run · dashed: database'], ['k-held', 'durable state']]),
   'tuth-tape': initTape,
   'tuth-trip': initTrip,
   'tuth-crash': initCrash,
   'tuth-cost': initCost,
-  'tuth-deploy': staticDiagram(DEPLOY, [['proc', 'process you run'], ['table', 'database']]),
+  'tuth-deploy': staticDiagram(DEPLOY, [['k-ink', 'solid box: process you run · dashed: database']]),
 });

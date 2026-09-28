@@ -54,7 +54,7 @@ different versions of the same problem.
 Almost everyone is in distributed-systems land without realising. A microservice
 making a network call looks like this:
 
-{{< viz kind="tuth-request" frame="none" fig="1" title="A request with two writes" wide="false" fallback="request.svg" alt="App calls Backend; Backend writes to its DB (step 2) and calls an external service (step 3); steps 2 and 3 are failure points" >}}
+{{< viz kind="tuth-request" fig="1" title="A request with two writes" wide="false" fallback="request.svg" alt="App calls Backend; Backend writes to its DB (step 2) and calls an external service (step 3); steps 2 and 3 are failure points" >}}
 
 Any of **2** (DB write) or **3** (external service call) can fail for a
 dozen reasons — buggy code, a network blip, the third-party is down, the
@@ -122,7 +122,7 @@ Your worker is stateless and talks to the Temporal server via gRPC. The
 Temporal server itself is _not_ a single binary; it's four internal
 services (processes you run) that all share one database:
 
-{{< viz kind="tuth-services" frame="none" fig="2" title="Temporal's services and one database" fallback="services.svg" alt="Your worker calls the frontend over gRPC; the frontend routes to history, matching, and the internal worker service; all three read and write one Postgres database with 37 tables" caption="The database can also be MySQL or Cassandra. It is one logical database, which may itself be a cluster." >}}
+{{< viz kind="tuth-services" fig="2" title="Temporal's services and one database" fallback="services.svg" alt="Your worker calls the frontend over gRPC; the frontend routes to history, matching, and the internal worker service; all three read and write one Postgres database with 37 tables" caption="The database can also be MySQL or Cassandra. It is one logical database, which may itself be a cluster." >}}
 
 **Frontend** terminates gRPC, authenticates, and routes requests to one of
 the three back-end services. **History** owns workflow state machines
@@ -307,7 +307,7 @@ So an N-activity workflow writes **`4 + 6×N + 1`** events. History writes them
 in batches, one batch per transaction, and each batch is one row in
 `history_node`: 23 events become 12 rows.
 
-{{< viz kind="tuth-tape" frame="none" fig="3" title="The history of one workflow" wide="false" fallback="tape.svg" alt="The event history of the order workflow, grouped into history_node rows, with the six events of one activity explained" caption="Event names are from the benchmark run above. Batches follow the Temporal 1.28.2 source; the measured `INSERT INTO history_node` counts are in the tables below." >}}
+{{< viz kind="tuth-tape" fig="3" title="The history of one workflow" wide="false" fallback="tape.svg" alt="The event history of the order workflow, grouped into history_node rows, with the six events of one activity explained" caption="Event names are from the benchmark run above. Batches follow the Temporal 1.28.2 source; the measured `INSERT INTO history_node` counts are in the tables below." >}}
 
 **Why all this ceremony?** Because replay is deterministic. If your worker
 crashes mid-workflow, Temporal replays the entire event history against your
@@ -323,7 +323,7 @@ separate loop in History reads the row and tells Matching to dispatch the task.
 The figure follows one activity, `ProcessPayment`, from the workflow code that
 schedules it to the workflow code that gets its result.
 
-{{< viz kind="tuth-trip" frame="none" fig="4" title="One activity, four transactions" fallback="trip.svg" alt="One activity through your worker, the frontend, history, and matching, with the Postgres statements each of its four transactions runs" caption="`ProcessPayment` in the 3-activity benchmark workflow. Statements and event batches follow the Temporal 1.28.2 source and match the measured per-activity deltas below. Shard 3 is a sample value." >}}
+{{< viz kind="tuth-trip" fig="4" title="One activity, four transactions" fallback="trip.svg" alt="One activity through your worker, the frontend, history, and matching, with the Postgres statements each of its four transactions runs" caption="`ProcessPayment` in the 3-activity benchmark workflow. Statements and event batches follow the Temporal 1.28.2 source and match the measured per-activity deltas below. Shard 3 is a sample value." >}}
 
 Two details are easy to miss. Each of the four transactions starts with the
 same five statements: the shard lock, then a lock and an update on
@@ -681,7 +681,7 @@ This is the main difference from Temporal:
 The figure kills the worker during step 3 in both systems. Switch the code
 between steps to read the clock to see where the two models part.
 
-{{< viz kind="tuth-crash" frame="none" fig="5" title="The worker dies during step 3" fallback="crash.svg" alt="Timeline of Temporal and Absurd recovering from a worker crash during the third step, with and without code that reads the clock" caption="Behaviour from Temporal 1.28.2, Go SDK 1.34, and `absurd.sql`. Timeouts are the benchmark's: a 30 s activity StartToClose and a 30 s Absurd claim. Clock times are sample values. `exec` stands for `workflow.ExecuteActivity(…).Get(…)`." >}}
+{{< viz kind="tuth-crash" fig="5" title="The worker dies during step 3" fallback="crash.svg" alt="Timeline of Temporal and Absurd recovering from a worker crash during the third step, with and without code that reads the clock" caption="Behaviour from Temporal 1.28.2, Go SDK 1.34, and `absurd.sql`. Timeouts are the benchmark's: a 30 s activity StartToClose and a 30 s Absurd claim. Clock times are sample values. `exec` stands for `workflow.ExecuteActivity(…).Get(…)`." >}}
 
 The Absurd model checks less. You can re-run an LLM call or a random number
 generator between steps, and Absurd does not notice. In exchange, the mental
@@ -732,7 +732,7 @@ Absurd cost model:  ~11 + 7 × N   SQL statements per task
 Side by side, with both fitted lines. Move `N` and the start rate to apply the
 models to your own workload.
 
-{{< viz kind="tuth-cost" frame="none" fig="6" title="SQL statements per unit of work" fallback="cost.svg" alt="Measured SQL statements per workflow or task for 1, 3, 5, and 10 activities or steps, with the fitted lines 40 + 35N for Temporal and 11 + 7N for Absurd" caption="Brown points are the measured runs, 200 workflows or tasks each. Lines are the fitted models. Past `N = 10` the lines are extrapolated." >}}
+{{< viz kind="tuth-cost" fig="6" title="SQL statements per unit of work" fallback="cost.svg" alt="Measured SQL statements per workflow or task for 1, 3, 5, and 10 activities or steps, with the fitted lines 40 + 35N for Temporal and 11 + 7N for Absurd" caption="Brown points are the measured runs, 200 workflows or tasks each. Lines are the fitted models. Past `N = 10` the lines are extrapolated." >}}
 
 **A Temporal activity costs about 5× as many SQL statements as an Absurd
 step.** The slope ratio, 35 / 7, stays at 5 as you add units of work. The
@@ -775,7 +775,7 @@ total                                  13 MB
 No event history means no 44 MB `history_node`. **Absurd stores ~7× less
 per task.** Figure 7 shows what each system keeps for one order.
 
-{{< viz kind="tuth-receipts" frame="none" fig="7" title="One order, two receipts" fallback="receipts.svg" alt="Two receipts for the same 3-step order: Temporal's lists 23 history events and about 145 SQL statements across 16 tables; Absurd's lists 3 checkpoints and about 32 SQL statements across 3 tables" caption="Temporal records every event of the workflow. Absurd records the result of each step. Counts are from the runs above." >}}
+{{< viz kind="tuth-receipts" fig="7" title="One order, two receipts" fallback="receipts.svg" alt="Two receipts for the same 3-step order: Temporal's lists 23 history events and about 145 SQL statements across 16 tables; Absurd's lists 3 checkpoints and about 32 SQL statements across 3 tables" caption="Temporal records every event of the workflow. Absurd records the result of each step. Counts are from the runs above." >}}
 
 ## Throughput
 
@@ -824,7 +824,7 @@ task was **20.2 ms** — tail essentially matches the median.
 
 Architecturally, here's what you deploy for each:
 
-{{< viz kind="tuth-deploy" frame="none" fig="8" title="What you deploy" fallback="deploy.svg" alt="Temporal: your worker, a frontend, history, matching, and worker services, and Postgres with 37 tables. Absurd: your workers and Postgres with 5 tables per queue." caption="The benchmark ran Temporal's `auto-setup` image, which runs the four services in one process." >}}
+{{< viz kind="tuth-deploy" fig="8" title="What you deploy" fallback="deploy.svg" alt="Temporal: your worker, a frontend, history, matching, and worker services, and Postgres with 37 tables. Absurd: your workers and Postgres with 5 tables per queue." caption="The benchmark ran Temporal's `auto-setup` image, which runs the four services in one process." >}}
 
 Same workload (3-step order fulfillment), same hardware, same Postgres
 instance, same VM:
