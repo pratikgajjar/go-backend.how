@@ -693,9 +693,9 @@ void main(){
     end() { if (this.sub) this.sub.end(); B.pose = 'rest'; B.eye = 0; B.mouth = 0; B.blush = 0; },
   });
 
-  /* meditation: lotus, levitate, ommm — the wind can't touch him */
+  /* meditation: lotus, levitate, ॐ — the wind can't touch him */
   function om() {
-    say(Math.random() < 0.35 ? 'ॐ' : 'ommm…', 'kz-om');
+    say('ॐ', 'kz-om');
     const c = l2w(0, 4);
     for (let i = 0; i < 2; i++) {
       const a = document.createElement('span'); a.className = 'kz-aura';
