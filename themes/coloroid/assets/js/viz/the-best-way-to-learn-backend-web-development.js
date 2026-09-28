@@ -6,7 +6,7 @@
  * hours a day). Nothing here is measured; the figures let the reader test
  * the post's model against a choice they make or against their own months.
  *
- *   one-stack      hero. "Twelve months: how often can you switch and still
+ *   one-stack      in "Start With One Stack". "Twelve months: how often can you switch and still
  *                  get comfortable?" The reader picks the interval; the same
  *                  twelve bricks regroup into stacks.
  *   where-you-are  three short questions about the reader's months, week,
@@ -53,7 +53,7 @@ function chips(options, value, onpick, label) {
 
 const mo = (n) => `${n} month${n === 1 ? '' : 's'}`;
 
-/* ================================================================ HERO */
+/* =========================================================== ONE STACK */
 
 const HERO_SAY = {
   1: 'Twelve stacks. Each one stops at month 1 and starts again. None gets comfortable.',
