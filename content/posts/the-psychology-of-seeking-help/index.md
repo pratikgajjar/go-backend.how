@@ -10,7 +10,7 @@ images = ["og-7ea28dc5.png"]
 theme = "wisteria"
 +++
 
-{{< viz kind="trails" frame="none" fallback="trails.svg" alt="Five help seekers as lines from the moment a problem appears to the moment they ask: many narrowing attempts, many dead ends, a half-remembered earlier problem, no attempts, and a hand-off" caption="Each line runs from the moment the problem appears to the moment the person asks. Ratings come from the sections below." >}}
+{{< viz kind="trails" frame="none" fallback="trails.svg" alt="Five help seekers as lines from the moment a problem appears to the moment they ask: many narrowing attempts, many dead ends, a half-remembered earlier problem, no attempts, and a hand-off" caption="Each line runs from the moment the problem appears to the moment the person asks. The types and ratings are described below." >}}
 
 
 In my experience as a backend engineer, I've observed various patterns in how people seek help when they encounter problems. Recognising the pattern tells me what kind of help the person needs.
@@ -81,6 +81,10 @@ This group is familiar with the problem but prefers not to solve it themselves. 
 - Recognizes the problem
 - Prefers delegation
 - Low engagement in the resolution process
+
+The type usually shows in the first message. Here are five sample messages about the same failing test.
+
+{{< viz kind="sorter" frame="none" wide="false" fallback="sorter.svg" alt="Five sample Slack messages about the same failing test, one per help seeker type, with the phrases that give each type away" caption="Pick a type before the clues appear. The messages are samples." >}}
 
 # Reactions to Solutions
 

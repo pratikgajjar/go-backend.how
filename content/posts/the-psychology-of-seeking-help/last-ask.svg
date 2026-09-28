@@ -1,33 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 418" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
-<rect width="640" height="418" fill="#efeafa"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 410" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+<rect width="640" height="410" fill="#efeafa"/>
 <text x="20" y="30" font-size="13" font-weight="700" fill="#2a2140">The last time you asked for help</text>
 <text x="20" y="58" font-size="12" font-weight="700" fill="#2a2140">1  Before you asked, what had you done?</text>
-<text x="36" y="80" font-size="11" fill="#2a2140">Nothing yet; asked as soon as it broke</text>
-<text x="620" y="80" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Direct Seeker</text>
-<text x="36" y="100" font-size="11" fill="#2a2140">Nothing; someone else is faster at it</text>
-<text x="620" y="100" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Delegator</text>
-<text x="36" y="120" font-size="11" fill="#2a2140">A little; it looked like an old problem</text>
-<text x="620" y="120" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Unrelated Connector</text>
-<text x="36" y="140" font-size="11" fill="#2a2140">Several things; narrowed it down</text>
-<text x="620" y="140" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Persistent Problem Solver</text>
-<text x="36" y="160" font-size="11" fill="#2a2140">Everything; out of ideas</text>
-<text x="620" y="160" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Exhausted Effort</text>
+<text x="36" y="80" font-size="11" fill="#2a2140">Nothing yet; asked as soon as it broke</text><text x="620" y="80" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Direct Seeker</text>
+<text x="36" y="100" font-size="11" fill="#2a2140">Nothing; someone else is faster at it</text><text x="620" y="100" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Delegator</text>
+<text x="36" y="120" font-size="11" fill="#2a2140">A little; it looked like an old problem</text><text x="620" y="120" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Unrelated Connector</text>
+<text x="36" y="140" font-size="11" fill="#2a2140">Several things; narrowed it down</text><text x="620" y="140" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Persistent Problem Solver</text>
+<text x="36" y="160" font-size="11" fill="#2a2140">Everything; out of ideas</text><text x="620" y="160" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Exhausted Effort</text>
 <line x1="20" y1="174" x2="620" y2="174" stroke="#b9aed6"/>
 <text x="20" y="198" font-size="12" font-weight="700" fill="#2a2140">2  When the fix came, what did you do?</text>
-<text x="36" y="220" font-size="11" fill="#2a2140">Asked why, and how to prevent it</text>
-<text x="620" y="220" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Inquisitive Learner</text>
-<text x="36" y="240" font-size="11" fill="#2a2140">Applied it, back to work</text>
-<text x="620" y="240" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Solution Seeker</text>
-<text x="36" y="260" font-size="11" fill="#2a2140">Let them sort it out</text>
-<text x="620" y="260" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Disinterested</text>
+<text x="36" y="220" font-size="11" fill="#2a2140">Asked why, and how to prevent it</text><text x="620" y="220" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Inquisitive Learner</text>
+<text x="36" y="240" font-size="11" fill="#2a2140">Applied it, back to work</text><text x="620" y="240" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Solution Seeker</text>
+<text x="36" y="260" font-size="11" fill="#2a2140">Let them sort it out</text><text x="620" y="260" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">Disinterested</text>
 <line x1="20" y1="274" x2="620" y2="274" stroke="#b9aed6"/>
 <text x="20" y="298" font-size="12" font-weight="700" fill="#2a2140">3  Where did you ask?</text>
-<text x="36" y="320" font-size="11" fill="#2a2140">A call</text>
-<text x="620" y="320" font-size="11" font-weight="700" fill="#a3261c" text-anchor="end">stops someone; nothing written</text>
-<text x="36" y="340" font-size="11" fill="#2a2140">A DM or personal email</text>
-<text x="620" y="340" font-size="11" font-weight="700" fill="#a3261c" text-anchor="end">one reader; stays private</text>
-<text x="36" y="360" font-size="11" fill="#2a2140">A public channel</text>
-<text x="620" y="360" font-size="11" font-weight="700" fill="#1f6b3f" text-anchor="end">anyone can answer; searchable</text>
+<text x="36" y="320" font-size="11" fill="#2a2140">A call</text><text x="620" y="320" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">stops them now; nothing written</text>
+<text x="36" y="340" font-size="11" fill="#2a2140">A DM or personal email</text><text x="620" y="340" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">one reader; stays private</text>
+<text x="36" y="360" font-size="11" fill="#2a2140">A public channel</text><text x="620" y="360" font-size="11" font-weight="700" fill="#5b2a8f" text-anchor="end">anyone free answers; searchable</text>
 <line x1="20" y1="374" x2="620" y2="374" stroke="#b9aed6"/>
-<text x="20" y="398" font-size="11" fill="#8c4a10" font-weight="700">The post recommends a message in a public channel.</text>
-</svg>
+<text x="20" y="398" font-size="11" fill="#2a2140" font-weight="700">The post recommends a message in a public channel.</text></svg>
