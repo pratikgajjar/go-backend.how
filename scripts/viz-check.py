@@ -83,8 +83,8 @@ def main() -> int:
                 if scheme == "dark":
                     pg.evaluate("document.documentElement.setAttribute('data-force-dark', '')")
                 pg.wait_for_timeout(600)
-                total = pg.locator("figure.wv").count()
-                live = pg.locator("figure.wv.wv-live").count()
+                total = pg.locator("figure.wv, figure.viz").count()
+                live = pg.locator("figure.wv.wv-live, figure.viz.wv-live").count()
                 sw = pg.evaluate("document.documentElement.scrollWidth")
                 tag = f"{name}-{scheme}"
                 print(f"[{tag}] figures {live}/{total} mounted, scrollWidth {sw}px (viewport {w}px)")
@@ -100,7 +100,7 @@ def main() -> int:
                 for e in errors[:10]:
                     failed = True
                     print(f"  FAIL: {e}")
-                figs = pg.locator("figure.wv")
+                figs = pg.locator("figure.wv, figure.viz")
                 for i in range(total):
                     f = figs.nth(i)
                     f.scroll_into_view_if_needed()

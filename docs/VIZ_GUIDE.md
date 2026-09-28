@@ -2,10 +2,27 @@
 
 Read this before adding figures to a post. Also read `docs/WRITING_GUIDE.md`.
 
-The house example is the WAL Cake post:
-`content/posts/wal-cake-lock-free-cdc/index.md` and
-`themes/coloroid/assets/js/walviz.js`. Open it in a browser and use every
-figure before you design your own.
+The WAL Cake post (`content/posts/wal-cake-lock-free-cdc/index.md`,
+`themes/coloroid/assets/js/walviz.js`) shows the level of care expected.
+It is a bar for quality, not a template. Do not copy its widgets, layout,
+or look. Each post gets the visual that makes sense for its subject: a
+running post, a stereogram post, and a Postgres post should not look like
+the same kit with different labels.
+
+## Reimagine the post's images
+
+Replace the post's current images with visuals you design for it:
+
+- The `xiaohei-hero.png` at the top of the post: replace it with a hero
+  visual that shows the post's core idea (static SVG or interactive).
+  Remove the old file with `git rm` once nothing references it.
+- Diagram images (sequence-diagram PNGs, explanatory drawings, metric
+  charts drawn by hand) and ASCII diagrams: replace each with a figure that
+  shows the same thing better. Delete the old file when replaced.
+- Keep evidence: real screenshots of dashboards, benchmark output, badges,
+  and the artefact a post is about (for example the stereogram itself).
+  You may add a figure next to them.
+- Keep `og-*.png` social images.
 
 ## What Pratik asked for
 
@@ -29,7 +46,12 @@ Sources he gave, in his words and in ours:
 - **Audience:** a new engineer should be able to follow it, and an expert
   should still learn something.
 
-## Colour grammar (fixed across the site)
+## Colour grammar (default)
+
+Colour must carry meaning, stated in a key, and mean the same thing in
+every figure of a post. The grammar below is the site default; use it
+unless the post's subject calls for a different one (for example heart-rate
+zones in a running post).
 
 | Colour | Meaning | CSS token / key class |
 |---|---|---|
@@ -46,9 +68,12 @@ colours it uses.
 
 ## Look
 
-- A light whiteboard sheet on the themed page: near-white board, 1.5px
-  near-black ink border, hard offset shadow. `walviz.css` gives you this
-  through the `.wv` class; the shortcode adds it.
+- Default: a light whiteboard sheet on the themed page (near-white board,
+  1.5px near-black ink border, hard offset shadow) from `walviz.css` via the
+  `.wv` class. Use it when it fits. Pass `frame="none"` to the shortcode to
+  drop it and design your own frame, type, and layout in
+  `css/viz/<slug>.css` (target `.viz--<kind>`). The page theme's colours are
+  available as CSS variables.
 - Dark ink for text. No grey text on tinted backgrounds.
 - Solid boxes are processes you run. Dashed boxes are data at rest.
 - Label every failure point.
@@ -63,7 +88,8 @@ colours it uses.
 Each figure must answer one question the text raises and show something
 text cannot: a state that changes over time, a parameter the reader can
 move, a comparison side by side, or one request followed through every
-component. Good patterns from WAL Cake:
+component. Some patterns that worked in WAL Cake (examples, not a menu;
+invent what the post needs):
 
 - **Follow one request** — a stepper (`stepper()` in lib.js) walks one row,
   payment, query or message through every component, with the real bytes,
@@ -77,7 +103,7 @@ component. Good patterns from WAL Cake:
 - **Failure map** — the system diagram with numbered fault markers that
   match a numbered list in the text.
 
-Do not add a figure that only restates a paragraph, a decorative figure, or
+Do not reuse another post's widget with new labels. Do not add a figure that only restates a paragraph, a decorative figure, or
 an animation that carries no information. A post with two strong figures is
 better than one with six weak ones. If a post does not need a figure, say so.
 
