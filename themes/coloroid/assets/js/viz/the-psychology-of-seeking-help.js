@@ -93,7 +93,7 @@ function initTrails(fig, app) {
     });
   }
   app.append(
-    h('p', { class: 'v-psh-kicker' }, 'Five people hit the same failing test. What each did before asking:'),
+    h('p', { class: 'v-psh-kicker' }, 'Five people hit the same failing test.'),
     h('ol', { class: 'v-psh-rows' }, ...rows),
   );
   draw();

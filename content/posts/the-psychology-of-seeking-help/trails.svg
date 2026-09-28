@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
 <rect width="720" height="360" fill="#efeafa"/>
-<text x="20" y="30" font-size="13" font-weight="700" fill="#2a2140">Five people hit the same failing test. What each did before asking:</text>
+<text x="20" y="30" font-size="13" font-weight="700" fill="#2a2140">Five people hit the same failing test.</text>
 <line x1="20" y1="44" x2="700" y2="44" stroke="#b9aed6"/>
 <text x="20" y="74" font-size="12" font-weight="700" fill="#2a2140">The Persistent Problem Solver</text>
 <text x="20" y="90" font-size="10" fill="#2a2140">effort high · difficulty high</text>
