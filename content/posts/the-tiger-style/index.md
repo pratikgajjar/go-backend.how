@@ -11,7 +11,7 @@ images = ["og-a635eef8.png"]
 theme = "tiger"
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei stringing assertion tripwires across stepping stones to catch a bug early" >}}
+{{< viz kind="ts-hero" frame="none" title="Nine rules, one small queue" fallback="ts-hero.svg" alt="Ordinary Zig code for a small queue, changed into Tiger Style one rule at a time: five rules for safety, one for performance, three for developer experience" caption="Ordinary code for a small queue, then nine rules from this guide, one at a time. For each rule, tap the line you think it changes. Written for this post: every step compiles with Zig 0.16 and passes `zig fmt --check`." >}}
 
 
 # The Essence Of Style
@@ -148,6 +148,8 @@ Code](https://spinroot.com/gerard/pdf/P10.pdf) will change the way you code fore
     also why **tests must test exhaustively**, not only with valid data but also with invalid data,
     and as valid data becomes invalid.
 
+{{< viz kind="ts-tripwire" frame="none" fig="1" title="One transfer, three faults, two assertions" fallback="ts-tripwire.svg" alt="The lifeline of one transfer from request to use, with an assertion before the write and one after the read, and which faults each one catches" caption="A model of the pair above: assert right before the write, and again right after the read. Tap a red fault, or switch an assertion on or off, then predict where the transfer stops. Transfer values are samples. TigerBeetle checksums all data and repairs a corrupt block from another replica ([safety](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/concepts/safety.md))." >}}
+
 - All memory must be statically allocated at startup. **No memory may be dynamically allocated (or
   freed and reallocated) after initialization.** This avoids unpredictable behavior that can
   significantly affect performance, and avoids use-after-free. As a second-order effect, it is our
@@ -242,6 +244,8 @@ Beyond these rules:
 
 - Let the CPU be a sprinter doing the 100m. Be predictable. Don't force the CPU to zig zag and
   change lanes. Give the CPU large enough chunks of work. This comes back to batching.
+
+{{< viz kind="ts-napkin" frame="none" fig="2" title="A napkin sketch: which cost wins as the batch grows" fallback="ts-napkin.svg" alt="Per-transfer cost of network, disk, memory, and CPU as the batch grows from 1 to 8,189 transfers" caption="A sketch, not a benchmark: one batch at a time, no overlap. Sample costs: a 500 µs round trip and 100 ns per cache miss ([latency numbers](https://gist.github.com/jboner/2841832)), 10 Gbit/s network, 2 GB/s disk and 20 GB/s memory bandwidth, and 100 ns of CPU per transfer. 8,189 is the default `create_transfers` batch limit ([requests](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/coding/requests.md#batching-events))." >}}
 
 - Be explicit. Minimize dependence on the compiler to do the right thing for you.
 
@@ -353,6 +357,8 @@ Beyond these rules:
   buffer underflow, the opposite of a buffer overflow, where a buffer is not fully utilized, with
   padding not zeroed correctly. This may not only leak sensitive information, but may cause
   deterministic guarantees as required by TigerBeetle to be violated.
+
+{{< viz kind="ts-struct" frame="none" fig="3" title="Edit the 128-byte Transfer" fallback="ts-struct.svg" alt="Byte map of TigerBeetle's 128-byte Transfer, 16 bytes per row, and the three compile-time assertions that guard it" caption="Fields and assertions from [`src/tigerbeetle.zig`](https://github.com/tigerbeetle/tigerbeetle/blob/47aeb2212a255273dda508288412e537d11e4b7c/src/tigerbeetle.zig#L85-L116), abridged. Edit the blue parts, predict which assertion stops the build, then build. Each of the 16 possible edits was compiled with Zig 0.16 to check its offsets; the `zig build` output is from Zig 0.16 with paths shortened." >}}
 
 - Use newlines to **group resource allocation and deallocation**, i.e. before the resource
   allocation and after the corresponding `defer` statement, to make leaks easier to spot.
