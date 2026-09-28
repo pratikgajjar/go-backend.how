@@ -1,6 +1,6 @@
 +++
 title = "🔧 Lost SSH Access to Ec2 ?"
-description = "Losing SSH access to an Amazon EC2 instance can be a frustrating experience, especially when common solutions like EC2 Instance Connect or Session Manager are unavailable. In this blog post, we'll explore a lesser-known but effective method to regain access by leveraging EC2 user data."
+description = "Lost the private key for an EC2 instance? Add a new public key through user data, and see why a plain users: block does nothing while one cloud_final_modules line makes it work."
 date = 2024-08-09T16:42:51+05:30
 lastmod = 2024-08-09T16:42:51+05:30
 publishDate = "2024-08-09T16:42:51+05:30"
@@ -11,33 +11,61 @@ hnItemId = 41270300
 theme = "steel"
 +++
 
-{{< viz kind="lssh-hero" frame="none" fallback="hero.svg" alt="A new SSH key in EC2 user data meets two cloud-init marker files. The init-stage marker for users_groups exists, so the key is blocked. The final-stage marker config_users_groups.once does not exist, so users-groups runs and appends the key to authorized_keys." caption="The paths are real cloud-init paths; `<id>` is the instance ID." >}}
+If you lose the private key for an EC2 instance, you can give it a new public
+key through its user data: stop the instance, paste a short cloud-config, and
+start it again. This post gives that script, shows why the obvious version
+(just putting your key in user data) does nothing, and explains the one line
+that makes it work, down to the files cloud-init checks on disk.
 
+# When the usual ways are not available
 
-Losing SSH access to an Amazon EC2 instance can be a frustrating experience, especially when common solutions like EC2 Instance Connect or Session Manager are unavailable. In this blog post, we'll explore a lesser-known but effective method to regain access by leveraging EC2 user data.
+AWS documents several ways back into an instance[^kc]. Each one needs something
+that was set up before you lost the key[^pre]:
 
-# Why This Method Works
+- **EC2 Instance Connect** needs the Instance Connect package on the instance
+  and a network path to SSH.
+- **Session Manager** needs SSM Agent running on the instance, registered as a
+  managed node.
+- **EC2 Serial Console** needs a Nitro-based instance and an OS user with a
+  password that you set up earlier.
+- **A rescue instance** needs nothing on the locked instance, but you detach its
+  root volume, attach it to another instance, edit `authorized_keys`, and move
+  the volume back.
 
-EC2 user data is text you attach to an instance. EC2 serves it to the instance
+# Why user data
+
+User data is text you attach to an instance. EC2 serves it to the instance
 through the instance metadata service (IMDS), and cloud-init, the program that
-sets up the instance at boot, runs it as root. By default, user data scripts
-and cloud-init directives run only on the first boot of an instance[^ud].
+set up the instance at launch, reads it at boot and runs it as root. Amazon
+Linux, Ubuntu, and most other Linux distributions for the cloud ship
+cloud-init, so there is nothing to install. It takes one stop and start, and
+you never touch the volume.
 
-Cloud-init still fetches the user data on every boot. What stops it from acting
-again is a set of marker files on the root volume. The module that writes SSH
-keys, `users_groups`, runs once per instance ID and then writes
-`/var/lib/cloud/instances/<instance-id>/sem/config_users_groups`. A stop and
-start keeps the instance ID, so a new `users:` block on its own does nothing:
-the module finds its marker and skips.
+# The obvious attempt does not work
 
-The script below works around the marker. Its `cloud_final_modules` list
-replaces the modules the final stage runs, and runs `users-groups` again with
-frequency `once`. That frequency checks a different marker, one that does not
-exist yet. In the figure, you are cloud-init on the recovery boot:
+The natural first try is to put your new key in the user data under `users:`
+and restart. Guess what happens before you read on:
 
-{{< viz kind="lssh-play" frame="none" fig="1" title="Play cloud-init" fallback="boot.svg" alt="The recovery boot as a cloud-init log and the files it checks: users_groups is skipped because its per-instance marker exists; users-groups runs with frequency once, creates config_users_groups.once, and appends the new key to authorized_keys" caption="Log lines, paths, and byte counts come from cloud-init 26.1 on Ubuntu 24.04, run in a container with a local (NoCloud) data source in place of IMDS. The instance ID and key bodies are samples." >}}
+{{< viz kind="lssh-hero" frame="none" fig="1" title="A key in user data, then a restart" fallback="hero.svg" alt="A new SSH key in EC2 user data meets two cloud-init marker files. The init-stage marker for users_groups exists, so the key is blocked. The final-stage marker config_users_groups.once does not exist, so users-groups runs and appends the key to authorized_keys." caption="The paths are real cloud-init paths; `<id>` is the instance ID." >}}
 
-# Step-by-Step Guide
+By default, user data scripts and cloud-init directives run only on the first
+boot of an instance[^ud]. Cloud-init still fetches the user data on every boot.
+What stops it from acting again is a set of marker files on the root volume.
+The module that writes SSH keys, `users_groups`, runs once per instance ID and
+then writes `/var/lib/cloud/instances/<instance-id>/sem/config_users_groups`.
+A stop and start keeps the instance ID, so the module finds its marker and
+skips.
+
+# How the fix works
+
+The script below adds a `cloud_final_modules` list. It replaces the modules the
+final stage of cloud-init runs, and runs `users-groups` again with frequency
+`once`. That frequency checks a different marker, one that does not exist yet.
+In the figure, you are cloud-init on the recovery boot:
+
+{{< viz kind="lssh-play" frame="none" fig="2" title="Play cloud-init" fallback="boot.svg" alt="The recovery boot as a cloud-init log and the files it checks: users_groups is skipped because its per-instance marker exists; users-groups runs with frequency once, creates config_users_groups.once, and appends the new key to authorized_keys" caption="Log lines, paths, and byte counts come from cloud-init 26.1 on Ubuntu 24.04, run in a container with a local (NoCloud) data source in place of IMDS. The instance ID and key bodies are samples." >}}
+
+# Step by step
 
 1. Stop the EC2 instance (do not terminate it). EC2 lets you edit user data
    only while the instance is stopped.
@@ -75,7 +103,7 @@ users:
    changes on a stop and start unless the instance has an Elastic IP.
 7. Stop the instance, clear the user data, and start it again.
 
-# Technical Details
+What each part of the script does:
 
 - `Content-Type: multipart/mixed` wraps the config as one MIME part, so you can
   add more parts, such as a shell script, to the same user data.
@@ -85,34 +113,46 @@ users:
 - `users` names the user and the keys to add. Cloud-init appends the keys and
   keeps the ones already in `authorized_keys`.
 - Older guides spell the key list `ssh-authorized-keys`. It still works, but
-  cloud-init has marked it deprecated since version 18.3; use
-  `ssh_authorized_keys`.
+  cloud-init has marked it deprecated since version 18.3.
+
+# once or always
 
 `once` means once per disk, not once per recovery. The marker
 `/var/lib/cloud/sem/config_users_groups.once` stays on the root volume, so a
-second recovery with the same line does nothing. `always` keeps no marker, but
-while it stays in user data it adds the key back on every boot, even after you
+second recovery with the same line does nothing.
+
+`always` keeps no marker, but while it stays in user data it adds the key back on every boot, even after you
 delete it by hand. With either line in place, the final stage skips its other
 modules, such as `scripts_user` and `final_message`. That is why step 7 clears
 the user data. Which line fits depends on your instance:
 
-{{< viz kind="lssh-choose" frame="none" wide="false" fig="2" title="Which line should you paste?" fallback="lanes.svg" alt="once adds the key on the first recovery and skips a second one; always adds the key every time but re-adds it on every boot while set; no override never adds it" caption="The three boots come from the same container runs as Fig. 1." >}}
+{{< viz kind="lssh-choose" frame="none" wide="false" fig="3" title="Which line should you use?" fallback="lanes.svg" alt="once adds the key on the first recovery and skips a second one; always adds the key every time but re-adds it on every boot while set; no override never adds it" caption="The three boots come from the same container runs as Fig. 2." >}}
 
 If you used `once` and may need this again, delete
 `/var/lib/cloud/sem/config_users_groups.once` once you are back in.
 
-# Considerations
+# Limits
 
-- This method works for Amazon Linux, Ubuntu, and most other Linux distributions that use cloud-init.
-- It's important to use this method responsibly and ensure you have the right to access the instance.
+- This method needs cloud-init. Amazon Linux, Ubuntu, and most other Linux
+  distributions for the cloud have it. If cloud-init is missing or broken, use a
+  rescue instance[^kc].
 - A stop and start keeps the EBS root volume and the instance ID, but loses
   data on instance store volumes. Back up the root volume first[^kc].
-- AWS also documents other ways back in: Systems Manager, EC2 Instance
-  Connect, the EC2 serial console, and a rescue instance[^kc].
+- Use this method only on instances you have the right to access. Anyone who can
+  edit an instance's user data can add a key this way.
 
-# Conclusion
+# Takeaways
 
-While losing SSH access to an EC2 instance can be problematic, the user data method provides a powerful way to regain control. By understanding and utilizing EC2's user data feature, you can quickly restore access and get back to managing your instances effectively.
+1. Stop, edit user data, start: the instance gets a new key without you
+   touching its volume.
+2. A `users:` block alone does nothing on an existing instance. `users_groups`
+   ran at launch, and its marker file says so.
+3. The `cloud_final_modules` entry `[users-groups, once]` runs the same module
+   again under a marker that does not exist yet.
+4. `once` works once per disk. For a second recovery, use `always` or delete
+   the marker.
+5. Clear the user data when you are back in.
 
 [^ud]: <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html>
 [^kc]: <https://repost.aws/knowledge-center/user-data-replace-key-pair-ec2>
+[^pre]: <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-connect-prerequisites.html>, <https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-prerequisites.html>, <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-serial-console-prerequisites.html>

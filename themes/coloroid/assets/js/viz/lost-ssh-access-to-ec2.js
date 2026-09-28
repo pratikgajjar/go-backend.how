@@ -143,7 +143,7 @@ function initHero(fig, app) {
       say.innerHTML = '';
     } else if (st === 'plain') {
       q.textContent = 'You do not get in.';
-      say.innerHTML = `${guess ? 'Most people expect yes. ' : 'Right. '}Cloud-init reads the new key on every boot. But the module that writes keys, <code>users_groups</code>, ran at launch and left a marker file. The marker is still there, so the module skips.`;
+      say.innerHTML = `${guess ? '' : 'Right. '}Cloud-init reads the new key on every boot. But the module that writes keys, <code>users_groups</code>, ran at launch and left a marker file. The marker is still there, so the module skips.`;
       acts.replaceChildren(btn('Add cloud_final_modules: [users-groups, once]', () => { st = 'fixed'; render(); }, 'is-go'));
     } else {
       q.textContent = 'The override gets you in.';
@@ -200,7 +200,7 @@ const MODULES = [
 const RETRIEVE = {
   q: 'Months later you lose this key too. You repeat the same steps with a third key. On that boot, does users-groups (once) run?',
   answer: 'skip',
-  right: 'The <code>.once</code> file from today is still on the disk, so cloud-init skips the module and logs SUCCESS. <code>once</code> means once per disk, not once per recovery. Fig. 2 picks the line for your case.',
+  right: 'The <code>.once</code> file from today is still on the disk, so cloud-init skips the module and logs SUCCESS. <code>once</code> means once per disk, not once per recovery. Fig. 3 picks the line for your case.',
   log: [['config-users-groups already ran (freq=once)', 'bad'], ['finish: modules-final/config-users-groups: SUCCESS: config-users-groups previously ran']],
 };
 

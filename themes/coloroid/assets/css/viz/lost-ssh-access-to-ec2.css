@@ -120,6 +120,7 @@ body[class*="theme-"] .viz[class*="viz--lssh-"] pre code { width: auto !importan
 }
 html[data-force-dark] .viz--lssh-play { background: oklch(24% 0.016 245); border-color: oklch(46% 0.025 245); }
 @media (min-width: 900px) {
+  .viz--lssh-hero.viz--wide { width: min(960px, 100vw - 2rem); margin-left: calc((100% - min(960px, 100vw - 2rem)) / 2); }
   .viz--lssh-play.viz--wide { width: min(960px, 100vw - 2rem); margin-left: calc((100% - min(960px, 100vw - 2rem)) / 2); }
 }
 @media (max-width: 640px) { .viz--lssh-play { margin: 2rem -0.5rem; padding: 0.75rem 0.7rem 0.85rem; border-radius: 6px; } }
@@ -198,6 +199,7 @@ html[data-force-dark] .viz--lssh-choose { background: oklch(23% 0.012 245); box-
 .v-lssh-chip:hover { background: var(--c-opt-l); }
 .v-lssh-chip[aria-checked="true"] { background: var(--c-opt); color: var(--c-opt-l); font-weight: 800; }
 .v-lssh-res { border-top: 1px solid var(--c-line); padding-top: 1rem; min-height: 15rem; }
+.v-lssh-res.is-wait { min-height: 0; }
 .v-lssh-res.is-wait p { color: var(--c-mute); font-style: italic; }
 .v-lssh-snip { display: flex; flex-direction: column; gap: 0.3rem; border: 2.5px solid var(--c-pick); background: var(--c-pick-l); border-radius: 6px; padding: 0.6rem 0.8rem; margin-bottom: 0.7rem; }
 .v-lssh-snip .lbl { font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-pick); }
