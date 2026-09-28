@@ -1,7 +1,6 @@
 /*
  * viz/creating-content — figures for "Creating Content".
  *
- *   formula-hero     Winston's formula as type: K and P large, t small.
  *   who-gets-better  Three short beats on one stable grid (T, K, P rows ×
  *                    Retton, Winston, You columns):
  *                      1. predict: who skis better, the Olympian or Winston?
@@ -13,21 +12,6 @@
  * transcript). Pips mean more or less, not measurements.
  */
 import { h, register } from './lib.js';
-
-/* ---------------------------------------------------------------- hero */
-
-function initHero(fig, app) {
-  const L = (ch, name, cls) => h('span', { class: `v-cc-h-term ${cls}` },
-    h('span', { class: 'v-cc-h-glyph', 'aria-hidden': 'true' }, ch), h('span', { class: 'v-cc-h-name' }, name));
-  const P = (ch) => h('span', { class: 'v-cc-h-punct', 'aria-hidden': 'true' }, ch);
-  app.append(
-    h('div', { class: 'v-cc-h-eq' },
-      L('Q', 'quality', 'is-q'), P('='), P('f('), L('K', 'knowledge', 'is-k'), P(','),
-      L('P', 'practice', 'is-p'), P(','), L('t', 'talent', 'is-t'), P(')')),
-    h('p', { class: 'v-cc-h-line' },
-      'Quality depends on what you know and how much you practise. Talent is the small term.'),
-  );
-}
 
 /* ------------------------------------------------------ who-gets-better */
 
@@ -150,8 +134,8 @@ function initWho(fig, app) {
 
   function advice() {
     if (st.k == null || st.p == null) return null;
-    if (st.p === 0) return ['Start now, and do not wait for it to be perfect.', '#when', 'When?'];
-    if (st.k === 1) return ['Pick a topic that interests you, and ask questions. Curiosity drives knowledge.', '#what', 'What?'];
+    if (st.p === 0) return ['Start now, and do not wait for it to be perfect.', '#when', 'When to start'];
+    if (st.k === 1) return ['Pick a topic that interests you, and ask questions. Curiosity drives knowledge.', '#what', 'What to write about'];
     return ['Keep publishing. Have someone pre-read, then iterate on the feedback.', '#faq', 'FAQ'];
   }
 
@@ -215,4 +199,4 @@ function initWho(fig, app) {
   go(0);
 }
 
-register({ 'formula-hero': initHero, 'who-gets-better': initWho });
+register({ 'who-gets-better': initWho });

@@ -1,13 +1,12 @@
-/* creating-content. frame="none": both figures sit on the page like part
+/* creating-content. frame="none": the figure sits on the page like part
    of the essay. Classes: v-cc-*.
-   Colour meaning (same in both figures):
+   Colour meaning:
      ink    structure, and talent (given, you cannot grow it)
      green  knowledge and practice (you grow them)
      blue   your answers
      purple the column to look at now
      red    not published                                                  */
 
-.viz--formula-hero,
 .viz--who-gets-better {
   --ink: var(--article-text, oklch(26% 0.03 95));
   --paper: var(--article-bg, oklch(92% 0.04 95));
@@ -25,48 +24,17 @@
   font-family: var(--font-mono);
   line-height: 1.5;
 }
-html[data-force-dark] .viz--formula-hero,
 html[data-force-dark] .viz--who-gets-better {
   --green: oklch(78% 0.14 152);
   --blue: oklch(78% 0.12 255);
   --purple: oklch(78% 0.14 305);
   --red: oklch(72% 0.17 27);
 }
-.viz--formula-hero .wv-fallback,
 .viz--who-gets-better .wv-fallback { max-width: 560px; margin: 0 auto; border: 0; }
-figure.viz--formula-hero figcaption,
 figure.viz--who-gets-better figcaption {
   opacity: 1; font-style: normal; color: var(--ink);
   max-width: 40rem; margin: 1rem auto 0; padding-top: 0.5rem;
   border-top: 1px solid var(--rule); font-size: 12px;
-}
-
-/* ================================================================ hero */
-.viz--formula-hero { margin: 1rem 0 2.2rem; }
-.v-cc-h-eq {
-  display: flex; justify-content: center; align-items: baseline;
-  flex-wrap: nowrap; gap: 0 0.12em;
-  font-family: var(--font-display);
-  font-size: clamp(34px, 9vw, 64px);
-  line-height: 1;
-}
-.v-cc-h-term { display: inline-flex; flex-direction: column; align-items: center; }
-.v-cc-h-glyph { line-height: 1; }
-.v-cc-h-term.is-q .v-cc-h-glyph { font-size: 1.35em; }
-.v-cc-h-term.is-k .v-cc-h-glyph, .v-cc-h-term.is-p .v-cc-h-glyph { color: var(--green); }
-.v-cc-h-term.is-t .v-cc-h-glyph { font-size: 0.42em; font-style: italic; }
-.v-cc-h-punct { font-size: 0.7em; opacity: 0.8; }
-.v-cc-h-punct:first-of-type { margin: 0 0.15em; }
-.v-cc-h-name {
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
-  text-transform: uppercase; margin-top: 0.5rem; line-height: 1.2;
-}
-.v-cc-h-term.is-t .v-cc-h-name { font-size: 9px; }
-.v-cc-h-line { text-align: center; max-width: 32em; margin: 1rem auto 0; font-size: 14px; }
-@media (max-width: 480px) {
-  .v-cc-h-name { font-size: 8.5px; letter-spacing: 0.02em; }
-  .v-cc-h-term.is-t .v-cc-h-name { font-size: 7.5px; }
-  .v-cc-h-line { font-size: 13px; }
 }
 
 /* ===================================================== who-gets-better */
