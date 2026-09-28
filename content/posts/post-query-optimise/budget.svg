@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 710" width="720" height="710" role="img" aria-label="SELECT * FROM users ORDER BY name LIMIT 10 reads all 33,333 pages to send 10 rows">
+<rect width="720" height="710" rx="6" fill="#f5f9ff" stroke="#0e182b"/>
+<g font-family="'JetBrains Mono',ui-monospace,Menlo,monospace" font-size="11" fill="#0e182b">
+<path d="M0.5,6 a5.5,5.5 0 0 1 5.5,-5.5 h708 a5.5,5.5 0 0 1 5.5,5.5 V54 H0.5 Z" fill="#111c32"/>
+<text x="14" y="20" font-size="12.5"><tspan fill="#adb8cb">-- Fig. 4  What each query reads and sends</tspan></text>
+<text x="14" y="38" font-size="12.5"><tspan fill="#77de96">users=# </tspan><tspan fill="#eaeff7">SELECT </tspan><tspan fill="#8ccaff">*</tspan><tspan fill="#eaeff7"> FROM users </tspan><tspan fill="#8ccaff">ORDER BY name</tspan><tspan fill="#eaeff7"> </tspan><tspan fill="#8ccaff">LIMIT 10</tspan><tspan fill="#eaeff7">;</tspan></text>
+<rect x="14" y="70" width="692" height="128" rx="4" fill="#111c32"/>
+<text x="26" y="90" font-size="11" fill="#eaeff7" xml:space="preserve">Limit (actual rows=10.00 loops=1)</text>
+<text x="26" y="106" font-size="11" fill="#eaeff7" xml:space="preserve">  Buffers: shared hit=15494 read=17842</text>
+<text x="26" y="122" font-size="11" fill="#eaeff7" xml:space="preserve">  -&gt;  Sort (actual rows=10.00 loops=1)</text>
+<text x="26" y="138" font-size="11" fill="#eaeff7" xml:space="preserve">        Sort Key: name</text>
+<text x="26" y="154" font-size="11" fill="#eaeff7" xml:space="preserve">        Sort Method: top-N heapsort  Memory: 29kB</text>
+<text x="26" y="170" font-size="11" fill="#ff887c" xml:space="preserve">        -&gt;  Seq Scan on users (actual rows=1000000.00 loops=1)</text>
+<text x="26" y="186" font-size="11" fill="#eaeff7" xml:space="preserve">              Buffers: shared hit=15491 read=17842</text>
+<text x="20" y="224" font-size="10.5">users · table · 33,333 pages</text>
+<text x="20" y="238" fill="#c92324" font-size="10.5" font-weight="700">read 33,333 pages to return 10 rows</text>
+<rect x="18" y="246" width="324" height="422" fill="none" stroke="#0e182b" stroke-dasharray="3 3"/>
+<rect x="20" y="248" width="320" height="416" fill="#c92324"/>
+<rect x="20" y="664" width="106" height="2" fill="#c92324"/>
+<text x="380" y="224" font-size="10.5">sent to the client, in 8 KB squares</text>
+<text x="380" y="238" fill="#794722" font-size="10.5" font-weight="700">2.4 kB · 1 square</text>
+<rect x="378" y="246" width="324" height="378" fill="none" stroke="#0e182b" stroke-dasharray="3 3"/>
+<rect x="380" y="248" width="2" height="2" fill="#794722"/>
+<rect x="382" y="248" width="318" height="2" fill="#e9d6c1"/>
+<rect x="380" y="250" width="320" height="370" fill="#e9d6c1"/>
+<rect x="380" y="620" width="186" height="2" fill="#e9d6c1"/>
+<rect x="20" y="682" width="11" height="11" fill="#794722"/><text x="37" y="692" fill="#384355" font-size="10.5">page read or data sent</text>
+<rect x="240" y="682" width="11" height="11" fill="#e9d6c1"/><text x="257" y="692" fill="#384355" font-size="10.5">not read / not sent</text>
+<rect x="460" y="682" width="11" height="11" fill="#c92324"/><text x="477" y="692" fill="#384355" font-size="10.5">read but not returned</text>
+</g>
+</svg>

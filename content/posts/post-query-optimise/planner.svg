@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 614" width="720" height="614" role="img" aria-label="Rows with a small seq sit together on disk and the planner picks an index scan; rows with a small score are on every page and it picks a bitmap scan, then a sequential scan">
+<rect width="720" height="614" rx="6" fill="#f5f9ff" stroke="#0e182b"/>
+<g font-family="'JetBrains Mono',ui-monospace,Menlo,monospace" font-size="11" fill="#0e182b">
+<path d="M0.5,6 a5.5,5.5 0 0 1 5.5,-5.5 h708 a5.5,5.5 0 0 1 5.5,5.5 V54 H0.5 Z" fill="#111c32"/>
+<text x="14" y="20" font-size="12.5"><tspan fill="#adb8cb">-- Fig. 3  Same kind of index, different plans</tspan></text>
+<text x="14" y="38" font-size="12.5"><tspan fill="#77de96">users=# </tspan><tspan fill="#eaeff7">SELECT * FROM users WHERE </tspan><tspan fill="#8ccaff">seq</tspan><tspan fill="#adb8cb"> / </tspan><tspan fill="#8ccaff">score</tspan><tspan fill="#eaeff7"> &lt; </tspan><tspan fill="#f1c17f">300,000</tspan><tspan fill="#eaeff7">;</tspan></text>
+<text x="20" y="76" font-size="11.5" font-weight="800">WHERE seq &lt; 300,000 (disk order)</text>
+<text x="20" y="94" fill="#384355" font-size="10">planner's pick, x = 10 … 1M</text>
+<rect x="20.0" y="100" width="280.0" height="18" fill="#ffdeb9" stroke="#c34e00"/><text x="25.0" y="113" fill="#c34e00" font-size="10" font-weight="700">Index Scan</text>
+<rect x="300.0" y="100" width="40.0" height="18" fill="#ffdeb9" stroke="#c34e00"/><text x="305.0" y="113" fill="#c34e00" font-size="10" font-weight="700">Seq</text>
+<rect x="18" y="132" width="324" height="422" fill="none" stroke="#0e182b" stroke-dasharray="3 3"/>
+<rect x="20" y="134" width="320" height="124" fill="#794722"/>
+<rect x="20" y="258" width="158" height="2" fill="#794722"/>
+<rect x="178" y="258" width="162" height="2" fill="#e9d6c1"/>
+<rect x="20" y="260" width="320" height="290" fill="#e9d6c1"/>
+<rect x="20" y="550" width="106" height="2" fill="#e9d6c1"/>
+<text x="20" y="570" fill="#794722" font-size="10.5" font-weight="700">9,999 pages hold matches, all together</text>
+<text x="380" y="76" font-size="11.5" font-weight="800">WHERE score &lt; 300,000 (random order)</text>
+<text x="380" y="94" fill="#384355" font-size="10">planner's pick, x = 10 … 1M</text>
+<rect x="380.0" y="100" width="240.0" height="18" fill="#ffdeb9" stroke="#c34e00"/><text x="385.0" y="113" fill="#c34e00" font-size="10" font-weight="700">Bitmap Heap Scan</text>
+<rect x="620.0" y="100" width="80.0" height="18" fill="#ffdeb9" stroke="#c34e00"/><text x="625.0" y="113" fill="#c34e00" font-size="10" font-weight="700">Seq Scan</text>
+<rect x="378" y="132" width="324" height="422" fill="none" stroke="#0e182b" stroke-dasharray="3 3"/>
+<rect x="380" y="134" width="320" height="416" fill="#794722"/>
+<rect x="380" y="550" width="106" height="2" fill="#794722"/>
+<text x="380" y="570" fill="#794722" font-size="10.5" font-weight="700">33,333 pages hold matches: every page</text>
+<rect x="20" y="586" width="11" height="11" fill="#794722" stroke="none"/><text x="37" y="596" fill="#384355" font-size="10.5">page holds matching rows</text>
+<rect x="240" y="586" width="11" height="11" fill="#e9d6c1" stroke="none"/><text x="257" y="596" fill="#384355" font-size="10.5">page has none</text>
+<rect x="460" y="586" width="11" height="11" fill="#ffdeb9" stroke="#c34e00"/><text x="477" y="596" fill="#384355" font-size="10.5">the planner's pick</text>
+</g>
+</svg>

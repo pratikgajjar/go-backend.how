@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 254" width="720" height="254" role="img" aria-label="One B-tree lookup reads root 164, branch 3662, leaf 3735, and table block 25924">
+<rect width="720" height="254" rx="6" fill="#f5f9ff" stroke="#0e182b"/>
+<g font-family="'JetBrains Mono',ui-monospace,Menlo,monospace" font-size="11" fill="#0e182b">
+<path d="M0.5,6 a5.5,5.5 0 0 1 5.5,-5.5 h708 a5.5,5.5 0 0 1 5.5,5.5 V54 H0.5 Z" fill="#111c32"/>
+<text x="14" y="20" font-size="12.5"><tspan fill="#adb8cb">-- Fig. 2  One B-tree lookup, page by page</tspan></text>
+<text x="14" y="38" font-size="12.5"><tspan fill="#77de96">users=# </tspan><tspan fill="#eaeff7">SELECT * FROM users WHERE email = </tspan><tspan fill="#f1c17f">'user777777@example.com'</tspan><tspan fill="#eaeff7">;</tspan></text>
+<rect x="14" y="74" width="160" height="132" fill="#f5f9ff" stroke="#0e182b" stroke-dasharray="4 3"/>
+<text x="22" y="90" font-size="10.5" font-weight="800">ROOT</text>
+<text x="166" y="90" fill="#794722" font-size="10.5" font-weight="700" text-anchor="end">block 164</text>
+<text x="22" y="106" fill="#384355" font-size="10">32 children</text>
+<text x="23" y="130" fill="#384355" font-size="9.5">23</text>
+<text x="48" y="130" fill="#794722" font-size="9.5" font-weight="700">'user735067@…'</text>
+<text x="168" y="130" font-size="9"></text>
+<rect x="17" y="140" width="154" height="20" fill="#efdeff"/><rect x="17" y="140" width="3" height="20" fill="#7726b6"/>
+<text x="23" y="154" fill="#384355" font-size="9.5">24</text>
+<text x="48" y="154" fill="#794722" font-size="9.5" font-weight="700">'user763934@…'</text>
+<text x="168" y="154" font-size="9"></text>
+<text x="23" y="178" fill="#384355" font-size="9.5">25</text>
+<text x="48" y="178" fill="#794722" font-size="9.5" font-weight="700">'user792800@…'</text>
+<text x="168" y="178" font-size="9"></text>
+<text x="182.0" y="144" font-size="13" font-weight="800" text-anchor="middle">→</text>
+<rect x="190" y="74" width="160" height="132" fill="#f5f9ff" stroke="#0e182b" stroke-dasharray="4 3"/>
+<text x="198" y="90" font-size="10.5" font-weight="800">BRANCH</text>
+<text x="342" y="90" fill="#794722" font-size="10.5" font-weight="700" text-anchor="end">block 3662</text>
+<text x="198" y="106" fill="#384355" font-size="10">158 children</text>
+<text x="199" y="130" fill="#384355" font-size="9.5">76</text>
+<text x="224" y="130" fill="#794722" font-size="9.5" font-weight="700">'user777454@…'</text>
+<text x="344" y="130" font-size="9"></text>
+<rect x="193" y="140" width="154" height="20" fill="#efdeff"/><rect x="193" y="140" width="3" height="20" fill="#7726b6"/>
+<text x="199" y="154" fill="#384355" font-size="9.5">77</text>
+<text x="224" y="154" fill="#794722" font-size="9.5" font-weight="700">'user777637@…'</text>
+<text x="344" y="154" font-size="9"></text>
+<text x="199" y="178" fill="#384355" font-size="9.5">78</text>
+<text x="224" y="178" fill="#794722" font-size="9.5" font-weight="700">'user77781@…'</text>
+<text x="344" y="178" font-size="9"></text>
+<text x="358.0" y="144" font-size="13" font-weight="800" text-anchor="middle">→</text>
+<rect x="366" y="74" width="160" height="132" fill="#f5f9ff" stroke="#0e182b" stroke-dasharray="4 3"/>
+<text x="374" y="90" font-size="10.5" font-weight="800">LEAF</text>
+<text x="518" y="90" fill="#794722" font-size="10.5" font-weight="700" text-anchor="end">block 3735</text>
+<text x="374" y="106" fill="#384355" font-size="10">203 entries</text>
+<text x="375" y="130" fill="#384355" font-size="9.5">156</text>
+<text x="400" y="130" fill="#794722" font-size="9.5" font-weight="700">'user777776@…'</text>
+<text x="520" y="130" font-size="9"></text>
+<rect x="369" y="140" width="154" height="20" fill="#efdeff"/><rect x="369" y="140" width="3" height="20" fill="#7726b6"/>
+<text x="375" y="154" fill="#384355" font-size="9.5">157</text>
+<text x="400" y="154" fill="#794722" font-size="9.5" font-weight="700">'user777777@…'</text>
+<text x="520" y="154" font-size="9"></text>
+<text x="375" y="178" fill="#384355" font-size="9.5">158</text>
+<text x="400" y="178" fill="#794722" font-size="9.5" font-weight="700">'user777778@…'</text>
+<text x="520" y="178" font-size="9"></text>
+<text x="534.0" y="144" font-size="13" font-weight="800" text-anchor="middle">→</text>
+<rect x="542" y="74" width="160" height="132" fill="#f5f9ff" stroke="#0e182b" stroke-dasharray="4 3"/>
+<text x="550" y="90" font-size="10.5" font-weight="800">TABLE</text>
+<text x="694" y="90" fill="#794722" font-size="10.5" font-weight="700" text-anchor="end">block 25924</text>
+<text x="550" y="106" fill="#384355" font-size="10">30 rows</text>
+<rect x="545" y="116" width="154" height="20" fill="#efdeff"/><rect x="545" y="116" width="3" height="20" fill="#7726b6"/>
+<text x="551" y="130" fill="#384355" font-size="9.5">25</text>
+<text x="586" y="130" fill="#794722" font-size="9.5" font-weight="700">row (25924,25)</text>
+<rect x="545" y="140" width="154" height="20" fill="#efdeff"/><rect x="545" y="140" width="3" height="20" fill="#7726b6"/>
+<text x="551" y="154" fill="#384355" font-size="9.5">id</text>
+<text x="586" y="154" fill="#794722" font-size="9.5" font-weight="700">777777</text>
+<text x="551" y="178" fill="#384355" font-size="9.5">name</text>
+<text x="586" y="178" fill="#794722" font-size="9.5" font-weight="700">'51d87a4e5ecf…'</text>
+<text x="22" y="198" fill="#7726b6" font-size="10" font-weight="700">follows → 3662</text>
+<text x="198" y="198" fill="#7726b6" font-size="10" font-weight="700">follows → 3735</text>
+<text x="374" y="198" fill="#7726b6" font-size="10" font-weight="700">follows → (25924,25)</text>
+<text x="14" y="234" fill="#0e182b" font-size="11">Buffers: shared hit=3 read=1  ← 4 pages: three index pages and one table page</text>
+</g>
+</svg>
