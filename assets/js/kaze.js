@@ -87,19 +87,48 @@ float sdEll(vec2 p, vec2 r){ float k0=length(p/r), k1=length(p/(r*r)); return k0
 float cov(float d){ return clamp(.5-d*uDpr, 0., 1.); }
 vec4 over(vec4 dst, vec3 c, float a){ return vec4(c*a, a) + dst*(1.-a); }
 float sdTaper(vec2 p, vec2 a, vec2 b, float r0, float r1){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/max(dot(ba,ba),1e-4),0.,1.); return length(pa-ba*h)-mix(r0,r1,h); }
-/* gear 5 hair: white flame-tongues billowing up and out from under the hat */
-float hairL(vec2 q, float amt, float t, float face){
-  float d=1e5;
-  for (int i=0;i<8;i++){
-    float fi=float(i)/7.;
-    vec2 b=vec2(mix(-14.,14.,fi), -9.+abs(fi-.5)*6.);
-    float ang=(fi-.5)*1.5 - face*.22 + sin(t*2.7+fi*7.3)*.2;
-    float len=(13.+8.*fract(sin(fi*91.7)*43.1))*amt*(.9+.1*sin(t*6.+fi*13.));
-    float ang2=ang*1.4 - face*.3 + sin(t*3.6+fi*5.1)*.45;
-    vec2 p1=b+vec2(sin(ang),-cos(ang))*len*.5, p2=p1+vec2(sin(ang2),-cos(ang2))*len*.62;
-    d=smin(d, min(sdTaper(q,b,p1,4.7*amt,3.5*amt), sdTaper(q,p1,p2,3.5*amt,1.1*amt)), 3.);
+/* gear 5 mane: big white flame-tongues streaming up and back, a soft crown mass, curly cloud swirls */
+float spiral(vec2 v, float R){ float r=length(v); float th=atan(v.y,v.x)/6.2832+.5; float s=R*.45; float u=r/s-th; float d=(.5-abs(fract(u)-.5))*s; return max(d-.34, r-R); }
+vec2 hairL(vec2 q, float amt, float t, float face){
+  float d=1e5, sw=1e5, back=-face;
+  for (int i=0;i<9;i++){
+    float fi=float(i)/8.;
+    vec2 b=vec2(mix(-11.,11.,fi), -10.-(1.-abs(fi-.5)*2.)*5.);
+    float ang=(fi-.5)*1.25 + back*.3 + sin(t*2.4+fi*6.3)*.14;                  /* mostly upward, leaning back */
+    float len=(32.+18.*fract(sin(fi*91.7)*43.1))*amt*(.9+.1*sin(t*5.+fi*11.));
+    float ang2=ang*1.25 + back*.45 + sin(t*3.2+fi*4.7)*.42;
+    float ang3=ang2 + back*.55 + sin(t*4.4+fi*3.3)*.6;                           /* tips whip like fire */
+    vec2 p1=b+vec2(sin(ang),-cos(ang))*len*.38;
+    vec2 p2=p1+vec2(sin(ang2),-cos(ang2))*len*.34;
+    vec2 p3=p2+vec2(sin(ang3),-cos(ang3))*len*.32;
+    d=smin(d, min(min(sdTaper(q,b,p1,4.6*amt,3.7*amt), sdTaper(q,p1,p2,3.7*amt,2.3*amt)), sdTaper(q,p2,p3,2.3*amt,.35*amt)), 1.6);
+    if (mod(float(i),2.)>.5) sw=min(sw, spiral(q-mix(p1,p2,.5), 2.7*amt));
   }
-  return d;
+  d=smin(d, length((q-vec2(back*2.,-15.))/vec2(1.35,1.))-8.*amt, 3.);        /* small crown so the tongues read */
+  sw=min(sw, spiral(q-vec2(back*4.,-19.), 3.*amt));
+  return vec2(d, sw);
+}
+/* straw hat as a layer so it can sit on his head or hang on his back */
+vec4 hatLayer(vec2 p){
+  vec4 col=vec4(0.);
+  float S=uS;
+  vec2 h=rotv(p-uHat.xy,-uHat.z)/(S*uHat.w);
+  float brim=sdEll(h,vec2(18.,3.5));
+  float crown=max(sdEll(h-vec2(0.,-3.4),vec2(9.8,9.4)), h.y+.4);
+  float dH=min(brim,crown);
+  float dHw=dH*S*uHat.w;
+  vec3 straw=vec3(.95,.79,.38);
+  float shade=.88+.12*smoothstep(3.4,-3.4,h.y);
+  col=over(col, straw*shade, cov(dHw));
+  float ring=abs(fract(length(h/vec2(18.,3.5))*4.)-.5);
+  float rows=abs(fract(h.y*.55)-.5);
+  float wv=brim<0.&&crown>0. ? smoothstep(.12,.0,ring) : (crown<0. ? smoothstep(.1,.0,rows)*.8 : 0.);
+  col=over(col, straw*.62, wv*.55*step(dH,0.));
+  float band=max(crown+.3, abs(h.y+2.6)-1.9);
+  col=over(col, uRed*.95, cov(band*S*uHat.w));
+  col=over(col, uInk, cov(abs(dHw)-.55*S));
+  col=over(col, uInk, cov((abs(crown)-.45)*S*uHat.w)*step(brim,0.)*.8);
+  return col;
 }
 float bodyL(vec2 q){ return smin(length(q-vec2(0.,-4.5))-12., length(q-vec2(0.,5.))-14.5, 8.); }
 void main(){
@@ -135,9 +164,18 @@ void main(){
   vec3 scC=mix(uRed,WHITE,g5);                           /* gear 5: the scarf becomes cloud */
   col=over(col,scC,cov(dS));
   col=over(col,LINE,cov(abs(dS)-.5*S)*g5);
-  if (hairA>.01){ float dHr=hairL(q,hairA,gt,face)*ms; col=over(col,WHITE,cov(dHr)); col=over(col,LINE,cov(abs(dHr)-.5*S)*min(1.,hairA*2.)); }
+  if (uMisc.y>.5 && uMisc.z>.5){ vec4 hc=hatLayer(p); col=hc+col*(1.-hc.a); }   /* gear 5: hat hangs on his back */
+  if (hairA>.01){
+    vec2 hr=hairL(q,hairA,gt,face); float dHr=hr.x*ms;
+    float dSh=hairL(q+vec2(-face*1.2,3.2),hairA,gt,face).x*ms;
+    col=over(col,WHITE,cov(dHr));
+    col=over(col,vec3(.8,.8,.84),cov(max(dHr,-dSh))*.9);                 /* grey cel-shade along the lower edge */
+    col=over(col,vec3(.5,.5,.56),cov(hr.y*ms)*step(dHr,0.)*.75);          /* curly swirls */
+    col=over(col,LINE,cov(abs(dHr)-.5*S)*min(1.,hairA*2.));
+  }
   col=over(col,mix(uInk,uTint.rgb,uTint.a),cov(dInk));
-  vec3 eyeC=uPaper;
+  col=over(col,LINE,cov(abs(dInk)-.55*S)*g5);
+  vec3 eyeC=mix(uPaper,LINE,step(.5,g5));
   /* scarf wrap + knot, clipped to the body */
   float band=max(sdSeg(q,vec2(-15.,7.8),vec2(15.,7.8))-2.5, bodyL(q)-.6);
   float knot=length(q-vec2(face*8.,8.6))-2.8;
@@ -175,34 +213,15 @@ void main(){
     else if (mm<2.5){ float rr=1.3+2.4*mo; dM=max(length(m-vec2(0.,-.8))-rr, -.8-m.y); }
     else if (mm<3.5){ vec2 rr=vec2(1.1+.9*mo, 1.3+1.5*mo); dM=(length(m/rr)-1.)*min(rr.x,rr.y); }
     else { vec2 gm=m-vec2(0.,-1.2); dM=max(sdEll(gm,vec2(6.4,4.9)*(.8+.2*mo)), -gm.y); }   /* huge toothy grin */
-    col=over(col,eyeC,cov(dM*ms));
-    if (mm>3.5){ vec2 gm=m-vec2(0.,-1.2); float inside=step(dM,0.);
-      float tl=min(abs(gm.y-1.6)-.28, max(min(min(abs(gm.x+2.8),abs(gm.x)),abs(gm.x-2.8))-.24, gm.y-1.6));
-      col=over(col,LINE,cov(tl*ms)*inside);
-      col=over(col,uRed,cov(max(length(gm-vec2(0.,4.3))-2.,dM)*ms)); }
+    col=over(col, mm>3.5 ? vec3(.22,.07,.09) : eyeC, cov(dM*ms));
+    if (mm>3.5){ vec2 gm=m-vec2(0.,-1.2);                /* big grin: dark mouth, white teeth, red tongue */
+      float dTe=max(dM, gm.y-1.9); col=over(col,WHITE,cov(dTe*ms));
+      col=over(col,LINE,cov(max(min(min(abs(gm.x+2.8),abs(gm.x)),abs(gm.x-2.8))-.22, dTe)*ms)*.8);
+      col=over(col,vec3(.93,.35,.38),cov(max(length(gm-vec2(0.,4.6))-2.3,dM)*ms));
+      col=over(col,LINE,cov((abs(dM)-.3)*ms)); }
     if (mm>1.5 && mm<2.5 && mo>.25){ float rr=1.3+2.4*mo; float dT=max(length(m-vec2(0.,1.2+1.9*mo))-1.4*mo, max(length(m-vec2(0.,-.8))-rr+.75, -.8-m.y)); col=over(col,uRed,cov(dT*ms)); }
   }
-  /* straw hat — wide brim, dome crown, red band, woven straw, ink outline */
-  if (uMisc.y>.5){
-    vec2 h=rotv(p-uHat.xy,-uHat.z)/(S*uHat.w);
-    float brim=sdEll(h,vec2(18.,3.5));
-    float crown=max(sdEll(h-vec2(0.,-3.4),vec2(9.8,9.4)), h.y+.4);
-    float dH=min(brim,crown);
-    float dHw=dH*S*uHat.w;
-    vec3 straw=vec3(.95,.79,.38);
-    float shade=.88+.12*smoothstep(3.4,-3.4,h.y);
-    col=over(col, straw*shade, cov(dHw));
-    /* weave: concentric rings on the brim, fine horizontal rows on the crown */
-    float ring=abs(fract(length(h/vec2(18.,3.5))*4.)-.5);
-    float rows=abs(fract(h.y*.55)-.5);
-    float wv=brim<0.&&crown>0. ? smoothstep(.12,.0,ring) : (crown<0. ? smoothstep(.1,.0,rows)*.8 : 0.);
-    col=over(col, straw*.62, wv*.55*step(dH,0.));
-    /* red band around the base of the crown */
-    float band=max(crown+.3, abs(h.y+2.6)-1.9);
-    col=over(col, uRed*.95, cov(band*S*uHat.w));
-    col=over(col, uInk, cov(abs(dHw)-.55*S));
-    col=over(col, uInk, cov((abs(crown)-.45)*S*uHat.w)*step(brim,0.)*.8);
-  }
+  if (uMisc.y>.5 && uMisc.z<.5){ vec4 hc=hatLayer(p); col=hc+col*(1.-hc.a); }
   gl_FragColor=col;
 }`;
   function shader(type, src) {
@@ -1133,7 +1152,7 @@ void main(){
         GT.hair = Math.min(0.35, this.bi * 0.07); if (!readingMode() && this.bi % 2 === 0) quake(B.x, B.y, 0.2);
       }
       if (e > 2150 && !this.aw) {
-        this.aw = 1; Object.assign(GT, { hair: 1, g5: 1 }); say('gear 5!', 'kz-big'); B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; kick(9); steam(6);
+        this.aw = 1; Object.assign(GT, { hair: 1, g5: 1 }); gearTint(1, 1, 1, 1); say('gear 5!', 'kz-big'); B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; kick(9); steam(6);
       }
       if (e > 2700) { this.pushed = true; const seq = [g5laugh(), toon()]; if (rubberRun && pickLine()) seq.push(gear5()); seq.push(g5revert()); queue.push(...seq); return true; }
     },
@@ -1308,6 +1327,7 @@ void main(){
     if (B.hatFree) { hx = B.hatFree.x; hy = B.hatFree.y; hr = B.hatFree.rot; }
     else {
       const p = l2w(B.faceS * 1.2, -13.6 + B.hatSlide * 10); hx = p[0]; hy = p[1]; hr = B.rot + B.hatRot + B.hatSlide * 0.25 * B.faceS;
+      if (GV.g5 > 0.02) { const k = Math.min(1, GV.g5 * 1.2), bk = l2w(-B.faceS * 15, 3); hx = lerp(hx, bk[0], k); hy = lerp(hy, bk[1], k); hr = lerp(hr, B.rot - B.faceS * 1.25, k); }
       if (B.hatToss) {
         const e = (now() - B.hatToss.t0) / 1000, dur = 1.0;
         if (e >= dur) { B.hatToss = null; hatKick(7); kick(-3); }
@@ -1315,6 +1335,7 @@ void main(){
       }
     }
     grow(hx, hy, 27 * S);
+    if (GV.hair > 0.01) { const c = l2w(0, -30); grow(c[0], c[1], 62 * S); }
     if (auraA > 0.005) { const c = l2w(0, 2); grow(c[0], c[1], 60 * S); }
     const fy = floorY(), grounded = B.mode === 'ground' && !B.surf;
     const shH = Math.max(0, fy - (B.y + FOOT * S));
@@ -1335,7 +1356,7 @@ void main(){
     gl.uniform4f(U.uMouth, g5on && (B.mouth === 2 || B.mouth === 1) ? 4 : B.mouth, g5on ? Math.max(B.mouthO, 0.7) : B.mouthO, 0, 0);
     gl.uniform4f(U.uHat, hx, hy, hr, hs);
     gl.uniform4f(U.uShadow, shX, shY, shW, shA);
-    gl.uniform4f(U.uMisc, REDUCE ? 0 : 1, hatOn, 0, 0);
+    gl.uniform4f(U.uMisc, REDUCE ? 0 : 1, hatOn, GV.g5 > 0.5 && !B.hatFree ? 1 : 0, 0);
     { const c = l2w(0, 2), R = (46 + 5 * auraP + Math.sin(T * 1.3) * 1.5) * S; gl.uniform4f(U.uAura, c[0], c[1], R, auraA * (0.85 + 0.15 * auraP)); }
     gl.uniform4f(U.uTint, GV.tr, GV.tg, GV.tb, GV.tint); gl.uniform4f(U.uGear, GV.hair, GV.g5, T, GV.pop); gl.uniform4f(U.uArmR, GV.a0, GV.h0, GV.a1, GV.h1);
     gl.uniform2fv(U.uA0, fA0); gl.uniform2fv(U.uA1, fA1); gl.uniform2fv(U.uSc, fSc); gl.uniform4fv(U.uLeg, fLeg);
