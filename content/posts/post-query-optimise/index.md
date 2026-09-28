@@ -41,7 +41,7 @@ An index is a sorted copy of one or more columns, and each entry points to
 a row in the table. How many pages does the same lookup read with an index
 on `email`? Guess in the figure before it shows you.
 
-{{< viz kind="pqo-pages" fig="1" title="One lookup, with and without an index" frame="none" fallback="pages.svg" alt="The same lookup drawn as page maps: a sequential scan reads all 33,333 table pages; an index scan reads three index pages and one table page" caption="Guess, then see. `users` and its email index drawn to scale, one square per 8 KB page, each at its real block number." >}}
+{{< viz kind="pqo-pages" fig="1" title="One lookup, with and without an index" fallback="pages.svg" alt="The same lookup drawn as page maps: a sequential scan reads all 33,333 table pages; an index scan reads three index pages and one table page" caption="Guess, then see. `users` and its email index drawn to scale, one square per 8 KB page, each at its real block number." >}}
 
 # How the index finds the row
 
@@ -51,7 +51,7 @@ again, and the leaf pages at the bottom hold every key with the address of
 its row. Postgres reads one page per level, then the table page. Walk it
 yourself.
 
-{{< viz kind="pqo-lookup" fig="2" title="One B-tree lookup, page by page" frame="none" fallback="lookup.svg" alt="The root, branch, and leaf pages of users_email_idx and the table page that one lookup reads, with the keys on each page" caption="Walk the tree yourself: on each page, pick the entry to follow. Block numbers, keys, and row addresses (TIDs) are from `pageinspect` on the sample table; keys leave out `@example.com`. The strip under each block number shows where the page sits in its file." >}}
+{{< viz kind="pqo-lookup" fig="2" title="One B-tree lookup, page by page" fallback="lookup.svg" alt="The root, branch, and leaf pages of users_email_idx and the table page that one lookup reads, with the keys on each page" caption="Walk the tree yourself: on each page, pick the entry to follow. Block numbers, keys, and row addresses (TIDs) are from `pageinspect` on the sample table; keys leave out `@example.com`. The strip under each block number shows where the page sits in its file." >}}
 
 The tree is short because each page holds hundreds of keys. Here the root
 points to 32 branch pages, each branch page points to about 150 leaf pages,
@@ -77,7 +77,7 @@ and what each plan costs, and it runs the cheapest one. Costs are in
 abstract units: reading one page in sequence costs 1 (`seq_page_cost`), and
 reading one page at random costs 4 (`random_page_cost`).
 
-{{< viz kind="pqo-planner" fig="3" title="Same kind of index, different plans" frame="none" fallback="planner.svg" alt="Which table pages hold rows matching WHERE score < x or WHERE seq < x, the plan the planner picks for each x, and its cost and measured time" caption="Move `x` to change how many rows match. Each scan type was forced with `enable_*` settings to get its cost and time. Times are medians of five `EXPLAIN ANALYZE` runs with the table in memory." >}}
+{{< viz kind="pqo-planner" fig="3" title="Same kind of index, different plans" fallback="planner.svg" alt="Which table pages hold rows matching WHERE score < x or WHERE seq < x, the plan the planner picks for each x, and its cost and measured time" caption="Move `x` to change how many rows match. Each scan type was forced with `enable_*` settings to get its cost and time. Times are medians of five `EXPLAIN ANALYZE` runs with the table in memory." >}}
 
 `score` and `seq` have the same kind of index and the same filter. The
 difference is correlation. Rows with a small `seq` sit together at the
@@ -139,7 +139,7 @@ produces rows in the requested order as it goes. `OFFSET` works the same
 way: `OFFSET 100000` reads 100,000 rows and throws them away. Try both
 tips on the goals below.
 
-{{< viz kind="pqo-budget" fig="4" title="What each query reads and sends" frame="none" fallback="budget.svg" alt="EXPLAIN output and page maps for the table, the created_at index, temp files, and data sent, for SELECT *, SELECT id, name, and SELECT created_at with and without ORDER BY and LIMIT" caption="Plans are real `EXPLAIN (ANALYZE, BUFFERS)` output from one run. Client time is psql fetching every row over a Unix socket, median of five runs. `work_mem` is the default 4 MB." >}}
+{{< viz kind="pqo-budget" fig="4" title="What each query reads and sends" fallback="budget.svg" alt="EXPLAIN output and page maps for the table, the created_at index, temp files, and data sent, for SELECT *, SELECT id, name, and SELECT created_at with and without ORDER BY and LIMIT" caption="Plans are real `EXPLAIN (ANALYZE, BUFFERS)` output from one run. Client time is psql fetching every row over a Unix socket, median of five runs. `work_mem` is the default 4 MB." >}}
 
 On this table `SELECT *` sends 245 MB to the client and `SELECT id, name`
 sends 40 MB, from the same 33,333 pages. `ORDER BY created_at DESC LIMIT 10`

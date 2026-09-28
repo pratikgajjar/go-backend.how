@@ -2,15 +2,19 @@
  * post-query-optimise — figures for "Postgres - Optimising query".
  *
  * The post's one idea: count pages, not rows. Postgres reads 8 KB pages, so
- * every figure draws the sample table as a page map, one square per page,
- * to scale and at the page's real block number. Each figure is framed as the
- * psql query it runs, and each asks the reader to do something:
+ * the figures draw the sample table as a page map: one square per page, to
+ * scale, at the page's real block number. Chrome and controls are the
+ * shared house style (walviz.css, viz/lib.js); only the maps are drawn here.
  *
  *   pqo-pages    predict: with an index, how many pages does one lookup read?
  *   pqo-lookup   walk the B-tree yourself: pick the child on each page.
  *   pqo-planner  move x; see where matching rows live for a disk-ordered
  *                and a random column, and what the planner picks for each.
- *   pqo-budget   rewrite the query by clicking its SQL to meet four goals.
+ *   pqo-budget   build the query from its parts to meet four goals.
+ *
+ * Colours on the maps use the shared tokens: brown-l = page on disk, not
+ * read; brown = page read or data sent (concrete data); red = read for
+ * nothing, or temp files; purple = the page to look at.
  *
  * Data: PostgreSQL 18.4, the sample table in the post (1,000,000 rows,
  * 33,333 pages), default settings, parallel workers and JIT off. Blocks,
@@ -18,23 +22,24 @@
  * BUFFERS); times are medians of 5 runs with the table in memory.
  */
 
-import { h, register, clamp, fmt, tween, onVisible, REDUCED } from './lib.js';
+import { h, register, clamp, fmt, esc, tween, onVisible, REDUCED, btn, chips, ask, range, colorKey, codeBlock } from './lib.js';
 
-const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ms = (v) => (v < 0.1 ? `${v.toFixed(3)} ms` : v < 10 ? `${v.toFixed(v < 1 ? 2 : 1)} ms` : `${fmt(v)} ms`);
 const mb = (b) => (b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : b >= 1e3 ? `${(b / 1e3).toFixed(1)} kB` : `${b} B`);
 const TABLE = 33333; // pages in users
 const PAGE = 8192;
+const html = (el, s) => { el.innerHTML = s; return el; };
 
 /* ------------------------------------------------------------ page maps */
 
 const REDRAW = new Set();
 new MutationObserver(() => REDRAW.forEach((f) => f())).observe(document.documentElement, { attributes: true, attributeFilter: ['data-force-dark', 'class'] });
 
+/** Shared colour tokens, read from the figure so dark mode follows. */
 function tokens(fig) {
   const cs = getComputedStyle(fig);
-  const t = (n) => cs.getPropertyValue(`--pq-${n}`).trim();
-  return { paper: t('paper'), ink: t('ink'), idle: t('idle'), data: t('data'), bad: t('bad'), look: t('look'), good: t('good') };
+  const t = (n) => cs.getPropertyValue(`--${n}`).trim();
+  return { board: t('board'), ink: t('ink'), idle: t('brown-l'), data: t('brown'), bad: t('red'), look: t('purple') };
 }
 
 /** Device-pixel cell size so that `n` pages at width `w` are about `height` css px tall. */
@@ -46,8 +51,8 @@ function cellFor(n, w, height) {
 
 /**
  * One map: a canvas with one square per page, row-major by block number.
- * paint(T, colorAt, marks): marks are [{ page, label }] drawn as purple dots
- * with the label written next to the dot.
+ * paint(T, colorAt, marks): marks are [{ page, label }], drawn as purple
+ * dots with the label written next to the dot, never on top of another.
  */
 function pageMap(n, name) {
   const cv = h('canvas', { class: 'v-pqo-map', role: 'img', 'aria-label': `${name}: ${fmt(n)} pages` });
@@ -60,7 +65,7 @@ function pageMap(n, name) {
       const rows = Math.ceil(n / cols);
       cv.width = cols * cd; cv.height = rows * cd;
       cv.style.width = `${(cols * cd) / dpr}px`; cv.style.height = `${(rows * cd) / dpr}px`;
-      geo = { cols, rows, cd, dpr };
+      geo = { cols, cd, dpr };
     },
     paint(T, colorAt, marks = []) {
       if (!geo) return;
@@ -78,30 +83,29 @@ function pageMap(n, name) {
         p = q;
       }
       const font = `700 ${11 * dpr}px ${getComputedStyle(cv).fontFamily}`;
-      const placed = []; // label boxes, so labels do not overlap
+      const placed = [];
       for (const m of marks) {
-        const r = 6 * dpr; // keep the whole dot inside the map
+        const r = 6 * dpr;
         const x = clamp(((m.page % cols) + 0.5) * cd, r + dpr, cv.width - r - dpr);
         const y = clamp((Math.floor(m.page / cols) + 0.5) * cd, r + dpr, cv.height - r - dpr);
         g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
         g.fillStyle = T.look; g.fill();
-        g.lineWidth = 2 * dpr; g.strokeStyle = T.paper; g.stroke();
+        g.lineWidth = 2 * dpr; g.strokeStyle = T.board; g.stroke();
         if (!m.label) continue;
         g.font = font; g.textBaseline = 'middle';
         const w = g.measureText(m.label).width; const lh = 13 * dpr; const gap = 10 * dpr;
         const fits = (side, cy) => {
           const x0 = side > 0 ? x + gap : x - gap - w;
           if (x0 < 0 || x0 + w > cv.width || cy < 6 * dpr || cy > cv.height - 6 * dpr) return null;
-          return placed.some((q) => x0 < q[0] + q[2] && x0 + w > q[0] && Math.abs(cy - q[1]) < lh) ? null : [side, x0, cy];
+          return placed.some((q) => x0 < q[0] + q[2] && x0 + w > q[0] && Math.abs(cy - q[1]) < lh) ? null : [side, cy];
         };
         let pick = null;
         for (const [side, dy] of [[1, 0], [-1, 0], [1, lh], [-1, lh], [1, -lh], [-1, -lh]]) { pick = fits(side, y + dy); if (pick) break; }
-        if (!pick) pick = [x + gap + w < cv.width ? 1 : -1, 0, clamp(y, 8 * dpr, cv.height - 8 * dpr)];
-        const [side, , ty] = pick;
-        g.textAlign = side > 0 ? 'left' : 'right';
+        const [side, ty] = pick || [x + gap + w < cv.width ? 1 : -1, clamp(y, 8 * dpr, cv.height - 8 * dpr)];
         const tx = side > 0 ? x + gap : x - gap;
+        g.textAlign = side > 0 ? 'left' : 'right';
         placed.push([side > 0 ? tx : tx - w, ty, w]);
-        g.lineWidth = 4 * dpr; g.strokeStyle = T.paper; g.lineJoin = 'round';
+        g.lineWidth = 4 * dpr; g.strokeStyle = T.board; g.lineJoin = 'round';
         g.strokeText(m.label, tx, ty);
         g.fillStyle = T.ink; g.fillText(m.label, tx, ty);
       }
@@ -109,19 +113,23 @@ function pageMap(n, name) {
   };
 }
 
-/* ------------------------------------------------------------ frame bits */
-
-function prompt(...kids) {
-  return h('div', { class: 'v-pqo-prompt' }, h('span', { class: 'v-pqo-ps1', 'aria-hidden': 'true' }, 'users=#'), h('span', null, ...kids));
-}
-function key(items) {
-  return h('div', { class: 'v-pqo-key' }, ...items.map(([k, label]) => h('span', null, h('i', { class: `v-pqo-sw-${k}` }), label)));
+/** A map with its name, a right-hand label, and a note under it. */
+function mapBlock(title, map, meta = '') {
+  const lab = h('span', { class: 't-s' });
+  const el = h('div', { class: 'v-pqo-mapbox' },
+    h('div', { class: 'v-pqo-maph' }, h('b', { class: 't-s' }, title), lab), map.el,
+    meta ? h('div', { class: 't-xs t-mute' }, meta) : null);
+  return { el, lab };
 }
 function resized(el, fn) {
   let last = 0;
   new ResizeObserver(() => { const w = el.clientWidth; if (w && w !== last) { last = w; fn(); } }).observe(el);
 }
-function pressGroup(btns, on) { btns.forEach((b) => b.setAttribute('aria-pressed', String(b === on))); }
+/** Swatches for the map colours, in colorKey form. */
+const K_IDLE = ['k-data', 'page on disk, not read'];
+const K_READ = ['v-pqo-k-read', 'page read'];
+const K_BAD = ['v-pqo-k-bad', 'page read for nothing'];
+const K_LOOK = ['k-look', 'the page to look at'];
 
 /* ================================================================ PAGES */
 
@@ -143,25 +151,29 @@ function initPages(fig, app) {
   const seqMap = pageMap(TABLE, 'users, read by a sequential scan');
   const idxMap = pageMap(4961, 'users_email_idx');
   const tblMap = pageMap(TABLE, 'users, read by an index scan');
-  const S = { sweep: REDUCED ? 1 : 0, hops: 0, guess: null };
-  const seqHead = h('div', { class: 'v-pqo-colh' });
-  const idxHead = h('div', { class: 'v-pqo-colh' });
-  const ask = h('div', { class: 'v-pqo-ask' });
-  const colA = h('div', { class: 'v-pqo-col' }, seqHead,
-    h('div', { class: 'v-pqo-maph' }, h('b', null, 'users'), h('span', null, 'table · 33,333 pages')), seqMap.el);
-  const colB = h('div', { class: 'v-pqo-col' }, idxHead, ask,
-    h('div', { class: 'v-pqo-maph' }, h('b', null, 'users_email_idx'), h('span', null, 'B-tree · 4,961 pages')), idxMap.el,
-    h('div', { class: 'v-pqo-maph' }, h('b', null, 'users'), h('span', null, 'table · 33,333 pages')), tblMap.el);
+  const S = { sweep: REDUCED ? 1 : 0, hops: 0, guessed: false };
+  const seqHead = h('p', { class: 'v-pqo-colh' });
+  const idxHead = h('p', { class: 'v-pqo-colh' });
+  let stopHops = () => {};
+  const q = ask('With a B-tree index on email, how many pages does this lookup read?',
+    GUESSES.map(([v, l]) => [v, l]), 4, (v) => { reveal(); return `${GUESSES.find((g) => g[0] === v)[2]} The sequential scan read ${fmt(TABLE)}.`; });
+  const again = btn('↻ ask again', () => { stopHops(); q.reset(); S.guessed = false; S.hops = 0; again.hidden = true; paint(); });
+  again.hidden = true;
+  const bA = mapBlock('users', seqMap, 'table · 33,333 pages');
+  const bI = mapBlock('users_email_idx', idxMap, 'B-tree · 4,961 pages');
+  const bT = mapBlock('users', tblMap, 'table · 33,333 pages');
+  const colA = h('div', { class: 'v-pqo-col' }, seqHead, bA.el);
+  const colB = h('div', { class: 'v-pqo-col' }, idxHead, q.el, again, bI.el, bT.el);
 
   app.append(
-    prompt('SELECT * FROM users WHERE email = ', h('span', { class: 'v-pqo-lit' }, "'user777777@example.com'"), ';'),
-    h('div', { class: 'v-pqo-body' }, h('div', { class: 'v-pqo-two' }, colA, colB),
-      key([['idle', 'page not read'], ['bad', 'page read, no match'], ['look', 'page read by the index lookup']])));
+    html(h('div'), codeBlock(["SELECT * FROM users WHERE email = «'user777777@example.com'»;"])),
+    h('div', { class: 'v-pqo-two' }, colA, colB),
+    colorKey([K_IDLE, K_BAD, K_LOOK]));
 
   function heads() {
     const n = Math.round(S.sweep * TABLE);
-    seqHead.innerHTML = `<span class="v-pqo-plan">Without an index</span><span><b class="v-pqo-big c-bad">${fmt(n)}</b> pages read · Seq Scan${S.sweep >= 1 ? ' · 63.7 ms' : ''}</span>`;
-    idxHead.innerHTML = `<span class="v-pqo-plan">With an index on email</span><span>${S.guess == null ? '<b class="v-pqo-big">?</b> pages read' : `<b class="v-pqo-big c-look">${S.hops}</b> pages read · Index Scan${S.hops === 4 ? ' · 0.018 ms' : ''}`}</span>`;
+    seqHead.innerHTML = `<b>Without an index</b><br><span class="t-l t-b c-bad">${fmt(n)}</span> pages read · Seq Scan${S.sweep >= 1 ? ' · 63.7 ms' : ''}`;
+    idxHead.innerHTML = `<b>With an index on email</b><br>${S.guessed ? `<span class="t-l t-b c-look">${S.hops}</span> pages read · Index Scan${S.hops === 4 ? ' · 0.018 ms' : ''}` : '<span class="t-l t-b">?</span> pages read'}`;
   }
   function paint() {
     const T = tokens(fig);
@@ -172,29 +184,8 @@ function initPages(fig, app) {
     tblMap.paint(T, () => T.idle, shown.filter((x) => x.map === 'tbl'));
     heads();
   }
-  function renderAsk() {
-    if (S.guess == null) {
-      ask.className = 'v-pqo-ask';
-      ask.innerHTML = '<p><b>Guess first.</b> With a B-tree index on <code>email</code>, how many pages does this lookup read?</p>';
-      const row = h('div', { class: 'v-pqo-chips' });
-      GUESSES.forEach(([v, label]) => {
-        const b = h('button', { class: 'v-pqo-btn', type: 'button' }, label);
-        b.addEventListener('click', () => answer(v));
-        row.append(b);
-      });
-      ask.append(row);
-    } else {
-      const g = GUESSES.find((x) => x[0] === S.guess);
-      ask.className = `v-pqo-ask ${S.guess === 4 ? 'is-good' : 'is-miss'}`;
-      ask.innerHTML = `<p>You said <b>${g[1]}</b>. ${g[2]} Seq Scan read ${fmt(TABLE)}.</p>`;
-      const again = h('button', { class: 'v-pqo-btn', type: 'button' }, 'ask again');
-      again.addEventListener('click', () => { S.guess = null; S.hops = 0; renderAsk(); paint(); });
-      ask.append(again);
-    }
-  }
-  let stopHops = () => {};
-  function answer(v) {
-    S.guess = v; S.hops = REDUCED ? 4 : 0; renderAsk(); paint();
+  function reveal() {
+    S.guessed = true; again.hidden = false; S.hops = REDUCED ? 4 : 0; paint();
     if (REDUCED) return;
     let k = 0;
     const t = setInterval(() => { S.hops = ++k; paint(); if (k >= 4) clearInterval(t); }, 420);
@@ -208,7 +199,6 @@ function initPages(fig, app) {
   }
   resized(app, layout);
   REDRAW.add(paint);
-  renderAsk();
   layout();
   if (!REDUCED) {
     let ran = false;
@@ -266,112 +256,93 @@ function why(entry, keyStr) {
 }
 
 function initLookup(fig, app) {
-  const S = { key: 'user777777', lv: 0, msg: '', msgCls: '' };
-  const lit = h('span', { class: 'v-pqo-lit' });
-  const keyBtns = Object.keys(TREE).map((k) => {
-    const b = h('button', { class: 'v-pqo-btn', type: 'button' }, k === 'user1000001' ? `${k} (no such row)` : k);
-    b.addEventListener('click', () => { S.key = k; S.lv = 0; S.msg = ''; pressGroup(keyBtns, b); draw(); });
-    return b;
-  });
-  pressGroup(keyBtns, keyBtns[0]);
-  const slots = [0, 1, 2, 3].map(() => h('div', { class: 'v-pqo-slot' }));
-  const count = h('div', { class: 'v-pqo-count', 'aria-live': 'polite' });
-  const msg = h('p', { class: 'v-pqo-msg', 'aria-live': 'polite' });
-  const tools = h('div', { class: 'v-pqo-tools' });
+  const S = { key: 'user777777', lv: 0, msg: '', good: null };
+  const sql = h('div');
+  const pick = chips(Object.keys(TREE).map((k) => [k, k === 'user1000001' ? `${k} (no such row)` : k]),
+    (k) => { S.key = k; S.lv = 0; S.msg = ''; S.good = null; draw(); }, { value: S.key, label: 'search key' });
+  const slots = [0, 1, 2, 3].map(() => h('div', { class: 'wv-card' }));
+  const msg = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const count = h('p', { class: 't-s' });
+  const tools = h('div');
   app.append(
-    prompt('SELECT * FROM users WHERE email = ', lit, ';'),
-    h('div', { class: 'v-pqo-body' },
-      h('div', { class: 'v-pqo-ctlrow' }, h('span', { class: 'v-pqo-lab' }, 'search for'), h('div', { class: 'v-pqo-chips' }, ...keyBtns)),
-      h('div', { class: 'v-pqo-slots' }, ...slots),
-      msg, h('div', { class: 'v-pqo-foot' }, count, tools),
-      key([['opt', 'your choice'], ['look', 'the page you are on'], ['data', 'keys, blocks, rows'], ['bad', 'wrong turn or no match']])));
+    h('div', { class: 'wv-field' }, h('label', null, 'search for')), pick.el,
+    sql,
+    h('div', { class: 'wv-cards v-pqo-slots' }, ...slots),
+    h('div', { class: 'v-pqo-gap' }), msg,
+    h('div', { class: 'v-pqo-foot' }, count, tools),
+    colorKey([['k-opt', 'your choice'], ['k-look', 'the page you are on'], ['k-data', 'keys, blocks, rows'], ['k-gap', 'wrong turn, or no match']]));
 
   function choose(lv, item) {
     const T = TREE[S.key];
-    const [, , win, pick] = T.levels[lv];
+    const [, , win, pk] = T.levels[lv];
     const ks = full(S.key);
     const e = win.find((x) => x[0] === item);
-    if (item === pick && (lv < 2 || T.found)) {
-      S.lv = lv + 1;
+    S.good = false;
+    if (item === pk && (lv < 2 || T.found)) {
+      S.lv = lv + 1; S.good = true;
       S.msg = lv < 2 ? `Right: block ${e[2]}.` : `Found it: row ${e[2]}.`;
-      S.msgCls = 'is-good';
     } else if (item === 'none') {
-      if (!T.found) { S.lv = 3; S.msg = 'Right. No entry equals the key, so there is no row and Postgres never reads the table.'; S.msgCls = 'is-good'; } else { S.msg = 'It is here. Look again.'; S.msgCls = 'is-miss'; }
+      if (!T.found) { S.lv = 3; S.good = true; S.msg = 'Right. No entry equals the key, so there is no row and Postgres never reads the table.'; } else S.msg = 'It is here. Look again.';
     } else if (lv < 2) {
       if (e[1] === null || cmp(e[1], ks)[0] <= 0) {
-        S.msg = `${e[1] === null ? 'The first child holds everything below the next key.' : why(full(e[1]), ks)} But the next key, <code>'${esc(full(win[win.indexOf(e) + 1][1]))}'</code>, is also not greater than yours, so keep going right. Follow the <b>last</b> key that is not greater.`;
+        const next = win[win.indexOf(e) + 1];
+        S.msg = `${e[1] === null ? 'The first child holds everything below the next key.' : why(full(e[1]), ks)} But the next key, <code>'${esc(full(next[1]))}'</code>, is also not greater than yours, so keep going right. Follow the <b>last</b> key that is not greater.`;
       } else {
         S.msg = `${why(full(e[1]), ks)} This child starts after your key, so your key is in the child before it.`;
       }
-      S.msgCls = 'is-miss';
     } else {
       S.msg = `${why(full(e[1]), ks)} Not your key.`;
-      S.msgCls = 'is-miss';
     }
     draw();
   }
 
   function draw() {
     const T = TREE[S.key];
-    const ks = full(S.key);
-    lit.textContent = `'${ks}'`;
+    sql.innerHTML = codeBlock([`SELECT * FROM users WHERE email = «'${full(S.key)}'»;`]);
     slots.forEach((el, lv) => {
       const state = lv < S.lv ? 'done' : lv === S.lv ? 'now' : 'later';
-      el.className = `v-pqo-slot is-${state}`;
+      el.className = `wv-card${state === 'now' ? ' is-look' : ''}${state === 'later' ? ' v-pqo-later' : ''}`;
       if (lv === 3) {
-        const [, , win, pick] = T.levels[2];
-        const tid = win.find((x) => x[0] === pick)[2];
+        const [, , win, pk] = T.levels[2];
+        const tid = win.find((x) => x[0] === pk)[2];
         const blk = T.found ? tid.slice(1).split(',')[0] : '';
-        el.innerHTML = `<div class="v-pqo-sh"><b>table</b><span>${T.found ? `block ${blk}` : ''}</span></div>${
-          state === 'later' ? '<p class="v-pqo-wait">not read yet</p>'
+        if (state !== 'later' && !T.found) el.className = 'wv-card is-bad';
+        el.innerHTML = `<h5>table <span class="c-data">${T.found && state !== 'later' ? `block ${blk}` : ''}</span></h5>${
+          state === 'later' ? '<p class="t-s">not read yet</p>'
             : T.found ? `<div class="v-pqo-pos"><i style="left:${((+blk + 0.5) / TABLE * 100).toFixed(2)}%"></i></div>
-              <ul class="v-pqo-row"><li><span>row</span><b>${tid}</b></li><li><span>id</span><b>${T.row[0]}</b></li><li><span>name</span><b>'${T.row[1]}'</b></li><li><span>created_at</span><b>${T.row[2]}</b></li></ul>
-              <p class="v-pqo-sm">${T.row[3]} rows on this page</p>`
-              : '<p class="v-pqo-none">not read: no row to fetch</p>'}`;
-        el.classList.toggle('is-bad', state !== 'later' && !T.found);
+              <dl class="wv-kv"><dt>row</dt><dd class="c-look">${tid}</dd><dt>id</dt><dd class="c-data">${T.row[0]}</dd><dt>name</dt><dd class="c-data">'${T.row[1]}'</dd><dt>created_at</dt><dd class="c-data">${T.row[2]}</dd></dl>
+              <p class="t-xs">${T.row[3]} rows on this page</p>`
+              : '<p class="c-bad">not read: no row to fetch</p>'}`;
         return;
       }
-      const [blk, n, win, pick, before, after] = T.levels[lv];
+      const [blk, n, win, pk, before, after] = T.levels[lv];
       let body;
-      if (state === 'later') body = '<p class="v-pqo-wait">not read yet</p>';
+      if (state === 'later') body = '<p class="t-s">not read yet</p>';
       else {
-        const q = lv < 2 ? `Which child can hold your key?` : 'Which entry is your key?';
         const rows = win.map(([item, k, to]) => {
           const label = k === null ? '−∞ (lowest)' : `'${esc(k)}@…'`;
-          const chosen = state === 'done' && item === pick;
-          const inner = `<span class="it">${item}</span><span class="k">${label}</span><span class="to">→ ${lv < 2 ? `block ${to}` : to}</span>`;
-          const cls = chosen ? (lv === 2 && !T.found ? 'is-miss' : 'is-chosen') : 'is-dim';
-          return state === 'now' ? `<li><button type="button" class="v-pqo-ent" data-item="${item}">${inner}</button></li>` : `<li class="${cls}">${inner}</li>`;
+          const inner = `<span class="t-mute">${item}</span> <span class="c-data">${label}</span><br><span>→ ${lv < 2 ? `block ${to}` : to}</span>`;
+          if (state === 'now') return `<button type="button" class="wv-chip v-pqo-ent" data-item="${item}">${inner}</button>`;
+          const cls = item === pk ? (lv === 2 && !T.found ? 'v-pqo-miss' : 'v-pqo-chosen') : 'v-pqo-dim';
+          return `<div class="v-pqo-ent ${cls}">${inner}${cls === 'v-pqo-miss' ? ' <b class="c-bad">≠ key</b>' : ''}</div>`;
         }).join('');
         body = `<div class="v-pqo-pos" title="block ${blk} of 4,961"><i style="left:${((blk + 0.5) / 4961 * 100).toFixed(2)}%"></i></div>
-          ${state === 'now' ? `<p class="v-pqo-q">${q}</p>` : ''}
-          <ul class="v-pqo-ents">${before ? '<li class="gap">⋮</li>' : ''}${rows}${after ? '<li class="gap">⋮</li>' : ''}</ul>
-          ${state === 'now' && lv === 2 ? '<button type="button" class="v-pqo-btn v-pqo-none-btn" data-item="none">none of these</button>' : ''}
-          <p class="v-pqo-sm">${n} ${lv < 2 ? 'children' : 'entries'} on this page</p>`;
+          ${state === 'now' ? `<p class="t-b">${lv < 2 ? 'Which child can hold your key?' : 'Which entry is your key?'}</p>` : ''}
+          <div class="v-pqo-ents">${before ? '<span class="t-mute">⋮</span>' : ''}${rows}${after ? '<span class="t-mute">⋮</span>' : ''}</div>
+          ${state === 'now' && lv === 2 ? '<button type="button" class="wv-chip v-pqo-ent" data-item="none">none of these</button>' : ''}
+          <p class="t-xs">${n} ${lv < 2 ? 'children' : 'entries'} on this page</p>`;
       }
-      el.innerHTML = `<div class="v-pqo-sh"><b>${NAMES[lv]}</b><span>block ${blk}</span></div>${body}`;
+      el.innerHTML = `<h5>${NAMES[lv]} <span class="c-data">${state === 'later' ? '' : `block ${blk}`}</span></h5>${body}`;
       el.querySelectorAll('[data-item]').forEach((b) => b.addEventListener('click', () => choose(lv, b.dataset.item === 'none' ? 'none' : +b.dataset.item)));
     });
     const read = Math.min(S.lv + 1, T.found ? 4 : 3);
-    const doneAll = S.lv >= 3;
-    count.innerHTML = `pages read: <b class="${doneAll ? 'c-look' : ''}">${read}</b>${doneAll ? ` · <code>Buffers: shared hit=${T.found ? '3 read=1' : '3'}</code>` : ''}`;
-    msg.innerHTML = S.msg || (S.lv === 0 ? 'Each key on a root or branch page is the lowest key in its child. Follow the last key that is not greater than yours. Keys compare as text, one character at a time.' : '');
-    msg.className = `v-pqo-msg ${S.msgCls}`;
-    tools.innerHTML = '';
-    if (!doneAll) {
-      const b = h('button', { class: 'v-pqo-link', type: 'button' }, 'show me');
-      b.addEventListener('click', () => {
-        const [, , , pick] = T.levels[S.lv];
-        choose(S.lv, S.lv === 2 && !T.found ? 'none' : pick);
-      });
-      tools.append(b);
-    } else {
-      const b = h('button', { class: 'v-pqo-link', type: 'button' }, 'start over');
-      b.addEventListener('click', () => { S.lv = 0; S.msg = ''; draw(); });
-      tools.append(b);
-    }
-    const now = slots[Math.min(S.lv, 3)].querySelector('button');
-    if (now && document.activeElement && fig.contains(document.activeElement)) now.focus({ preventScroll: true });
+    const done = S.lv >= 3;
+    count.innerHTML = `pages read: <b class="t-l ${done ? 'c-look' : ''}">${read}</b>${done ? ` · <code>Buffers: shared hit=${T.found ? '3 read=1' : '3'}</code>` : ''}`;
+    msg.innerHTML = S.msg || 'Each key on a root or branch page is the lowest key in its child. Follow the last key that is not greater than yours. Keys compare as text, one character at a time.';
+    msg.className = `wv-note${S.good === true ? ' is-good' : S.good === false ? ' is-bad' : ''}`;
+    tools.replaceChildren(done
+      ? btn('↻ start over', () => { S.lv = 0; S.msg = ''; S.good = null; draw(); })
+      : btn('show me', () => { const [, , , pk] = T.levels[S.lv]; choose(S.lv, S.lv === 2 && !T.found ? 'none' : pk); }));
   }
   draw();
 }
@@ -437,49 +408,39 @@ const PLANS = ['Seq Scan', 'Bitmap Heap Scan', 'Index Scan'];
 const SCORE_PAGES = PICK.score.map((_, i) => [...SCORE_MIN].reduce((a, c) => a + (LV.indexOf(c) <= i ? 1 : 0), 0));
 
 function initPlanner(fig, app) {
-  const P = { i: 6, rpc: 4, guess: null };
-  const xTok = h('span', { class: 'v-pqo-lit' });
-  const slider = h('input', { type: 'range', min: 0, max: 15, step: 1, value: P.i, class: 'v-pqo-slider', 'aria-label': 'rows matched' });
-  const xOut = h('output', { class: 'v-pqo-xout' });
-  slider.addEventListener('input', () => { P.i = +slider.value; draw(); });
+  const P = { i: 6, rpc: 4, guessed: false };
+  const sql = h('div');
   const COLS = [
-    { col: 'seq', title: 'seq', sub: 'values follow the order on disk' },
-    { col: 'score', title: 'score', sub: 'values in random order' },
+    { col: 'seq', sub: 'values follow the order on disk' },
+    { col: 'score', sub: 'values in random order' },
   ].map((c) => {
     c.map = pageMap(TABLE, `${c.col}: table pages`);
-    c.pages = h('div', { class: 'v-pqo-maplabel' });
-    c.pick = h('div', { class: 'v-pqo-pickline' });
-    c.el = h('div', { class: 'v-pqo-col' },
-      h('div', { class: 'v-pqo-colh' }, h('span', { class: 'v-pqo-plan' }, `WHERE ${c.title} < x`), h('span', null, c.sub)),
-      c.pages, c.map.el, c.pick);
+    c.pages = h('p', { class: 't-s' });
+    c.pick = h('p', { class: 't-s v-pqo-pickline' });
+    c.el = h('div', { class: 'v-pqo-col' }, h('p', null, h('b', null, `WHERE ${c.col} < x`), h('br'), h('span', { class: 't-s' }, c.sub)), c.pages, c.map.el, c.pick);
     return c;
   });
-  const ask = h('div', { class: 'v-pqo-ask' });
-  const rpcBtns = [4, 1.1].map((v) => {
-    const b = h('button', { class: 'v-pqo-btn', type: 'button', 'aria-pressed': String(v === P.rpc) }, v === 4 ? '4 (default)' : '1.1 (common on SSDs)');
-    b.addEventListener('click', () => { P.rpc = v; pressGroup(rpcBtns, b); draw(); });
-    return b;
-  });
-  const costs = h('div', { class: 'v-pqo-costs' });
-  const more = h('details', { class: 'v-pqo-more' }, h('summary', null, 'Costs and timings behind each pick'),
-    h('div', { class: 'v-pqo-ctlrow' }, h('span', { class: 'v-pqo-lab' }, 'random_page_cost'), h('div', { class: 'v-pqo-chips' }, ...rpcBtns)), costs);
+  const q = ask('Both columns have a B-tree index, and each filter below matches about 10,000 rows. Which one keeps those rows on fewer pages?',
+    [['seq', 'seq'], ['score', 'score'], ['same', 'about the same']], 'seq',
+    () => { P.guessed = true; x.set(6); return 'The 10,000 rows with <code>seq &lt; 10000</code> sit on 333 neighbouring pages. The 10,103 rows with <code>score &lt; 10000</code> are spread over 8,739 pages. Now move x.'; });
+  const x = range('x', { min: 0, max: 15, value: P.i, fmt: (i) => `${fmt(PICK.seq[i][0])} rows`, oninput: (i) => { P.i = i; draw(); } });
+  const rpc = chips([[4, '4 (default)'], [1.1, '1.1 (common on SSDs)']], (v) => { P.rpc = v; draw(); }, { value: 4, label: 'random_page_cost' });
+  const costs = h('div');
   const two = h('div', { class: 'v-pqo-two' }, ...COLS.map((c) => c.el));
 
   app.append(
-    prompt('SELECT * FROM users WHERE ', h('span', { class: 'v-pqo-dim' }, 'seq | score'), ' < ', xTok, ';'),
-    h('div', { class: 'v-pqo-body' },
-      h('div', { class: 'v-pqo-slidebox' }, h('label', { class: 'v-pqo-lab' }, 'x'), slider, xOut),
-      ask, two, more,
-      key([['opt', 'what you change'], ['data', 'page holds a matching row'], ['idle', 'page holds none'], ['bad', 'read for nothing'], ['pick', "the planner's pick"]])));
+    sql, q.el, x.el, two,
+    h('details', null, h('summary', null, 'Costs and timings behind each pick'),
+      h('div', { class: 'wv-field' }, h('label', null, 'random_page_cost')), rpc.el, costs),
+    colorKey([['k-opt', 'what you change'], ['v-pqo-k-read', 'page holds a matching row'], K_IDLE, K_BAD, ['k-pick', "the planner's pick"]]));
 
   const cost = (p) => (P.rpc === 4 ? p[3] : p[4]);
   const pickOf = (p) => { const c = cost(p); return c.indexOf(Math.min(...c)); };
-  const hidden = () => P.guess == null;
 
   function paintMaps() {
     const T = tokens(fig);
     COLS.forEach((c) => {
-      if (hidden()) { c.map.paint(T, () => T.idle); return; }
+      if (!P.guessed) { c.map.paint(T, () => T.idle); return; }
       const pk = pickOf(PICK[c.col][P.i]);
       const hit = c.col === 'score' ? (p) => LV.indexOf(SCORE_MIN[p]) <= P.i : (p) => p < SEQ_PAGES[P.i];
       const n = c.col === 'seq' ? SEQ_PAGES[P.i] : SCORE_PAGES[P.i];
@@ -487,43 +448,24 @@ function initPlanner(fig, app) {
       c.map.paint(T, (p) => (hit(p) ? T.data : pk === 0 ? T.bad : T.idle), marks);
     });
   }
-  function renderAsk() {
-    ask.innerHTML = '';
-    if (P.guess == null) {
-      ask.className = 'v-pqo-ask';
-      ask.append(h('p', null, h('b', null, 'Guess first. '), 'Both columns have a B-tree index, and each filter below matches about 10,000 rows. Which one keeps those rows on fewer pages?'));
-      const row = h('div', { class: 'v-pqo-chips' });
-      [['seq', 'seq'], ['score', 'score'], ['same', 'about the same']].forEach(([v, label]) => {
-        const b = h('button', { class: 'v-pqo-btn', type: 'button' }, label);
-        b.addEventListener('click', () => { P.guess = v; P.i = 6; slider.value = 6; renderAsk(); draw(); });
-        row.append(b);
-      });
-      ask.append(row);
-    } else {
-      ask.className = `v-pqo-ask ${P.guess === 'seq' ? 'is-good' : 'is-miss'}`;
-      ask.innerHTML = `<p>You said <b>${P.guess === 'same' ? 'about the same' : P.guess}</b>. ${P.guess === 'seq' ? 'Right.' : 'It is seq.'} The 10,000 rows with <code>seq &lt; 10000</code> sit on 333 neighbouring pages. The 10,103 rows with <code>score &lt; 10000</code> are spread over 8,739 pages. Now move x.</p>`;
-    }
-  }
   function draw() {
-    const i = P.i; const x = PICK.seq[i][0];
-    xTok.textContent = fmt(x);
-    const pct = (x / 1e4);
-    xOut.innerHTML = `<b>${fmt(x)}</b> rows · ${pct < 1 ? pct.toFixed(pct < 0.01 ? 3 : 2) : pct.toFixed(0)}% of the table`;
-    two.classList.toggle('is-hidden', hidden());
+    const i = P.i; const xv = PICK.seq[i][0];
+    sql.innerHTML = codeBlock([`SELECT * FROM users WHERE seq | score < «${xv}»;`]);
+    two.classList.toggle('v-pqo-hidden', !P.guessed);
     COLS.forEach((c) => {
       const pt = PICK[c.col][i];
       const pk = pickOf(pt);
       const pages = c.col === 'seq' ? SEQ_PAGES[i] : SCORE_PAGES[i];
-      c.pages.innerHTML = hidden() ? '<b>?</b> pages hold the rows' : `<b class="c-data">${fmt(pages)}</b> of 33,333 pages hold the rows`;
-      c.pick.innerHTML = hidden() ? '' : `planner picks <b class="c-pick">${PLANS[pk]}</b> · ${ms(pt[5][pk])}${pk === 0 && pages < TABLE ? ` · <span class="c-bad">reads the other ${fmt(TABLE - pages)} pages too</span>` : ''}`;
+      c.pages.innerHTML = P.guessed ? `<b class="c-data">${fmt(pages)}</b> of 33,333 pages hold the rows` : '<b>?</b> pages hold the rows';
+      c.pick.innerHTML = P.guessed ? `planner picks <b class="c-pick">${PLANS[pk]}</b> · ${ms(pt[5][pk])}${pk === 0 && pages < TABLE ? ` · <span class="c-bad">reads the other ${fmt(TABLE - pages)} pages too</span>` : ''}` : '';
     });
     costs.innerHTML = COLS.map((c) => {
       const pt = PICK[c.col][i]; const pk = pickOf(pt); const cs = cost(pt);
       const fast = pt[5].indexOf(Math.min(...pt[5]));
-      return `<div class="v-pqo-tblwrap"><table class="v-pqo-tbl"><caption>WHERE ${c.col} &lt; ${fmt(x)} · estimate ${fmt(pt[1])} rows, actual ${fmt(pt[2])}</caption>
-        <thead><tr><th>plan · buffers</th><th>cost</th><th>time</th></tr></thead><tbody>${
-        PLANS.map((name, k) => `<tr class="${k === pk ? 'is-pick' : ''}"><td>${name}<small>${fmt(pt[6][k])} buffers</small></td><td>${fmt(cs[k])}</td><td class="${k === fast ? 'c-good' : ''}">${ms(pt[5][k])}</td></tr>`).join('')}</tbody></table></div>`;
-    }).join('') + '<p class="v-pqo-sm">Cost is the planner\'s estimate; it picks the lowest. Time is measured, fastest in green. Buffers count page reads, so an Index Scan that returns to the same page counts it again.</p>';
+      return `<p class="t-b">WHERE ${c.col} &lt; ${fmt(xv)} · estimate ${fmt(pt[1])} rows, actual ${fmt(pt[2])}</p>
+        <div class="wv-scroll"><table class="wv-table"><thead><tr><th>plan · buffers</th><th>cost</th><th>time</th></tr></thead><tbody>${
+        PLANS.map((name, k) => `<tr class="${k === pk ? 'is-look' : ''}"><td>${k === pk ? `<b class="c-pick">${name}</b>` : name}<br><span class="t-xs">${fmt(pt[6][k])} buffers</span></td><td>${fmt(cs[k])}</td><td class="${k === fast ? 'c-safe' : ''}">${ms(pt[5][k])}</td></tr>`).join('')}</tbody></table></div>`;
+    }).join('') + '<p class="t-s">Cost is the planner\'s estimate; it picks the lowest (orange). Measured time: fastest in green. Buffers count page reads, so an Index Scan that returns to the same page counts it again.</p>';
     paintMaps();
   }
   resized(two, () => {
@@ -533,7 +475,6 @@ function initPlanner(fig, app) {
     paintMaps();
   });
   REDRAW.add(paintMaps);
-  renderAsk();
   draw();
 }
 
@@ -606,7 +547,7 @@ function readsOf(cols, order, lim) {
   return { table: all, nTable: TABLE, idx: none, nIdx: 0, temp: 0, scan: 1000000 };
 }
 
-/* Goals the reader meets by rewriting the query. */
+/* Goals the reader meets by changing the query. */
 const GOALS = [
   ['Get the 10 newest users while reading fewer than 10 pages.', (q, r) => q.lim && q.order === 'created_at DESC' && r.nTable + r.nIdx < 10],
   ['Read every created_at value without reading the table.', (q, r) => !q.lim && q.cols === 'created_at' && q.order !== 'name' && r.nTable === 0],
@@ -616,39 +557,30 @@ const GOALS = [
 
 function initBudget(fig, app) {
   const Q = { cols: '*', order: '', lim: '' };
-  const COLS = ['*', 'id, name', 'created_at'];
-  const ORDERS = ['', 'created_at DESC', 'name'];
-  const tCols = h('button', { class: 'v-pqo-tok', type: 'button' });
-  const tOrder = h('button', { class: 'v-pqo-tok', type: 'button' });
-  const tLim = h('button', { class: 'v-pqo-tok', type: 'button' });
-  tCols.addEventListener('click', () => { Q.cols = COLS[(COLS.indexOf(Q.cols) + 1) % 3]; draw(); });
-  tOrder.addEventListener('click', () => { Q.order = ORDERS[(ORDERS.indexOf(Q.order) + 1) % 3]; draw(); });
-  tLim.addEventListener('click', () => { Q.lim = Q.lim ? '' : '10'; draw(); });
-
-  const goals = h('ol', { class: 'v-pqo-goals' });
+  const field = (label, c) => h('div', { class: 'v-pqo-part' }, h('div', { class: 'wv-field' }, h('label', null, label)), c.el);
+  const cCols = chips([['*', '*'], ['id, name', 'id, name'], ['created_at', 'created_at']], (v) => { Q.cols = v; draw(); }, { value: Q.cols, label: 'SELECT' });
+  const cOrder = chips([['', 'none'], ['created_at DESC', 'created_at DESC'], ['name', 'name']], (v) => { Q.order = v; draw(); }, { value: Q.order, label: 'ORDER BY' });
+  const cLim = chips([['', 'none'], ['10', '10']], (v) => { Q.lim = v; draw(); }, { value: Q.lim, label: 'LIMIT' });
+  const sql = h('div');
+  const goals = h('ul', { class: 'v-pqo-goals' });
   const maps = [
     ['users', 'table · 33,333 pages', pageMap(TABLE, 'users table pages')],
     ['users_created_at_idx', 'B-tree · 2,745 pages', pageMap(IDX_N, 'users_created_at_idx pages')],
-    ['temp files', 'sort spill', pageMap(30094, 'temp file blocks, 8 KB each')],
+    ['temp files', 'sort spill, 8 KB per square', pageMap(30094, 'temp file blocks, 8 KB each')],
     ['sent to psql', '8 KB per square', pageMap(29853, 'data sent to the client, in 8 KB units')],
-  ].map(([title, meta, m]) => {
-    const lab = h('span', { class: 'v-pqo-maplabel' });
-    const el = h('div', { class: 'v-pqo-mapbox' }, h('div', { class: 'v-pqo-maph' }, h('b', null, title), lab), m.el, h('div', { class: 'v-pqo-mapmeta' }, meta));
-    return { m, lab, el };
-  });
+  ].map(([title, meta, m]) => ({ m, ...mapBlock(title, m, meta) }));
   const mapsBox = h('div', { class: 'v-pqo-maps' }, ...maps.map((x) => x.el));
-  const note = h('p', { class: 'v-pqo-msg', 'aria-live': 'polite' });
-  const pre = h('pre', { class: 'v-pqo-explain' });
-  const more = h('details', { class: 'v-pqo-more' }, h('summary', null, 'EXPLAIN (ANALYZE, BUFFERS) for this query'), pre);
+  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const explain = h('div');
 
   app.append(
-    prompt('SELECT ', tCols, ' FROM users ', tOrder, ' ', tLim, ';'),
-    h('div', { class: 'v-pqo-body' },
-      h('div', { class: 'v-pqo-two v-pqo-two--budget' },
-        h('div', null, h('p', { class: 'v-pqo-q' }, 'Click the blue parts of the query to rewrite it. Can you meet each goal?'), goals, note),
-        mapsBox),
-      more,
-      key([['opt', 'click to change'], ['data', 'page read, data sent'], ['idle', 'not read'], ['bad', 'read but thrown away, or temp files']])));
+    h('div', { class: 'v-pqo-parts' }, field('SELECT', cCols), field('ORDER BY', cOrder), field('LIMIT', cLim)),
+    sql,
+    h('div', { class: 'v-pqo-two v-pqo-two--budget' },
+      h('div', null, h('p', { class: 't-b' }, 'Change the query. Can you meet each goal?'), goals, note),
+      mapsBox),
+    h('details', null, h('summary', null, 'EXPLAIN (ANALYZE, BUFFERS) for this query'), explain),
+    colorKey([['k-opt', 'what you change'], K_READ, K_IDLE, ['v-pqo-k-bad', 'read but thrown away, or temp files'], K_LOOK, ['k-safe', 'goal met']]));
 
   let R = null;
   function paintMaps() {
@@ -656,9 +588,9 @@ function initBudget(fig, app) {
     const T = tokens(fig);
     const waste = R.scan > 100 * (Q.lim ? 10 : 1e6);
     const first = (f, n) => { for (let p = 0; p < n; p++) if (f(p)) return p; return 0; };
-    const tiny = (f, n, count, label) => (count > 0 && count <= 10 ? [{ page: first(f, n), label }] : []);
-    maps[0].m.paint(T, (p) => (R.table(p) ? (waste ? T.bad : T.data) : T.idle), tiny(R.table, TABLE, R.nTable, `${R.nTable} pages`));
-    maps[1].m.paint(T, (p) => (R.idx(p) ? T.data : T.idle), tiny(R.idx, IDX_N, R.nIdx, `${R.nIdx} pages`));
+    const tiny = (f, n, count) => (count > 0 && count <= 10 ? [{ page: first(f, n), label: `${count} pages` }] : []);
+    maps[0].m.paint(T, (p) => (R.table(p) ? (waste ? T.bad : T.data) : T.idle), tiny(R.table, TABLE, R.nTable));
+    maps[1].m.paint(T, (p) => (R.idx(p) ? T.data : T.idle), tiny(R.idx, IDX_N, R.nIdx));
     const tb = Math.round(R.temp / 8);
     maps[2].m.paint(T, (p) => (p < tb ? T.bad : T.idle));
     const sent = Math.ceil(R.bytes / PAGE);
@@ -666,36 +598,29 @@ function initBudget(fig, app) {
   }
   function draw() {
     const k = `${Q.cols}|${Q.order}|${Q.lim}`;
-    tCols.textContent = Q.cols;
-    tOrder.textContent = Q.order ? `ORDER BY ${Q.order}` : '+ ORDER BY';
-    tOrder.classList.toggle('is-off', !Q.order);
-    tLim.textContent = Q.lim ? 'LIMIT 10' : '+ LIMIT';
-    tLim.classList.toggle('is-off', !Q.lim);
-    tCols.setAttribute('aria-label', `columns: ${Q.cols}. Click to change.`);
-    tOrder.setAttribute('aria-label', `order: ${Q.order || 'none'}. Click to change.`);
-    tLim.setAttribute('aria-label', `limit: ${Q.lim || 'none'}. Click to change.`);
+    sql.innerHTML = codeBlock([`SELECT ${Q.cols} FROM users${Q.order ? ` ORDER BY ${Q.order}` : ''}${Q.lim ? ` LIMIT ${Q.lim}` : ''};`]);
     R = { ...readsOf(Q.cols, Q.order, Q.lim), bytes: BYTES[k] };
     const waste = R.scan > 100 * (Q.lim ? 10 : 1e6);
-    goals.innerHTML = GOALS.map(([text, ok]) => `<li class="${ok(Q, R) ? 'is-met' : ''}"><span class="box" aria-hidden="true"></span>${text}</li>`).join('');
+    goals.innerHTML = GOALS.map(([text, ok]) => (ok(Q, R) ? `<li class="c-safe">✓ ${text}</li>` : `<li>○ ${text}</li>`)).join('');
     maps[0].lab.innerHTML = R.nTable ? `<b class="${waste ? 'c-bad' : 'c-data'}">${fmt(R.nTable)}</b> read` : `not read${R.vm ? ` (visibility map: ${R.vm})` : ''}`;
     maps[1].lab.innerHTML = R.nIdx ? `<b class="c-data">${fmt(R.nIdx)}</b> read` : 'not read';
     maps[2].lab.innerHTML = R.temp ? `<b class="c-bad">${fmt(R.temp)} kB</b>` : 'none';
     maps[3].lab.innerHTML = `<b class="c-data">${mb(R.bytes)}</b> · ${ms(CLIENT[k])}`;
     let m;
-    if (Q.lim && Q.order === 'name') m = '<b class="c-bad">LIMIT did not cut the reads.</b> No index gives rows in <code>name</code> order, so Postgres reads all 1,000,000 rows and keeps the best 10 as it goes.';
-    else if (Q.lim && Q.order) m = '<b class="c-good">The index gives rows newest first</b>, so Postgres stops after 10.';
-    else if (Q.lim) m = '<b class="c-good">The scan stops after 10 rows</b>, but without ORDER BY they are whichever rows come first on disk.';
-    else if (R.nTable === 0) m = '<b class="c-good">The index holds every column the query needs</b>, so Postgres skips the table and checks only the visibility map: an index-only scan.';
+    if (Q.lim && Q.order === 'name') m = '<b>LIMIT did not cut the reads.</b> No index gives rows in <code>name</code> order, so Postgres reads all 1,000,000 rows and keeps the best 10 as it goes.';
+    else if (Q.lim && Q.order) m = '<b>The index gives rows newest first</b>, so Postgres stops after 10.';
+    else if (Q.lim) m = '<b>The scan stops after 10 rows</b>, but without ORDER BY they are whichever rows come first on disk.';
+    else if (R.nTable === 0) m = '<b>The index holds every column the query needs</b>, so Postgres skips the table and checks only the visibility map: an index-only scan.';
     else if (R.temp) m = `The sort does not fit in <code>work_mem</code> (4 MB), so it spills to temp files. ${Q.cols === '*' ? 'Every column goes into the sort.' : 'Fewer columns make each sorted row smaller.'}`;
     else if (Q.order) m = 'The table is already in <code>created_at</code> order on disk, so walking the index backwards costs less than a sort.';
     else m = `Rows are stored whole, so any column list reads the same 33,333 pages. What changes is how much is sent${Q.cols === '*' ? '.' : `: ${mb(R.bytes)} instead of ${mb(BYTES['*||'])}.`}`;
     note.innerHTML = m;
-    note.className = `v-pqo-msg ${waste ? 'is-miss' : ''}`;
-    pre.innerHTML = EXPLAIN[k].map((ln) => {
-      let t = esc(ln);
-      if (waste && /Seq Scan.*rows=1000000/.test(ln)) t = `<span class="c-bad">${t}</span>`;
-      return t.replace(/(Disk: \d+kB|temp read=\d+ written=\d+)/g, '<span class="c-bad">$1</span>').replace(/(Heap Fetches: 0)/, '<span class="c-good">$1</span>');
-    }).join('\n');
+    note.className = `wv-note${waste ? ' is-bad' : (Q.lim && Q.order) || R.nTable === 0 ? ' is-good' : ''}`;
+    explain.innerHTML = codeBlock(EXPLAIN[k].map((ln) => {
+      let t = ln;
+      if (waste && /Seq Scan.*rows=1000000/.test(t)) t = `⟦${t}⟧`;
+      return t.replace(/(Disk: \d+kB|temp read=\d+ written=\d+)/g, '⟦$1⟧').replace(/(Heap Fetches: 0)/, '⟪$1⟫');
+    }));
     paintMaps();
   }
   resized(mapsBox, () => {
