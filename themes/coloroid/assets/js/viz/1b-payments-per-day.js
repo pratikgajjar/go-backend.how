@@ -1,59 +1,30 @@
 /*
  * Figures for "1B Payments/Day - TigerBeetle & PostgreSQL".
+ * House style (walviz.css); this file only decides what each figure does.
  *
- * Visual language: a ledger sheet. Squares are transfers (brown, data).
- * Green stamps are durable writes. Purple marks the entry you are looking
- * at. Blue is anything you can change. Red is waiting or cost.
- *
- *   one-batch     hero: one full request of 8,190 transfers, made durable
- *                 by TigerBeetle (one prepare) and by Postgres (one flush
- *                 per ~2.4 rows, measured), on a shared clock.
- *   batch-path    a ledger journal of one batch through a TigerBeetle
- *                 replica, with the data file and the LSM trees it writes.
- *   group-commit  Postgres WAL flushes on a strip chart: one flush at a
- *                 time, each covering every commit record inserted before
+ *   one-batch     predict, then see: how many WAL flushes Postgres needs for
+ *                 8,190 single-row commits (measured 0.42 per row), against
+ *                 TigerBeetle's one prepare for the same 8,190 transfers.
+ *   group-commit  Postgres backends and WAL flushes on a timeline: one flush
+ *                 at a time, each covering every commit record inserted before
  *                 it started. A model fitted to the two measured runs.
+ *   batch-path    one create_transfers batch through a TigerBeetle replica:
+ *                 the data-file zones, a journal of what each step writes, and
+ *                 a guess-first view of the LSM trees one transfer touches.
  *
  * TigerBeetle facts are from the 0.16.78 source (src/config.zig,
  * constants.zig, vsr/journal.zig, vsr/superblock.zig, state_machine.zig,
  * lsm/groove.zig). Measured numbers are from the post.
  */
-import { h, s, codeBlock, register, mulberry, clamp, fmt, esc, uid, REDUCED } from './lib.js';
-
-/* ---------------------------------------------------------------- shared */
-
-function key(items) {
-  return h('div', { class: 'v-1b-key' }, ...items.map(([k, label]) => h('span', null, h('i', { class: `v-1b-sw-${k}` }), label)));
-}
-
-/** Blue segmented toggle. options: [[value, label]] */
-function toggle(label, options, value, onchange) {
-  const btns = options.map(([v, text]) => h('button', {
-    type: 'button', class: 'v-1b-tg', 'aria-pressed': String(v === value),
-    onclick: () => { set(v); onchange(v); },
-  }, text));
-  function set(v) { btns.forEach((b, i) => b.setAttribute('aria-pressed', String(options[i][0] === v))); }
-  const el = h('div', { class: 'v-1b-toggle', role: 'group', 'aria-label': label }, h('span', { class: 'v-1b-ctl-l' }, label), ...btns);
-  return { el, set };
-}
-
-/** Blue labelled slider. */
-function slider(label, { min, max, step = 1, value, show = String, oninput }) {
-  const out = h('output');
-  const input = h('input', { type: 'range', min, max, step, value, 'aria-label': label });
-  const sync = () => { out.textContent = show(+input.value); };
-  input.addEventListener('input', () => { sync(); oninput(+input.value); });
-  sync();
-  return { el: h('label', { class: 'v-1b-slider' }, h('span', { class: 'v-1b-ctl-l' }, label), input, out), input, set(v) { input.value = v; sync(); } };
-}
+import { h, s, codeBlock, colorKey, range, chips, ask, register, mulberry, clamp, fmt, esc, uid, REDUCED } from './lib.js';
 
 const tokens = (el) => {
   const cs = getComputedStyle(el);
   const g = (n) => cs.getPropertyValue(n).trim();
-  return { paper: g('--paper'), ink: g('--ink'), mute: g('--mute'), line: g('--line'), brown: g('--brown'), brownL: g('--brown-l'), green: g('--green'), greenL: g('--green-l'), purple: g('--purple'), red: g('--red'), redL: g('--red-l') };
+  return { line: g('--line'), brown: g('--brown'), green: g('--green') };
 };
 
-/* ============================================================== HERO */
+/* ================================================================ ONE BATCH */
 
 const BATCH = 8190;
 const COLS = 91; const ROWS = 90;            // 91 × 90 = 8,190
@@ -73,33 +44,33 @@ function flushEnds(perRow) {
 }
 
 function initOneBatch(fig, app) {
-  /* Predict, then see. The reader guesses how many durable writes Postgres
-     needs for one full request; the grid then shows the answer, measured. */
-  let run = 'ins'; let guess = null; let revealAt = null; let raf = 0;
-  const GUESSES = [[8190, '8,190', 'one per commit'], [3400, 'about 3,400', ''], [100, 'about 100', ''], [1, '1', 'like TigerBeetle']];
-
-  const sheet = (name) => {
+  let run = 'ins'; let revealAt = null; let raf = 0;
+  const panel = (name) => {
     const cv = h('canvas', { class: 'v-1b-cv', role: 'img' });
-    const tag = h('div', { class: 'v-1b-tag' });
-    const sub = h('div', { class: 'v-1b-dim' });
-    return { el: h('div', { class: 'v-1b-sheet' }, h('div', { class: 'v-1b-sheet-h' }, name, tag), h('div', { class: 'v-1b-cvwrap' }, cv), sub), cv, tag, sub };
+    const tag = h('span');
+    const sub = h('p', { class: 'v-1b-sub' });
+    return { el: h('div', { class: 'wv-card v-1b-sheet' }, h('h5', null, name, ' ', tag), h('div', { class: 'v-1b-cvwrap' }, cv), sub), cv, tag, sub };
   };
-  const tb = sheet('TigerBeetle');
-  const pg = sheet('PostgreSQL');
-  const choices = GUESSES.map(([v, label, hint]) => h('button', { type: 'button', class: 'v-1b-tg', onclick: () => pick(v) }, label, hint ? h('span', { class: 'v-1b-hintx' }, ` · ${hint}`) : null));
-  const ask = h('div', { class: 'v-1b-ask' },
-    h('p', { class: 'v-1b-q' }, 'How many WAL flushes does Postgres need to make all 8,190 durable?'),
-    h('div', { class: 'v-1b-choices', role: 'group', 'aria-label': 'Your guess' }, ...choices));
-  const answer = h('p', { class: 'v-1b-answer', 'aria-live': 'polite' });
-  const tg = toggle('Postgres run', Object.entries(PG_RUNS).map(([k, v]) => [k, v.label]), run, (v) => { run = v; revealAt = 1; say(); draw(); });
-  tg.el.hidden = true;
+  const tb = panel('TigerBeetle');
+  const pg = panel('PostgreSQL');
+  const runPick = chips(Object.entries(PG_RUNS).map(([k, v]) => [k, v.label]), (v) => { run = v; revealAt = 1; draw(); }, { value: run, label: 'Postgres run' });
+  const runRow = h('div', { class: 'wv-bar' }, h('span', { class: 'c-opt' }, 'Postgres run'), runPick.el);
+  runRow.hidden = true;
+
+  const question = ask('How many WAL flushes does Postgres need to make all 8,190 durable?',
+    [[8190, '8,190 · one per commit'], [3400, 'about 3,400'], [100, 'about 100'], [1, '1 · like TigerBeetle']], 3400,
+    (v, right) => {
+      reveal();
+      const n = flushEnds(PG_RUNS.ins.perRow).length;
+      return `${right ? '<b>Right.</b> ' : ''}Postgres flushed <b class="c-safe">${fmt(n)}</b> times for 8,190 single-row inserts, measured. ${v === 8190 ? 'Not one per commit: ' : ''}with 8 backends, about 2.4 commits share each flush (Figure 2 shows how). TigerBeetle made the whole request durable with <b class="c-safe">one prepare</b> before it ran any of it; the TigerBeetle section below shows how.`;
+    });
 
   app.append(
     h('p', { class: 'v-1b-lede' }, 'Take ', h('b', { class: 'c-data' }, '8,190 transfers'), ': one full TigerBeetle request (8,190 × 128 B = 1 MiB), or 0.71 s of traffic at a billion payments a day. Each square is one transfer. Postgres commits each one in its own transaction, from 8 backends.'),
-    ask,
+    question.el,
     h('div', { class: 'v-1b-sheets' }, tb.el, pg.el),
-    answer,
-    tg.el,
+    runRow,
+    colorKey([['k-data', 'one transfer'], ['k-held', 'durable write (flush or prepare)'], ['k-opt', 'your choice']]),
   );
 
   function grid(p, marks, frame) {
@@ -135,30 +106,20 @@ function initOneBatch(fig, app) {
     grid(pg, ends.slice(0, shown), false);
     const ms = (v) => `${fmt(v * 1000)} ms`;
     if (revealAt == null) {
-      tb.tag.textContent = ''; pg.tag.textContent = '?';
+      tb.tag.innerHTML = ''; pg.tag.innerHTML = '<span class="wv-tag">?</span>';
       tb.sub.textContent = ''; pg.sub.textContent = '';
     } else {
-      tb.tag.innerHTML = '<span class="v-1b-stamp">1 prepare · 2 writes</span>';
-      pg.tag.innerHTML = `<span class="v-1b-stamp">${fmt(shown)} flushes</span>`;
+      tb.tag.innerHTML = '<span class="wv-tag c-safe">1 prepare · 2 writes</span>';
+      pg.tag.innerHTML = `<span class="wv-tag c-safe">${fmt(shown)} flushes</span>`;
       tb.sub.textContent = `${ms(BATCH / TB_RATE)} per batch at ${fmt(TB_RATE)}/s, measured`;
-      pg.sub.textContent = `${ms(BATCH / R.rate)} at ${fmt(R.rate)}/s, measured (${R.what})`;
+      pg.sub.textContent = `${ms(BATCH / R.rate)} at ${fmt(R.rate)}/s, measured (${R.what})${run === 'xfer' ? '. Each transaction runs longer, so only about 1.3 commits share a flush.' : ''}`;
     }
     tb.cv.setAttribute('aria-label', 'TigerBeetle: 8,190 transfers made durable by one prepare, written in 2 writes');
     pg.cv.setAttribute('aria-label', revealAt == null ? 'PostgreSQL: 8,190 transfers, flushes hidden until you guess' : `PostgreSQL ${R.what}: ${fmt(ends.length)} WAL flushes for 8,190 rows`);
   }
 
-  function say() {
-    const R = PG_RUNS[run]; const n = flushEnds(R.perRow).length;
-    const lead = run === 'ins' ? `${guess === 3400 ? '<b class="c-safe">Right.</b> ' : ''}Postgres flushed <b class="c-safe">${fmt(n)}</b> times for 8,190 single-row inserts, measured. ${guess === 8190 ? 'Not one per commit: ' : ''}with 8 backends, about 2.4 commits share each flush (Figure 2 shows how).`
-      : `For transfers with 10 backends it is <b class="c-safe">${fmt(n)}</b> flushes: each transaction runs longer, so only about 1.3 commits share a flush.`;
-    answer.innerHTML = `${lead} TigerBeetle made the whole request durable with <b class="c-safe">one prepare</b> before it ran any of it; the TigerBeetle section below shows how.`;
-  }
-
-  function pick(v) {
-    guess = v;
-    choices.forEach((b, i) => b.setAttribute('aria-pressed', String(GUESSES[i][0] === v)));
-    say();
-    tg.el.hidden = false;
+  function reveal() {
+    runRow.hidden = false;
     cancelAnimationFrame(raf);
     if (REDUCED) { revealAt = 1; draw(); return; }
     const t0 = performance.now();
@@ -233,52 +194,46 @@ function initGroupCommit(fig, app) {
   let sim = null; let win = null; let sel = 0;
   const base = simulate(8, 370, 163);            // the measured INSERT run
   const stage = h('div', { class: 'v-1b-strip' });
-  const note = h('p', { class: 'v-1b-memo', 'aria-live': 'polite' });
-  const totals = h('div', { class: 'v-1b-totals', 'aria-live': 'off' });
+  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const totals = h('div', { class: 'wv-scroll', 'aria-live': 'off' });
 
   const workFromPos = (v) => Math.round(50 * 100 ** (v / 1000) / 10) * 10;
   const workToPos = (w) => Math.round((1000 * Math.log(w / 50)) / Math.log(100));
   const us = (v) => (v >= 1000 ? `${(v / 1000).toFixed(2)} ms` : `${Math.round(v)} µs`);
 
-  const sW = slider('backends', { min: 1, max: 16, value: P.W, oninput: (v) => { P.W = v; update(); } });
-  const sWork = slider('work per txn', { min: 0, max: 1000, value: workToPos(P.work), show: (v) => us(workFromPos(v)), oninput: (v) => { P.work = workFromPos(v); update(); } });
-  const sFlush = slider('fdatasync', { min: 50, max: 1000, value: P.flush, show: us, oninput: (v) => { P.flush = v; update(); } });
-  const tg = toggle('Measured run', PRESETS.map((p) => [p.id, p.label]), 'ins', (id) => {
+  const rW = range('backends', { min: 1, max: 16, value: P.W, oninput: (v) => { P.W = v; update(); } });
+  const rWork = range('work per txn', { min: 0, max: 1000, value: workToPos(P.work), fmt: (v) => us(workFromPos(v)), oninput: (v) => { P.work = workFromPos(v); update(); } });
+  const rFlush = range('fdatasync', { min: 50, max: 1000, value: P.flush, fmt: us, oninput: (v) => { P.flush = v; update(); } });
+  const runPick = chips(PRESETS.map((p) => [p.id, p.label]), (id) => {
     const p = PRESETS.find((q) => q.id === id);
-    P.W = p.W; P.work = p.work; P.flush = p.flush;
-    sW.set(p.W); sWork.set(workToPos(p.work)); sFlush.set(p.flush);
-    update();
-  });
-  const more = h('details', { class: 'v-1b-more' }, h('summary', null, 'More inputs'), h('div', { class: 'v-1b-sliders' }, sWork.el, sFlush.el), tg.el);
+    rW.set(p.W); rWork.set(workToPos(p.work)); rFlush.set(p.flush);
+  }, { value: 'ins', label: 'Measured run' });
+  const more = h('details', null, h('summary', null, 'More inputs: work per transaction, fdatasync time, the transfer run'),
+    h('div', { class: 'wv-grid-ctrl' }, rWork.el, rFlush.el), runPick.el);
 
   /* predict first: what does doubling the backends do to a flush? */
-  const OPTS = [['fewer', 'fewer commits'], ['same', 'the same'], ['more', 'more commits']];
-  const predictBtns = OPTS.map(([v, label]) => h('button', { type: 'button', class: 'v-1b-tg', onclick: () => predict(v) }, label));
-  const verdict = h('p', { class: 'v-1b-answer', 'aria-live': 'polite' });
-  const ask = h('div', { class: 'v-1b-ask' },
-    h('p', { class: 'v-1b-q' }, 'Below: 8 backends, each flush 163 µs. Double the backends to 16. Each flush then carries…'),
-    h('div', { class: 'v-1b-choices', role: 'group', 'aria-label': 'Your prediction' }, ...predictBtns), verdict);
+  const question = ask('Below: 8 backends, each flush 163 µs. Double the backends to 16. Each flush then carries…',
+    [['fewer', 'fewer commits'], ['same', 'the same number'], ['more', 'more commits']], 'more',
+    () => {
+      rW.set(16);
+      return `More: <b>${sim.perFlush.toFixed(1)}</b> commits per flush instead of <b>${base.perFlush.toFixed(1)}</b>, and ${fmt(sim.rate)} commits/s instead of ${fmt(base.rate)} in this model. A flush still takes 163 µs and still runs one at a time, so more backends are waiting when it starts. The model ignores CPU limits, and the benchmark VM had 4 vCPUs, so a real run would gain less.`;
+    });
 
-  const prevB = h('button', { type: 'button', class: 'v-1b-btn', 'aria-label': 'Previous flush', onclick: () => pick(sel - 1) }, '◀');
-  const nextB = h('button', { type: 'button', class: 'v-1b-btn', 'aria-label': 'Next flush', onclick: () => pick(sel + 1) }, '▶');
-  const pos = h('span', { class: 'v-1b-pos' });
+  const prevB = h('button', { type: 'button', class: 'wv-btn', 'aria-label': 'Previous flush', onclick: () => pick(sel - 1) }, '◀ flush');
+  const nextB = h('button', { type: 'button', class: 'wv-btn', 'aria-label': 'Next flush', onclick: () => pick(sel + 1) }, 'flush ▶');
+  const pos = h('span', { class: 'wv-pos' });
 
   app.append(
-    ask,
-    h('div', { class: 'v-1b-sliders' }, sW.el),
+    question.el,
+    h('div', { class: 'wv-grid-ctrl' }, rW.el),
     stage,
-    h('div', { class: 'v-1b-scrub' }, prevB, pos, nextB),
+    h('div', { class: 'wv-bar' }, prevB, pos, nextB),
     note,
+    h('div', { style: 'height:.7rem' }),
     totals,
     more,
+    colorKey([['k-free', 'SQL + network'], ['k-gap', 'waiting for a flush'], ['k-held', 'WAL flush, durable'], ['k-look', 'the selected flush'], ['k-opt', 'inputs']]),
   );
-
-  function predict(v) {
-    predictBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(OPTS[i][0] === v)));
-    P.W = 16; sW.set(16); update();
-    const right = v === 'more';
-    verdict.innerHTML = `${right ? '<b class="c-safe">Right.</b>' : '<b class="c-bad">Not quite.</b>'} More: <b>${sim.perFlush.toFixed(1)}</b> commits per flush instead of <b>${base.perFlush.toFixed(1)}</b>, and ${fmt(sim.rate)} commits/s instead of ${fmt(base.rate)} in this model. A flush still takes 163 µs and still runs one at a time, so more backends are waiting when it starts. The model ignores CPU limits, and the benchmark VM had 4 vCPUs, so a real run would gain less.`;
-  }
 
   const preset = () => PRESETS.find((p) => p.W === P.W && p.flush === P.flush && p.work === P.work);
   const visible = () => sim.flushes.map((q, j) => j).filter((j) => j >= sim.warm && sim.flushes[j].e <= win.t1);
@@ -291,11 +246,11 @@ function initGroupCommit(fig, app) {
     const v = visible();
     sel = v.reduce((a, k) => (sim.flushes[k].m.length > sim.flushes[a].m.length ? k : a), v[0]);
     const pr = preset();
-    tg.set(pr ? pr.id : null);
+    runPick.set(pr ? pr.id : null);
     draw();
     const m = pr?.measured;
-    const row = (k, val, meas) => `<tr><th>${k}</th><td>${val}</td><td>${meas}</td></tr>`;
-    totals.innerHTML = `<table><thead><tr><th></th><th>model</th><th>measured</th></tr></thead><tbody>${[
+    const row = (k, val, meas) => `<tr><td>${k}</td><td class="v-1b-num"><b>${val}</b></td><td class="v-1b-num">${meas}</td></tr>`;
+    totals.innerHTML = `<table class="wv-table"><thead><tr><th></th><th class="v-1b-num">model</th><th class="v-1b-num">measured</th></tr></thead><tbody>${[
       row('commits per flush', sim.perFlush.toFixed(2), m ? m.perFlush.toFixed(2) : '—'),
       row('commits per second', fmt(sim.rate), m ? fmt(m.rate) : '—'),
       row('WAL busy flushing', `${Math.round(sim.busy * 100)}%`, m ? `${Math.round(m.busy * 100)}%` : '—'),
@@ -308,38 +263,39 @@ function initGroupCommit(fig, app) {
     draw();
   }
 
-  /* fixed chart height: the lanes share one band, so the layout does not
-     jump when the number of backends changes */
+  /* fixed chart height: lanes share one band, so the layout does not jump
+     when the number of backends changes */
   function draw() {
     const width = Math.max(300, app.clientWidth);
     const phone = width < 600;
     const L = phone ? 30 : 86; const R = 8;
     const band = phone ? 250 : 300;
     const W = P.W;
-    const pitch = band / 16 * Math.min(16 / W, 1.6);
-    const laneH = Math.max(6, pitch * 0.76); const gap = pitch - laneH;
+    const pitch = (band / 16) * Math.min(16 / W, 1.6);
+    const laneH = Math.max(6, pitch * 0.76);
     const top = 30 + (band - W * pitch) / 2;
     const flushY = 30 + band + 8;
     const flushH = phone ? 22 : 26;
     const H = flushY + flushH + 26;
     const x = (t) => L + ((t - win.t0) / (win.t1 - win.t0)) * (width - L - R);
     const id = uid('gc');
-    const svg = s('svg', { viewBox: `0 0 ${width} ${H}`, width, height: H, role: 'img', 'aria-label': `Strip chart of ${W} Postgres backends and the WAL flushes they wait on` });
+    const svg = s('svg', { viewBox: `0 0 ${width} ${H}`, role: 'img', 'aria-label': `Timeline of ${W} Postgres backends and the WAL flushes they wait on` });
     svg.innerHTML = `<defs><clipPath id="${id}"><rect x="${L}" y="0" width="${width - L - R}" height="${H}"/></clipPath>
-      <pattern id="${id}h" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" class="v-1b-hatch-bg"/><line x1="0" y1="0" x2="0" y2="5" class="v-1b-hatch-ln"/></pattern></defs>`;
+      <pattern id="${id}h" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" class="f-gap"/><line x1="0" y1="0" x2="0" y2="5" class="v-1b-hatch"/></pattern></defs>`;
     const f = sim.flushes[sel];
     const span = win.t1 - win.t0;
     const stepUs = span <= 2500 ? 250 : span <= 6000 ? 500 : span <= 12000 ? 1000 : span <= 25000 ? 2000 : 5000;
     for (let t = 0; t <= span + 1; t += stepUs) {
       const xx = x(win.t0 + t);
-      if (!phone || (t / stepUs) % 2 === 0) svg.append(s('text', { x: xx, y: H - 6, class: 'v-1b-t-xs v-1b-t-mute', 'text-anchor': 'middle' }, `${+(t / 1000).toFixed(2)} ms`));
+      svg.append(s('line', { x1: xx, x2: xx, y1: 24, y2: flushY + flushH, class: 'rule dash' }));
+      if (!phone || (t / stepUs) % 2 === 0) svg.append(s('text', { x: xx, y: H - 6, class: 't-xs t-mute', 'text-anchor': 'middle' }, `${+(t / 1000).toFixed(2)} ms`));
     }
     const body = s('g', { 'clip-path': `url(#${id})` });
     const late = new Set();
-    const showLabels = laneH >= 9;
+    const showAll = laneH >= 9;
     for (let b = 0; b < W; b++) {
       const y = top + b * pitch;
-      if (showLabels || b % 2 === 0) svg.append(s('text', { x: L - 6, y: y + laneH / 2 + 3.5, class: 'v-1b-t-xs', 'text-anchor': 'end' }, phone || W > 8 ? `b${b + 1}` : `backend ${b + 1}`));
+      if (showAll || b % 2 === 0) svg.append(s('text', { x: L - 6, y: y + laneH / 2 + 3.5, class: 't-xs', 'text-anchor': 'end' }, phone || W > 8 ? `b${b + 1}` : `backend ${b + 1}`));
       for (const ev of sim.lanes[b]) {
         if (ev.fe < win.t0 || ev.ws > win.t1) continue;
         const mine = ev.f === sel;
@@ -353,30 +309,30 @@ function initGroupCommit(fig, app) {
         body.append(s('line', { x1: x(ev.fe), x2: x(ev.fe), y1: y - 1, y2: y + laneH + 1, class: 'v-1b-tick' }));
       }
     }
-    svg.append(s('text', { x: L - 6, y: flushY + flushH / 2 + 4, class: 'v-1b-t-xs v-1b-t-b', 'text-anchor': 'end' }, phone ? 'WAL' : 'WAL flush'));
+    svg.append(s('text', { x: L - 6, y: flushY + flushH / 2 + 4, class: 't-xs t-b', 'text-anchor': 'end' }, phone ? 'WAL' : 'WAL flush'));
     sim.flushes.forEach((fl, k) => {
       if (fl.e < win.t0 || fl.s > win.t1) return;
       const x0 = x(fl.s); const w = Math.max(1, x(fl.e) - x0);
       const g = s('g', { class: `v-1b-flush${k === sel ? ' is-sel' : ''}` });
-      g.append(s('rect', { x: x0 + 0.5, y: flushY, width: Math.max(0.5, w - 1), height: flushH, rx: 2 }));
-      if (w >= 11) g.append(s('text', { x: x0 + w / 2, y: flushY + flushH / 2 + 4, 'text-anchor': 'middle', class: 'v-1b-t-xs v-1b-t-b' }, String(fl.m.length)));
+      g.append(s('rect', { x: x0 + 0.5, y: flushY, width: Math.max(0.5, w - 1), height: flushH }));
+      if (w >= 11) g.append(s('text', { x: x0 + w / 2, y: flushY + flushH / 2 + 4, 'text-anchor': 'middle', class: 't-xs t-b' }, String(fl.m.length)));
       g.addEventListener('click', () => pick(k));
       body.append(g);
     });
     body.append(s('rect', { x: x(f.s), y: 22, width: Math.max(1, x(f.e) - x(f.s)), height: flushY + flushH - 20, class: 'v-1b-band' }));
     svg.append(body);
-    /* the label sits on the selected flush, not in a legend */
+    /* the label sits on the selected flush */
     const cx = (x(f.s) + x(f.e)) / 2;
     const anchor = cx > width - 120 ? 'end' : cx < L + 120 ? 'start' : 'middle';
-    svg.append(s('text', { x: anchor === 'end' ? x(f.e) : anchor === 'start' ? x(f.s) : cx, y: 16, class: 'v-1b-t-s v-1b-t-b v-1b-t-look', 'text-anchor': anchor },
+    svg.append(s('text', { x: anchor === 'end' ? x(f.e) : anchor === 'start' ? x(f.s) : cx, y: 16, class: 't-s t-b t-look', 'text-anchor': anchor },
       `one fdatasync → ${f.m.length} commit${f.m.length > 1 ? 's' : ''} durable`));
     stage.replaceChildren(svg);
 
     const v = visible(); const idx = v.indexOf(sel);
-    pos.textContent = `flush ${idx + 1} of ${v.length} · tap any flush`;
+    pos.textContent = `${idx + 1} / ${v.length} · tap a flush`;
     prevB.disabled = idx <= 0; nextB.disabled = idx >= v.length - 1;
     const who = f.m.map((b) => `b${b + 1}`).join(', ');
-    note.innerHTML = `Purple: the backends this flush makes durable (${who}). Hatched red: time spent waiting for a flush.${late.size
+    note.innerHTML = `<span class="k">Flush ${idx + 1}</span>Makes <b class="c-safe">${f.m.length} commit${f.m.length > 1 ? 's' : ''}</b> durable (${who}).${late.size
       ? ` <span class="c-bad">${[...late].map((b) => `b${b + 1}`).join(', ')} inserted ${late.size > 1 ? 'their commit records' : 'its commit record'} just after it started, so ${late.size > 1 ? 'they wait' : 'it waits'} for the next one.</span>` : ''}`;
   }
 
@@ -384,7 +340,7 @@ function initGroupCommit(fig, app) {
   let lastW = app.clientWidth;
   new ResizeObserver(() => { if (Math.abs(app.clientWidth - lastW) > 4) { lastW = app.clientWidth; draw(); } }).observe(app);
   fig.addEventListener('keydown', (e) => {
-    if (e.target.closest('input, summary')) return;
+    if (e.target.closest('input, summary, select')) return;
     if (e.key === 'ArrowRight') { pick(sel + 1); e.preventDefault(); }
     if (e.key === 'ArrowLeft') { pick(sel - 1); e.preventDefault(); }
   });
@@ -417,20 +373,6 @@ function leBytes(v, n) {
   const out = [];
   for (let i = 0; i < n; i++) { out.push(Number(v & 0xffn)); v >>= 8n; }
   return out;
-}
-
-function byteGrid() {
-  const cells = [];
-  TRANSFER.forEach(([name, n, v], fi) => {
-    leBytes(v, n).forEach((b) => {
-      cells.push(`<span class="v-1b-b${v ? ' is-val' : ''} f${fi % 2}" data-f="${fi}" title="${esc(name)}">${b.toString(16).padStart(2, '0')}</span>`);
-    });
-  });
-  const legend = TRANSFER.map(([name, n, v], fi) =>
-    `<button type="button" class="v-1b-fld${v ? ' is-val' : ''}" data-f="${fi}"><b>${esc(name)}</b> <span>${n} B</span>${v ? ` <em>${v}</em>` : ''}</button>`).join('');
-  return `<div class="v-1b-bytes"><div class="v-1b-hex" role="img" aria-label="The 128 bytes of one Transfer, 16 per row, little-endian">${cells.join('')}</div>
-    <div class="v-1b-flds">${legend}</div></div>
-    <p class="v-1b-hint">One <code>Transfer</code>, 16 bytes per row, little-endian. Tap a field. Values are samples.</p>`;
 }
 
 /* The 33 LSM trees and what one transfer writes into them.
@@ -468,21 +410,6 @@ const GROOVES = [
     ['status', (o) => (o.pending ? 16 : 0), 'only for pending transfers'],
   ]],
 ];
-
-function treeBoard(o) {
-  let hit = 0; let bytes = 0; let total = 0;
-  const cols = GROOVES.map(([name, trees]) => {
-    total += trees.length;
-    const on = []; const off = [];
-    for (const [t, fn, why] of trees) {
-      const b = fn(o);
-      if (b) { hit++; bytes += b; on.push(`<li class="is-hit"><span>${esc(t)}</span><b>${b} B</b></li>`); } else off.push(`<li><span>${esc(t)}</span><i>${esc(why || '')}</i></li>`);
-    }
-    const rest = off.length ? `<details><summary>${off.length} not written</summary><ul>${off.join('')}</ul></details>` : '';
-    return `<div class="v-1b-groove"><h6>${name} <span>${on.length} of ${trees.length}</span></h6><ul>${on.join('') || '<li class="v-1b-none">none</li>'}</ul>${rest}</div>`;
-  }).join('');
-  return { html: `<div class="v-1b-trees">${cols}</div>`, hit, bytes, total };
-}
 
 const MiB = 1048576;
 const JOURNAL = [
@@ -570,32 +497,89 @@ const BP_LAYOUT = {
   },
 };
 
+function byteGrid() {
+  const cells = [];
+  TRANSFER.forEach(([name, n, v], fi) => {
+    leBytes(v, n).forEach((b) => {
+      cells.push(`<span class="v-1b-b${v ? ' is-val' : ''}${fi % 2 ? ' is-odd' : ''}" data-f="${fi}" title="${esc(name)}">${b.toString(16).padStart(2, '0')}</span>`);
+    });
+  });
+  return `<div class="v-1b-hex" role="img" aria-label="The 128 bytes of one Transfer, 16 per row, little-endian">${cells.join('')}</div>`;
+}
+
+function treeCards(o) {
+  let hit = 0; let bytes = 0; let total = 0;
+  const cards = GROOVES.map(([name, trees]) => {
+    total += trees.length;
+    const on = []; const off = [];
+    for (const [t, fn, why] of trees) {
+      const b = fn(o);
+      if (b) { hit++; bytes += b; on.push(`<tr class="is-look"><td>${esc(t)}</td><td class="v-1b-num c-data">${b} B</td></tr>`); } else off.push(`<tr><td>${esc(t)}</td><td>${esc(why || '')}</td></tr>`);
+    }
+    const rest = off.length ? `<details><summary>${off.length} not written</summary><table class="wv-table v-1b-trees"><tbody>${off.join('')}</tbody></table></details>` : '';
+    return `<div class="wv-card"><h5>${name} · ${on.length} of ${trees.length}</h5><table class="wv-table v-1b-trees"><tbody>${on.join('') || '<tr><td>none</td></tr>'}</tbody></table>${rest}</div>`;
+  }).join('');
+  return { html: `<div class="wv-cards">${cards}</div>`, hit, bytes, total };
+}
+
 const bytesTxt = (b) => (b == null ? 'blocks' : b === 0 ? '—' : b >= MiB ? `${+(b / MiB).toFixed(b >= 10 * MiB ? 0 : 1)} MiB` : `${fmt(b / 1024)} KiB`);
 
 function initBatchPath(fig, app) {
   const id = uid('bp');
-  let L = null; let step = 0; let treeGuess = null;
+  let L = null; let step = 0;
+  const opt = { ud: false, pending: false, history: false };
   const stage = h('div', { class: 'v-1b-map' });
-  const detail = h('div', { class: 'v-1b-detail', 'aria-live': 'polite' });
+  const detail = h('div', { class: 'wv-insp', 'aria-live': 'polite' });
 
-  /* the journal: one ledger line per step */
-  const rows = JOURNAL.map((st, i) => h('tr', { tabindex: 0, role: 'button', 'aria-label': `Step ${i + 1}: ${st.label}`, onclick: () => go(i), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { go(i); e.preventDefault(); } } },
-    h('td', { class: 'n' }, String(i + 1).padStart(2, '0')),
+  /* built once so the reader's guess and toggles survive stepping away */
+  const board = h('div');
+  const optPick = chips([['ud', 'user_data set'], ['pending', 'pending, with timeout'], ['history', 'accounts keep history']],
+    (vals) => { for (const k of Object.keys(opt)) opt[k] = vals.includes(k); drawBoard(); }, { multi: true, value: [], label: 'Transfer options' });
+  let guessed = false;
+  const treeAsk = ask('Guess first: how many of the 33 trees does one plain transfer write to?',
+    [[33, '33'], [14, '14'], [11, '11'], [3, '3']], 11,
+    (v, right) => {
+      guessed = true; drawBoard();
+      return `${right ? '<b>Right: 11</b>' : `<b>It is 11</b>`} for the benchmark's transfer. Zero fields in optional indexes are skipped, and a transfer does not change an account's indexes. Now change the transfer:`;
+    });
+  const treeView = h('div', null, treeAsk.el, board);
+  function drawBoard() {
+    if (!guessed) { board.replaceChildren(); return; }
+    const tc = treeCards(opt);
+    board.innerHTML = '';
+    const sum = h('p', { class: 'v-1b-sum' });
+    sum.innerHTML = `<b class="c-look">${tc.hit} of ${tc.total} trees</b> get a value: up to <b class="c-data">${tc.bytes} B</b> for one <b class="c-data">128 B</b> transfer, <b class="c-data">≤ ${bytesTxt(tc.bytes * 8190)}</b> for the batch. Two updates to the same account in one bar keep only the last version, so this is an upper bound.`;
+    const cards = h('div'); cards.innerHTML = tc.html;
+    board.append(optPick.el, cards, sum);
+    rows[3].lastChild.textContent = `≤ ${bytesTxt(tc.bytes * 8190)}`;
+  }
+
+  /* one field at a time in the byte grid */
+  const fieldPick = chips(TRANSFER.map(([name, n, v], fi) => [fi, `${name} · ${n} B${v ? ` = ${v}` : ''}`]), (fi) => {
+    detail.querySelectorAll('.v-1b-b').forEach((b) => b.classList.toggle('is-hot', b.dataset.f === String(fi)));
+    const [name, n, v, why] = TRANSFER[fi];
+    const hint = detail.querySelector('.v-1b-hint');
+    if (hint) hint.innerHTML = `<b class="c-look">${esc(name)}</b>: ${n} bytes, value <b class="c-data">${v}</b>${why ? ` (${esc(why)})` : ''}.`;
+  }, { label: 'Transfer fields' });
+
+  const rows = JOURNAL.map((st, i) => h('tr', { tabindex: 0, class: 'v-1b-row', 'aria-label': `Step ${i + 1}: ${st.label}`, onclick: () => go(i), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { go(i); e.preventDefault(); } } },
+    h('td', null, String(i + 1).padStart(2, '0')),
     h('td', null, st.label),
-    h('td', { class: 'num' }, bytesTxt(st.disk)),
-    h('td', { class: 'num' }, st.mem ? `≤ ${bytesTxt(st.mem)}` : '—')));
-  const journal = h('table', { class: 'v-1b-journal' },
-    h('thead', null, h('tr', null, h('th', null, '#'), h('th', null, 'entry'), h('th', { class: 'num' }, 'disk'), h('th', { class: 'num' }, 'memory'))),
-    h('tbody', null, ...rows),
-    h('tfoot', null, h('tr', null, h('td'), h('td', { colspan: 3 }, 'durable before the reply: 2 writes'))));
-  const backB = h('button', { type: 'button', class: 'v-1b-btn', 'aria-label': 'Previous entry', onclick: () => go(step - 1) }, '◀');
-  const nextB = h('button', { type: 'button', class: 'v-1b-btn', 'aria-label': 'Next entry', onclick: () => go(step + 1) }, '▶');
+    h('td', { class: 'v-1b-num c-data' }, bytesTxt(st.disk)),
+    h('td', { class: 'v-1b-num c-data' }, st.mem ? `≤ ${bytesTxt(st.mem)}` : '—')));
+  const journal = h('table', { class: 'wv-table' },
+    h('thead', null, h('tr', null, h('th', null, '#'), h('th', null, 'step'), h('th', { class: 'v-1b-num' }, 'disk'), h('th', { class: 'v-1b-num' }, 'memory'))),
+    h('tbody', null, ...rows));
+  const backB = h('button', { type: 'button', class: 'wv-btn', 'aria-label': 'Previous step', onclick: () => go(step - 1) }, '◀ Back');
+  const nextB = h('button', { type: 'button', class: 'wv-btn', 'aria-label': 'Next step', onclick: () => go(step + 1) }, 'Next ▶');
+  const pos = h('span', { class: 'wv-pos' });
 
   app.append(
     stage,
-    key([['proc', 'process'], ['rest', 'data at rest'], ['data', 'bytes'], ['look', 'this entry'], ['stamp', 'durable'], ['opt', 'controls']]),
+    colorKey([['k-data', 'bytes and sizes'], ['k-look', 'this step'], ['k-held', 'durable on disk'], ['k-opt', 'your choices']]),
     h('div', { class: 'v-1b-bp' },
-      h('div', { class: 'v-1b-bp-l' }, journal, h('div', { class: 'v-1b-scrub' }, backB, nextB, h('span', { class: 'v-1b-pos' }, 'or use ← →'))),
+      h('div', null, journal, h('div', { class: 'wv-bar v-1b-nav' }, backB, pos, h('span', { class: 'wv-sp' }), nextB),
+        h('div', { class: 'wv-note is-good' }, h('b', null, 'Durable before the reply: '), '2 writes, 1 MiB + 4 KiB.')),
       detail),
   );
 
@@ -613,45 +597,45 @@ function initBatchPath(fig, app) {
     const st = JOURNAL[step];
     const [W, H] = L.vb;
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'A TigerBeetle replica: client, primary, and the zones of the data file' });
-    svg.innerHTML = `<defs><marker id="${id}a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="v-1b-arrowhead"/></marker></defs>`;
+    svg.innerHTML = `<defs><marker id="${id}a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="v-1b-head"/></marker></defs>`;
     const on = (k) => st.at.includes(k);
-    const box = (r, k, dashed) => s('rect', { x: r[0], y: r[1], width: r[2], height: r[3], class: `v-1b-box${dashed ? ' is-rest' : ''}${on(k) ? ' is-on' : ''}` });
+    const box = (r, k, dashed) => s('g', { class: `node${on(k) ? ' is-focus' : ''}` }, s('rect', { x: r[0], y: r[1], width: r[2], height: r[3], class: `box${dashed ? ' dash' : ''}` }));
     const label = (r, a, b) => [
-      s('text', { x: r[0] + r[2] / 2, y: r[1] + r[3] / 2 - 3, class: 'v-1b-t-m v-1b-t-b', 'text-anchor': 'middle' }, a),
-      s('text', { x: r[0] + r[2] / 2, y: r[1] + r[3] / 2 + 12, class: 'v-1b-t-xs v-1b-t-mute', 'text-anchor': 'middle' }, b)];
+      s('text', { x: r[0] + r[2] / 2, y: r[1] + r[3] / 2 - 3, class: 't-m t-b', 'text-anchor': 'middle' }, a),
+      s('text', { x: r[0] + r[2] / 2, y: r[1] + r[3] / 2 + 12, class: 't-xs t-mute', 'text-anchor': 'middle' }, b)];
     svg.append(box(L.client, 'client'), ...label(L.client, 'Go client', L.vertical ? 'create_transfers · 8,190 per request' : '8,190 per request'));
     const [px, py, pw, ph] = L.primary;
     svg.append(box(L.primary, 'primary'));
-    svg.append(s('text', { x: px + 10, y: py + 18, class: 'v-1b-t-s v-1b-t-b' }, 'tigerbeetle ', s('tspan', { class: 'v-1b-t-mute', style: 'font-weight:400' }, '· primary · one thread')));
+    svg.append(s('text', { x: px + 10, y: py + 18, class: 't-s t-b' }, 'tigerbeetle ', s('tspan', { class: 't-mute' }, '· primary · one thread')));
     svg.append(box(L.sm, 'sm'), ...label(L.sm, 'state machine', 'balances · limits · ids'));
     svg.append(box(L.trees, 'trees', true), ...label(L.trees, '33 LSM trees', 'in-memory tables'));
     const [sx, sy, sw, sh] = L.sm; const [tx, ty, tw, th] = L.trees;
-    svg.append(s('path', { d: L.vertical ? `M${sx + sw / 2} ${sy + sh} L${tx + tw / 2} ${ty}` : `M${sx + sw} ${sy + sh / 2} L${tx} ${ty + th / 2}`, class: `v-1b-edge${st.edge.includes('exec') ? ' is-on' : ''}` }));
+    svg.append(s('path', { d: L.vertical ? `M${sx + sw / 2} ${sy + sh} L${tx + tw / 2} ${ty}` : `M${sx + sw} ${sy + sh / 2} L${tx} ${ty + th / 2}`, class: `edge${st.edge.includes('exec') ? ' flow' : ''}` }));
 
     const Z = zoneRects();
     const durable = st.durable || [];
     for (const [k, n, sz] of ZONES) {
       const [x, y, w, hh] = Z[k];
-      svg.append(s('rect', { x, y, width: w, height: hh, class: `v-1b-box is-rest${durable.includes(k) ? ' is-dur' : ''}${on(k) ? ' is-on' : ''}` }));
+      svg.append(s('g', { class: `node${on(k) ? ' is-focus' : ''}` }, s('rect', { x, y, width: w, height: hh, class: `box dash${durable.includes(k) && !on(k) ? ' v-1b-dur' : ''}` })));
       const ny = L.vertical ? y + hh / 2 - 2 : y + hh / 2 - 10;
-      svg.append(s('text', { x: x + w / 2, y: ny, class: 'v-1b-t-s v-1b-t-b', 'text-anchor': 'middle' }, n));
-      svg.append(s('text', { x: x + w / 2, y: ny + 14, class: 'v-1b-t-xs v-1b-t-data', 'text-anchor': 'middle' }, sz));
+      svg.append(s('text', { x: x + w / 2, y: ny, class: 't-s t-b', 'text-anchor': 'middle' }, n));
+      svg.append(s('text', { x: x + w / 2, y: ny + 14, class: 't-xs t-data', 'text-anchor': 'middle' }, sz));
       if (durable.includes(k)) {
         const cx = x + w - 38; const cy = L.vertical ? y + 13 : y + 1;
-        svg.append(s('g', { class: 'v-1b-zstamp', transform: `rotate(-5 ${cx} ${cy})` },
+        svg.append(s('g', { class: 'v-1b-stamp', transform: `rotate(-5 ${cx} ${cy})` },
           s('rect', { x: cx - 30, y: cy - 8, width: 60, height: 14, rx: 2 }),
-          s('text', { x: cx, y: cy + 2.5, 'text-anchor': 'middle' }, 'DURABLE')));
+          s('text', { x: cx, y: cy + 2.5, class: 't-xs t-b t-safe', 'text-anchor': 'middle' }, 'DURABLE')));
       }
     }
-    svg.append(s('text', { x: L.fileX, y: L.fileY + L.fileH + (L.vertical ? 18 : 20), class: 'v-1b-t-xs v-1b-t-b v-1b-t-up' }, '0_0.tigerbeetle ',
-      s('tspan', { class: 'v-1b-t-mute', style: 'font-weight:400;text-transform:none;letter-spacing:0' }, L.vertical ? '· not to scale' : '· one file · 21 GB after the benchmark · not to scale')));
+    svg.append(s('text', { x: L.fileX, y: L.fileY + L.fileH + (L.vertical ? 18 : 20), class: 't-xs t-b t-up' }, '0_0.tigerbeetle ',
+      s('tspan', { class: 't-mute' }, L.vertical ? '· not to scale' : '· one file · 21 GB after the benchmark · not to scale')));
 
     const arrow = (d) => svg.append(s('path', { d, class: 'v-1b-arrow', 'marker-end': `url(#${id}a)` }));
-    const tag = (x, y, text, anchor = 'start') => svg.append(s('text', { x, y, class: 'v-1b-t-xs v-1b-t-b v-1b-t-look v-1b-halo', 'text-anchor': anchor }, text));
+    const tag = (x, y, text, anchor = 'start') => svg.append(s('text', { x, y, class: 't-xs t-b t-look halo', 'text-anchor': anchor }, text));
     const [cx, cy, cw, ch] = L.client;
     for (const e of st.edge) {
-      if (e === 'req') { arrow(L.vertical ? `M${cx + 130},${cy + ch} L${cx + 130},${py}` : `M${cx + cw},${cy + 22} L${px},${cy + 22}`); L.vertical ? tag(cx + 138, cy + ch + 24, '1 MiB request') : tag(cx + cw + 40, cy + 16, '1 MiB', 'middle'); }
-      if (e === 'rep') { arrow(L.vertical ? `M${cx + 210},${py} L${cx + 210},${cy + ch}` : `M${px},${cy + 50} L${cx + cw},${cy + 50}`); L.vertical ? tag(cx + 218, cy + ch + 24, 'reply') : tag(cx + cw + 40, cy + 66, 'reply', 'middle'); }
+      if (e === 'req') { arrow(L.vertical ? `M${cx + 130},${cy + ch} L${cx + 130},${py}` : `M${cx + cw},${cy + 22} L${px},${cy + 22}`); if (L.vertical) tag(cx + 138, cy + ch + 24, '1 MiB request'); else tag(cx + cw + 40, cy + 16, '1 MiB', 'middle'); }
+      if (e === 'rep') { arrow(L.vertical ? `M${cx + 210},${py} L${cx + 210},${cy + ch}` : `M${px},${cy + 50} L${cx + cw},${cy + 50}`); if (L.vertical) tag(cx + 218, cy + ch + 24, 'reply'); else tag(cx + cw + 40, cy + 66, 'reply', 'middle'); }
       if (e === 'wp' || e === 'wh' || e === 'grid') {
         const [zx, zy, zw] = Z[e];
         const from = e === 'grid' ? [tx + tw / 2, ty + th] : [sx + sw / 2, sy + sh];
@@ -667,8 +651,7 @@ function initBatchPath(fig, app) {
       }
       if (e === 'ckpt') {
         const [gx, gy] = Z.grid; const [zx, zy, zw, zh] = Z.sb;
-        if (L.vertical) { arrow(`M${gx + 26},${gy + 10} C${gx + 2},${gy - 70} ${zx + 2},${zy + zh + 70} ${zx + 26},${zy + zh - 4}`); tag(zx + 34, zy + zh + 14, '4 × 24 KiB'); }
-        else { arrow(`M${gx + 30},${gy} C${gx + 10},${gy - 34} ${zx + zw / 2},${zy - 34} ${zx + zw / 2},${zy}`); tag((gx + zx + zw / 2) / 2, gy - 30, 'new root: 4 × 24 KiB', 'middle'); }
+        if (L.vertical) { arrow(`M${gx + 26},${gy + 10} C${gx + 2},${gy - 70} ${zx + 2},${zy + zh + 70} ${zx + 26},${zy + zh - 4}`); tag(zx + 34, zy + zh + 14, '4 × 24 KiB'); } else { arrow(`M${gx + 30},${gy} C${gx + 10},${gy - 34} ${zx + zw / 2},${zy - 34} ${zx + zw / 2},${zy}`); tag((gx + zx + zw / 2) / 2, gy - 30, 'new root: 4 × 24 KiB', 'middle'); }
       }
     }
     stage.replaceChildren(svg);
@@ -676,47 +659,26 @@ function initBatchPath(fig, app) {
 
   function drawDetail() {
     const st = JOURNAL[step];
-    let body = st.body();
-    if (st.trees && treeGuess == null) {
-      body = `<p>First it prefetches both accounts of every transfer, and checks that each <code>id</code> is new. Then it writes values into the in-memory tables of the LSM trees. There are 33 trees.</p>
-        <div class="v-1b-ask"><p class="v-1b-q">Guess first: how many of the 33 trees does one plain transfer write to?</p>
-        <div class="v-1b-choices" role="group" aria-label="Your guess">${[33, 14, 11, 3].map((n) => `<button type="button" class="v-1b-tg" data-g="${n}">${n}</button>`).join('')}</div></div>`;
-    } else if (st.trees) {
-      const tb = treeBoard(OPT);
-      const fb = treeGuess === 11 ? '<b class="c-safe">Right: 11 for the benchmark\'s transfer.</b>' : `<b class="c-bad">You guessed ${treeGuess}; the benchmark's transfer writes to 11.</b>`;
-      body = `<p>First it prefetches what the batch needs: both accounts of every transfer, and a check that each <code>id</code> is new. Cache misses are reads from the grid. Then it updates two balances per transfer and writes values into the in-memory tables of the LSM trees. Change the transfer to see which trees it writes:</p>
-        <div class="v-1b-opts" role="group" aria-label="Transfer options">
-          <button type="button" class="v-1b-tg" data-o="ud" aria-pressed="${OPT.ud}">user_data set</button>
-          <button type="button" class="v-1b-tg" data-o="pending" aria-pressed="${OPT.pending}">pending, with timeout</button>
-          <button type="button" class="v-1b-tg" data-o="history" aria-pressed="${OPT.history}">accounts keep history</button>
-        </div><p class="v-1b-answer">${fb} Zero fields in optional indexes are skipped, and a transfer does not change an account's indexes.</p>${tb.html}
-        <p class="v-1b-sum"><b class="c-look">${tb.hit} of ${tb.total} trees</b> get a value: up to <b class="c-data">${tb.bytes} B</b> for one <b class="c-data">128 B</b> transfer, <b class="c-data">≤ ${bytesTxt(tb.bytes * 8190)}</b> for the batch. ${OPT.ud || OPT.pending || OPT.history ? '' : 'This is the benchmark\'s transfer. '}Two updates to the same account in one bar keep only the last version, so this is an upper bound.</p>`;
-      rows[3].lastChild.textContent = `≤ ${bytesTxt(tb.bytes * 8190)}`;
+    const head = `<h4><span>${String(step + 1).padStart(2, '0')} · ${esc(st.title)}</span><span class="where">${esc(st.where)}</span></h4>`;
+    if (st.trees) {
+      detail.innerHTML = `${head}<p>First it prefetches what the batch needs: both accounts of every transfer, and a check that each <code>id</code> is new. Cache misses are reads from the grid. Then it updates two balances per transfer and writes values into the in-memory tables of the LSM trees.</p>`;
+      detail.append(treeView);
+      return;
     }
-    detail.innerHTML = `<h4><span class="n">${String(step + 1).padStart(2, '0')}</span> ${esc(st.title)} <span class="where">${esc(st.where)}</span></h4>${body}`;
-    detail.querySelectorAll('.v-1b-opts button').forEach((b) => b.addEventListener('click', () => { OPT[b.dataset.o] = !OPT[b.dataset.o]; drawDetail(); }));
-    detail.querySelectorAll('[data-g]').forEach((b) => b.addEventListener('click', () => { treeGuess = +b.dataset.g; drawDetail(); }));
-    wireBytes();
-  }
-
-  function wireBytes() {
-    const flds = detail.querySelectorAll('.v-1b-fld');
-    if (!flds.length) return;
-    const hint = detail.querySelector('.v-1b-hint');
-    const show = (fi) => {
-      detail.querySelectorAll('.v-1b-b').forEach((b) => b.classList.toggle('is-hot', b.dataset.f === String(fi)));
-      flds.forEach((f) => f.classList.toggle('is-hot', f.dataset.f === String(fi)));
-      const [name, n, v, why] = TRANSFER[fi];
-      hint.innerHTML = `<b class="c-look">${esc(name)}</b>: ${n} bytes, value <b class="c-data">${v}</b>${why ? ` (${esc(why)})` : ''}.`;
-    };
-    flds.forEach((f) => { f.addEventListener('click', () => show(+f.dataset.f)); f.addEventListener('mouseenter', () => show(+f.dataset.f)); });
-    detail.querySelectorAll('.v-1b-b').forEach((b) => b.addEventListener('click', () => show(+b.dataset.f)));
+    detail.innerHTML = head + st.body();
+    if (step === 0) {
+      detail.append(fieldPick.el);
+      const hint = h('p', { class: 'v-1b-hint' }, 'One Transfer, 16 bytes per row, little-endian. Pick a field. Values are samples.');
+      detail.append(hint);
+      if (fieldPick.value != null) fieldPick.set(fieldPick.value);
+    }
   }
 
   function go(i) {
     step = clamp(i, 0, JOURNAL.length - 1);
-    rows.forEach((r, k) => { r.classList.toggle('is-cur', k === step); r.classList.toggle('is-past', k < step); if (k === step) r.setAttribute('aria-current', 'step'); else r.removeAttribute('aria-current'); });
+    rows.forEach((r, k) => { r.classList.toggle('is-look', k === step); if (k === step) r.setAttribute('aria-current', 'step'); else r.removeAttribute('aria-current'); });
     backB.disabled = step === 0; nextB.disabled = step === JOURNAL.length - 1;
+    pos.textContent = `${step + 1} / ${JOURNAL.length}`;
     drawMap(); drawDetail();
   }
 
@@ -728,7 +690,7 @@ function initBatchPath(fig, app) {
   }
 
   fig.addEventListener('keydown', (e) => {
-    if (e.target.closest('input')) return;
+    if (e.target.closest('input, summary, select')) return;
     if (e.key === 'ArrowRight') { go(step + 1); e.preventDefault(); }
     if (e.key === 'ArrowLeft') { go(step - 1); e.preventDefault(); }
   });

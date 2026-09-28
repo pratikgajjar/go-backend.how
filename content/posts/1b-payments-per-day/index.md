@@ -241,7 +241,7 @@ $PGDATA/
 
 A PostgreSQL commit returns only after its WAL record is flushed with `fdatasync()` on the active WAL segment. Without that flush, a power loss could lose committed transactions. So with 8 backends each committing one row at a time, how many flushes does it take to make a batch of rows durable? Guess before you look at the trace.
 
-{{< viz kind="one-batch" frame="none" fig="1" title="8,190 transfers, made durable two ways" fallback="one-batch.svg" alt="A grid of 8,190 transfers twice. TigerBeetle makes the whole request durable with one prepare, two writes. PostgreSQL single-row inserts need 3,421 fdatasync calls at the measured 0.42 per row." caption="Flush counts follow the measured rates: 0.42 `fdatasync` calls per row for single-row inserts, 0.76 per transfer. Times come from the measured throughputs. TigerBeetle writes the prepare, which makes the batch durable, before it executes the batch." >}}
+{{< viz kind="one-batch" fig="1" title="8,190 transfers, made durable two ways" fallback="one-batch.svg" alt="A grid of 8,190 transfers twice. TigerBeetle makes the whole request durable with one prepare, two writes. PostgreSQL single-row inserts need 3,421 fdatasync calls at the measured 0.42 per row." caption="Flush counts follow the measured rates: 0.42 `fdatasync` calls per row for single-row inserts, 0.76 per transfer. Times come from the measured throughputs. TigerBeetle writes the prepare, which makes the batch durable, before it executes the batch." >}}
 
 Here is the trace behind that number. Count the calls with bpftrace:
 
@@ -318,7 +318,7 @@ $$
 
 Flushes run one at a time: a backend takes `WALWriteLock` to flush, and the others queue behind it[^xlogflush]. So 681 s of flush time in a 766 s run means the WAL was being flushed 89% of the time. Yet there were 0.42 flushes per row, not 1. A flush writes everything in the WAL up to that point, so it makes every commit record inserted before it started durable. With 8 backends, about 2.4 commits share each flush. This is group commit, and Postgres does it with the default settings.
 
-{{< viz kind="group-commit" frame="none" fig="2" title="Group commit, one flush at a time" fallback="group-commit.svg" alt="Timeline of Postgres backends waiting on WAL flushes; each flush covers every commit record inserted before it started" caption="A model, not a trace. Each backend spends a random time on SQL and network (lognormal around the chosen mean), inserts its commit record, then waits. One flush runs at a time. The presets use the measured `fdatasync` means, and the work time is fitted so the model's throughput matches the measured run. The model ignores CPU limits. Tap a flush, or use ← and →." >}}
+{{< viz kind="group-commit" fig="2" title="Group commit, one flush at a time" fallback="group-commit.svg" alt="Timeline of Postgres backends waiting on WAL flushes; each flush covers every commit record inserted before it started" caption="A model, not a trace. Each backend spends a random time on SQL and network (lognormal around the chosen mean), inserts its commit record, then waits. One flush runs at a time. The presets use the measured `fdatasync` means, and the work time is fitted so the model's throughput matches the measured run. The model ignores CPU limits. Tap a flush, or use ← and →." >}}
 
 A flush can only share the commits that are already waiting, so the number per flush can never exceed the number of backends. That is the tax of per-row commits: PostgreSQL pays **0.42 fsyncs per row** here. TigerBeetle's client puts up to 8,190 transfers into one request, and one prepare makes them all durable.
 
@@ -517,7 +517,7 @@ Raw expected: `10M × 128B + 10M × 128B = 2.56 GB`. **Actual: 21 GB. 8.2× ampl
 
 Everything lives in one file, `0_0.tigerbeetle`. The figure follows one `create_transfers` batch through it, from the client's request to the checkpoint that makes its WAL slot reusable.
 
-{{< viz kind="batch-path" frame="none" fig="3" title="One batch through the data file" fallback="batch-path.svg" alt="One create_transfers batch through a TigerBeetle replica: the WAL prepare and header writes, the state machine and its 33 LSM trees, compaction into the grid, and the superblock checkpoint" caption="Zone sizes, intervals, and tree counts are from the [TigerBeetle 0.16.78 source](https://github.com/tigerbeetle/tigerbeetle/tree/0.16.78/src) with the production config. The op number, slot, and field values are samples. Pick a journal entry, or use ← and →." >}}
+{{< viz kind="batch-path" fig="3" title="One batch through the data file" fallback="batch-path.svg" alt="One create_transfers batch through a TigerBeetle replica: the WAL prepare and header writes, the state machine and its 33 LSM trees, compaction into the grid, and the superblock checkpoint" caption="Zone sizes, intervals, and tree counts are from the [TigerBeetle 0.16.78 source](https://github.com/tigerbeetle/tigerbeetle/tree/0.16.78/src) with the production config. The op number, slot, and field values are samples. Pick a journal entry, or use ← and →." >}}
 
 The reply waits for two writes, the prepare and its header sector, and for the in-memory execution. Compaction and checkpoints come after the reply. The next batch still waits for its slice of compaction, so they cost throughput, not latency.
 

@@ -1,323 +1,49 @@
-/* ==========================================================================
- * 1b-payments-per-day figures. One colour meaning, three surfaces:
- *   hero          a ledger page (payments, a total rule, stamps)
- *   batch-path    a drafting sheet (a file layout, labelled arrows)
- *   group-commit  chart-recorder paper (time on a grid)
- * Colour meaning (same in every figure of this post):
- *   brown  transfers, bytes, sizes      green  durable write (a stamp)
- *   purple the entry you are looking at red    waiting, cost
- *   blue   controls                     ink    structure
- * Classes are prefixed v-1b-.
- * ========================================================================== */
+/* 1b-payments-per-day: layout and drawing only. Look, colours, controls and
+   text blocks come from walviz.css. Classes are prefixed v-1b-. */
 
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) {
-  --paper: oklch(97.8% 0.016 88);
-  --ink: oklch(21% 0.025 65);
-  --mute: oklch(41% 0.025 65);
-  --line: oklch(86% 0.022 80);
-  --rule: oklch(90% 0.02 80);
-  --tint: oklch(94% 0.024 84);
-  --brown: oklch(44% 0.08 55);   --brown-l: oklch(86% 0.06 68);
-  --purple: oklch(45% 0.2 305);  --purple-l: oklch(91% 0.06 305);
-  --green: oklch(46% 0.13 152);  --green-l: oklch(91% 0.075 152);
-  --red: oklch(51% 0.2 27);      --red-l: oklch(92.5% 0.05 25);
-  --blue: oklch(46% 0.16 258);   --blue-l: oklch(93% 0.04 258);
-  --v1b-w: min(980px, 100vw - 2rem);
-
-  position: relative;
-  margin: 2.6rem 0;
-  padding: 0.9rem 1.1rem 1rem;
-  color: var(--ink);
-  background: var(--paper);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.5;
-}
-html[data-force-dark] :is(.viz--one-batch, .viz--batch-path, .viz--group-commit) {
-  --paper: oklch(22% 0.014 70);
-  --ink: oklch(94% 0.012 85);
-  --mute: oklch(76% 0.015 80);
-  --line: oklch(40% 0.015 75);
-  --rule: oklch(30% 0.014 75);
-  --tint: oklch(27% 0.016 72);
-  --brown: oklch(80% 0.08 68);   --brown-l: oklch(40% 0.06 60);
-  --purple: oklch(80% 0.13 305); --purple-l: oklch(34% 0.1 305);
-  --green: oklch(79% 0.14 152);  --green-l: oklch(33% 0.07 152);
-  --red: oklch(74% 0.16 27);     --red-l: oklch(33% 0.08 25);
-  --blue: oklch(78% 0.12 255);   --blue-l: oklch(33% 0.07 258);
-}
-@media (min-width: 900px) {
-  :is(.viz--one-batch, .viz--batch-path, .viz--group-commit).viz--wide {
-    width: var(--v1b-w);
-    margin-left: calc((100% - var(--v1b-w)) / 2);
-  }
-}
-@media (max-width: 640px) {
-  :is(.viz--one-batch, .viz--batch-path, .viz--group-commit) { margin: 2rem -0.6rem; padding: 0.75rem 0.7rem 0.85rem; font-size: 12.5px; }
-}
-
-/* site resets inside the sheet */
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) :is(p, ul, table, pre, h4, h6) { margin: 0; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) table { border: 0; width: auto; table-layout: auto; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) :is(th, td) { border: 0; background: none; }
-body[class*="theme-"] :is(.viz--one-batch, .viz--batch-path, .viz--group-commit) table thead tr { background: none; color: inherit; }
-body[class*="theme-"] :is(.viz--one-batch, .viz--batch-path, .viz--group-commit) code { background: var(--tint); color: var(--ink); border-radius: 0; padding: 0 0.2em; }
-body[class*="theme-"] :is(.viz--one-batch, .viz--batch-path, .viz--group-commit) pre code { background: none; padding: 0; display: block; font-size: inherit; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) img.wv-fallback { margin: 0; border: 0; box-shadow: none; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) svg { display: block; width: 100%; height: auto; overflow: visible; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) svg text { font-family: var(--font-mono); fill: var(--ink); }
-
-/* header: a ledger heading, ruled under */
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) .wv-head {
-  display: flex; align-items: baseline; gap: 0.3rem 0.8rem; flex-wrap: wrap;
-  padding: 0 0 0.45rem; margin: 0 0 0.8rem; border-bottom: 1px solid var(--ink);
-}
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) .wv-fig {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
-  padding: 0.05rem 0.4rem; border: 1.25px solid var(--ink); white-space: nowrap;
-}
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) .wv-title { font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) figcaption {
-  margin-top: 0.9rem; padding-top: 0.5rem; border-top: 1px solid var(--ink);
-  font-size: 12px; color: var(--mute); font-style: normal; text-align: left;
-}
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) figcaption a { color: var(--ink); }
-
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) .c-data { color: var(--brown); font-weight: 700; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) .c-look { color: var(--purple); font-weight: 700; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) .c-safe { color: var(--green); font-weight: 700; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) .c-bad { color: var(--red); font-weight: 700; }
-
-/* ---------- controls: blue ---------- */
-.v-1b-ctls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0.7rem 0 0.4rem; }
-.v-1b-ctl-l { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue); font-weight: 700; }
-.v-1b-toggle, .v-1b-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
-.v-1b-tg, .v-1b-btn {
-  font: inherit; font-size: 12px; line-height: 1.2; min-height: 32px; padding: 0.35rem 0.65rem;
-  color: var(--blue); background: var(--paper); border: 1.25px solid var(--blue); border-radius: 999px;
-  cursor: pointer; touch-action: manipulation;
-}
-.v-1b-tg[aria-pressed="true"] { background: var(--blue); color: var(--paper); }
-.v-1b-tg:hover, .v-1b-btn:hover:not(:disabled) { background: var(--blue-l); color: var(--ink); }
-.v-1b-tg[aria-pressed="true"]:hover { background: var(--blue); color: var(--paper); }
-.v-1b-btn:disabled { opacity: 0.35; cursor: default; }
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) :is(button, [tabindex]):focus-visible,
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) input:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
-
-.v-1b-sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.2rem 1.4rem; margin: 0.2rem 0 0.4rem; }
-.v-1b-slider { display: flex; align-items: center; gap: 0.5rem; }
-.v-1b-slider output { min-width: 5.5em; color: var(--blue); font-weight: 800; font-variant-numeric: tabular-nums; }
-.v-1b-slider input[type="range"] { -webkit-appearance: none; appearance: none; flex: 1 1 100px; min-width: 80px; height: 26px; background: transparent; margin: 0; cursor: pointer; }
-.v-1b-slider input[type="range"]::-webkit-slider-runnable-track { height: 3px; background: var(--blue); border-radius: 3px; }
-.v-1b-slider input[type="range"]::-moz-range-track { height: 3px; background: var(--blue); }
-.v-1b-slider input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6.5px; border-radius: 50%; background: var(--paper); border: 2.5px solid var(--blue); }
-.v-1b-slider input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--paper); border: 2.5px solid var(--blue); }
-
-/* ---------- key ---------- */
-.v-1b-key { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; margin: 0.6rem 0 0; font-size: 11px; color: var(--mute); }
-.v-1b-key span { white-space: nowrap; }
-.v-1b-key i { display: inline-block; width: 1.4em; height: 0.85em; margin-right: 0.35em; vertical-align: -0.08em; border: 1px solid var(--ink); }
-.v-1b-key .v-1b-sw-data { background: var(--brown); border-color: var(--brown); }
-.v-1b-key .v-1b-sw-wait { background: repeating-linear-gradient(-45deg, var(--red) 0 1.2px, var(--red-l) 1.2px 4px); border-color: var(--red); }
-.v-1b-key .v-1b-sw-queued { background: var(--brown-l); border-color: var(--brown); }
-.v-1b-key .v-1b-sw-red { background: var(--red); border-color: var(--red); }
-.v-1b-key .v-1b-sw-stamp { background: var(--green-l); border: 2px solid var(--green); border-radius: 2px; }
-.v-1b-key .v-1b-sw-look { background: var(--purple-l); border: 1.5px solid var(--purple); }
-.v-1b-key .v-1b-sw-opt { background: var(--blue); border-color: var(--blue); border-radius: 999px; }
-.v-1b-key .v-1b-sw-proc, .v-1b-key .v-1b-sw-work { background: var(--paper); border: 1.3px solid var(--ink); }
-.v-1b-key .v-1b-sw-rest { background: var(--paper); border: 1.3px dashed var(--ink); }
-
-/* ---------- code, memo ---------- */
-:is(.viz--batch-path) pre.wv-code {
-  padding: 0.5rem 0.7rem; font-size: 12px; line-height: 1.6; background: var(--paper);
-  border-left: 3px double var(--ink); overflow-x: auto; white-space: pre; color: var(--ink); margin: 0.2rem 0 0.6rem;
-}
-:is(.viz--batch-path) pre.wv-code .ln { display: block; padding: 0 0.4rem; margin: 0 -0.4rem; }
-:is(.viz--batch-path) pre.wv-code .ln.is-hot { background: var(--purple-l); box-shadow: inset 3px 0 var(--purple); }
-:is(.viz--batch-path) pre.wv-code .cm { color: var(--mute); }
-:is(.viz--batch-path) pre.wv-code .dt { color: var(--brown); font-weight: 700; }
-
-/* ================================================================ HERO */
-.v-1b-hero-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 13px; margin-bottom: 0.6rem; }
-.v-1b-clock { color: var(--purple); font-weight: 800; font-variant-numeric: tabular-nums; }
-.v-1b-sheets { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-@media (min-width: 700px) { .v-1b-sheets { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.4rem; } }
-.v-1b-sheet-h { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding-bottom: 0.3rem; margin-bottom: 0.45rem; border-bottom: 1px solid var(--ink); }
+/* ---------- one-batch: two grids of 8,190 transfers ---------- */
+.v-1b-lede { margin: 0 0 0.7rem; }
+.v-1b-sheets { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; margin: 0 0 0.6rem; }
+@media (min-width: 700px) { .v-1b-sheets { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.v-1b-sheet h5 { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.4rem; }
 .v-1b-cvwrap { width: 100%; }
 .v-1b-cv { display: block; }
-.v-1b-hstat { margin-top: 0.5rem; font-size: 13px; line-height: 1.45; }
-.v-1b-stampnum {
-  display: inline-block; min-width: 2.2em; text-align: center; padding: 0 0.35em; margin-right: 0.2em;
-  color: var(--green); border: 2px solid var(--green); border-radius: 3px; transform: rotate(-3deg); font-size: 15px;
-}
-.v-1b-dim { color: var(--mute); font-size: 12px; font-variant-numeric: tabular-nums; }
+.v-1b-sub { margin: 0.4rem 0 0; min-height: 1.4em; }
 
-/* ======================================================== GROUP COMMIT */
-.v-1b-strip { margin: 0.6rem 0 0.2rem; }
-.v-1b-strip svg { width: 100%; height: auto; }
-:is(.viz--group-commit) .v-1b-grid { stroke: var(--rule); stroke-width: 1; }
-:is(.viz--group-commit) .v-1b-work { fill: var(--paper); stroke: var(--ink); stroke-width: 0.9; }
-:is(.viz--group-commit) .v-1b-wait { stroke: var(--red); stroke-width: 0.9; }
-:is(.viz--group-commit) .v-1b-wait.is-late { stroke-width: 2.2; }
-:is(.viz--group-commit) .v-1b-wait.is-sel { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.6; }
-:is(.viz--group-commit) .v-1b-hatch-bg { fill: var(--red-l); }
-:is(.viz--group-commit) .v-1b-hatch-ln { stroke: var(--red); stroke-width: 1.1; }
-:is(.viz--group-commit) .v-1b-tick { stroke: var(--green); stroke-width: 2.4; }
-:is(.viz--group-commit) .v-1b-flush { cursor: pointer; }
-:is(.viz--group-commit) .v-1b-flush rect { fill: var(--green-l); stroke: var(--green); stroke-width: 1.6; }
-:is(.viz--group-commit) .v-1b-flush text { fill: var(--green); }
-:is(.viz--group-commit) .v-1b-flush.is-sel rect { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2.4; }
-:is(.viz--group-commit) .v-1b-flush.is-sel text { fill: var(--purple); }
-:is(.viz--group-commit) .v-1b-band { fill: none; stroke: var(--purple); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
-.v-1b-t-xs { font-size: 10px; }
-.v-1b-t-s { font-size: 11.5px; }
-.v-1b-t-m { font-size: 13px; }
-.v-1b-t-b { font-weight: 800; }
-.v-1b-t-up { text-transform: uppercase; letter-spacing: 0.08em; }
-:is(.viz--group-commit, .viz--batch-path) svg .v-1b-t-mute { fill: var(--mute); }
-:is(.viz--group-commit, .viz--batch-path) svg .v-1b-t-data { fill: var(--brown); }
+/* ---------- group-commit: backends and WAL flushes on a timeline ---------- */
+.v-1b-strip { margin: 0.4rem 0 0.2rem; }
+.wv .v-1b-work { fill: var(--board); stroke: var(--ink); stroke-width: 0.9; }
+.wv .v-1b-wait { stroke: var(--red); stroke-width: 0.9; }
+.wv .v-1b-wait.is-late { stroke-width: 2.2; }
+.wv .v-1b-wait.is-sel { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.6; }
+.wv .v-1b-hatch { stroke: var(--red); stroke-width: 1.1; }
+.wv .v-1b-tick { stroke: var(--green); stroke-width: 2.4; }
+.wv .v-1b-flush { cursor: pointer; }
+.wv .v-1b-flush rect { fill: var(--green-l); stroke: var(--green); stroke-width: 1.6; }
+.wv .v-1b-flush text { fill: var(--green); }
+.wv .v-1b-flush.is-sel rect { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2.4; }
+.wv .v-1b-flush.is-sel text { fill: var(--purple); }
+.wv .v-1b-band { fill: none; stroke: var(--purple); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+.v-1b-num { text-align: right; white-space: nowrap; }
 
-.v-1b-scrub { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; margin: 0.5rem 0; }
-.v-1b-pos { font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
-
-/* the totals: a small ledger with model and measured columns */
-.v-1b-totals { overflow-x: auto; margin-top: 0.5rem; }
-:is(.viz--group-commit) .v-1b-totals table { border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 100%; }
-:is(.viz--group-commit) .v-1b-totals :is(th, td) { padding: 0.28rem 0.6rem; text-align: right; border-bottom: 1px solid var(--rule); }
-:is(.viz--group-commit) .v-1b-totals :is(th:first-child) { text-align: left; font-weight: 400; }
-:is(.viz--group-commit) .v-1b-totals thead th { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); border-bottom: 1px solid var(--ink); }
-:is(.viz--group-commit) .v-1b-totals td { font-weight: 800; }
-:is(.viz--group-commit) .v-1b-totals tr.is-bad td:nth-child(2) { color: var(--red); }
-:is(.viz--group-commit) .v-1b-totals tfoot :is(th, td) { border-top: 4px double var(--ink); border-bottom: 0; color: var(--green); }
-:is(.viz--group-commit) .v-1b-totals tfoot td { text-align: right; }
-
-/* ========================================================== BATCH PATH */
-.v-1b-map { margin: 0.2rem 0 0; }
-:is(.viz--batch-path) .v-1b-box { fill: var(--paper); stroke: var(--ink); stroke-width: 1.4; transition: fill 0.3s, stroke 0.3s; }
-:is(.viz--batch-path) .v-1b-box.is-rest { stroke-dasharray: 5 4; }
-:is(.viz--batch-path) .v-1b-box.is-dur { fill: var(--green-l); stroke: var(--green); }
-:is(.viz--batch-path) .v-1b-box.is-on { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2.2; }
-:is(.viz--batch-path) .v-1b-edge { stroke: var(--ink); stroke-width: 1.6; fill: none; }
-:is(.viz--batch-path) .v-1b-edge.is-on, :is(.viz--batch-path) .v-1b-arrow { stroke: var(--purple); stroke-width: 2; fill: none; stroke-dasharray: 5 4; animation: v-1b-run 1s linear infinite; }
-:is(.viz--batch-path) .v-1b-arrowhead { fill: var(--purple); }
-@keyframes v-1b-run { to { stroke-dashoffset: -18; } }
-:is(.viz--batch-path) .v-1b-zstamp rect { fill: none; stroke: var(--green); stroke-width: 1.8; }
-:is(.viz--batch-path) .v-1b-zstamp text { fill: var(--green); font-size: 9.5px; font-weight: 800; letter-spacing: 0.14em; }
-
-.v-1b-bp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-top: 0.9rem; }
+/* ---------- batch-path: data file map, journal, detail ---------- */
+.wv .v-1b-dur { fill: var(--green-l); stroke: var(--green); }
+.wv .v-1b-stamp rect { fill: none; stroke: var(--green); stroke-width: 1.8; }
+.wv .v-1b-arrow { stroke: var(--purple); stroke-width: 2; fill: none; stroke-dasharray: 4 6; animation: wv-flow 1s linear infinite; }
+.wv .v-1b-head { fill: var(--purple); }
+.v-1b-bp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-top: 0.8rem; align-items: start; }
 @media (min-width: 760px) { .v-1b-bp { grid-template-columns: minmax(250px, 0.8fr) minmax(0, 2fr); gap: 1.4rem; } }
-:is(.viz--batch-path) .v-1b-journal { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-:is(.viz--batch-path) .v-1b-journal th { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); text-align: left; padding: 0.2rem 0.35rem; border-bottom: 1px solid var(--ink); font-weight: 700; }
-:is(.viz--batch-path) .v-1b-journal td { padding: 0.36rem 0.35rem; border-bottom: 1px solid var(--rule); }
-:is(.viz--batch-path) .v-1b-journal .num { text-align: right; white-space: nowrap; }
-:is(.viz--batch-path) .v-1b-journal td.num { color: var(--brown); }
-:is(.viz--batch-path) .v-1b-journal td.n { color: var(--mute); width: 1.8em; }
-:is(.viz--batch-path) .v-1b-journal tbody tr { cursor: pointer; }
-:is(.viz--batch-path) .v-1b-journal tbody tr:hover td { background: var(--tint); }
-:is(.viz--batch-path) .v-1b-journal tbody tr.is-cur td { background: var(--purple-l); font-weight: 800; }
-:is(.viz--batch-path) .v-1b-journal tbody tr.is-cur td:first-child { box-shadow: inset 3px 0 var(--purple); color: var(--purple); }
-:is(.viz--batch-path) .v-1b-journal tfoot td { border-top: 4px double var(--ink); border-bottom: 0; color: var(--green); font-weight: 800; font-size: 11.5px; padding-top: 0.4rem; }
+.v-1b-bp .wv-insp { margin-top: 0; }
+.v-1b-row { cursor: pointer; }
+.v-1b-nav { margin: 0.6rem 0; }
 
-.v-1b-detail { min-height: 16rem; font-size: 13px; }
-.v-1b-detail h4 { font-family: var(--font-mono); font-size: 14px; font-weight: 800; margin: 0 0 0.5rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; }
-.v-1b-detail h4 .n { color: var(--purple); }
-.v-1b-detail h4 .where { font-weight: 400; font-size: 11.5px; color: var(--mute); }
-.v-1b-detail p + p, .v-1b-detail p + div, .v-1b-detail div + p { margin-top: 0.55rem; }
-
-.v-1b-bytes { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 0.6rem 1rem; align-items: start; margin-top: 0.6rem; }
-@media (max-width: 1100px) { .v-1b-bytes { grid-template-columns: minmax(0, 1fr); } }
-.v-1b-hex { display: grid; grid-template-columns: repeat(16, 1.9em); gap: 2px; font-size: 11px; line-height: 1.7; }
-@media (max-width: 440px) { .v-1b-hex { grid-template-columns: repeat(16, minmax(0, 1fr)); font-size: 9.5px; } }
-.v-1b-b { text-align: center; color: var(--mute); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
-.v-1b-b.f1 { background: var(--tint); }
-.v-1b-b.is-val { background: var(--brown-l); color: var(--ink); font-weight: 700; box-shadow: inset 0 0 0 1px var(--brown); }
-.v-1b-b.is-hot { box-shadow: inset 0 0 0 2px var(--purple); }
-.v-1b-flds { display: flex; flex-wrap: wrap; gap: 0.25rem; align-content: start; }
-.v-1b-fld { font: inherit; font-size: 11px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 0.2rem 0.4rem; cursor: pointer; text-align: left; }
-.v-1b-fld span { color: var(--mute); }
-.v-1b-fld em { font-style: normal; color: var(--brown); font-weight: 700; }
-.v-1b-fld.is-val { border-color: var(--brown); }
-.v-1b-fld.is-hot { border-color: var(--purple); background: var(--purple-l); }
-.v-1b-hint { font-size: 12px; color: var(--mute); min-height: 1.5em; margin-top: 0.4rem; }
-
-.v-1b-opts { margin: 0.6rem 0; }
-.v-1b-trees { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 0.7rem; }
-.v-1b-groove h6 { font-family: var(--font-mono); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 0.4rem; border-bottom: 1px solid var(--ink); padding-bottom: 0.15rem; margin-bottom: 0.2rem; }
-.v-1b-groove h6 span { color: var(--mute); font-weight: 400; text-transform: none; letter-spacing: 0; }
-:is(.viz--batch-path) .v-1b-groove ul { list-style: none; padding: 0; display: grid; }
-.v-1b-groove li { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 11px; padding: 0.12rem 0.3rem; border-bottom: 1px solid var(--rule); color: var(--mute); }
-.v-1b-groove li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.v-1b-groove li.is-hit { background: var(--purple-l); color: var(--ink); box-shadow: inset 3px 0 var(--purple); }
-.v-1b-groove li.is-hit b { color: var(--brown); }
-.v-1b-sum { margin-top: 0.7rem; padding-top: 0.45rem; border-top: 4px double var(--ink); }
-
-@media (prefers-reduced-motion: reduce) {
-  :is(.viz--one-batch, .viz--batch-path, .viz--group-commit) * { animation: none !important; transition: none !important; }
-}
-
-/* ---------- the three surfaces ---------- */
-.viz--one-batch {
-  background: var(--paper) repeating-linear-gradient(to bottom, transparent 0 25px, var(--rule) 25px 26px);
-  border-top: 1px solid var(--ink);
-  border-bottom: 4px double var(--ink);
-}
-.viz--batch-path {
-  --paper: oklch(99% 0.004 90);
-  border: 1px solid var(--ink);
-  outline: 1px solid var(--ink); outline-offset: -7px;
-  padding: 1.1rem 1.3rem 1.2rem;
-}
-html[data-force-dark] .viz--batch-path { --paper: oklch(20% 0.01 250); }
-.viz--batch-path .wv-head {
-  display: inline-flex; gap: 0; padding: 0; border: 1px solid var(--ink); margin-bottom: 1rem;
-}
-.viz--batch-path .wv-head > * { padding: 0.25rem 0.6rem; }
-.viz--batch-path .wv-head .wv-fig { border: 0; border-right: 1px solid var(--ink); }
-.viz--group-commit {
-  background-color: var(--paper);
-  background-image:
-    radial-gradient(circle at 7px 50%, var(--line) 2.6px, transparent 3.2px),
-    radial-gradient(circle at calc(100% - 7px) 50%, var(--line) 2.6px, transparent 3.2px),
-    linear-gradient(to right, var(--rule) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--rule) 1px, transparent 1px);
-  background-size: 100% 18px, 100% 18px, 18px 18px, 18px 18px;
-  background-repeat: repeat-y, repeat-y, repeat, repeat;
-  padding-left: 1.6rem; padding-right: 1.6rem;
-  border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink);
-}
-@media (max-width: 640px) { .viz--group-commit { padding-left: 1.1rem; padding-right: 1.1rem; } }
-.viz--group-commit .v-1b-strip { background: var(--paper); }
-
-/* ---------- predict, then see ---------- */
-.v-1b-lede { font-size: 13px; margin-bottom: 0.7rem; }
-.v-1b-ask { margin: 0.2rem 0 0.9rem; }
-.v-1b-q { font-size: 15px; font-weight: 800; line-height: 1.35; margin-bottom: 0.5rem; }
-.v-1b-choices { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.v-1b-hintx { opacity: 0.75; font-size: 11px; }
-.v-1b-answer { font-size: 13.5px; line-height: 1.5; margin: 0.7rem 0 0.2rem; padding-left: 0.7rem; border-left: 3px solid var(--green); }
-.v-1b-answer:empty { display: none; }
-.v-1b-tag { float: right; font-weight: 800; letter-spacing: 0; text-transform: none; }
-.v-1b-stamp {
-  display: inline-block; padding: 0 0.45em; color: var(--green); border: 2px solid var(--green);
-  border-radius: 3px; transform: rotate(-3deg); font-size: 12.5px; letter-spacing: 0.04em; background: var(--paper);
-}
-.v-1b-sheet .v-1b-dim { margin-top: 0.35rem; min-height: 1.4em; }
-.v-1b-more { margin-top: 0.7rem; font-size: 12px; }
-.v-1b-more summary { cursor: pointer; color: var(--blue); font-weight: 700; }
-.v-1b-more[open] summary { margin-bottom: 0.4rem; }
-.v-1b-more .v-1b-toggle { margin-top: 0.4rem; }
-:is(.viz--group-commit, .viz--batch-path) svg .v-1b-t-look { fill: var(--purple); }
-:is(.viz--batch-path) svg .v-1b-halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
-.v-1b-memo { font-size: 12.5px; margin: 0.2rem 0 0.4rem; }
-@media (max-width: 480px) {
-  :is(.viz--batch-path) .v-1b-journal { font-size: 11.5px; }
-  :is(.viz--batch-path) .v-1b-journal :is(th, td) { padding-left: 0.2rem; padding-right: 0.2rem; }
-}
-
-:is(.viz--one-batch, .viz--batch-path, .viz--group-commit) [hidden] { display: none !important; }
-.viz--one-batch .v-1b-sheets { max-width: 900px; }
-
-.v-1b-groove details { margin-top: 0.2rem; font-size: 11px; }
-.v-1b-groove summary { cursor: pointer; color: var(--blue); padding: 0.1rem 0.3rem; }
-.v-1b-groove li i { font-style: normal; font-size: 10px; color: var(--mute); text-align: right; }
-.v-1b-groove li.v-1b-none { color: var(--mute); font-style: italic; }
+.v-1b-hex { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 2px; max-width: 34em; margin: 0.6rem 0; }
+.v-1b-b { text-align: center; color: var(--mute); background: var(--board); outline: 1px solid var(--line); outline-offset: -1px; cursor: default; }
+.v-1b-b.is-odd { background: var(--tint); }
+.v-1b-b.is-val { background: var(--brown-l); color: var(--ink); font-weight: 700; outline-color: var(--brown); }
+.v-1b-b.is-hot { outline: 2px solid var(--purple); outline-offset: -2px; }
+.v-1b-hint { margin: 0.2rem 0 0; }
+.v-1b-sum { margin: 0.7rem 0 0; }
+.wv-insp .wv-cards { margin: 0.2rem 0 0; }
+.v-1b-trees td:first-child { overflow-wrap: anywhere; }
+.v-1b-trees { table-layout: auto; }
