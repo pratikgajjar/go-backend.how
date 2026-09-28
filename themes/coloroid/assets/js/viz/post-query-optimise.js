@@ -1,0 +1,711 @@
+/*
+ * post-query-optimise — figures for "Postgres - Optimising query".
+ *
+ * The post's one idea: count pages, not rows. Postgres reads 8 KB pages, so
+ * every figure draws the sample table as a page map, one square per page,
+ * to scale and at the page's real block number. Each figure is framed as the
+ * psql query it runs, and each asks the reader to do something:
+ *
+ *   pqo-pages    predict: with an index, how many pages does one lookup read?
+ *   pqo-lookup   walk the B-tree yourself: pick the child on each page.
+ *   pqo-planner  move x; see where matching rows live for a disk-ordered
+ *                and a random column, and what the planner picks for each.
+ *   pqo-budget   rewrite the query by clicking its SQL to meet four goals.
+ *
+ * Data: PostgreSQL 18.4, the sample table in the post (1,000,000 rows,
+ * 33,333 pages), default settings, parallel workers and JIT off. Blocks,
+ * keys and TIDs come from pageinspect; plans from EXPLAIN (ANALYZE,
+ * BUFFERS); times are medians of 5 runs with the table in memory.
+ */
+
+import { h, register, clamp, fmt, tween, onVisible, REDUCED } from './lib.js';
+
+const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ms = (v) => (v < 0.1 ? `${v.toFixed(3)} ms` : v < 10 ? `${v.toFixed(v < 1 ? 2 : 1)} ms` : `${fmt(v)} ms`);
+const mb = (b) => (b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : b >= 1e3 ? `${(b / 1e3).toFixed(1)} kB` : `${b} B`);
+const TABLE = 33333; // pages in users
+const PAGE = 8192;
+
+/* ------------------------------------------------------------ page maps */
+
+const REDRAW = new Set();
+new MutationObserver(() => REDRAW.forEach((f) => f())).observe(document.documentElement, { attributes: true, attributeFilter: ['data-force-dark', 'class'] });
+
+function tokens(fig) {
+  const cs = getComputedStyle(fig);
+  const t = (n) => cs.getPropertyValue(`--pq-${n}`).trim();
+  return { paper: t('paper'), ink: t('ink'), idle: t('idle'), data: t('data'), bad: t('bad'), look: t('look'), good: t('good') };
+}
+
+/** Device-pixel cell size so that `n` pages at width `w` are about `height` css px tall. */
+function cellFor(n, w, height) {
+  const dpr = window.devicePixelRatio || 1;
+  const c = clamp(Math.sqrt((w * height) / n), 1, 6);
+  return Math.max(1, Math.round(c * dpr));
+}
+
+/**
+ * One map: a canvas with one square per page, row-major by block number.
+ * paint(T, colorAt, marks): marks are [{ page, label }] drawn as purple dots
+ * with the label written next to the dot.
+ */
+function pageMap(n, name) {
+  const cv = h('canvas', { class: 'v-pqo-map', role: 'img', 'aria-label': `${name}: ${fmt(n)} pages` });
+  let geo = null;
+  return {
+    el: cv,
+    layout(w, cd) {
+      const dpr = window.devicePixelRatio || 1;
+      const cols = Math.max(1, Math.floor(Math.floor(w * dpr) / cd));
+      const rows = Math.ceil(n / cols);
+      cv.width = cols * cd; cv.height = rows * cd;
+      cv.style.width = `${(cols * cd) / dpr}px`; cv.style.height = `${(rows * cd) / dpr}px`;
+      geo = { cols, rows, cd, dpr };
+    },
+    paint(T, colorAt, marks = []) {
+      if (!geo) return;
+      const { cols, cd, dpr } = geo;
+      const g = cv.getContext('2d');
+      g.clearRect(0, 0, cv.width, cv.height);
+      for (let p = 0; p < n;) { // run-length fill along each row
+        const col = colorAt(p);
+        const row = Math.floor(p / cols);
+        const end = Math.min(n, (row + 1) * cols);
+        let q = p + 1;
+        while (q < end && colorAt(q) === col) q++;
+        g.fillStyle = col;
+        g.fillRect((p % cols) * cd, row * cd, (q - p) * cd, cd);
+        p = q;
+      }
+      const font = `700 ${11 * dpr}px ${getComputedStyle(cv).fontFamily}`;
+      const placed = []; // label boxes, so labels do not overlap
+      for (const m of marks) {
+        const r = 6 * dpr; // keep the whole dot inside the map
+        const x = clamp(((m.page % cols) + 0.5) * cd, r + dpr, cv.width - r - dpr);
+        const y = clamp((Math.floor(m.page / cols) + 0.5) * cd, r + dpr, cv.height - r - dpr);
+        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
+        g.fillStyle = T.look; g.fill();
+        g.lineWidth = 2 * dpr; g.strokeStyle = T.paper; g.stroke();
+        if (!m.label) continue;
+        g.font = font; g.textBaseline = 'middle';
+        const w = g.measureText(m.label).width; const lh = 13 * dpr; const gap = 10 * dpr;
+        const fits = (side, cy) => {
+          const x0 = side > 0 ? x + gap : x - gap - w;
+          if (x0 < 0 || x0 + w > cv.width || cy < 6 * dpr || cy > cv.height - 6 * dpr) return null;
+          return placed.some((q) => x0 < q[0] + q[2] && x0 + w > q[0] && Math.abs(cy - q[1]) < lh) ? null : [side, x0, cy];
+        };
+        let pick = null;
+        for (const [side, dy] of [[1, 0], [-1, 0], [1, lh], [-1, lh], [1, -lh], [-1, -lh]]) { pick = fits(side, y + dy); if (pick) break; }
+        if (!pick) pick = [x + gap + w < cv.width ? 1 : -1, 0, clamp(y, 8 * dpr, cv.height - 8 * dpr)];
+        const [side, , ty] = pick;
+        g.textAlign = side > 0 ? 'left' : 'right';
+        const tx = side > 0 ? x + gap : x - gap;
+        placed.push([side > 0 ? tx : tx - w, ty, w]);
+        g.lineWidth = 4 * dpr; g.strokeStyle = T.paper; g.lineJoin = 'round';
+        g.strokeText(m.label, tx, ty);
+        g.fillStyle = T.ink; g.fillText(m.label, tx, ty);
+      }
+    },
+  };
+}
+
+/* ------------------------------------------------------------ frame bits */
+
+function prompt(...kids) {
+  return h('div', { class: 'v-pqo-prompt' }, h('span', { class: 'v-pqo-ps1', 'aria-hidden': 'true' }, 'users=#'), h('span', null, ...kids));
+}
+function key(items) {
+  return h('div', { class: 'v-pqo-key' }, ...items.map(([k, label]) => h('span', null, h('i', { class: `v-pqo-sw-${k}` }), label)));
+}
+function resized(el, fn) {
+  let last = 0;
+  new ResizeObserver(() => { const w = el.clientWidth; if (w && w !== last) { last = w; fn(); } }).observe(el);
+}
+function pressGroup(btns, on) { btns.forEach((b) => b.setAttribute('aria-pressed', String(b === on))); }
+
+/* ================================================================ PAGES */
+
+/* The lookup for 'user777777@example.com' (pageinspect). */
+const HOPS = [
+  { map: 'idx', page: 164, label: '1 root' },
+  { map: 'idx', page: 3662, label: '2 branch' },
+  { map: 'idx', page: 3735, label: '3 leaf' },
+  { map: 'tbl', page: 25924, label: '4 row' },
+];
+const GUESSES = [
+  [1, '1 page', 'One more than that. The table page comes last; first Postgres reads the index to learn which table page to open.'],
+  [4, '4 pages', 'Right. One page per level of the tree, then the one table page with the row.'],
+  [25, 'about 25', 'Fewer. The tree has three levels here, and Postgres reads one page per level.'],
+  [4961, 'all 4,961 index pages', 'Far fewer. The index is sorted, so Postgres reads one page per level, not the whole index.'],
+];
+
+function initPages(fig, app) {
+  const seqMap = pageMap(TABLE, 'users, read by a sequential scan');
+  const idxMap = pageMap(4961, 'users_email_idx');
+  const tblMap = pageMap(TABLE, 'users, read by an index scan');
+  const S = { sweep: REDUCED ? 1 : 0, hops: 0, guess: null };
+  const seqHead = h('div', { class: 'v-pqo-colh' });
+  const idxHead = h('div', { class: 'v-pqo-colh' });
+  const ask = h('div', { class: 'v-pqo-ask' });
+  const colA = h('div', { class: 'v-pqo-col' }, seqHead,
+    h('div', { class: 'v-pqo-maph' }, h('b', null, 'users'), h('span', null, 'table · 33,333 pages')), seqMap.el);
+  const colB = h('div', { class: 'v-pqo-col' }, idxHead, ask,
+    h('div', { class: 'v-pqo-maph' }, h('b', null, 'users_email_idx'), h('span', null, 'B-tree · 4,961 pages')), idxMap.el,
+    h('div', { class: 'v-pqo-maph' }, h('b', null, 'users'), h('span', null, 'table · 33,333 pages')), tblMap.el);
+
+  app.append(
+    prompt('SELECT * FROM users WHERE email = ', h('span', { class: 'v-pqo-lit' }, "'user777777@example.com'"), ';'),
+    h('div', { class: 'v-pqo-body' }, h('div', { class: 'v-pqo-two' }, colA, colB),
+      key([['idle', 'page not read'], ['bad', 'page read, no match'], ['look', 'page read by the index lookup']])));
+
+  function heads() {
+    const n = Math.round(S.sweep * TABLE);
+    seqHead.innerHTML = `<span class="v-pqo-plan">Without an index</span><span><b class="v-pqo-big c-bad">${fmt(n)}</b> pages read · Seq Scan${S.sweep >= 1 ? ' · 63.7 ms' : ''}</span>`;
+    idxHead.innerHTML = `<span class="v-pqo-plan">With an index on email</span><span>${S.guess == null ? '<b class="v-pqo-big">?</b> pages read' : `<b class="v-pqo-big c-look">${S.hops}</b> pages read · Index Scan${S.hops === 4 ? ' · 0.018 ms' : ''}`}</span>`;
+  }
+  function paint() {
+    const T = tokens(fig);
+    const upTo = Math.round(S.sweep * TABLE);
+    seqMap.paint(T, (p) => (p < upTo ? T.bad : T.idle), S.sweep >= 1 ? [{ page: 25924, label: 'the row' }] : []);
+    const shown = HOPS.slice(0, S.hops);
+    idxMap.paint(T, () => T.idle, shown.filter((x) => x.map === 'idx'));
+    tblMap.paint(T, () => T.idle, shown.filter((x) => x.map === 'tbl'));
+    heads();
+  }
+  function renderAsk() {
+    if (S.guess == null) {
+      ask.className = 'v-pqo-ask';
+      ask.innerHTML = '<p><b>Guess first.</b> With a B-tree index on <code>email</code>, how many pages does this lookup read?</p>';
+      const row = h('div', { class: 'v-pqo-chips' });
+      GUESSES.forEach(([v, label]) => {
+        const b = h('button', { class: 'v-pqo-btn', type: 'button' }, label);
+        b.addEventListener('click', () => answer(v));
+        row.append(b);
+      });
+      ask.append(row);
+    } else {
+      const g = GUESSES.find((x) => x[0] === S.guess);
+      ask.className = `v-pqo-ask ${S.guess === 4 ? 'is-good' : 'is-miss'}`;
+      ask.innerHTML = `<p>You said <b>${g[1]}</b>. ${g[2]} Seq Scan read ${fmt(TABLE)}.</p>`;
+      const again = h('button', { class: 'v-pqo-btn', type: 'button' }, 'ask again');
+      again.addEventListener('click', () => { S.guess = null; S.hops = 0; renderAsk(); paint(); });
+      ask.append(again);
+    }
+  }
+  let stopHops = () => {};
+  function answer(v) {
+    S.guess = v; S.hops = REDUCED ? 4 : 0; renderAsk(); paint();
+    if (REDUCED) return;
+    let k = 0;
+    const t = setInterval(() => { S.hops = ++k; paint(); if (k >= 4) clearInterval(t); }, 420);
+    stopHops(); stopHops = () => clearInterval(t);
+  }
+  function layout() {
+    const w = colA.clientWidth || app.clientWidth;
+    const cd = cellFor(TABLE, w, 190);
+    seqMap.layout(w, cd); idxMap.layout(w, cd); tblMap.layout(w, cd);
+    paint();
+  }
+  resized(app, layout);
+  REDRAW.add(paint);
+  renderAsk();
+  layout();
+  if (!REDUCED) {
+    let ran = false;
+    onVisible(fig, (v) => { if (v && !ran) { ran = true; tween(1600, (t) => { S.sweep = t; paint(); }); } });
+  }
+}
+
+/* =============================================================== LOOKUP */
+
+/*
+ * users_email_idx descents for five keys (pageinspect). Per page:
+ * [block, entries on page, four entries shown [item, key, child block or
+ * TID], item to follow, more entries before, more after]. A null key is
+ * the page's first downlink ("minus infinity"). Keys omit "@example.com".
+ */
+const TREE = {
+  'user777777': { found: true, row: [777777, '51d87a4e5ecf…', '2024-09-27 01:28:30+00', 30], levels: [
+    [164, 32, [[22, 'user7061', 3344], [23, 'user735067', 3503], [24, 'user763934', 3662], [25, 'user792800', 3821]], 24, true, true],
+    [3662, 158, [[77, 'user777637', 3735], [78, 'user77781', 3736], [79, 'user778001', 3737], [80, 'user778185', 3738]], 77, true, true],
+    [3735, 203, [[156, 'user777776', '(25924,24)'], [157, 'user777777', '(25924,25)'], [158, 'user777778', '(25924,26)'], [159, 'user777779', '(25924,27)']], 157, true, true],
+  ] },
+  'user1': { found: true, row: [1, '13383e2323c6…', '2024-01-01 00:00:30+00', 31], levels: [
+    [164, 32, [[3, 'user157735', 323], [4, 'user186601', 482], [5, 'user215468', 641], [6, 'user244334', 800]], 4, true, true],
+    [482, 158, [[72, 'user199391', 550], [73, 'user199574', 551], [74, 'user199757', 552], [75, 'user19993', 553]], 75, true, true],
+    [553, 203, [[70, 'user199', '(6,13)'], [71, 'user19', '(0,19)'], [72, 'user1', '(0,1)'], [73, 'user200000', '(6665,18)']], 72, true, true],
+  ] },
+  'user500000': { found: true, row: [500000, '385681b84edb…', '2024-06-22 14:40:00+00', 30], levels: [
+    [164, 32, [[12, 'user417534', 1754], [13, 'user446400', 1913], [14, 'user475268', 2072], [15, 'user504133', 2231]], 14, true, true],
+    [2072, 158, [[135, 'user499568', 2203], [136, 'user499750', 2204], [137, 'user499933', 2205], [138, 'user500113', 2206]], 137, true, true],
+    [2205, 203, [[77, 'user499', '(16,3)'], [78, 'user49', '(1,18)'], [79, 'user4', '(0,4)'], [80, 'user500000', '(16665,18)']], 80, true, true],
+  ] },
+  'user999999': { found: true, row: [999999, 'ddcf1e8ffda1…', '2024-12-13 05:19:30+00', 8], levels: [
+    [164, 32, [[29, 'user908267', 4457], [30, 'user937133', 4616], [31, 'user965', 4775], [32, 'user994868', 4934]], 32, true, false],
+    [4934, 29, [[26, 'user999435', 4957], [27, 'user999618', 4958], [28, 'user999800', 4959], [29, 'user999984', 4960]], 29, true, false],
+    [4960, 22, [[15, 'user999997', '(33332,5)'], [16, 'user999998', '(33332,6)'], [17, 'user999999', '(33332,7)'], [18, 'user99999', '(3332,7)']], 17, true, true],
+  ] },
+  'user1000001': { found: false, levels: [
+    [164, 32, [[1, null, 3], [2, 'user128869', 163], [3, 'user157735', 323], [4, 'user186601', 482]], 1, false, true],
+    [3, 158, [[2, null, 1], [3, 'user100183', 2], [4, 'user100366', 4], [5, 'user100549', 5]], 2, false, true],
+    [1, 203, [[3, 'user100000', '(3332,8)'], [4, 'user100001', '(3332,9)'], [5, 'user100002', '(3332,10)'], [6, 'user100003', '(3332,11)']], 3, true, true],
+  ] },
+};
+const NAMES = ['root', 'branch', 'leaf', 'table'];
+const full = (k) => `${k}@example.com`;
+/** Byte-wise compare, as the C collation does. Returns [sign, index of first difference]. */
+function cmp(a, b) {
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) if (a[i] !== b[i]) return [a[i] < b[i] ? -1 : 1, i];
+  return [Math.sign(a.length - b.length), n];
+}
+function why(entry, keyStr) {
+  const [sgn, i] = cmp(entry, keyStr);
+  if (sgn === 0) return `<code>'${esc(entry)}'</code> is your key.`;
+  return `<code>'${esc(entry)}'</code> ${sgn < 0 ? '&lt;' : '&gt;'} <code>'${esc(keyStr)}'</code>: they first differ at character ${i + 1}, <code>${esc(entry[i])}</code> against <code>${esc(keyStr[i])}</code>.`;
+}
+
+function initLookup(fig, app) {
+  const S = { key: 'user777777', lv: 0, msg: '', msgCls: '' };
+  const lit = h('span', { class: 'v-pqo-lit' });
+  const keyBtns = Object.keys(TREE).map((k) => {
+    const b = h('button', { class: 'v-pqo-btn', type: 'button' }, k === 'user1000001' ? `${k} (no such row)` : k);
+    b.addEventListener('click', () => { S.key = k; S.lv = 0; S.msg = ''; pressGroup(keyBtns, b); draw(); });
+    return b;
+  });
+  pressGroup(keyBtns, keyBtns[0]);
+  const slots = [0, 1, 2, 3].map(() => h('div', { class: 'v-pqo-slot' }));
+  const count = h('div', { class: 'v-pqo-count', 'aria-live': 'polite' });
+  const msg = h('p', { class: 'v-pqo-msg', 'aria-live': 'polite' });
+  const tools = h('div', { class: 'v-pqo-tools' });
+  app.append(
+    prompt('SELECT * FROM users WHERE email = ', lit, ';'),
+    h('div', { class: 'v-pqo-body' },
+      h('div', { class: 'v-pqo-ctlrow' }, h('span', { class: 'v-pqo-lab' }, 'search for'), h('div', { class: 'v-pqo-chips' }, ...keyBtns)),
+      h('div', { class: 'v-pqo-slots' }, ...slots),
+      msg, h('div', { class: 'v-pqo-foot' }, count, tools),
+      key([['opt', 'your choice'], ['look', 'the page you are on'], ['data', 'keys, blocks, rows'], ['bad', 'wrong turn or no match']])));
+
+  function choose(lv, item) {
+    const T = TREE[S.key];
+    const [, , win, pick] = T.levels[lv];
+    const ks = full(S.key);
+    const e = win.find((x) => x[0] === item);
+    if (item === pick && (lv < 2 || T.found)) {
+      S.lv = lv + 1;
+      S.msg = lv < 2 ? `Right: block ${e[2]}.` : `Found it: row ${e[2]}.`;
+      S.msgCls = 'is-good';
+    } else if (item === 'none') {
+      if (!T.found) { S.lv = 3; S.msg = 'Right. No entry equals the key, so there is no row and Postgres never reads the table.'; S.msgCls = 'is-good'; } else { S.msg = 'It is here. Look again.'; S.msgCls = 'is-miss'; }
+    } else if (lv < 2) {
+      if (e[1] === null || cmp(e[1], ks)[0] <= 0) {
+        S.msg = `${e[1] === null ? 'The first child holds everything below the next key.' : why(full(e[1]), ks)} But the next key, <code>'${esc(full(win[win.indexOf(e) + 1][1]))}'</code>, is also not greater than yours, so keep going right. Follow the <b>last</b> key that is not greater.`;
+      } else {
+        S.msg = `${why(full(e[1]), ks)} This child starts after your key, so your key is in the child before it.`;
+      }
+      S.msgCls = 'is-miss';
+    } else {
+      S.msg = `${why(full(e[1]), ks)} Not your key.`;
+      S.msgCls = 'is-miss';
+    }
+    draw();
+  }
+
+  function draw() {
+    const T = TREE[S.key];
+    const ks = full(S.key);
+    lit.textContent = `'${ks}'`;
+    slots.forEach((el, lv) => {
+      const state = lv < S.lv ? 'done' : lv === S.lv ? 'now' : 'later';
+      el.className = `v-pqo-slot is-${state}`;
+      if (lv === 3) {
+        const [, , win, pick] = T.levels[2];
+        const tid = win.find((x) => x[0] === pick)[2];
+        const blk = T.found ? tid.slice(1).split(',')[0] : '';
+        el.innerHTML = `<div class="v-pqo-sh"><b>table</b><span>${T.found ? `block ${blk}` : ''}</span></div>${
+          state === 'later' ? '<p class="v-pqo-wait">not read yet</p>'
+            : T.found ? `<div class="v-pqo-pos"><i style="left:${((+blk + 0.5) / TABLE * 100).toFixed(2)}%"></i></div>
+              <ul class="v-pqo-row"><li><span>row</span><b>${tid}</b></li><li><span>id</span><b>${T.row[0]}</b></li><li><span>name</span><b>'${T.row[1]}'</b></li><li><span>created_at</span><b>${T.row[2]}</b></li></ul>
+              <p class="v-pqo-sm">${T.row[3]} rows on this page</p>`
+              : '<p class="v-pqo-none">not read: no row to fetch</p>'}`;
+        el.classList.toggle('is-bad', state !== 'later' && !T.found);
+        return;
+      }
+      const [blk, n, win, pick, before, after] = T.levels[lv];
+      let body;
+      if (state === 'later') body = '<p class="v-pqo-wait">not read yet</p>';
+      else {
+        const q = lv < 2 ? `Which child can hold your key?` : 'Which entry is your key?';
+        const rows = win.map(([item, k, to]) => {
+          const label = k === null ? '−∞ (lowest)' : `'${esc(k)}@…'`;
+          const chosen = state === 'done' && item === pick;
+          const inner = `<span class="it">${item}</span><span class="k">${label}</span><span class="to">→ ${lv < 2 ? `block ${to}` : to}</span>`;
+          const cls = chosen ? (lv === 2 && !T.found ? 'is-miss' : 'is-chosen') : 'is-dim';
+          return state === 'now' ? `<li><button type="button" class="v-pqo-ent" data-item="${item}">${inner}</button></li>` : `<li class="${cls}">${inner}</li>`;
+        }).join('');
+        body = `<div class="v-pqo-pos" title="block ${blk} of 4,961"><i style="left:${((blk + 0.5) / 4961 * 100).toFixed(2)}%"></i></div>
+          ${state === 'now' ? `<p class="v-pqo-q">${q}</p>` : ''}
+          <ul class="v-pqo-ents">${before ? '<li class="gap">⋮</li>' : ''}${rows}${after ? '<li class="gap">⋮</li>' : ''}</ul>
+          ${state === 'now' && lv === 2 ? '<button type="button" class="v-pqo-btn v-pqo-none-btn" data-item="none">none of these</button>' : ''}
+          <p class="v-pqo-sm">${n} ${lv < 2 ? 'children' : 'entries'} on this page</p>`;
+      }
+      el.innerHTML = `<div class="v-pqo-sh"><b>${NAMES[lv]}</b><span>block ${blk}</span></div>${body}`;
+      el.querySelectorAll('[data-item]').forEach((b) => b.addEventListener('click', () => choose(lv, b.dataset.item === 'none' ? 'none' : +b.dataset.item)));
+    });
+    const read = Math.min(S.lv + 1, T.found ? 4 : 3);
+    const doneAll = S.lv >= 3;
+    count.innerHTML = `pages read: <b class="${doneAll ? 'c-look' : ''}">${read}</b>${doneAll ? ` · <code>Buffers: shared hit=${T.found ? '3 read=1' : '3'}</code>` : ''}`;
+    msg.innerHTML = S.msg || (S.lv === 0 ? 'Each key on a root or branch page is the lowest key in its child. Follow the last key that is not greater than yours. Keys compare as text, one character at a time.' : '');
+    msg.className = `v-pqo-msg ${S.msgCls}`;
+    tools.innerHTML = '';
+    if (!doneAll) {
+      const b = h('button', { class: 'v-pqo-link', type: 'button' }, 'show me');
+      b.addEventListener('click', () => {
+        const [, , , pick] = T.levels[S.lv];
+        choose(S.lv, S.lv === 2 && !T.found ? 'none' : pick);
+      });
+      tools.append(b);
+    } else {
+      const b = h('button', { class: 'v-pqo-link', type: 'button' }, 'start over');
+      b.addEventListener('click', () => { S.lv = 0; S.msg = ''; draw(); });
+      tools.append(b);
+    }
+    const now = slots[Math.min(S.lv, 3)].querySelector('button');
+    if (now && document.activeElement && fig.contains(document.activeElement)) now.focus({ preventScroll: true });
+  }
+  draw();
+}
+
+/* ============================================================== PLANNER */
+
+/*
+ * SELECT * FROM users WHERE <col> < x, for 16 values of x.
+ * [x, estimated rows, actual rows,
+ *  cost with random_page_cost 4   [seq, bitmap, index],
+ *  cost with random_page_cost 1.1 [seq, bitmap, index],
+ *  measured ms [seq, bitmap, index], buffers [seq, bitmap, index]]
+ * Each plan was forced with enable_* = off to get its cost and time.
+ */
+const PICK = {
+  score: [
+    [10, 10, 11, [45833, 44, 45], [45833, 13, 13], [69.7, 0.06, 0.05], [33333, 14, 14]],
+    [30, 30, 20, [45833, 122, 125], [45833, 35, 35], [59.6, 0.06, 0.05], [33333, 23, 23]],
+    [100, 99, 81, [45833, 386, 402], [45833, 112, 112], [63.63, 0.13, 0.13], [33333, 84, 84]],
+    [300, 298, 267, [45833, 1114, 1197], [45833, 331, 333], [67.44, 0.45, 0.34], [33333, 269, 270]],
+    [1000, 994, 998, [45833, 3448, 3949], [45833, 1085, 1099], [61.36, 1.32, 0.96], [33333, 982, 1003]],
+    [3000, 2982, 3011, [45833, 9006, 11503], [45833, 3127, 3201], [68.68, 3.35, 3.19], [33333, 2875, 3020]],
+    [10000, 9939, 10103, [45833, 21678, 34865], [45833, 9302, 9714], [70.8, 12.43, 8.52], [33333, 8766, 10129]],
+    [20000, 19801, 20054, [45833, 30665, 61597], [45833, 16215, 17191], [85.39, 15.52, 12.87], [33333, 15190, 20103]],
+    [50000, 50641, 49890, [45833, 36407, 116476], [45833, 30144, 32674], [114.8, 36.54, 73.43], [33333, 26337, 50010]],
+    [100000, 99942, 99956, [45833, 36321, 136025], [45833, 35622, 38675], [102.88, 42.31, 147.28], [33333, 32169, 100195]],
+    [200000, 199583, 199730, [45833, 39299, 138729], [45833, 37904, 40684], [102.15, 48.12, 280.51], [33333, 33768, 200207]],
+    [300000, 298242, 299389, [45833, 42249, 141408], [45833, 40164, 42673], [114.73, 61.35, 409.46], [33333, 34054, 300106]],
+    [500000, 496615, 499160, [45833, 48174, 146788], [45833, 44705, 46670], [122.85, 77.34, 710.13], [33333, 34532, 500350]],
+    [700000, 697080, 698873, [45833, 54165, 152230], [45833, 49296, 50710], [128.51, 92.52, 973.62], [33333, 35011, 700534]],
+    [900000, 898028, 899622, [45833, 60170, 157683], [45833, 53898, 54760], [147.55, 140.37, 1371.18], [33333, 35492, 901758]],
+    [1000000, 1000022, 1000000, [45833, 63216, 160449], [45833, 56233, 56815], [145.54, 125.03, 1514.92], [33333, 35732, 1002374]],
+  ],
+  seq: [
+    [10, 10, 10, [45833, 44, 9], [45833, 13, 3], [99.62, 0.03, 0.03], [33333, 4, 4]],
+    [30, 31, 30, [45833, 126, 10], [45833, 36, 4], [105.28, 0.04, 0.04], [33333, 4, 4]],
+    [100, 103, 100, [45833, 401, 13], [45833, 116, 7], [113.2, 0.06, 0.05], [33333, 7, 7]],
+    [300, 310, 300, [45833, 1157, 24], [45833, 345, 18], [110.74, 0.07, 0.07], [33333, 13, 13]],
+    [1000, 1032, 1000, [45833, 3568, 68], [45833, 1126, 57], [100.38, 0.19, 0.16], [33333, 38, 38]],
+    [3000, 3095, 3000, [45833, 9288, 198], [45833, 3239, 169], [92.71, 0.37, 0.33], [33333, 110, 110]],
+    [10000, 10304, 10000, [45833, 22170, 644], [45833, 9597, 557], [92.44, 1.33, 1.09], [33333, 363, 363]],
+    [20000, 20190, 20000, [45833, 30922, 1254], [45833, 16461, 1088], [90.11, 2.46, 2.21], [33333, 723, 723]],
+    [50000, 49504, 50000, [45833, 36502, 3065], [45833, 29780, 2667], [94.81, 6.42, 6.81], [33333, 1805, 1805]],
+    [100000, 100702, 100000, [45833, 36481, 6231], [45833, 35677, 5425], [106.82, 12.03, 13.32], [33333, 3609, 3609]],
+    [200000, 197428, 200000, [45833, 39499, 12207], [45833, 37928, 10633], [97.01, 24.07, 24.47], [33333, 7215, 7215]],
+    [300000, 297148, 300000, [45833, 42615, 18373], [45833, 40248, 16003], [93.06, 34.54, 36.7], [33333, 10821, 10821]],
+    [500000, 501324, 500000, [45833, 48993, 30996], [45833, 45000, 26999], [93.63, 57.24, 70.67], [33333, 18035, 18035]],
+    [700000, 698304, 700000, [45833, 55142, 43169], [45833, 49583, 37607], [103.32, 74.93, 96.99], [33333, 25248, 25248]],
+    [900000, 901416, 900000, [45833, 61487, 55725], [45833, 54310, 48545], [103.7, 94.56, 131.04], [33333, 32461, 32461]],
+    [1000000, 1000022, 1000000, [45833, 64564, 61817], [45833, 56603, 53853], [108.28, 105.79, 141.48], [33333, 36068, 36068]],
+  ],
+};
+/*
+ * Which table pages hold a matching row. For score, one character per
+ * block: the index of the first x in PICK.score for which the block holds a
+ * row with score < x ('0'…'f'; 'g' = never). For seq, matching rows are a
+ * prefix of the table: SEQ_PAGES[i] blocks for the i-th x.
+ */
+const SCORE_MIN = '8878866987997696889857687884687888878669888966867769666786779696799588998996867797686998677885876979888656a986a68869a98866888687898865988478899685886584666789886898997978a89889768a887887b8866868888899769888977a95879697959658895896756888778a8aa8876748487879768585696895a8695889779899677957786888769986587886667979796766979878a678868587886666a798769898a89868868955966585888899988966987888598688386747598868798968968888696878688866a779678886787968684778676766488487789486868887798356887868788974966876988579988977885985569788a887988858a858355856787676977a6a7877789888586a7668896986569a868588a998666879777a79978179669986a698877977a6886629998688b799aa648766968687698684868897757788779989883878877688889887989677668898897a8858678789a66a99884696789a655a8658776989679a8789698997668877a99798856989679788578969988689598886989888687957976989678968a5988a8888996888966689789878689767538788797985789878879668638687968489587a786646868578765586895869a878987888a998998568987768779884787a9888597676978878597956947889666776986998996886867785a8a787668787888966798798686777867789568895878a868957858998896679897888878668a689a78767867384876388696698778799776974677976887aa84798469765778988a9898498688876668989546866889556878795689788996a9972a88666558878696867868586589789868677967a8897988877587859998985988587888868889a79888a468086999587867585773689a657a85488a898b96a886706888888a87986686778778777786589888757898a6a77668899778547887598979848989686686aa79685875856797996a9a88898a6667769677539767578898865688997679886756476999667977688786864aa8a856778989876888775776869797878969787585898897854768774676a98976766877a8666565987898875789888689776578877776688856678667899685489a6768a688658979698897a969766786768898799666778986758889896866969769756a9877898598876868787888686678988689886667988666a8666789965976699a6675876868666a44866877887786959968988777968879849877686778686a79746958784958a7986565785879986897858876668888886677986969577657787888787677677778665886869998998979879a4887978988786679788899a88998577998966677669846879a7887685a8888785869578865887868868a776989979977838677976876887986687479694559748956766878998768757a67995597958997897799879a869888864775768865887878996996a689677856686869868677866697977877a79a67688668a898368a5889b68876797659868888897848789777698a6967898a78869879688699469985665a77685778997a77868787889696966a56988776598987768a787b68a899999999886999a996897a9678998687766597889779368888899898868679b9668896a8886878668877893897888689886987699886836988a5a986797748788687788767369786798789967687689a8789859a68868858678a88966789986498879787887698787996a8758688988845686778887776868a86679888668778868578978768987868656996988765679987898578988996665888598a45778358786a88898758888997799547787887886888898769a887688698798798779a89969889979887698569659988379889478684a6a7a87689767888786657886878a6968867786877886859878956697779679635587789788867476a626695768688859986799a79987898a6986898682895986787a54997996686a8886868767888668648976a769448695886a688a77866788a86978568867898889857887889897698779a889758878797787686a89669693a797889789968845978487888688898887a68988898798889869886777786a696766767983985895658868885668897798967998587769996986384659888688979696759a97687889669887885848785898898896699825966869898766a79669886a98789888865898988865868978765977598787867889798788887a7876689a76764886a76898652596948969867878679348495578885487998885887787768897887a788986a688548768898787797898879488988977a8a787999997776897b8898a7976779698857896786587764966898aa5787786777785688669584886786888887a75a9a898a77787788875486989768859487a688766888946868789788988787868a986895878978888979685294897988aa9856878577976698673886a884876786765597878974596685986878877797969878688988798478987498768a88686766686496798989879886649678a8768a58969889679579549687677889667898a989979a6588878579a9677988687768766866958976968787796968696877688a777867795848a9598883977855995a86678867468958778977784876789959878969986886598795789969968869765496788686886974777588788a8498bb888788698797897856998889889995666668686798685868788878576688868a6855a7a7978658485778997685888858867a7988687a68887a7878976888895848585a8485888678889876986979978585476896848878666a78978a69a8a658798698768786876977888667a884786879a599688976887875766378678697599886a9788957686786988887785898657888898659889758896766787758788688897696787859864a888996987648866659656689678888798589886999a667889988976a886868896998988589888789768755868858888a757779889666985567994959896989897499858848876985796a988896478898847957978888888577666788985664878666a758784698887969787567a8798797879798897869896877788935776699686868698866597a679857889797886898686888a7974558898998799878888589758688687678a8966869889588864898567669759787879988888776688885766566798897878696a777779888a58686999688789889a6968766899699766798886779557979977886975989977647966668578676a89865978887887786a5876488787887987797697986688a887a79a67a668889666a6a8867789677a696769877665685878986788888986a7966968a88a999987979788a588679677a6688879876886768888977888a878866996767798869966778796796686776879687866676789aa89868a9668778986858a79936688786867977669876999a9479786788898787969887a87788794897978798592769888977757688a89859869589a899879997778496888966688986568867569a955869888888779988478968775778aa68769789869a668a74878577668a38a887758985596798a6599846569a86468999778998998898999898888a5898777588766887a65666a8879986577a6a989969a5858798a888677856568a7788677568969765689997668786689898798685986988784886889788689788987a78679797638968986869789a6689746869987669579569587689896648879856878756997966988785988695668888886888798665977898a88959568697789678598998977a9687465669687687879868a78886886975798669286598a879678966768868689787578988676978788877778777679869938996879879798678986799987685769586a689887a9678678868688896778795668968896986866789867858868669887446969a6779988a88a7639987889786889768896688888986797867647a97878666898859867386898677687647a975697779996888796488798a99598979a87895686877868967677679888768889568699587878785757877688698b987668877758988869777886888a97a888958687778887a8965478469599898867a889687778998566868957679898688889689898988865a8788884687787867667a7a7789b748988999898796699888469567868a7889876487a868488997a758697868888677777696966869466888957978768796a89a86a898748a8488a6886589864798966988889778777897869696788688897a8a77998487686886a8688598588886779868a87889853897896897997979767787657979689578987868789a88775778836888766a87a889796688866768a99697578957767667887976867668888a677a8598688597a8a89993887777387aa9778785978869788488778797998775687789848888867689888797847777866878988886556987988877988898676858768847777a89858868688699698776876864887699668a4887849a7666886897888a68688668679978789886a7998a9968688797786788779a75956859598866875786a8a88775889688786a788679867879598686a9679868868678997787989887668788965557769894a9888876687796886757586988a99767786a688989797a87577688487865886688868886b9698a98988868768787aa8776886776997786787946498998889969874669895889678898983609a7a7468897688a699988768884986886588888867785748566878a98898986987876697557979884b6684899749868968a98a8a8788778747687676978877887787756788689926878678839684677756957878567588677a889888959a8798788795948a878787939877689858976879a9789a866855827677a87786779987969877654678a88889a889877848868846697a77597758886a77867898978689687889867888696584967886988895878a69876878969888767899588a9896696785767b887788689767977967887989837986978878a898668899687a8969888699869998768879857863788586789889469678939985877786b8767a87a86687689988578885989a7688776a8a67668998668686978886884688979866987769999789887a47998887947867684968996847768568656a9677887898886969856858967787678888698778a987888887788879659978777886b599779968779668678856865876479879786576359689868778a8586aa9878697748769a9a57679696786668555759878989968678766889978788898684a597867a7686398686788aa6697896786a998966877596785685768968886769a8864a98687a5976aa9898687986799499688875a94788788788866986757679899997a987658954967858775858956879a8897568877a6786878988869789577979876888697768785978898566885896876967a78898977a96978888677486754876786778864a88787677a99896987886885886386a98978788368476a679747966667987687666889689688985767866698588887698596977779586886899587556a9585958a893999787699489668888989278676978787886887677a975886a76877898999686859998798799866846866648789a8688877788985a49877868877866a88779863788a69a9887976667487788969678a89699868698878896a8899886766685956678766789685577786877477886889788867886687799887898787888268757569766988687824876676898888876997789a78886788995989878a68967885799849879779986987388a7969779798788b8687985888668787978656a677899789876588a8778888879779778968a4686798856487886566788686846897887955877985869768888868589988687786a667999a4768777687775696888678898968a587797675989796876777686a6a87866667898975797686898a679978877898748797679677987766667788889689778887959889789887589a778655577528956999698889459a6576a786755698796a997896a76788a58867879968777888585798886979876788587684768795664586767a78686599949878866989916676465875798869a78878687487589896698888898777897768878686978888669767569869887887867457579574897a84658798757857687997886796668682667897878869869586888766a65768858768568946a8899977896878678978987777789763984689978877a8899799889987776886a8788366a8674a6a788688776998899787886668467989798997976668856478678677a6848967879987898786769869793766898759887698578756887758699998997959a68886a77986898667878698667888688887777789a677988977387688688688897897866786868787a8998756876a889888688588699789688788888988679756677677798779998768686668985779a768297687878979886985a8968998897597989788888678776766868a998668a98898887787856869998858988688979a8887788968798686898868687699669676967888885a99876477689876989a77856a7755768889994789577488786885878a7987767a86687686967888968798a8878689969876799499688794747879867778868967795898799976888a779688868888978887866767a868778997894689689a6888776888568788a8787987797868888a857788698887968869868976679888a469a77798857875765986887678788968678738679658747659669666697689679889895a7899896798678886869786848958665888888756688945778776977888984588789887978897768a89878a68887856496968a8a678678888779559986667896974578789a879476778a5688978688988978889978657955658987784a8889777a787966679876868997986987687587567689989989778799689948a6978577787888979975778688b7887a888886765487748b767887667678898999977699476899679579898788a887958878a8696987869876688488659686a688a799788986697888896795599687779827969976587588775a7aa66868888669649678798784867769a98968789878a65688668795789a686868768797887798898898897787757789889765795a68878678a8525868988a968987969697559886a965688696a87798786757a9679968887886888897988878867867899886a488998876767858696897778a869788988a876276298768678858687895878798a888898888886897988a9694786666968888985698898a79858598878888788787667866a9a67798947468694588969a875789795954998897797698988a798778858936858896979478668688896787a67a58887968968876877966786a989778884599a89778696a985698688968aa969678898646a868a67569776889759978691886887668787897877b89847978a488877887886967678786778787696687895566876658799a7746879867887679847678986797875784798579989868994868678886899898869689a67a88789778887879686755786967589487a57867695789496765869848778856887766887863858777856a69785587857689aa8769756a7877786698778879586786677784999887a298768887a688674a598798882a878867996a6a595888685877676a26577878769598656758558987869999786878888868755869688a98889979798968868475698988868876789698678868786678696698857879888799759585999978a778788886778788458796988688668867897877838678976877657985666488588688964876a6778866896835879887787886776477887a8788796889a899688869a8688685977987a49897637587888978898648989969686688778877979a8a868676787986788867898888a6a68879975678698a897764969884967975867678776777a97764887699988a859798888a789876689479686897657769868888584676567887986999889888a8867789668996688669468478775864698768878898865899686848884687799896885649697798875487675665899797787959986687876778886886668a745878666987685867887878576787578676b6768896767586878898595968997a98886678668698a798886a897a798986988aa889967887988697767886878878668778877769968985879598a98968496997898428968989a68865566a7868836967586967757996969788866857679688955888973689878977885844956867789a8997869678a8889698779766868877679887866888877849898877687878798a98656996975886688877568864688689886668975797488778998788788898689987986799aa8a9637656785896529898657798998867869757698886866866794a887957878597868659678749957786779398a666889a676787877986569987988a75968686688a58858a886738748889795687798866888889988699878887864877767683756886995a9967876769997897465866889868985888567876788687794666889888598647869859978889889589586798888778999a98879798775875786a7978847557788978796836868668668887a8868688aa6886878786778688788a98888a86867677a6889789a8688689586a988776998887768a76878a689578878878979768978778996985789888756879688888789988888878a899989886979697a6a9a4786878868986996869098877689898697788688698689876769788a88877988975587988574995a6788867558767585685687858886985876977976788588896796786846798797867879988696568877686a8676867888889986969778867977988887869a7876a8866798979885777697888887896895887598589985966a798766998589766897677865788a67588757788988588657869989667988479877688a5889989a8788866998597786989896a6666a8888b5688888687788887778787778a787698a869898798769387866564587678888a8688998795788587876a6687a9885868a969586888a6697538877799797b87a784786888778669846579698889994888a8468886778688965686989848a89a6866848978887866877876685888898786868678a5789089777897a857566867799666a79993996966859a78689897989698568a74669869687966877799977877765766678966795888888a5787a699899966984878884788858996969794398789785966676756668897966779967879889767788789879857887657898887679569a9997977886a377789975676a8987487a96976786977876866559995779676a79a788a95669789696489667a86977677687587786876777858669986866888759579958997688897678789896789878687863868886886679886a76896898989868798885659868668858967786888898668669577989a96798736887a588778688868798957666978776988593843899965a5988876877988848a89988968868889978967778997898976889588688868a879767986687888589779679669987688587876886888866566898a76879846a67898868876797668956888989788699878789779ba886767688678688798996887857687986997988678887988888987867878988699685857679789977688988a86978a65876689887976967978894647767778767787887758986886793a7868898789968858876888677988799a986867a986799889659968646788997796975888a6685876786879976a78668698886848877998699899a97b975666899878986887667a989898885975a88778998886757866889a599785a78887996789777865999766669698996866788976977978579a76858878966976888a5886a75786887988388677997589868655889758a67588869a697978666888678885694896685a65869668889886658857579899588768767786968777768888667678886679686867858785976788799687779967a475877888868979799687988878888599878779698686888a748a7a9876645769997657748789a3998777788976888888859878a86688a78788687a9886699878895887868486876686867887698978488988983196669878887889886797455797968698567489a97888898877837677969998785a969886798565877575999796689886878666886897698358678868a857886889689773698688756775789975989877a88868868676687586698a78886a89883a8976866966849697888767868697898899a78969a867656888877886789766885889988987886768786689567867778988798878a89a87485876877668789777a779858a78668987885a98698a789759786967998888988858968997a95678968787858889877877a86987659a79568a78a6889989768786687687785956788976787886888a888878988868688a73876696689884889a5868969688986685784947899889976687899578887598877686889a78767987887895897897898868889855a986777589888978788886578988986798887987988685668787888677696a887987578a8968767587867656a878878878832766787a7885a86879888a8987856a4676599786998897984898a68896786779876599888699867977974a8a84837778854777979467599878999766668866a736786878887678689528759698978968868878658676977888765789a886778998887669888867969589798896a686994788768699848956886965788898497697767888998666a97869756884785779a87888596877767867378767657879a96788888878496788988867877667868899788776767989978577568878887785898987769688698989865879978888776797579787a59588987868a98886988998847886698688966a7a88776968687888886776656595779a956998686799685a7859858777975666696688868686899869768867676687584768886899687889947697988979767548978578875899a778996577656987896889736888777887688987876875897667778989699688688788689874987487958697698566788966683985857996976789875776986699868687868888669897688875587688699876787666769768965566655857785a66966996a7787976898788759986689996888a969989986a97679a5889986887786868777866556968796957866896878738855886688a585788888899887699779867786796769787978858947687888a658966968675888758798667978867699886766799688687987878778688686768988878889672849898895878869857788889778967988569886789688858a86a758789a968697868879798958878683a6488886489888888568997a577669a89888a889868879a96676668688886796977587776688a8569766686977675a972955968889798879886885766868668968777866886966686766898a98268888687669a685677875686886888886996989877899789875a8a669698583a6889686768887887786a896697787776868998a6889887889776787887788668a88677667888875685478486878a79969887489698988847585999687789598469699855699688889598986475876887867a8778669548967a7868a88699886586888a766587685547896788797588796577886a7696668768738586a7897888896778889968698578688768698569a7898a7657447786686998665577689897876966786878a879a988978886789685967658589699968987a777685596a871875a785686796aa889676665968697896779858784759999988878756778978678668a5889987587858986896399868965668969888798898797256877887789897786769788799788887788778878788868679668898799987869598848878a9889797896869678987669a868898868886685a7889997867885866a799a75666aa73786668989a7955885988468762a689857797668898878876996677768598788987a984689969985865698678898886979887765899688568587a99896988a778468389686887866966688a77686888969688758789979986898876766975a75869789898687277875778889975778677888866887a785a97797888888868889778558856799788686789868996a8668897686688888986979669787a8999669888877a87679848848648869868656666565688898a887876798877aa6a5898788886899988838686688659868967888889659587898876898798778888a98688896978999877746786a96489878978677588775985859978868a97a99849969858985678978586698687886698a78879766689986865698867798977a8888886978848897884858777875687857698599978a67766879687667589686688958a2a866966788887977a688888787978894898976a9797a58a79837988879868a4789566a77698a6677678877997689688769786995676887969698867a75778698387687786669796889868686797685a3798488a788a97547888767865757668876868677687957697668869698627987679989887699697866878796998975979688979685896967b88386889797877846886878889586898689748978586787988979899a5879889976667686a87986798578999399867986667a6957856859869888768a9889a8788888687888667569777989886a686889796768878788659457889667955765888456669698869758878866883367868889888577769968687998998578a6766877a97a878887858986988898689898778686687788875848588897878759886489986787878888688a779688a8a766679a58868798988679889684978646976a97747978887798677878867588887888778689887796778778878686899a9767876589698969767798579886677a569788678867976588696957a748868968688a5869888a67877899899887568879969788887799779583746768776677896b849677757697357a68878868997598689887a6797587687597988a464667876a8886a8aaa88876898667988679a9a9998757864898757796a668988798a498868875856679a8888779878789768977678688758877986897679976888a97679879655766775766768a558978888479679564768557878899686966778968787968678a679a797a4948a75888697875599a8867979986856a7884768965888959898788676987776857586878898866677889588858989865799878898378659897278888967799666887a9887689679968699997a98987877786684674586998889988829678678888a6987a6927569744886677986868764876776655978868a88847788a86985479698a973548869969985896666867779789a98768876989879786888a866686969677785966998978576486578784a97788999878789769777569787669768778669a86a887988656589499699762868967a66888688a968887888978885989a706aa88788885686686997776889a7678686686778599486897786853906988648aa75887758776777886698679649859957896996764886997654a84938759966885a968998879878558978977895589888666697788879989868786878688767867577678787586858689797889858a59897979a8785648988897787867688a648786587887867888788889668959a8686784676587478866399678686a8566698887787599678776798876898784987969a9797968896666937799876889979887a88a868958885668798779698598978886498675868385a788748778968888777789966997978925658857779695785786a6977688898685875878858898786679885788857a77569887678988777689973976798897878787778978884a6697867899888888995896868688778669898786888998989979a7693788688a87789578678968a568759669878a788789687886788526679649697688a9678688677887879886a997566978a66878968863768568878996694888548a7a66888886878864979877688689878788589896994976469999988659a799577696988897688976796888aa595789694857886788978786a988886a95998867688687888a948873a6788898877487897896669798878898888996678078788a98896989a8776aa89888684888988688776499885887896896888799796998999a78868868946688a8376988677a7868998689869868978887789a776966878989869889695568886688588867657777779896779a88869738a67675979886688988968885678786897595768a878888888667a969897788869468868778869897897589866688698696898a88a697766858859988778887767779667889866a486a8887999977967987989a896979a89897938959886859888867a767688578878888878958877869668764a55878788589879979689588979888996888885888687687886984888868887697a88888a8774887a6787488598985878797688886968897688876876965567838898849869878867288678878893677788779798589578689899696698868578867595999875a648786688a6999898752768785a985885874896499a6997989566798a677875968986766588668a578698946a989678a7987778969a768688976798868878648799886587886878898894676869786a88668788895997998887886697497898987a9888858a46a889378888886587a76566977947599789756898a4587786536765998988647887858996998968866777647676898869698999899988956788979888869885a85999699868658989868a25788a9868886888687988879988859698886a86577989695686867766788777888688696a9687887a8877866a9898598768788889886695687588879a8488596887a499889987657986789757a76996988884a9659888687977598669976998868875a886655666879997576889a8a7869889878689898568668786873a8887967973775a856688668a67967878a8498768779898997868889688867868688987978a9a997878557878876a886849898a868579876797788a95886896685978676594778986896997766965458889a8854497687898868874756a78887688788666896a95788889997698678678886aa768998978985896796678588576788a668687598985698857869695976996a76868a748654a6669798687678569689878689596a859798978987a9887975664568998956a7897897885898879788786898857786699675758a86a69898987977648867766998887888698976877979898899889695886b9987888997889867868867888887888749887799a698889788489977395788597886879668896766986a89587886868968457768776568669797887866688789a768987877688778676988778884687736686868a77989887a8668a788966869999867789579688688789a9977758952a9888887888878687878888879976869998a776689697986495856878886989668358866889866678958766858788669508889669897869798a84666669978798788888888998696994898a978657895a647895876866676699888868687888889a667887678a98879677959879789988898877889898886877688889686786878987a869875769a6987799778686998999898a84997a68a7588999437986858979887688678678589797767663894889776a6667897898967765a79994789799578797677999899a75989677667896a8969954795568977a95a86788788785aa9648886989858678898665699a667a86a8a7898969897a778968886697988787766695988564a877788a967486996886897698868486a8887757894858685899889a87577a89559677469758769856894998887886668788898788988868876898958897846498666987797867786987796778989875a9887896877679969699788888678868688685686476959679768b97977588868a9776898858697ab888587956668976578888668997879787988888578668686787a877869988987a78788a89a67888788a748868667978784798767889878599797678868a9a9687566996876687388989746947596988878a988888856762889969a66a787a8887978698758788586696677778a794488679897657868856689699488776a878787886628897878776485878688899878a7668987598576668985a7987689898a7676a877878896555797799688778889877975769878788967669a875987787978aa85888789958888899787997877998576678996788765979886a76a9881879567a778886758758696887967789788887978667976779765958966a85986889888768a888879666888a66a678849679896aa8869678888887287968968896968488988758767988699a8798a8998a8888878979689987848977886877896866787687987885666878a9869877a9598568977a987687748787967688888987777898886a887675778799656768757a8988977a46885665787799877887687696898776aa98777447988687687a96788597a6796887765866a9887898764a587699787a987577966888a2787746745877768589947664887988878544568785a98697767778898679785685a95547687856799965888888776685696884596a788a88798866597679857964796887768867884659676988978564a877a665856779887774868a69899867978968878986668858776879946966799885779648948a657856a697877968996857788768478977a6587965888666949687956b9898b886986668865a689777aa869789a897579a86987688798a8a676a8898668988784a78388878888b8998778689678768a7a6979648586685867a779887779859889788648858867776768867988888899858888874668798899588697869588867688495998986878646856786659596876888896759777868778768988a6988979797a7788989734a98b888976799368477887999997886787878788797898886768876a9789887788777678867896769888777746888886988688586979888756978a76a79867766898785776784788777668798788798879877768787a85888779746986857648887857566866868786a78756b688997757969589779885aa6845863879785675957a78475766888689668969855986a86887668886888966787868867897958887588786888a798895897a8686969a79597688487799894a868888897699687766889976678986656867a87887688889948789a87687667794789689886776886896a75576788997968888867869997a7857868688668976366a8869676788899899686768977989769989a6786988887768685a5798696988819985997798a798969858696a79647988689488888879a8868967886676899857989669a78677668598a887878668869688978a66876887784779789668747866888877877578887858668a768787899998689787698778686666698885876667477797776878898867899a866a89878567885a8a87988888899697669677773999868688784988646899885975887998879756476685a89688979978a988878488798758998a86966888a8a8978a75599863968795876869a985598878977876a8883696689888888875889966899767969687988998767949768886889879a8797a88558899886796674978688589768498679988986a99779886867887a7a599587888778688568467668768a676668a798a998897887676887a688a969689568687675977976887688888869688796597778677888888888696988966597958856786976688578798877778978398784767856386597684587697886889789687a87767699798898856787588a376869869778867887888667486a68599669969887672899465578858668679898867776897886865568999887669a688698598988888797876989778788984866988989698888a7488898988777a87889888887886674a88998969a68678586969676888a99684977795a98987978999686887987789985869778a676676867669777a88576848899987598788998899696888998678657856798478755587797988864867948988667778888668659968976595868889688666876858848796588669467aa77998789978986869a6786889889889988a888787785868897978676879892889597687879678988a65866866658887888868966866aa99877778898999888969887665688869869968767a859988a8b985688697786588678a86977a8a78859699989889977768569998659887698a6888688796878987588a67a8597889a97668886766678677888888676958589969866698689868879a59785796798878a8888888989a678897386888996786896549766888a86678969997878886368886688957867a86687a868668a688988986976a8886766687588666988878687879698866478986697788598667987668958899997a876767868659768865689976977a55989668788667872675686798778767888868766577998997696797876a7a989889987837898a956767779987787998a886868768796986a8689786676687776a7579787957a866566859889a97886879986587886787878a998886a968968688876897659969887a78967666856669889a867868869568a3678766887789887666588775777888368886989676858a774879989759978a88a388879468b876788896968887856986786746899778743785a97789859565878788886678989889667563955899a55556a88796768948766878788776878876898879a88776888886597678789879a87879678658797878a88655883987879979566589786786569389968a88888789788799798a868689878a896748737768a68846b998aa6776857877a97a7899975a77688666578867756888668669779768958677769987787798788878688767769767798608a8958676998996589687998a59989798689776878988a87097679888a66969979885677a694777987567967657888978796878788886986897769a7655978696864747869878789876768887968686687696787689889799647858788868858a65a986978867b999987589676669768696969977956968696896867989766846968698688876464965979279586678978897a9856988878788689874888a8896887676768868888877387a9887976978968688576666758788848886677579a45858487798b886789689486888a888866868868587769847688398888878688951989879a977887955a866768888676866a7998669788688b8788868489889799564878857786558996b46879a9598a88a8688a88786988a7896678776579683778968787887774675959658996589786877697797886887a84595948786766798788a7868697698995a8989588778659888888898a6677789679895786697889898a8886966676687798688787768466869587879878689859969898976887785689a7787878677573955666668a87a6867a7895796866898899898688886688869698996887978a98969789889578489888868785a888989896898988886586888698677575668698777857a887687868685a557658386796668887689989787999986997467a66977758986867788888788867885687556687566577796768699778781688696568968866678865676898a688478a97996689868788968889686798688886977689866a766759887577887875779577676989a297896887a7aa997787978b88866868796679888668988787978784888987769878588888989989876589886768869848749868875898977476685799a577689a7878765789989686986869a67878778988a669899685889586a88767848888666785889898888866478957988979959784586759888788797877768699678a6888865895696795879886789489888688886866788884667877868578797788876888996a957699684a69397889858988889989658a69869688766567999687958848886778885879765668668789677866846958789896888a865866768a798785687794486687789877a6797686688848777a6767a766688988868759986a956a89887856a66688889868898898664896668689989866998957888388768698868788a7888655869737866868a859495898a9aa669765976567a9778776688788a89889996888875987665779957a99876a6a4778965468687a978467a689988679885688669886576677777958a99566897688879645798659868a798a6986997876a688888968878887878565686887794888887788778678a88857a76788886495966844979888788a968986679999776778978888869887889866575798a9697993788776688866499887a887848a789698678799895777a779989784787998887569586986265775868768589678896888774698746695968698987879888796788874567779689898887987776599a997788787775a8859888989567a9666978899776897878886758766988858969679984677a8a8a888898896848989976898787869867785978787777688897977a797888875a798687599889888667896777787798569788788a688787859967658658978865694a89965859789689a8a63a78698684686887a5768987778666983679a778897694466486787875a76888988888874988896487898766877697789878988986687a886886988988897688777569a986668a6987599867987898788897676698858796788788777888988988785a77a8999769887986768988787888577896782685798877666698997678a66a7565976667867766889998878687687a47978898a889779986888995899657788698896988875669a66a778888a68589a797883a885487796747975787aa7778686a9938988986888984879668878988a59668aa867777985899698859688568689987989888785889896a898868a9986887377867896689774977988989958898887587a68466869977988868896657867888677779646568a88998388797a87788899688988a68a7878698664888846789686876879864887857767779989688966888867769898895728887989968868748898976a977784667788856857686a8889598867865769968867867688586999676659699979975748747887977a6686665568656886587886887a88887976789669698567858568898976568886787788865785876867499987a898868a38877896538b9878888879688867658987869a68597a95787895575a9669978899888584959669799958aa68889857794848666787599a478879a7888666878a7667686889687a88879a9688888588655888678476983648697789a979789787868698888688989769886966a7998677888a74869796767586877868687898666957589a668768888798658a799778646889896aa8788887769899676898a8786465a7b9687787899786887954b76686aa68988988a57768656688787988897467987776967a9498696976966a787a8888977899a989674aa78788856365899a6988879786877786687a7876869887888876a98877587988788888678698788689969867869898599668a7777887988768657878476675aa69687889a7988749876a887a989959969a987757876676988897868654988948968987786688866966777678888889658965787998958879a6975895a9968888886876676984696877477977994678878778798969646886686889768786983855897696898788868987768858696a987889866857659947988a657988787788446596799576898899895878898a7888a73897797988557668996978689698957889768967788869778868677698785788867a8a9476989566879896798786578a896797888888666879467874888a8878687896a966889658565787767863897875767668697866499a9a39988868879985766986966a6979696788a898896868777987897878668875999967897486888976888787948888798787a887667986966768688688788657868875778a589966878677747877878877698a69777697568886866494778687986586894586986577a57a7645a9479979778348986689767796a99999888a67887757898868879789886a68387878787886686888878768a8778966668888588769869988775575a78766587589864886888867668658887576977865766899679a848797a56884799898786847878996a667977668777888959895857859585687748788888789668758888788966877877989965899978878a866896649896887778668757737869883768666888787587889978686756589868887989898a5669885986878776866788689885949a7888679877769866a6795478a8698976688886979688879a7663788879678897754878982677779867987a778886886798788779985997aa865a8877679a85789887987888854698558998866696648668988787a78a8998966989878a787888789895689876a686888798758a58987987999688756462486688997879788788a78888999868898975497694a7989876969868899864a8889786876a88696789a69678997878769878886888998998599655786a668878a79868868998799997766869669778848696986676868a9968588665888665657876858998688878989868577997486488989979499627678768778788898a9784758899688888946788766697866657947968988998878876878966a4a868895889695668988878588889967896868989898a77865986989988955998988898a886888899966999676758578868678568687888788596888a68a896876899986686859979886867868989887577888877888988a997868876898898897388885676788aa887867878989899a7a6966985879796988796468888888888887a7877869869867697598687978a98887878789967977a788';
+const SEQ_PAGES = [1, 1, 4, 10, 33, 99, 333, 666, 1666, 3333, 6666, 9999, 16666, 23333, 29999, 33333];
+const LV = '0123456789abcdefg';
+const PLANS = ['Seq Scan', 'Bitmap Heap Scan', 'Index Scan'];
+const SCORE_PAGES = PICK.score.map((_, i) => [...SCORE_MIN].reduce((a, c) => a + (LV.indexOf(c) <= i ? 1 : 0), 0));
+
+function initPlanner(fig, app) {
+  const P = { i: 6, rpc: 4, guess: null };
+  const xTok = h('span', { class: 'v-pqo-lit' });
+  const slider = h('input', { type: 'range', min: 0, max: 15, step: 1, value: P.i, class: 'v-pqo-slider', 'aria-label': 'rows matched' });
+  const xOut = h('output', { class: 'v-pqo-xout' });
+  slider.addEventListener('input', () => { P.i = +slider.value; draw(); });
+  const COLS = [
+    { col: 'seq', title: 'seq', sub: 'values follow the order on disk' },
+    { col: 'score', title: 'score', sub: 'values in random order' },
+  ].map((c) => {
+    c.map = pageMap(TABLE, `${c.col}: table pages`);
+    c.pages = h('div', { class: 'v-pqo-maplabel' });
+    c.pick = h('div', { class: 'v-pqo-pickline' });
+    c.el = h('div', { class: 'v-pqo-col' },
+      h('div', { class: 'v-pqo-colh' }, h('span', { class: 'v-pqo-plan' }, `WHERE ${c.title} < x`), h('span', null, c.sub)),
+      c.pages, c.map.el, c.pick);
+    return c;
+  });
+  const ask = h('div', { class: 'v-pqo-ask' });
+  const rpcBtns = [4, 1.1].map((v) => {
+    const b = h('button', { class: 'v-pqo-btn', type: 'button', 'aria-pressed': String(v === P.rpc) }, v === 4 ? '4 (default)' : '1.1 (common on SSDs)');
+    b.addEventListener('click', () => { P.rpc = v; pressGroup(rpcBtns, b); draw(); });
+    return b;
+  });
+  const costs = h('div', { class: 'v-pqo-costs' });
+  const more = h('details', { class: 'v-pqo-more' }, h('summary', null, 'Costs and timings behind each pick'),
+    h('div', { class: 'v-pqo-ctlrow' }, h('span', { class: 'v-pqo-lab' }, 'random_page_cost'), h('div', { class: 'v-pqo-chips' }, ...rpcBtns)), costs);
+  const two = h('div', { class: 'v-pqo-two' }, ...COLS.map((c) => c.el));
+
+  app.append(
+    prompt('SELECT * FROM users WHERE ', h('span', { class: 'v-pqo-dim' }, 'seq | score'), ' < ', xTok, ';'),
+    h('div', { class: 'v-pqo-body' },
+      h('div', { class: 'v-pqo-slidebox' }, h('label', { class: 'v-pqo-lab' }, 'x'), slider, xOut),
+      ask, two, more,
+      key([['opt', 'what you change'], ['data', 'page holds a matching row'], ['idle', 'page holds none'], ['bad', 'read for nothing'], ['pick', "the planner's pick"]])));
+
+  const cost = (p) => (P.rpc === 4 ? p[3] : p[4]);
+  const pickOf = (p) => { const c = cost(p); return c.indexOf(Math.min(...c)); };
+  const hidden = () => P.guess == null;
+
+  function paintMaps() {
+    const T = tokens(fig);
+    COLS.forEach((c) => {
+      if (hidden()) { c.map.paint(T, () => T.idle); return; }
+      const pk = pickOf(PICK[c.col][P.i]);
+      const hit = c.col === 'score' ? (p) => LV.indexOf(SCORE_MIN[p]) <= P.i : (p) => p < SEQ_PAGES[P.i];
+      const n = c.col === 'seq' ? SEQ_PAGES[P.i] : SCORE_PAGES[P.i];
+      const marks = c.col === 'seq' && n <= 100 ? [{ page: 0, label: `all ${n} page${n > 1 ? 's' : ''} here` }] : [];
+      c.map.paint(T, (p) => (hit(p) ? T.data : pk === 0 ? T.bad : T.idle), marks);
+    });
+  }
+  function renderAsk() {
+    ask.innerHTML = '';
+    if (P.guess == null) {
+      ask.className = 'v-pqo-ask';
+      ask.append(h('p', null, h('b', null, 'Guess first. '), 'Both columns have a B-tree index, and each filter below matches about 10,000 rows. Which one keeps those rows on fewer pages?'));
+      const row = h('div', { class: 'v-pqo-chips' });
+      [['seq', 'seq'], ['score', 'score'], ['same', 'about the same']].forEach(([v, label]) => {
+        const b = h('button', { class: 'v-pqo-btn', type: 'button' }, label);
+        b.addEventListener('click', () => { P.guess = v; P.i = 6; slider.value = 6; renderAsk(); draw(); });
+        row.append(b);
+      });
+      ask.append(row);
+    } else {
+      ask.className = `v-pqo-ask ${P.guess === 'seq' ? 'is-good' : 'is-miss'}`;
+      ask.innerHTML = `<p>You said <b>${P.guess === 'same' ? 'about the same' : P.guess}</b>. ${P.guess === 'seq' ? 'Right.' : 'It is seq.'} The 10,000 rows with <code>seq &lt; 10000</code> sit on 333 neighbouring pages. The 10,103 rows with <code>score &lt; 10000</code> are spread over 8,739 pages. Now move x.</p>`;
+    }
+  }
+  function draw() {
+    const i = P.i; const x = PICK.seq[i][0];
+    xTok.textContent = fmt(x);
+    const pct = (x / 1e4);
+    xOut.innerHTML = `<b>${fmt(x)}</b> rows · ${pct < 1 ? pct.toFixed(pct < 0.01 ? 3 : 2) : pct.toFixed(0)}% of the table`;
+    two.classList.toggle('is-hidden', hidden());
+    COLS.forEach((c) => {
+      const pt = PICK[c.col][i];
+      const pk = pickOf(pt);
+      const pages = c.col === 'seq' ? SEQ_PAGES[i] : SCORE_PAGES[i];
+      c.pages.innerHTML = hidden() ? '<b>?</b> pages hold the rows' : `<b class="c-data">${fmt(pages)}</b> of 33,333 pages hold the rows`;
+      c.pick.innerHTML = hidden() ? '' : `planner picks <b class="c-pick">${PLANS[pk]}</b> · ${ms(pt[5][pk])}${pk === 0 && pages < TABLE ? ` · <span class="c-bad">reads the other ${fmt(TABLE - pages)} pages too</span>` : ''}`;
+    });
+    costs.innerHTML = COLS.map((c) => {
+      const pt = PICK[c.col][i]; const pk = pickOf(pt); const cs = cost(pt);
+      const fast = pt[5].indexOf(Math.min(...pt[5]));
+      return `<div class="v-pqo-tblwrap"><table class="v-pqo-tbl"><caption>WHERE ${c.col} &lt; ${fmt(x)} · estimate ${fmt(pt[1])} rows, actual ${fmt(pt[2])}</caption>
+        <thead><tr><th>plan · buffers</th><th>cost</th><th>time</th></tr></thead><tbody>${
+        PLANS.map((name, k) => `<tr class="${k === pk ? 'is-pick' : ''}"><td>${name}<small>${fmt(pt[6][k])} buffers</small></td><td>${fmt(cs[k])}</td><td class="${k === fast ? 'c-good' : ''}">${ms(pt[5][k])}</td></tr>`).join('')}</tbody></table></div>`;
+    }).join('') + '<p class="v-pqo-sm">Cost is the planner\'s estimate; it picks the lowest. Time is measured, fastest in green. Buffers count page reads, so an Index Scan that returns to the same page counts it again.</p>';
+    paintMaps();
+  }
+  resized(two, () => {
+    const w = COLS[0].el.clientWidth || two.clientWidth;
+    const cd = cellFor(TABLE, w, 170);
+    COLS.forEach((c) => c.map.layout(w, cd));
+    paintMaps();
+  });
+  REDRAW.add(paintMaps);
+  renderAsk();
+  draw();
+}
+
+/* =============================================================== BUDGET */
+
+/* EXPLAIN (ANALYZE, BUFFERS, COSTS OFF, TIMING OFF) output, one sample run. */
+const EXPLAIN = {
+  "*||": ["Seq Scan on users (actual rows=1000000.00 loops=1)", "  Buffers: shared hit=194 read=33139"],
+  "*||10": ["Limit (actual rows=10.00 loops=1)", "  Buffers: shared hit=2", "  ->  Seq Scan on users (actual rows=10.00 loops=1)", "        Buffers: shared hit=2"],
+  "*|created_at DESC|": ["Index Scan Backward using users_created_at_idx on users (actual rows=1000000.00 loops=1)", "  Index Searches: 1", "  Buffers: shared hit=2183 read=33885"],
+  "*|created_at DESC|10": ["Limit (actual rows=10.00 loops=1)", "  Buffers: shared read=5", "  ->  Index Scan Backward using users_created_at_idx on users (actual rows=10.00 loops=1)", "        Index Searches: 1", "        Buffers: shared read=5"],
+  "*|name|": ["Sort (actual rows=1000000.00 loops=1)", "  Sort Key: name", "  Sort Method: external merge  Disk: 240752kB", "  Buffers: shared hit=15400 read=17936, temp read=60183 written=60251", "  ->  Seq Scan on users (actual rows=1000000.00 loops=1)", "        Buffers: shared hit=15397 read=17936"],
+  "*|name|10": ["Limit (actual rows=10.00 loops=1)", "  Buffers: shared hit=15494 read=17842", "  ->  Sort (actual rows=10.00 loops=1)", "        Sort Key: name", "        Sort Method: top-N heapsort  Memory: 29kB", "        Buffers: shared hit=15494 read=17842", "        ->  Seq Scan on users (actual rows=1000000.00 loops=1)", "              Buffers: shared hit=15491 read=17842"],
+  "id, name||": ["Seq Scan on users (actual rows=1000000.00 loops=1)", "  Buffers: shared hit=15585 read=17748"],
+  "id, name||10": ["Limit (actual rows=10.00 loops=1)", "  Buffers: shared hit=2", "  ->  Seq Scan on users (actual rows=10.00 loops=1)", "        Buffers: shared hit=2"],
+  "id, name|created_at DESC|": ["Index Scan Backward using users_created_at_idx on users (actual rows=1000000.00 loops=1)", "  Index Searches: 1", "  Buffers: shared hit=287 read=35781"],
+  "id, name|created_at DESC|10": ["Limit (actual rows=10.00 loops=1)", "  Buffers: shared read=5", "  ->  Index Scan Backward using users_created_at_idx on users (actual rows=10.00 loops=1)", "        Index Searches: 1", "        Buffers: shared read=5"],
+  "id, name|name|": ["Sort (actual rows=1000000.00 loops=1)", "  Sort Key: name", "  Sort Method: external merge  Disk: 49968kB", "  Buffers: shared hit=15043 read=18293, temp read=12484 written=12505", "  ->  Seq Scan on users (actual rows=1000000.00 loops=1)", "        Buffers: shared hit=15040 read=18293"],
+  "id, name|name|10": ["Limit (actual rows=10.00 loops=1)", "  Buffers: shared hit=15137 read=18199", "  ->  Sort (actual rows=10.00 loops=1)", "        Sort Key: name", "        Sort Method: top-N heapsort  Memory: 26kB", "        Buffers: shared hit=15137 read=18199", "        ->  Seq Scan on users (actual rows=1000000.00 loops=1)", "              Buffers: shared hit=15134 read=18199"],
+  "created_at||": ["Index Only Scan using users_created_at_idx on users (actual rows=1000000.00 loops=1)", "  Heap Fetches: 0", "  Index Searches: 1", "  Buffers: shared hit=1044 read=1693"],
+  "created_at||10": ["Limit (actual rows=10.00 loops=1)", "  Buffers: shared hit=2", "  ->  Seq Scan on users (actual rows=10.00 loops=1)", "        Buffers: shared hit=2"],
+  "created_at|created_at DESC|": ["Index Only Scan Backward using users_created_at_idx on users (actual rows=1000000.00 loops=1)", "  Heap Fetches: 0", "  Index Searches: 1", "  Buffers: shared hit=2700 read=37"],
+  "created_at|created_at DESC|10": ["Limit (actual rows=10.00 loops=1)", "  Buffers: shared hit=4", "  ->  Index Only Scan Backward using users_created_at_idx on users (actual rows=10.00 loops=1)", "        Heap Fetches: 0", "        Index Searches: 1", "        Buffers: shared hit=4"],
+  "created_at|name|": ["Sort (actual rows=1000000.00 loops=1)", "  Sort Key: name", "  Sort Method: external merge  Disk: 49968kB", "  Buffers: shared hit=13446 read=19890, temp read=12484 written=12505", "  ->  Seq Scan on users (actual rows=1000000.00 loops=1)", "        Buffers: shared hit=13443 read=19890"],
+  "created_at|name|10": ["Limit (actual rows=10.00 loops=1)", "  Buffers: shared hit=13488 read=19848", "  ->  Sort (actual rows=10.00 loops=1)", "        Sort Key: name", "        Sort Method: top-N heapsort  Memory: 26kB", "        Buffers: shared hit=13488 read=19848", "        ->  Seq Scan on users (actual rows=1000000.00 loops=1)", "              Buffers: shared hit=13485 read=19848"],
+};
+/* Result size as COPY text, in bytes. */
+const BYTES = {
+  "*||": 244555537,
+  "*||10": 2304,
+  "*|created_at DESC|": 244555537,
+  "*|created_at DESC|10": 2455,
+  "*|name|": 244555537,
+  "*|name|10": 2448,
+  "id, name||": 39888900,
+  "id, name||10": 355,
+  "id, name|created_at DESC|": 39888900,
+  "id, name|created_at DESC|10": 405,
+  "id, name|name|": 39888900,
+  "id, name|name|10": 402,
+  "created_at||": 23000004,
+  "created_at||10": 234,
+  "created_at|created_at DESC|": 23000004,
+  "created_at|created_at DESC|10": 234,
+  "created_at|name|": 23000004,
+  "created_at|name|10": 234,
+};
+/* psql fetching every row over a Unix socket, ms, median of 5. */
+const CLIENT = {
+  '*||': 349.1, '*||10': 0.5, '*|created_at DESC|': 462.5, '*|created_at DESC|10': 0.6, '*|name|': 992.8, '*|name|10': 67.2,
+  'id, name||': 176.7, 'id, name||10': 0.6, 'id, name|created_at DESC|': 234.2, 'id, name|created_at DESC|10': 0.6, 'id, name|name|': 510.7, 'id, name|name|10': 120.9,
+  'created_at||': 137.8, 'created_at||10': 0.5, 'created_at|created_at DESC|': 136.3, 'created_at|created_at DESC|10': 0.7, 'created_at|name|': 525.1, 'created_at|name|10': 111.8,
+};
+/* users_created_at_idx: metapage 0, root 290, branches below; 2,733 leaves. */
+const IDX_N = 2745;
+const IDX_INNER = new Set([0, 3, 289, 290, 575, 860, 1145, 1430, 1715, 2000, 2285, 2570]);
+
+/** Pages each query reads: table blocks, index blocks, temp kB, rows scanned. */
+function readsOf(cols, order, lim) {
+  const all = () => true; const none = () => false;
+  const leaves = (p) => !IDX_INNER.has(p);
+  if (order === 'name') return { table: all, nTable: TABLE, idx: none, nIdx: 0, temp: lim ? 0 : cols === '*' ? 240752 : 49968, scan: 1000000 };
+  if (order === 'created_at DESC') {
+    const ios = cols === 'created_at';
+    if (lim) return { table: ios ? none : (p) => p >= 33331, nTable: ios ? 0 : 2, vm: ios ? 1 : 0, idx: (p) => p === 290 || p === 2570 || p === 2744, nIdx: 3, temp: 0, scan: 10 };
+    return { table: ios ? none : all, nTable: ios ? 0 : TABLE, vm: ios ? 2 : 0, idx: (p) => leaves(p) || p === 290 || p === 2570, nIdx: 2735, temp: 0, scan: 1000000 };
+  }
+  if (lim) return { table: (p) => p < 2, nTable: 2, idx: none, nIdx: 0, temp: 0, scan: 10 };
+  if (cols === 'created_at') return { table: none, nTable: 0, vm: 2, idx: (p) => leaves(p) || p === 290 || p === 3, nIdx: 2735, temp: 0, scan: 1000000 };
+  return { table: all, nTable: TABLE, idx: none, nIdx: 0, temp: 0, scan: 1000000 };
+}
+
+/* Goals the reader meets by rewriting the query. */
+const GOALS = [
+  ['Get the 10 newest users while reading fewer than 10 pages.', (q, r) => q.lim && q.order === 'created_at DESC' && r.nTable + r.nIdx < 10],
+  ['Read every created_at value without reading the table.', (q, r) => !q.lim && q.cols === 'created_at' && q.order !== 'name' && r.nTable === 0],
+  ['Sort all users by name and write under 100,000 kB of temp files.', (q, r) => !q.lim && q.order === 'name' && r.temp < 100000],
+  ['Find a query where LIMIT 10 still reads all 33,333 table pages.', (q, r) => q.lim && r.nTable === TABLE],
+];
+
+function initBudget(fig, app) {
+  const Q = { cols: '*', order: '', lim: '' };
+  const COLS = ['*', 'id, name', 'created_at'];
+  const ORDERS = ['', 'created_at DESC', 'name'];
+  const tCols = h('button', { class: 'v-pqo-tok', type: 'button' });
+  const tOrder = h('button', { class: 'v-pqo-tok', type: 'button' });
+  const tLim = h('button', { class: 'v-pqo-tok', type: 'button' });
+  tCols.addEventListener('click', () => { Q.cols = COLS[(COLS.indexOf(Q.cols) + 1) % 3]; draw(); });
+  tOrder.addEventListener('click', () => { Q.order = ORDERS[(ORDERS.indexOf(Q.order) + 1) % 3]; draw(); });
+  tLim.addEventListener('click', () => { Q.lim = Q.lim ? '' : '10'; draw(); });
+
+  const goals = h('ol', { class: 'v-pqo-goals' });
+  const maps = [
+    ['users', 'table · 33,333 pages', pageMap(TABLE, 'users table pages')],
+    ['users_created_at_idx', 'B-tree · 2,745 pages', pageMap(IDX_N, 'users_created_at_idx pages')],
+    ['temp files', 'sort spill', pageMap(30094, 'temp file blocks, 8 KB each')],
+    ['sent to psql', '8 KB per square', pageMap(29853, 'data sent to the client, in 8 KB units')],
+  ].map(([title, meta, m]) => {
+    const lab = h('span', { class: 'v-pqo-maplabel' });
+    const el = h('div', { class: 'v-pqo-mapbox' }, h('div', { class: 'v-pqo-maph' }, h('b', null, title), lab), m.el, h('div', { class: 'v-pqo-mapmeta' }, meta));
+    return { m, lab, el };
+  });
+  const mapsBox = h('div', { class: 'v-pqo-maps' }, ...maps.map((x) => x.el));
+  const note = h('p', { class: 'v-pqo-msg', 'aria-live': 'polite' });
+  const pre = h('pre', { class: 'v-pqo-explain' });
+  const more = h('details', { class: 'v-pqo-more' }, h('summary', null, 'EXPLAIN (ANALYZE, BUFFERS) for this query'), pre);
+
+  app.append(
+    prompt('SELECT ', tCols, ' FROM users ', tOrder, ' ', tLim, ';'),
+    h('div', { class: 'v-pqo-body' },
+      h('div', { class: 'v-pqo-two v-pqo-two--budget' },
+        h('div', null, h('p', { class: 'v-pqo-q' }, 'Click the blue parts of the query to rewrite it. Can you meet each goal?'), goals, note),
+        mapsBox),
+      more,
+      key([['opt', 'click to change'], ['data', 'page read, data sent'], ['idle', 'not read'], ['bad', 'read but thrown away, or temp files']])));
+
+  let R = null;
+  function paintMaps() {
+    if (!R) return;
+    const T = tokens(fig);
+    const waste = R.scan > 100 * (Q.lim ? 10 : 1e6);
+    const first = (f, n) => { for (let p = 0; p < n; p++) if (f(p)) return p; return 0; };
+    const tiny = (f, n, count, label) => (count > 0 && count <= 10 ? [{ page: first(f, n), label }] : []);
+    maps[0].m.paint(T, (p) => (R.table(p) ? (waste ? T.bad : T.data) : T.idle), tiny(R.table, TABLE, R.nTable, `${R.nTable} pages`));
+    maps[1].m.paint(T, (p) => (R.idx(p) ? T.data : T.idle), tiny(R.idx, IDX_N, R.nIdx, `${R.nIdx} pages`));
+    const tb = Math.round(R.temp / 8);
+    maps[2].m.paint(T, (p) => (p < tb ? T.bad : T.idle));
+    const sent = Math.ceil(R.bytes / PAGE);
+    maps[3].m.paint(T, (p) => (p < sent ? T.data : T.idle), sent <= 10 ? [{ page: 0, label: mb(R.bytes) }] : []);
+  }
+  function draw() {
+    const k = `${Q.cols}|${Q.order}|${Q.lim}`;
+    tCols.textContent = Q.cols;
+    tOrder.textContent = Q.order ? `ORDER BY ${Q.order}` : '+ ORDER BY';
+    tOrder.classList.toggle('is-off', !Q.order);
+    tLim.textContent = Q.lim ? 'LIMIT 10' : '+ LIMIT';
+    tLim.classList.toggle('is-off', !Q.lim);
+    tCols.setAttribute('aria-label', `columns: ${Q.cols}. Click to change.`);
+    tOrder.setAttribute('aria-label', `order: ${Q.order || 'none'}. Click to change.`);
+    tLim.setAttribute('aria-label', `limit: ${Q.lim || 'none'}. Click to change.`);
+    R = { ...readsOf(Q.cols, Q.order, Q.lim), bytes: BYTES[k] };
+    const waste = R.scan > 100 * (Q.lim ? 10 : 1e6);
+    goals.innerHTML = GOALS.map(([text, ok]) => `<li class="${ok(Q, R) ? 'is-met' : ''}"><span class="box" aria-hidden="true"></span>${text}</li>`).join('');
+    maps[0].lab.innerHTML = R.nTable ? `<b class="${waste ? 'c-bad' : 'c-data'}">${fmt(R.nTable)}</b> read` : `not read${R.vm ? ` (visibility map: ${R.vm})` : ''}`;
+    maps[1].lab.innerHTML = R.nIdx ? `<b class="c-data">${fmt(R.nIdx)}</b> read` : 'not read';
+    maps[2].lab.innerHTML = R.temp ? `<b class="c-bad">${fmt(R.temp)} kB</b>` : 'none';
+    maps[3].lab.innerHTML = `<b class="c-data">${mb(R.bytes)}</b> · ${ms(CLIENT[k])}`;
+    let m;
+    if (Q.lim && Q.order === 'name') m = '<b class="c-bad">LIMIT did not cut the reads.</b> No index gives rows in <code>name</code> order, so Postgres reads all 1,000,000 rows and keeps the best 10 as it goes.';
+    else if (Q.lim && Q.order) m = '<b class="c-good">The index gives rows newest first</b>, so Postgres stops after 10.';
+    else if (Q.lim) m = '<b class="c-good">The scan stops after 10 rows</b>, but without ORDER BY they are whichever rows come first on disk.';
+    else if (R.nTable === 0) m = '<b class="c-good">The index holds every column the query needs</b>, so Postgres skips the table and checks only the visibility map: an index-only scan.';
+    else if (R.temp) m = `The sort does not fit in <code>work_mem</code> (4 MB), so it spills to temp files. ${Q.cols === '*' ? 'Every column goes into the sort.' : 'Fewer columns make each sorted row smaller.'}`;
+    else if (Q.order) m = 'The table is already in <code>created_at</code> order on disk, so walking the index backwards costs less than a sort.';
+    else m = `Rows are stored whole, so any column list reads the same 33,333 pages. What changes is how much is sent${Q.cols === '*' ? '.' : `: ${mb(R.bytes)} instead of ${mb(BYTES['*||'])}.`}`;
+    note.innerHTML = m;
+    note.className = `v-pqo-msg ${waste ? 'is-miss' : ''}`;
+    pre.innerHTML = EXPLAIN[k].map((ln) => {
+      let t = esc(ln);
+      if (waste && /Seq Scan.*rows=1000000/.test(ln)) t = `<span class="c-bad">${t}</span>`;
+      return t.replace(/(Disk: \d+kB|temp read=\d+ written=\d+)/g, '<span class="c-bad">$1</span>').replace(/(Heap Fetches: 0)/, '<span class="c-good">$1</span>');
+    }).join('\n');
+    paintMaps();
+  }
+  resized(mapsBox, () => {
+    const w = mapsBox.clientWidth - 8;
+    const cd = cellFor(TABLE, w, 75);
+    maps.forEach((x) => x.m.layout(w, cd));
+    paintMaps();
+  });
+  REDRAW.add(paintMaps);
+  draw();
+}
+
+register({ 'pqo-pages': initPages, 'pqo-lookup': initLookup, 'pqo-planner': initPlanner, 'pqo-budget': initBudget });
