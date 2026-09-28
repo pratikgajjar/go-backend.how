@@ -12,12 +12,18 @@ featured = true
 math = false
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei dropping a message straight into the Postgres WAL stream instead of an outbox table" >}}
-
 # The idea
 
-Postgres' replication can already carry your application's events: no
-separate outbox table, polling loop, or cleanup job.
+When a service writes a row and must also tell other services about it,
+the usual answer is an outbox table. This post shows a way to get the same
+guarantee without one: the event goes into Postgres' own replication
+stream, inside the same transaction as the row. By the end you will know
+how the event travels byte by byte, which LSN the consumer may confirm
+without losing events, and how long Kafka can be down before something
+breaks.
+
+We ship this at FamPay as factlib[^2], a Go library, and its consumer
+**OwlPost**. The post walks both line by line.
 
 The outbox pattern needs three things: durability, order, and resumable
 delivery after a consumer disconnects. Every database already provides
@@ -46,10 +52,6 @@ Roll back and the message is never delivered; commit and it ships
 through the WAL like any replicated change. The replication slot's
 `confirmed_flush_lsn` holds the bookkeeping the outbox table would
 hold, so there's no separate table, index, or vacuum job.
-
-This post walks factlib[^2] — the Go library we ship at FamPay — and
-its consumer **OwlPost** line by line: producer, consumer, ack
-pipeline, trace propagation, and where it hits its limits.
 
 # 1. The dual-write fallacy
 
@@ -203,6 +205,11 @@ Three properties matter:
    checkpoint recycles anything below the minimum), then they recycle
    like any other WAL record. No vacuum, no bloat, no cleanup job.
 
+Property 1 is the reason the outbox pattern exists. End the transaction
+below both ways:
+
+{{< viz kind="oxb-commit" fig="1" frame="none" title="COMMIT or ROLLBACK?" fallback="oxb-commit.svg" alt="A transaction has written a row and an event record to the WAL; the reader picks COMMIT, and OwlPost reads the event into Kafka and the slot moves, or ROLLBACK, and the event record stays in WAL but is never decoded" caption="Record sizes are from Postgres 17.7: the event record is written when the `SELECT` runs; COMMIT adds 46 bytes, ROLLBACK a 34-byte ABORT record. The layout is not to scale." >}}
+
 This is not Debezium-style row-level CDC: we are not decoding row
 writes on an outbox table. We are inserting an application-defined
 message into the same WAL the database uses for replication, and
@@ -332,17 +339,19 @@ any can consume: a Django service emits a `payments-user` event, OwlPost
 proto. The producer language never enters the picture downstream.
 
 To verify an emit landed in WAL, create a slot **before** running the
-producer (`cmd/demo/main.go`, which needs `wal_level = logical` and
-`DATABASE_URL`); a slot only sees changes after its creation point. Then
-peek:
+producer (`cmd/e2e/main.go`, which needs `wal_level = logical` and
+connects to `postgres://postgres:postgres@localhost:5432/westeros`); a
+slot only sees changes after its creation point. Then peek:
 
 ```sql
 -- before: table, publication, slot
-CREATE TABLE users (id text PRIMARY KEY, email text);
+CREATE TABLE users (id bigserial PRIMARY KEY, data bytea);
 CREATE PUBLICATION demo_pub;
 SELECT pg_create_logical_replication_slot('demo_peek', 'pgoutput');
 
--- run the producer (INSERT + emit), then peek at the bytes:
+-- run the producer (INSERT + emit), then peek at the bytes.
+-- You get BEGIN, MESSAGE and COMMIT; the INSERT is not sent,
+-- because the publication has no tables.
 SELECT lsn, encode(data, 'hex')
 FROM pg_logical_slot_peek_binary_changes(
     'demo_peek', NULL, NULL,
@@ -455,12 +464,14 @@ Two message types matter:
   faster (`standbyMessageTimeout := time.Second * 5` in
   `pkg/postgres/wal.go`), so we send a status update every 5 s
   regardless.
-- **XLogData.** Real WAL bytes. We parse them, compute
+- **XLogData.** One pgoutput message (BEGIN, MESSAGE, COMMIT, …), not
+  raw WAL bytes. We parse it, compute
   `newXLogPos := xld.WALStart + LSN(len(xld.WALData))`, and pass
   *that* LSN through with the decoded message into
   `processLogicalMessage`. The receive loop does not advance
   `w.xLogPos` itself; the LSN rides on each event and only updates
-  `w.xLogPos` when the ack pipeline hears back from Kafka.
+  `w.xLogPos` when the ack pipeline hears back from Kafka. That sum is
+  not a safe LSN; see [which LSN to confirm](#which-lsn-to-confirm).
 
 `processLogicalMessage` filters by prefix with a type switch:
 
@@ -516,7 +527,7 @@ Three details:
 - **`headers["LSN"]`.** The LSN rides with each message so OwlPost's ack
   callback can feed it back to advance the slot. Downstream
   consumers don't need it; it's there so any Kafka message can be traced
-  back to its exact WAL position on the publisher.
+  back to a WAL position on the publisher.
 
 # 6. Distributed tracing through the WAL
 
@@ -543,33 +554,78 @@ so polyglot fan-in needs no extra work.
 
 # 7. Crash safety: the LSN ack pipeline
 
-The LSN ack pipeline guarantees every committed event reaches Kafka at
-least once under failure, across four scenarios.
+So far the producer writes the event into the WAL inside the business
+transaction (sections 3 and 4), and OwlPost reads it from a slot and
+produces it to Kafka (section 5). One question is left, and it decides
+whether events can be lost: when may OwlPost tell Postgres to forget the
+WAL? This section answers it in parts: which LSN to confirm, what to do
+when Kafka acks out of order, and what a crash or a Kafka outage costs.
 
 ## Scenario 1: the happy path
 
-{{< figure src="seq-happy-path.png" alt="Sequence diagram of the happy path: the producer sends INSERT, pg_logical_emit_message, then COMMIT to Postgres; Postgres streams the WAL bytes to OwlPost; OwlPost produces to Kafka and receives ack(LSN); OwlPost sends ack=LSN back to Postgres, which advances confirmed_flush_lsn." >}}
+{{< viz kind="oxb-follow" fig="2" frame="none" title="One event, five envelopes" fallback="oxb-follow.svg" alt="One user.created event from the producer's transaction through WAL records, pgoutput frames, OwlPost, a Kafka partition, the ack loop, and the replication slot" caption="One `user.created` event from `Emit()` to `confirmed_flush_lsn`, drawn to one byte scale. The 225 bytes of protobuf stay put; each stop wraps them differently. LSNs, sizes and frame bytes come from one run on Postgres 17.7; the event values and the 6-partition topic are samples." >}}
 
 OwlPost produces to Kafka asynchronously (franz-go, `acks=all`, idempotent
 producer), so each partition stays ordered and a success callback means the
-record is durably replicated. It does not advance the slot on each ack, and
-it never advances to the *latest* ack: a later event can ack while an
-earlier one is still in flight on another partition. It advances to the
-**contiguous acked prefix** instead.
+record is durably replicated.
 
-The single WAL reader hands events to the producer in LSN order, so
-`pending` stays sorted. Each Kafka success marks one done; we then advance
-over the longest gap-free run from the front:
+## Which LSN to confirm
+
+At stop 4 of Figure 2, OwlPost tagged the event with `0/15A0B85`, which
+is `WALStart + len(WALData)`. That is the LSN it later confirms.
+
+`WALStart + len(WALData)` is the end position in physical replication,
+where `WALData` holds WAL bytes. Here `WALData` holds one pgoutput
+message, so the sum is a WAL position plus a frame length. For a
+transactional message, `WALStart` is the end of the message record, which
+is also where the transaction's COMMIT record starts. A 225-byte event
+travels in a 253-byte frame, so the sum lands 205 bytes past the end of
+that COMMIT.
+
+After a restart, Postgres sends a transaction again only if its COMMIT
+record starts at or after `confirmed_flush_lsn`. So if another
+transaction commits inside those 205 bytes, confirming this LSN skips it.
+Concurrency makes that possible: B writes its message first, A commits,
+and B commits right after.
+
+{{< viz kind="oxb-ack-lsn" fig="3" frame="none" title="Which LSN is safe to confirm?" fallback="oxb-ack-lsn.svg" alt="WAL records of two concurrent transactions A and B drawn to scale, with three possible ACK positions and what Postgres sends again after a restart" caption="Records drawn to scale, 8-byte aligned. LSNs, sizes and frames come from one run on Postgres 17.7 (`pgoutput`, `proto_version 1`, `messages 'true'`). The restart outcome of each choice was checked on the same server." >}}
+
+I checked each choice the same way: confirm the LSN, disconnect, and
+stream again from the slot. With `WALStart + len(WALData)`, Postgres
+never sent B again. Two choices are safe:
+
+- **The message's own `WALStart`.** A restart sends the whole transaction
+  again once, and consumers drop the copy by `event.Id`.
+- **The COMMIT's `TransactionEndLSN`**, once every message of that
+  transaction is in Kafka. Nothing repeats, but OwlPost must hold each
+  transaction's events until its COMMIT frame arrives.
+
+Message LSNs follow write order, and the stream follows commit order. In
+the figure, B arrives second but its message LSN is lower than A's. Commit
+end LSNs rise in stream order.
+
+## Acks arrive out of order
+
+A later event can ack while an earlier one is still in flight on another
+partition, so the slot must not follow the *latest* ack. factlib's public
+`main` does follow it today: `listenEventAck` sets `w.xLogPos = *ackPos`
+on every ack. The safe rule is
+to advance to the **contiguous acked prefix**.
+
+The single WAL reader hands events to the producer in stream order, and
+`pending` keeps that order. Tag each event with its message LSN
+(`xld.WALStart`, Figure 3). Each Kafka success marks one event done; we
+then advance over the longest gap-free run from the front:
 
 ```go
-// pkg/postgres/wal.go — advance over the contiguous acked prefix
+// the ack rule OwlPost needs (sketch; not in factlib main yet)
 func (w *WALSubscriber) onKafkaAck(lsn pglogrepl.LSN) {
     // NOTE: pending is an unbounded slice today; a fixed ~1000-slot ring
     // buffer would cap the in-flight set and back-pressure the WAL reader.
     w.mu.Lock()
     w.acked[lsn] = true
     for len(w.pending) > 0 && w.acked[w.pending[0]] {
-        w.safe = w.pending[0]          // highest LSN with no gap below it
+        w.safe = w.pending[0]          // this event and all before it are in Kafka
         delete(w.acked, w.pending[0])
         w.pending = w.pending[1:]
     }
@@ -580,7 +636,12 @@ func (w *WALSubscriber) onKafkaAck(lsn pglogrepl.LSN) {
 w.SendStandbyStatusUpdate(w.safe)      // everything <= safe is durable
 ```
 
-This keeps the pipeline full, no draining. Two properties fall out:
+{{< viz kind="oxb-race" fig="4" frame="none" title="Kafka acks out of order" fallback="oxb-race.svg" alt="You ack six events on three Kafka partitions in any order; one slot follows the latest ack, the other the contiguous acked prefix; a crash shows which events are lost or sent twice" caption="Six events from six transactions; keys hash to a 3-partition topic. Both rules use the message LSN from Figure 3, and here a status update follows every ack. At a crash, records Kafka has not acked are gone." >}}
+
+Even in stream order, `safe` can move backwards, because message LSNs
+follow write order. That is harmless: Postgres ignores a confirm below the
+slot's current position. This keeps the pipeline full, with no draining.
+Two properties fall out:
 
 - **A gap pins the slot.** If an event is slow or its produce fails, its
   LSN never leaves the head of `pending`, so `safe` (and
@@ -598,18 +659,18 @@ which the consumer dedupes on `event.Id`.
 This is what `transactional=true` is for: logical decoding emits a
 transaction's records only on COMMIT. A panic before COMMIT means
 ROLLBACK, so no commit record reaches the WAL and zero events leak,
-same as the table-based pattern.
+same as the table-based pattern. Figure 1 shows both endings.
 
 ## Scenario 3: consumer crash post-Kafka, pre-LSN-ack
 
-{{< figure src="seq-replay-duplicate.png" alt="Sequence diagram: OwlPost produces to Kafka and gets ack(LSN=X), then is killed (kill -9) before sending the ack back to Postgres, whose confirmed_flush_lsn is still < X. On restart OwlPost reads confirmed_flush_lsn via getxLogPos(), replays X, and produces a duplicate to Kafka." >}}
+{{< viz kind="oxb-replay" fig="5" frame="none" title="A crash between the Kafka ack and the status update" fallback="oxb-replay.svg" alt="Timeline of events read from the WAL with a status update every second; a crash after the last update resends the events Kafka already stored since then" caption="A model of the 1-second status tick, not a benchmark. Events Kafka stored after the last status update are sent again; nothing before the slot is lost. The SQL result tags are from Postgres 17.7." >}}
 
 The same event is produced to Kafka twice, by design: this is at-least-once,
 so the consumer must be idempotent. Dedupe on `event.Id` (a UUIDv7). For
 durable dedup, `INSERT ... ON CONFLICT DO NOTHING` into a
 `processed_events(id uuid PRIMARY KEY, processed_at timestamptz)` table you
 TTL-prune; an in-memory LRU of recent IDs is a fine fast-path in front of
-it, but only the table survives the restart that caused the duplicate.
+it, but only the table survives a restart of the consumer.
 A Bloom filter is the cheapest membership check, but it only errs toward
 false positives — reporting an unseen event as already seen. So it can
 confirm an event is new (definitely not in the set) but never that one was
@@ -617,7 +678,7 @@ already handled; keep the table as the authority.
 
 ## Scenario 4: Kafka down for hours
 
-{{< figure src="seq-kafka-down.png" alt="Sequence diagram: OwlPost produces to Kafka but the broker is unreachable, so it retries internally; a second produce still fails while the broker is down; after time passes Kafka recovers, the buffered acks flow back to OwlPost, and the ack chain proceeds." >}}
+{{< viz kind="oxb-backlog" fig="6" frame="none" title="Kafka is down: how long until something breaks?" fallback="oxb-backlog.svg" alt="WAL kept behind a stalled slot grows with outage length and WAL rate, against the 1 GiB alert, the 5 GiB page, max_slot_wal_keep_size, and free disk" caption="WAL per event uses the record layout in section 8, one event per commit. Other WAL stands for the rest of the cluster's writes; a stalled slot keeps all of it. Invalidation under `max_slot_wal_keep_size` and the error after it were checked on Postgres 17.7." >}}
 
 While Kafka is down, OwlPost reads up to **1000** events into the
 `w.events` channel (a buffered Go channel; sends block past that),
@@ -649,6 +710,11 @@ After ~hours, two things start to break:
   `max_slot_wal_keep_size` (default `-1` / no limit) that
   invalidates a slot before disk fills; set it (e.g. `10GB`) so a
   stuck slot loses its WAL retention rather than wedging the cluster.
+  The cost: an invalidated slot cannot stream again (`can no longer get
+  changes from replication slot`), so the events in the removed WAL
+  need a backfill. Size the cap from your WAL rate: at 10K events/sec
+  of 500-byte events plus 5 MB/sec of other writes, WAL grows about
+  11 MB/sec, and `10GB` covers about 16 minutes of outage.
 
 - **The producer's WAL emit latency stays unchanged.** The producer
   doesn't care that the consumer is slow. The dual-write
@@ -704,8 +770,10 @@ the business transaction. Three costs:
   total                          567 B per emit
   ```
 
-  Plus the COMMIT's `xl_xact_commit` record (~34 B), so **~600 B**
-  amortised per event.
+  Plus the COMMIT record: 46 B with `wal_level = logical` (24 B header,
+  2 B data header, 8 B `xl_xact_commit`, 4 B `xinfo`, 8 B `dbinfo`).
+  WAL records start on 8-byte boundaries, so one event per commit takes
+  568 + 48 = **~616 B** of WAL, measured with `pg_waldump`.
 - **Total round-trip.** On Apple M3 Max[^12] (1 KB payload, BEGIN →
   INSERT → EMIT → COMMIT, 10K iters): emit `SELECT` p50 **12.8 µs**
   (unix socket) / **21.9 µs** (TCP loopback), p99 28 / 42 µs. Same-VPC
@@ -715,13 +783,13 @@ the business transaction. Three costs:
 At 10K events/sec:
 
 ```txt
-WAL bytes   ≈ 600 B × 10,000  = 6 MB/sec
-            ≈ 21 GB/hour
-            ≈ 500 GB/day
+WAL bytes   ≈ 616 B × 10,000  ≈ 6.2 MB/sec
+            ≈ 22 GB/hour
+            ≈ 530 GB/day
 ```
 
 A modern NVMe sustains 1–3 GB/sec sequential writes; the EBS gp3 volume
-here did 574 MB/sec. At ~600 B per event the WAL is never the limit for
+here did 574 MB/sec. At ~616 B per event the WAL is never the limit for
 small events. What binds depends on payload size and how you commit.
 Measured on a 16-core EC2 box (EBS gp3, durable `synchronous_commit = on`)[^13]:
 
@@ -746,7 +814,7 @@ trading strict global order for per-key order.
 
 | | Outbox table (poll) | factlib (logical msg) |
 |---|---:|---:|
-| Producer SQL | 1 INSERT (heap tuple ~24 B header + payload + 2 index entries) | 1 SELECT (~600 B WAL) |
+| Producer SQL | 1 INSERT (heap tuple ~24 B header + payload + 2 index entries) | 1 SELECT (~616 B WAL) |
 | Producer round-trips | 1 | 1 |
 | Consumer query rate | 10/sec poll (100 ms) | 0 (push via WAL) |
 | Index writes per event | 2 (PK + partial-on-`processed`) | 0 |
@@ -760,16 +828,7 @@ database read: N workers with `SELECT ... FOR UPDATE SKIP LOCKED`, or a
 partitioned table. A logical slot has exactly one reader, so factlib
 parallelizes after Kafka instead.
 
-# Comparison
-
-| Approach | What it costs | What you get |
-|---|---|---|
-| Dual-write (DB then Kafka) | No atomicity: a crash between the two writes loses or duplicates events | Simplest to write |
-| Outbox table + poller | A table, polling latency, and constant vacuum + cleanup | Atomicity on any database, simple mental model, parallel consumers |
-| Outbox table + Debezium | Running Debezium (JVM, Kafka Connect, schema registry); table and cleanup remain | No polling (~10 ms), per-aggregate ordering, mature tooling |
-| **factlib (logical messages)** | Postgres-only, one WAL reader (fan out via Kafka), slot-lag alerting | No table, index, vacuum, cleanup, or schema migration; per-aggregate ordering; trace context in the WAL |
-
-# Notes
+# Limitations
 
 ## Cross-database transactions
 
@@ -807,6 +866,29 @@ needs care around rolled-back streamed messages on the consumer.
   bump both in `postgresql.conf` before you scale.
 - **Slot-lag alerting is mandatory.** Alert on `pg_replication_slots` lag
   and cap it with `max_slot_wal_keep_size`.
+
+# What this post showed
+
+1. `pg_logical_emit_message(true, …)` makes the event part of the business
+   transaction. COMMIT delivers it, ROLLBACK drops it, and no outbox table
+   is written, polled, or vacuumed.
+2. The replication slot's `confirmed_flush_lsn` is the outbox's bookmark.
+   OwlPost moves it, and Postgres recycles the WAL behind it.
+3. The LSN OwlPost confirms must be the message's `WALStart` or the
+   COMMIT's end LSN. `WALStart + len(WALData)` adds a frame length to a
+   WAL position and can skip a transaction that committed right after.
+4. Kafka acks arrive out of order across partitions, so the slot must
+   follow the contiguous acked prefix, not the latest ack.
+5. A crash costs at most one status-update interval of duplicates, which
+   consumers drop by `event.Id`. A Kafka outage costs WAL, so size
+   `max_slot_wal_keep_size` from your WAL rate.
+
+| Approach | What it costs | What you get |
+|---|---|---|
+| Dual-write (DB then Kafka) | No atomicity: a crash between the two writes loses or duplicates events | Simplest to write |
+| Outbox table + poller | A table, polling latency, and constant vacuum + cleanup | Atomicity on any database, simple mental model, parallel consumers |
+| Outbox table + Debezium | Running Debezium (JVM, Kafka Connect, schema registry); table and cleanup remain | No polling (~10 ms), per-aggregate ordering, mature tooling |
+| **factlib (logical messages)** | Postgres-only, one WAL reader (fan out via Kafka), slot-lag alerting | No table, index, vacuum, cleanup, or schema migration; per-aggregate ordering; trace context in the WAL |
 
 # Further reading
 

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 310" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11">
+<rect width="1000" height="310" fill="#faf6ee"/>
+<circle cx="8" cy="10" r="3.2" fill="#c9abd0"/><circle cx="992" cy="10" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="30" r="3.2" fill="#c9abd0"/><circle cx="992" cy="30" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="50" r="3.2" fill="#c9abd0"/><circle cx="992" cy="50" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="70" r="3.2" fill="#c9abd0"/><circle cx="992" cy="70" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="90" r="3.2" fill="#c9abd0"/><circle cx="992" cy="90" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="110" r="3.2" fill="#c9abd0"/><circle cx="992" cy="110" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="130" r="3.2" fill="#c9abd0"/><circle cx="992" cy="130" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="150" r="3.2" fill="#c9abd0"/><circle cx="992" cy="150" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="170" r="3.2" fill="#c9abd0"/><circle cx="992" cy="170" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="190" r="3.2" fill="#c9abd0"/><circle cx="992" cy="190" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="210" r="3.2" fill="#c9abd0"/><circle cx="992" cy="210" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="230" r="3.2" fill="#c9abd0"/><circle cx="992" cy="230" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="250" r="3.2" fill="#c9abd0"/><circle cx="992" cy="250" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="270" r="3.2" fill="#c9abd0"/><circle cx="992" cy="270" r="3.2" fill="#c9abd0"/>
+<circle cx="8" cy="290" r="3.2" fill="#c9abd0"/><circle cx="992" cy="290" r="3.2" fill="#c9abd0"/>
+<line x1="18" y1="0" x2="18" y2="310" stroke="#c4bac6" stroke-dasharray="3 3"/><line x1="982" y1="0" x2="982" y2="310" stroke="#c4bac6" stroke-dasharray="3 3"/>
+<defs><marker id="i" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#181119"/></marker><marker id="g" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#00682e"/></marker><marker id="p" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#7024ab"/></marker><pattern id="h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#faf6ee"/><line x1="0" y1="0" x2="0" y2="6" stroke="#181119" stroke-width="1.4"/></pattern></defs>
+<text x="40" y="24" font-size="12.5" font-weight="800" text-anchor="start" fill="#181119">The same 225 bytes at every stop; only the envelope changes.</text>
+<text x="40" y="68" font-size="11.5" font-weight="800" text-anchor="start" fill="#7024ab">1 Emit</text>
+<rect x="230.0" y="46.0" width="427.5" height="32.0" fill="#f5ddc2" stroke="#6c4122" stroke-width="1.6"/>
+<text x="443.75" y="67" font-size="11" font-weight="800" text-anchor="middle" fill="#6c4122">event · 225 B</text>
+<text x="669.5" y="67" font-size="10.5" text-anchor="start" fill="#181119">225 B of protobuf</text>
+<text x="40" y="116" font-size="11.5" font-weight="800" text-anchor="start" fill="#7024ab">2 WAL</text>
+<rect x="230.0" y="94.0" width="427.5" height="32.0" fill="#f5ddc2" stroke="#6c4122" stroke-width="1.6"/>
+<text x="443.75" y="115" font-size="11" font-weight="800" text-anchor="middle" fill="#6c4122">event · 225 B</text>
+<rect x="203.4" y="94.0" width="26.6" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<rect x="157.8" y="94.0" width="45.6" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<rect x="148.3" y="94.0" width="9.5" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<rect x="102.7" y="94.0" width="45.6" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<text x="669.5" y="115" font-size="10.5" text-anchor="start" fill="#181119">292 B record, ends 0/15A0A88</text>
+<text x="40" y="164" font-size="11.5" font-weight="800" text-anchor="start" fill="#7024ab">3 pgoutput</text>
+<rect x="230.0" y="142.0" width="427.5" height="32.0" fill="#f5ddc2" stroke="#6c4122" stroke-width="1.6"/>
+<text x="443.75" y="163" font-size="11" font-weight="800" text-anchor="middle" fill="#6c4122">event · 225 B</text>
+<rect x="222.4" y="142.0" width="7.6" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<rect x="195.8" y="142.0" width="26.6" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<rect x="180.6" y="142.0" width="15.2" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<rect x="176.8" y="142.0" width="3.8" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<rect x="129.3" y="142.0" width="47.5" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<text x="669.5" y="163" font-size="10.5" text-anchor="start" fill="#181119">253 B frame, WALStart 0/15A0A88</text>
+<text x="40" y="212" font-size="11.5" font-weight="800" text-anchor="start" fill="#7024ab">4 OwlPost</text>
+<rect x="230.0" y="190.0" width="427.5" height="32.0" fill="#f5ddc2" stroke="#6c4122" stroke-width="1.6"/>
+<text x="443.75" y="211" font-size="11" font-weight="800" text-anchor="middle" fill="#6c4122">event · 225 B</text>
+<rect x="116" y="194" width="108" height="24" fill="#ffdad6" stroke="#be1219" stroke-width="1.6"/><text x="170" y="210" font-size="9.5" font-weight="800" text-anchor="middle" fill="#be1219">XLogPos 0/15A0B85</text>
+<text x="669.5" y="211" font-size="10.5" text-anchor="start" fill="#181119">XLogPos = WALStart + 253</text>
+<text x="40" y="260" font-size="11.5" font-weight="800" text-anchor="start" fill="#7024ab">5 Kafka</text>
+<rect x="230.0" y="238.0" width="427.5" height="32.0" fill="#f5ddc2" stroke="#6c4122" stroke-width="1.6"/>
+<text x="443.75" y="259" font-size="11" font-weight="800" text-anchor="middle" fill="#6c4122">event · 225 B</text>
+<rect x="211.0" y="238.0" width="19.0" height="32.0" fill="#faf6ee" stroke="#181119" stroke-width="1.1"/>
+<text x="669.5" y="259" font-size="10.5" text-anchor="start" fill="#181119">key user-12345 → partition 1</text>
+<text x="40" y="294" font-size="10.5" font-weight="800" text-anchor="start" fill="#00682e">6 Ack: Kafka hands back the LSN header; a status update sets confirmed_flush_lsn = 0/15A0B85.</text>
+</svg>
