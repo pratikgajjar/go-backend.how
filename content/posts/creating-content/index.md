@@ -44,7 +44,11 @@ What should you write about? Here are several options:
 
 # Quality {#quality}
 
-The quality of what you create depends on three things. Patrick Winston puts them in a formula: quality depends on knowledge (K), practice (P), and talent (T), and "the T is very small"[^2].
+The quality of what you create depends on three things: knowledge (K), practice (P), and talent (T). Patrick Winston writes them as a formula and adds that "the T is very small"[^2].
+
+He tells a story about it. Guess before you read his answer.
+
+{{< viz kind="who-gets-better" frame="none" fallback="who-gets-better.svg" alt="A grid of talent, knowledge and practice for Mary Lou Retton on skis, Patrick Winston on skis, and you. Retton has the talent; Winston has the knowledge and practice." caption="The story and quotes are from Winston's *How to Speak* lecture. Pips show more or less, not measurements." >}}
 
 ## Knowledge
 
@@ -63,12 +67,6 @@ Consider this as gift. No?
 "I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right; he's doing very well now.
 
 > Nothing in this world can take the place of persistence. Talent will not; nothing is more common than unsuccessful men with talent. Genius will not; unrewarded genius is almost a proverb. Education will not; the world is full of educated derelicts. Persistence and determination alone are omnipotent. The slogan 'Press On!' has solved and always will solve the problems of the human race. ― Calvin Coolidge
-
-Put the three together and play with them. Pick a person or move the terms.
-
-{{< viz kind="formula" frame="none" fallback="formula.svg" alt="A playable version of Q = K × P × t. Each letter grows with its value; the talent slider is short." caption="A toy model. Winston does not give the formula's shape; here it is a plain product, and t runs only from 0.8 to 1.2, which is my reading of \"the T is very small\". The values for each person are made up." >}}
-
-In a product, Q is 0 whenever P is 0. So talent can only scale what you have already practised.
 
 # Why? {#why}
 

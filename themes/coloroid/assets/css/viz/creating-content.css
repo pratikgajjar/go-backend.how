@@ -1,129 +1,164 @@
-/* creating-content — Winston's formula as type. frame="none": no sheet,
-   the figure sits on the page like a line of the essay. Classes: v-cc-*. */
+/* creating-content. frame="none": both figures sit on the page like part
+   of the essay. Classes: v-cc-*.
+   Colour meaning (same in both figures):
+     ink    structure, and talent (given, you cannot grow it)
+     green  knowledge and practice (you grow them)
+     blue   your answers
+     purple the column to look at now
+     red    not published                                                  */
 
-.viz--formula,
-.viz--formula-hero {
+.viz--formula-hero,
+.viz--who-gets-better {
   --ink: var(--article-text, oklch(26% 0.03 95));
   --paper: var(--article-bg, oklch(92% 0.04 95));
-  --rule: color-mix(in oklch, var(--ink) 22%, transparent);
+  --rule: color-mix(in srgb, var(--ink) 22%, transparent);
+  --faint: color-mix(in srgb, var(--ink) 14%, transparent);
+  --green: oklch(44% 0.12 152);
   --blue: oklch(42% 0.16 258);
-  --blue-l: color-mix(in oklch, var(--blue) 12%, var(--paper));
-  --brown: oklch(40% 0.08 55);
+  --purple: oklch(44% 0.19 305);
   --red: oklch(48% 0.19 27);
-  margin: 2.5rem 0;
-  padding: 0;
+  --tint: color-mix(in srgb, var(--ink) 6%, var(--paper));
+  --purple-l: color-mix(in srgb, var(--purple) 14%, var(--paper));
+  --blue-l: color-mix(in srgb, var(--blue) 12%, var(--paper));
+  --red-l: color-mix(in srgb, var(--red) 12%, var(--paper));
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 15px;
   line-height: 1.5;
 }
-html[data-force-dark] .viz--formula,
-html[data-force-dark] .viz--formula-hero {
+html[data-force-dark] .viz--formula-hero,
+html[data-force-dark] .viz--who-gets-better {
+  --green: oklch(78% 0.14 152);
   --blue: oklch(78% 0.12 255);
-  --brown: oklch(80% 0.07 65);
+  --purple: oklch(78% 0.14 305);
   --red: oklch(72% 0.17 27);
 }
-.viz--formula .wv-fallback,
-.viz--formula-hero .wv-fallback { max-width: 560px; margin: 0 auto; border: 0; }
-
-/* ---------- the equation ---------- */
-.v-cc-eq {
-  display: grid;
-  grid-template-columns: repeat(7, auto);
-  justify-content: center;
-  justify-items: center;
-  align-items: baseline;
-  gap: 0 0.55em;
-  padding: 0.6rem 0 0.2rem;
+.viz--formula-hero .wv-fallback,
+.viz--who-gets-better .wv-fallback { max-width: 560px; margin: 0 auto; border: 0; }
+figure.viz--formula-hero figcaption,
+figure.viz--who-gets-better figcaption {
+  opacity: 1; font-style: normal; color: var(--ink);
+  max-width: 40rem; margin: 1rem auto 0; padding-top: 0.5rem;
+  border-top: 1px solid var(--rule); font-size: 12px;
 }
-.v-cc-term { display: contents; }
-.v-cc-glyph {
+
+/* ================================================================ hero */
+.viz--formula-hero { margin: 1rem 0 2.2rem; }
+.v-cc-h-eq {
+  display: flex; justify-content: center; align-items: baseline;
+  flex-wrap: nowrap; gap: 0 0.12em;
   font-family: var(--font-display);
+  font-size: clamp(34px, 9vw, 64px);
   line-height: 1;
-  color: var(--ink);
-  transition: font-size 0.25s ease, color 0.25s;
 }
-.v-cc-t .v-cc-glyph { font-style: italic; }
-.v-cc-name { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.4rem; min-width: 5.5em; text-align: center; }
-.v-cc-val { font-size: 13px; font-weight: 700; color: var(--brown); font-variant-numeric: tabular-nums; min-height: 1.3em; }
-.v-cc-op { font-family: var(--font-display); font-size: 1.6em; line-height: 1; }
-.v-cc-q.is-zero .v-cc-glyph { color: transparent; -webkit-text-stroke: 1.5px var(--red); }
-.v-cc-q.is-zero .v-cc-val { color: var(--red); }
-
-.v-cc-eq.is-hero { padding-top: 0.2rem; }
-.v-cc-line { text-align: center; max-width: 34em; margin: 0.6rem auto 0; font-size: 14px; }
-
-/* ---------- people and sliders ---------- */
-.v-cc-people { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 0.5rem; margin: 1.1rem 0 0.9rem; }
-.v-cc-chip {
-  font: inherit; font-size: 12.5px; line-height: 1.2;
-  padding: 0.45rem 0.7rem; min-height: 34px;
-  color: var(--blue); background: transparent;
-  border: 1px solid var(--blue); border-radius: 999px;
-  cursor: pointer; touch-action: manipulation;
+.v-cc-h-term { display: inline-flex; flex-direction: column; align-items: center; }
+.v-cc-h-glyph { line-height: 1; }
+.v-cc-h-term.is-q .v-cc-h-glyph { font-size: 1.35em; }
+.v-cc-h-term.is-k .v-cc-h-glyph, .v-cc-h-term.is-p .v-cc-h-glyph { color: var(--green); }
+.v-cc-h-term.is-t .v-cc-h-glyph { font-size: 0.42em; font-style: italic; }
+.v-cc-h-punct { font-size: 0.7em; opacity: 0.8; }
+.v-cc-h-punct:first-of-type { margin: 0 0.15em; }
+.v-cc-h-name {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-top: 0.5rem; line-height: 1.2;
 }
-.v-cc-chip:hover { background: var(--blue-l); }
-.v-cc-chip[aria-pressed="true"] { background: var(--blue); color: var(--paper); }
-.v-cc-chip:focus-visible, .v-cc-ctl input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-
-.v-cc-ctls { display: grid; gap: 0.35rem; max-width: 34rem; margin: 0 auto; }
-.v-cc-ctl {
-  display: grid;
-  grid-template-columns: 1.4em 11.5em minmax(0, 1fr);
-  align-items: center;
-  gap: 0.6rem;
-  font-size: 13px;
-  cursor: pointer;
-}
-.v-cc-sym { font-family: var(--font-display); font-size: 17px; }
-.v-cc-ctl.is-t .v-cc-sym { font-style: italic; }
-.v-cc-track { display: block; }
-/* Talent gets a short track: you cannot move it far. */
-.v-cc-ctl.is-t .v-cc-track { width: 30%; min-width: 64px; }
-.v-cc-ctl input[type="range"] {
-  -webkit-appearance: none; appearance: none;
-  width: 100%; height: 28px; margin: 0; background: transparent; cursor: pointer;
-}
-.v-cc-ctl input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--blue); }
-.v-cc-ctl input[type="range"]::-moz-range-track { height: 2px; background: var(--blue); }
-.v-cc-ctl input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 16px; height: 16px; margin-top: -7px;
-  border-radius: 50%; background: var(--paper); border: 2px solid var(--blue);
-}
-.v-cc-ctl input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--paper); border: 2px solid var(--blue); }
-
-/* ---------- reading ---------- */
-.v-cc-read { max-width: 34rem; margin: 1rem auto 0; min-height: 4.6em; }
-.v-cc-read p { margin: 0 0 0.45rem; font-size: 14px; }
-.v-cc-n { color: var(--brown); font-variant-numeric: tabular-nums; }
-.v-cc-bad { color: var(--red); font-weight: 700; }
-.v-cc-said { font-style: italic; padding-left: 0.8rem; border-left: 2px solid var(--rule); }
-.v-cc-src { font-style: normal; font-size: 12px; }
-.v-cc-key { max-width: 34rem; margin: 0.6rem auto 0; font-size: 11.5px; }
-.v-cc-key .is-opt { color: var(--blue); font-weight: 700; }
-.v-cc-key .is-data { color: var(--brown); font-weight: 700; }
-.v-cc-key .is-bad { color: var(--red); font-weight: 700; }
-
-figure.viz--formula figcaption,
-figure.viz--formula-hero figcaption {
-  opacity: 1;
-  max-width: 34rem;
-  margin: 0.9rem auto 0;
-  padding-top: 0.55rem;
-  border-top: 1px solid var(--rule);
-  font-size: 12px;
-  font-style: normal;
-  color: var(--ink);
-}
-
+.v-cc-h-term.is-t .v-cc-h-name { font-size: 9px; }
+.v-cc-h-line { text-align: center; max-width: 32em; margin: 1rem auto 0; font-size: 14px; }
 @media (max-width: 480px) {
-  .viz--formula, .viz--formula-hero { font-size: 13px; }
-  .v-cc-eq { gap: 0 0.3em; }
-  .v-cc-name { font-size: 9.5px; letter-spacing: 0.04em; min-width: 0; }
-  .v-cc-ctl { grid-template-columns: 1.2em minmax(0, 1fr); gap: 0.1rem 0.5rem; }
-  .v-cc-ctl .v-cc-track { grid-column: 1 / -1; }
-  .v-cc-ctl.is-t .v-cc-track { width: 34%; }
+  .v-cc-h-name { font-size: 8.5px; letter-spacing: 0.02em; }
+  .v-cc-h-term.is-t .v-cc-h-name { font-size: 7.5px; }
+  .v-cc-h-line { font-size: 13px; }
 }
 
-.v-cc-still .v-cc-glyph { transition: none; }
-@media (prefers-reduced-motion: reduce) { .v-cc-glyph { transition: none; } }
+/* ===================================================== who-gets-better */
+.viz--who-gets-better { margin: 2.4rem 0; font-size: 14px; }
+.v-cc-who { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
+@media (min-width: 820px) {
+  .v-cc-who { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); align-items: start; }
+  .v-cc-grid { position: sticky; top: 1rem; }
+}
+
+/* the grid: rows T K P, columns Retton Winston You */
+.v-cc-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(6.2em, auto) repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  font-size: 12.5px;
+}
+.v-cc-col, .v-cc-row, .v-cc-cell { padding: 0.55rem 0.45rem; transition: opacity 0.3s, background-color 0.3s; }
+.v-cc-col { display: flex; flex-direction: column; align-items: center; text-align: center; border-bottom: 1.5px solid var(--ink); line-height: 1.25; }
+.v-cc-col b { font-size: 13.5px; }
+.v-cc-col span { font-size: 10.5px; }
+.v-cc-corner { border-bottom: 1.5px solid var(--ink); }
+.v-cc-row { display: grid; grid-template-columns: 1.1em auto; column-gap: 0.4em; align-items: baseline; border-bottom: 1px solid var(--rule); line-height: 1.2; }
+.v-cc-row .v-cc-sym { font-family: var(--font-display); font-size: 17px; grid-row: span 2; }
+.v-cc-row small { grid-column: 2; font-size: 10.5px; }
+.v-cc-r-k .v-cc-sym, .v-cc-r-p .v-cc-sym, .v-cc-r-k small, .v-cc-r-p small { color: var(--green); }
+.v-cc-r-t .v-cc-sym { font-style: italic; }
+.v-cc-cell { display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--rule); }
+.v-cc-col.is-focus, .v-cc-cell.is-focus { background: var(--purple-l); }
+.v-cc-col.is-focus { border-bottom-color: var(--purple); }
+.v-cc-col.is-focus b { color: var(--purple); }
+.v-cc-col.is-dim, .v-cc-cell.is-dim { opacity: 0.4; }
+
+/* pips: talent in ink, knowledge and practice in green */
+.v-cc-pips { display: inline-flex; gap: 3px; }
+.v-cc-pips i { width: 9px; height: 13px; border: 1.25px solid var(--faint); transition: background-color 0.3s, border-color 0.3s; }
+.v-cc-r-t .v-cc-pips i.on { background: var(--ink); border-color: var(--ink); }
+.v-cc-r-k .v-cc-pips i.on, .v-cc-r-p .v-cc-pips i.on { background: var(--green); border-color: var(--green); }
+.v-cc-pips.is-unknown { position: relative; }
+.v-cc-pips.is-unknown i { border-style: dashed; }
+.v-cc-pips.is-unknown::after {
+  content: "?"; position: absolute; inset: 0; display: grid; place-items: center;
+  font-weight: 800; font-size: 12px;
+}
+.v-cc-cell.is-hidden .v-cc-pips i { border-style: dotted; }
+
+/* never published: the You column is covered */
+.v-cc-veil {
+  grid-column: 4; grid-row: 2 / span 3;
+  display: grid; place-items: center; text-align: center;
+  padding: 0.4rem; font-size: 10.5px; font-weight: 700; line-height: 1.3;
+  color: var(--red); background: var(--red-l);
+  border: 1.5px dashed var(--red);
+  position: relative; z-index: 1;
+  opacity: 0; pointer-events: none; transition: opacity 0.35s;
+}
+.v-cc-grid.is-veiled .v-cc-veil { opacity: 0.96; }
+
+/* the question area */
+.v-cc-side { display: grid; gap: 0.8rem; align-content: start; min-height: 17rem; }
+.v-cc-stage { display: grid; gap: 0.6rem; align-content: start; }
+.v-cc-stage p { margin: 0; }
+.v-cc-say { font-size: 14px; }
+.v-cc-ask { font-weight: 700; margin-top: 0.3rem !important; }
+.v-cc-picks { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.v-cc-pick, .v-cc-next {
+  font: inherit; font-size: 13px; line-height: 1.2;
+  padding: 0.5rem 0.85rem; min-height: 36px;
+  cursor: pointer; touch-action: manipulation; border-radius: 0;
+}
+.v-cc-pick { color: var(--blue); background: transparent; border: 1.5px solid var(--blue); }
+.v-cc-pick:hover { background: var(--blue-l); }
+.v-cc-pick[aria-pressed="true"] { background: var(--blue); color: var(--paper); }
+.v-cc-next { color: var(--ink); background: transparent; border: 0; padding-left: 0; text-decoration: underline; text-underline-offset: 3px; }
+.v-cc-pick:focus-visible, .v-cc-next:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.v-cc-out { display: grid; gap: 0.5rem; align-content: start; }
+.v-cc-out:empty { display: none; }
+.viz--who-gets-better blockquote.v-cc-quote {
+  margin: 0; padding: 0.1rem 0 0.1rem 0.8rem;
+  background: none; box-shadow: none; border: 0; border-left: 3px solid var(--purple);
+  border-radius: 0; color: var(--ink); font-style: italic; font-size: 14px; quotes: none;
+}
+.viz--who-gets-better blockquote.v-cc-quote::before,
+.viz--who-gets-better blockquote.v-cc-quote::after { content: none; }
+.v-cc-src { font-style: normal; font-size: 12px; }
+.v-cc-advice { padding: 0.5rem 0.7rem; background: var(--tint); border-left: 3px solid var(--green); }
+.v-cc-again { display: flex; flex-wrap: wrap; gap: 0 1.2rem; }
+.v-cc-dots { display: flex; gap: 6px; }
+.v-cc-dots i { width: 7px; height: 7px; border-radius: 50%; border: 1.25px solid var(--ink); }
+.v-cc-dots i.on { background: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .viz--who-gets-better * { transition: none !important; }
+}
