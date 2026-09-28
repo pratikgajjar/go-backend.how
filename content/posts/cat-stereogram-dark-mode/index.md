@@ -11,9 +11,9 @@ images = ["og-eb3a0221.png"]
 theme = "lavender"
 +++
 
-{{< viz kind="try" frame="none" fallback="try.svg" alt="Two white line cats on black, and a view from above showing the lines of sight from each eye crossing at a fingertip in front of the screen" caption="Fingertip distances assume eyes 63 mm apart and a typical screen: 35 cm away on a phone, 55 cm on a computer. Yours will differ a little." >}}
+{{< viz kind="try" frame="none" fallback="try.svg" alt="Two white line cats on black, with what you see at each stage: four cats with the tails side by side, four with the tails one cat apart, and three when fused" caption="Fingertip distances assume eyes 63 mm apart and a typical screen: 35 cm away on a phone, 55 cm on a computer. Yours will differ a little." >}}
 
-A stereogram is a pair of images, one for each eye. When each eye aims at a different image, the brain merges the two into one. The pair above is a simple one: each cat has parts the other lacks. Merged, you see one cat with both ears, both sets of whiskers, and the tail. Try it now. Pick a spacing, hold a fingertip where the guide shows, and look at the fingertip until the middle two of the four cats meet.
+A stereogram is a pair of images, one for each eye. When each eye aims at a different image, the brain merges the two into one. The pair above is a simple one: each cat has parts the other lacks. Merged, you see one cat with both ears, both sets of whiskers, and the tail. Try it now: hold a fingertip between you and the screen, look at it, and answer the question under the cats.
 
 By the end of this post you will know why the fingertip works, when you can look through the screen instead, and how a pair like this gets depth. The printed pair below is flat: its two outlines line up to within 2 px on a 7,016 px sheet.
 
@@ -33,11 +33,17 @@ There are two ways to merge the pair. You can cross your eyes, so the lines of s
 
 1. Begin by placing your index finger or the tip of a ballpoint pen very close to the stereogram.
 2. Gradually move your finger or pen tip closer to your eyes. Keep your eyes on the fingertip, not on the cats.
-3. As the finger moves closer, the two cats behind it split into four. When the middle two land on each other, you see three cats. Look at a sharp corner of the middle one, like the neck of the cat.
+3. As the finger moves closer, the two cats behind it split into four. If the two tails are side by side, keep moving the finger toward your eyes. If they are one cat apart, you went too far; move it back. When the middle two land on each other, you see three cats. Look at a sharp corner of the middle one, like the neck of the cat.
 4. Once the images merge, try to hold them while slowly looking around the head and body of the cat.
 5. After merging the images, remove your finger or pen tip and keep the merged image. It sharpens once focus relaxes back to the page while your eyes stay crossed.
 
-The fingertip marks the point where the lines of sight cross. For eyes `e` apart, looking at cats `s` apart from a distance `D`, that point is `D × e / (e + s)` from your eyes. The guide under the pair at the top draws it for the spacing you pick. Wider cats move the fingertip closer to your eyes, and that is harder, so start with the cats close together.
+## Why the fingertip works
+
+The fingertip marks the point where the lines of sight cross. For eyes `e` apart, looking at cats `s` apart from a distance `D`, that point is `D × e / (e + s)` from your eyes. Answer each question under the drawing before it moves.
+
+{{< viz kind="aim" frame="none" fallback="aim.svg" alt="Seen from above: the left eye's line of sight goes to the right cat and the right eye's to the left cat, and they cross at the fingertip" caption="Side-to-side distances are drawn 1.5 times wider than depth so the lines stay apart." >}}
+
+Start with the cats close together. The fingertip then sits further from your face, and the eyes cross less.
 
 ## Adjust distance
 
@@ -49,11 +55,11 @@ Hold the screen at a comfortable distance and look through it, as if at a wall b
 
 ## Give it depth
 
-The pair is flat because its two outlines line up exactly. A stereogram gets depth from small side-to-side differences between its two images. Move the heads below a few pixels, then fuse the pair again.
+The pair is flat because its two outlines line up exactly. A stereogram gets depth from small side-to-side differences between its two images. The pair below has its heads moved a few pixels. Guess first, then fuse it.
 
 {{< viz kind="depth" frame="none" fallback="depth.svg" alt="The cat pair with the heads moved 12 px further apart than the bodies; with crossed eyes the head sits in front of the body" >}}
 
-With crossed eyes, a part that is further apart in the two images needs the eyes to cross more, so it looks nearer. Looking through, the same part looks further away. That is why a stereogram made for one method shows its depth inside out with the other.
+A stereogram made for crossing shows its depth inside out when you look through it, and the other way round.
 
 ## What to remember
 
