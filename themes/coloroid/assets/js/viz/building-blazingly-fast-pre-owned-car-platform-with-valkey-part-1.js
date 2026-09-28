@@ -1,7 +1,7 @@
 /*
  * Figures for "Building blazingly fast pre-owned car platform with Valkey – Part 1".
- * Own look (frame="none"): a cream spec card with a number-plate figure tag,
- * mono for the system, the app's sans font for the car card a buyer sees.
+ * House look (walviz.css + lib.js components). What is specific to this post is
+ * the drawing and the interaction, not the chrome.
  *
  *   card-once         one card, built once, read by every ad click, rebuilt on change
  *   hook-sets         place each write in the smallest hook ring that sees it
@@ -17,7 +17,7 @@
  *   - Django 6.1: QuerySet.update(), bulk_create(), bulk_update() send no post_save
  * Car, prices, binlog positions and offsets are sample values.
  */
-import { h, s, register, uid, clamp, REDUCED } from './lib.js';
+import { h, s, register, uid, clamp, REDUCED, colorKey, codeBlock, range, chips, ask } from './lib.js';
 
 const P = 'v-car1-';
 const inr = (n) => `₹${n.toLocaleString('en-IN')}`;
@@ -36,22 +36,12 @@ function onLayout(el, rebuild, at = 560) {
   check();
 }
 
-/** Colour key. items: [[swatchClass, label], …] */
-function key(items) {
-  return h('ul', { class: `${P}key` }, ...items.map(([k, t]) => h('li', null, h('i', { class: `${P}sw ${P}sw--${k}` }), t)));
-}
+/** Colour key with the shared key classes. items: [[token, label], …] */
+const KEYCLS = { pick: 'k-pick', data: 'k-data', safe: 'k-safe', look: 'k-look', opt: 'k-opt', gap: 'k-gap', ink: 'k-ink' };
+const key = (items) => colorKey(items.map(([k, label]) => [KEYCLS[k], label]));
 
 /** Code lines: «x» data, ⟪x⟫ good, ⟦x⟧ bad, // comment. */
-function code(lines) {
-  const esc = (v) => v.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  const html = lines.map((ln) => {
-    let t = esc(ln);
-    const c = t.indexOf('//');
-    if (c >= 0) t = `${t.slice(0, c)}<span class="cm">${t.slice(c)}</span>`;
-    return t.replace(/«(.+?)»/g, '<span class="d">$1</span>').replace(/⟪(.+?)⟫/g, '<span class="ok">$1</span>').replace(/⟦(.+?)⟧/g, '<span class="bad">$1</span>');
-  }).join('\n');
-  return `<pre class="${P}code"><code>${html}</code></pre>`;
-}
+const code = (lines) => codeBlock(lines);
 
 const CAR_PATH = 'M12,62 L14,50 Q16,44 26,42 L44,40 L62,24 Q68,20 80,20 L112,20 Q122,20 128,26 L144,40 Q158,42 162,50 L164,62 Z';
 const CAR_WIN = 'M68,27 L80,24 L100,24 L100,40 L54,40 Z M106,24 L114,24 Q120,24 124,29 L134,40 L106,40 Z';
@@ -132,17 +122,17 @@ function initHookSets(fig, app) {
   let k = 0; let answered = false; let right = 0;
   const rings = {}; const chipsIn = {}; const counts = {};
 
-  const ask = h('p', { class: `${P}ask` });
-  const wcard = h('div', { class: `${P}wcard` });
-  const fb = h('div', { class: `${P}fb`, 'aria-live': 'polite' });
-  const next = h('button', { type: 'button', class: `${P}next` });
-  const show = h('button', { type: 'button', class: `${P}skip`, onclick: () => choose(null) }, 'show me');
+  const q = h('p', { class: 'wv-q' });
+  const wcard = h('div', { class: 'wv-card is-look' });
+  const fb = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const next = h('button', { type: 'button', class: 'wv-btn' });
+  const show = h('button', { type: 'button', class: 'wv-btn wv-btn--ghost', onclick: () => choose(null) }, 'show me');
   next.addEventListener('click', () => (k >= WRITES.length - 1 ? finish() : load(k + 1)));
 
   const ring = (id, inner) => {
-    const r = h('div', { class: `${P}ring ${P}ring--${id}`, role: 'button', tabindex: 0, 'aria-label': `${RINGS[id].title}, seen by ${RINGS[id].hook}` },
-      h('div', { class: `${P}ringlbl` }, h('b', null, RINGS[id].title), h('span', null, `seen by ${RINGS[id].hook}`), counts[id] = h('em')),
-      chipsIn[id] = h('div', { class: `${P}placed` }), inner);
+    const r = h('div', { class: `wv-card ${P}ring ${P}ring--${id}`, role: 'button', tabindex: 0, 'aria-label': `${RINGS[id].title}, seen by ${RINGS[id].hook}` },
+      h('h5', null, RINGS[id].title), h('div', { class: `${P}ringsub` }, h('span', { class: 'c-opt' }, `seen by ${RINGS[id].hook}`), counts[id] = h('span', { class: 'c-data' })),
+      chipsIn[id] = h('div', { class: `wv-chips ${P}placed` }), inner);
     const pick = (e) => { e.stopPropagation(); if (!answered && k < WRITES.length) choose(id); };
     r.addEventListener('click', pick);
     r.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { pick(e); e.preventDefault(); } });
@@ -150,26 +140,26 @@ function initHookSets(fig, app) {
     return r;
   };
   const tree = ring('binlog', ring('domain', ring('signal')));
-  const restart = h('button', { type: 'button', class: `${P}skip`, onclick: () => reset() }, 'start over');
+  const restart = h('button', { type: 'button', class: 'wv-btn wv-btn--ghost', onclick: () => reset() }, 'start over');
 
   tree.classList.add(`${P}tree`);
-  app.append(h('div', { class: `${P}hookgrid` }, ask, wcard, tree, fb, h('div', { class: `${P}btnrow` }, show, next, restart)),
-  key([['look', 'the write in your hand'], ['opt', 'a hook, as a ring'], ['data', 'writes placed'], ['pick', 'the ring we chose']]));
+  app.append(h('div', { class: `${P}hookgrid` }, q, wcard, tree, fb, h('div', { class: 'wv-bar' }, show, next, restart)),
+  key([['look', 'the write in your hand'], ['opt', 'a hook'], ['safe', 'the ring it lands in'], ['gap', 'a wrong guess'], ['pick', 'the ring we chose']]));
 
   function load(i) {
     k = i; answered = false;
     const w = WRITES[i];
-    ask.innerHTML = `Write <b>${i + 1} of ${WRITES.length}</b>. Tap the smallest ring that sees it.`;
-    wcard.innerHTML = `<span class="${P}who">${w.who}</span><b>${w.label}</b>${code(w.code)}`;
+    q.innerHTML = `Write <b>${i + 1} of ${WRITES.length}</b>. Tap the smallest ring that sees it.`;
+    wcard.innerHTML = `<h5>${w.label}</h5><p class="t-s">${w.who}</p>${code(w.code)}`;
     wcard.hidden = false;
-    fb.className = `${P}fb`; fb.textContent = '';
+    fb.className = 'wv-note'; fb.hidden = true;
     next.hidden = true; show.hidden = false; restart.hidden = true;
-    Object.values(rings).forEach((r) => r.classList.remove('is-right', 'is-wrong', 'is-answer', 'is-pick', 'is-done'));
+    Object.values(rings).forEach((r) => r.classList.remove('is-good', 'is-bad', 'is-pick'));
     tree.classList.add('is-asking');
   }
 
   function place(w) {
-    const c = h('button', { type: 'button', class: `${P}pchip`, onclick: (e) => { e.stopPropagation(); review(w); } }, w.label);
+    const c = h('button', { type: 'button', class: 'wv-chip', onclick: (e) => { e.stopPropagation(); review(w); } }, w.label);
     chipsIn[w.set].append(c);
     return c;
   }
@@ -180,33 +170,36 @@ function initHookSets(fig, app) {
     tree.classList.remove('is-asking');
     const ok = id === w.set;
     if (ok) right++;
-    if (id) rings[id].classList.add(ok ? 'is-right' : 'is-wrong');
-    if (!ok) rings[w.set].classList.add('is-answer');
-    place(w).classList.add('is-new');
-    fb.className = `${P}fb ${ok ? 'is-ok' : 'is-bad'}`;
-    fb.innerHTML = `<strong>${ok ? 'Right.' : id ? `It lands in “${RINGS[w.set].title}”.` : `“${RINGS[w.set].title}”.`}</strong> ${w.why}`;
+    if (id && !ok) rings[id].classList.add('is-bad');
+    rings[w.set].classList.add('is-good');
+    place(w);
+    fb.hidden = false;
+    fb.className = `wv-note ${ok ? 'is-good' : 'is-bad'}`;
+    fb.innerHTML = `<b>${ok ? 'Right.' : id ? `It lands in “${RINGS[w.set].title}”.` : `“${RINGS[w.set].title}”.`}</b> ${w.why}`;
     next.textContent = k >= WRITES.length - 1 ? 'See the count →' : 'Next write →';
     next.hidden = false; show.hidden = true;
   }
 
   function review(w) {
-    fb.className = `${P}fb`;
-    fb.innerHTML = `<strong>${w.label}</strong> (${w.who}). ${w.why}`;
+    fb.hidden = false;
+    fb.className = 'wv-note';
+    fb.innerHTML = `<b>${w.label}</b> (${w.who}). ${w.why}`;
   }
 
   function finish() {
     k = WRITES.length;
-    Object.values(rings).forEach((r) => r.classList.remove('is-right', 'is-wrong', 'is-answer'));
+    Object.values(rings).forEach((r) => r.classList.remove('is-good', 'is-bad'));
     for (const id of ORDER) {
       const n = WRITES.filter((w) => ORDER.indexOf(w.set) <= ORDER.indexOf(id)).length;
-      counts[id].textContent = `sees ${n} of ${WRITES.length}`;
+      counts[id].textContent = ` · sees ${n} of ${WRITES.length}`;
     }
     rings.binlog.classList.add('is-pick');
     tree.classList.add('is-done');
-    ask.innerHTML = `You placed <b>${right} of ${WRITES.length}</b> in the right ring.`;
+    q.innerHTML = `You placed <b>${right} of ${WRITES.length}</b> in the right ring.`;
     wcard.hidden = true;
-    fb.className = `${P}fb is-ok`;
-    fb.innerHTML = '<strong>Only the outer ring holds every write.</strong> A hook sees the writes inside its ring. The binlog reader is the only hook every writer passes, so that is where we put it. Tap a placed write to read why it sits there.';
+    fb.hidden = false;
+    fb.className = 'wv-note is-good';
+    fb.innerHTML = '<b>Only the outer ring holds every write.</b> A hook sees the writes inside its ring. The binlog reader is the only hook every writer passes, so that is where we put it. Tap a placed write to read why it sits there.';
     next.hidden = true; show.hidden = true; restart.hidden = false;
   }
 
@@ -399,17 +392,18 @@ function timeline(fig, app, opts = {}) {
   let revealTo = Infinity; let prompt = null; let guess = -1;
   const refs = {};
   const stage = h('div', { class: `${P}tl` });
-  const card = h('div', { class: `${P}buyer`, 'aria-live': 'polite' },
-    h('div', { class: `${P}buyerhead` }, 'a buyer opening car 2323 now sees'),
-    h('div', { class: `${P}car` }, h('div', { class: `${P}photo` }, carIcon()),
-      h('b', null, 'Tata Nexon XZ+'), h('span', { class: `${P}sub` }, '2nd owner · Mumbai · sample'),
-      refs.price = h('div', { class: `${P}price` }), refs.cnote = h('div', { class: `${P}cnote` })));
-  const detail = h('div', { class: `${P}detail`, 'aria-live': 'polite' });
-  const slider = h('input', { type: 'range', min: 0, max: 10, step: 0.01, value: 0, 'aria-label': 'Time' });
-  const play = h('button', { type: 'button', class: `${P}play` }, '▶ play');
-  const ctrl = h('div', { class: `${P}ctrl` }, play, slider);
+  const card = h('div', { class: `wv-card ${P}buyer`, 'aria-live': 'polite' },
+    h('p', { class: 't-s' }, 'A buyer opening car 2323 now sees'),
+    h('div', { class: `${P}photo` }, carIcon()),
+    h('h5', null, 'Tata Nexon XZ+'), h('p', { class: 't-s' }, '2nd owner · Mumbai · sample'),
+    h('dl', { class: 'wv-kv' }, h('dt', null, 'price'), refs.price = h('dd'), h('dt', null, 'cache'), refs.cnote = h('dd')));
+  const detail = h('div', { class: 'wv-insp', 'aria-live': 'polite' });
+  const stepOf = (v) => { const n = sc ? sc.events.filter((e) => e.x <= v + 1e-6).length : 0; return n ? `step ${n}` : 'start'; };
+  const rg = range('time', { min: 0, max: 10, step: 0.01, value: 0, fmt: stepOf, oninput: (v) => { stop(); moved(); setNow(v); } });
+  const slider = rg.input;
+  const play = h('button', { type: 'button', class: 'wv-btn' }, '▶ Play');
+  const ctrl = h('div', { class: `wv-bar ${P}ctrl` }, play, rg.el);
 
-  slider.addEventListener('input', () => { stop(); moved(); setNow(+slider.value); });
   play.addEventListener('click', () => { moved(); if (playing) stop(); else start(); });
 
   app.append(...(opts.top ? [opts.top] : []), ctrl, h('div', { class: `${P}tlgrid` }, stage, card), ...(opts.below ? [opts.below] : []), detail);
@@ -447,7 +441,7 @@ function timeline(fig, app, opts = {}) {
 
     LANES.forEach((ln, k) => {
       svg.append(s('rect', { x: 0, y: yOf[ln], width: W, height: hOf(ln), class: `${P}lane${k % 2 ? ' odd' : ''}` }));
-      svg.append(s('text', { x: 8, y: Y(ln) + 4, class: `${P}lanelbl` }, !wide && ln === 'script' ? 'script' : LANE_LABEL[ln]));
+      svg.append(s('text', { x: 8, y: Y(ln) + 4, class: 't-s t-b' }, !wide && ln === 'script' ? 'script' : LANE_LABEL[ln]));
     });
     // cache bands on the Valkey lane, clipped at what the reader may see
     const by = Y('Valkey') + 13;
@@ -456,7 +450,7 @@ function timeline(fig, app, opts = {}) {
       if (xb - xa < 1) continue;
       svg.append(s('rect', { x: xa, y: by, width: xb - xa, height: 6, rx: 2, class: `${P}band ${P}band--${st}`, fill: st === 'down' ? `url(#${id}-hatch)` : null }));
       const lbl = st === 'ok' ? (a > 0 ? 'new price' : 'matches MySQL') : BAND_LABEL[st];
-      if (wide && xb - xa > lbl.length * 6.2 + 10) svg.append(s('text', { x: xa + 4, y: by + 17, class: `${P}bandlbl ${P}bandlbl--${st}` }, lbl));
+      if (wide && xb - xa > lbl.length * 6.2 + 10) svg.append(s('text', { x: xa + 4, y: by + 17, class: `t-xs t-b ${st === 'ok' ? 't-safe' : st === 'gone' ? 't-mute' : 't-bad'}` }, lbl));
     }
     const hidden = (x) => x > revealTo + 1e-6;
     // connectors
@@ -476,20 +470,20 @@ function timeline(fig, app, opts = {}) {
     if (revealTo < xmax()) {
       const fx = X(revealTo) + 6;
       svg.append(s('rect', { x: fx, y: top, width: W - fx, height: H - top - 6, class: `${P}fog` }));
-      svg.append(s('text', { x: (fx + W) / 2, y: (top + H) / 2 + 12, 'text-anchor': 'middle', class: `${P}fogq` }, '?'));
+      svg.append(s('text', { x: (fx + W) / 2, y: (top + H) / 2 + 12, 'text-anchor': 'middle', class: 't-xl t-b t-look' }, '?'));
     }
     // outage blocks: the given in a question, so drawn above the fog
     for (const [ln, a, b] of sc.blocks) {
       svg.append(s('rect', { x: X(a), y: yOf[ln] + 3, width: X(b) - X(a), height: lh - 6, rx: 4, class: `${P}down`, fill: `url(#${id}-hatch)` }));
-      svg.append(s('text', { x: (X(a) + X(b)) / 2, y: Y(ln) + 4, 'text-anchor': 'middle', class: `${P}downlbl` }, 'down'));
+      svg.append(s('text', { x: (X(a) + X(b)) / 2, y: Y(ln) + 4, 'text-anchor': 'middle', class: 't-xs t-b t-bad t-up halo' }, 'down'));
     }
     // events
     refs.dots = sc.events.map((e, k) => {
       const g = s('g', { class: `${P}ev ${P}ev--${e.kind || 'ok'}${hidden(e.x) ? ' is-hidden' : ''}${k === guess ? ' is-guess' : ''}`, tabindex: hidden(e.x) ? -1 : 0, role: 'button', 'aria-label': `Step ${k + 1}: ${e.title}` });
       const cx = X(e.x); const cy = Y(e.lane);
       g.append(s('circle', { cx, cy, r: 10 }));
-      g.append(s('text', { x: cx, y: cy + 4, 'text-anchor': 'middle', class: 'n' }, e.kind === 'fail' || e.kind === 'lost' ? '✗' : String(k + 1)));
-      if (wide) g.append(s('text', { x: cx, y: cy - 15, 'text-anchor': 'middle', class: 'tag' }, k === guess ? 'your guess' : e.tag));
+      g.append(s('text', { x: cx, y: cy + 3.5, 'text-anchor': 'middle', class: 't-xs t-b n' }, e.kind === 'fail' || e.kind === 'lost' ? '✗' : String(k + 1)));
+      if (wide) g.append(s('text', { x: cx, y: cy - 15, 'text-anchor': 'middle', class: 't-xs halo tag' }, k === guess ? 'your guess' : e.tag));
       const go = () => {
         if (opts.onDot?.(k)) return;
         stop(); moved(); setNow(e.x + 0.001);
@@ -526,14 +520,15 @@ function timeline(fig, app, opts = {}) {
 
   function renderDetail(cur) {
     if (prompt) { detail.replaceChildren(prompt); return; }
-    if (cur < 0) { detail.innerHTML = `<p class="${P}intro">${sc.intro}</p>`; return; }
+    if (cur < 0) { detail.innerHTML = `<p>${sc.intro}</p>`; return; }
     const e = sc.events[cur];
-    const tail = cur === sc.events.length - 1 && sc.extra ? `<p class="${P}extra">${sc.extra}</p>` : '';
-    detail.innerHTML = `<h4><span class="${P}num ${P}num--${e.kind || 'ok'}">${e.kind === 'fail' || e.kind === 'lost' ? '✗' : cur + 1}</span>${e.title}<small>${LANE_LABEL[e.lane]}</small></h4>${e.body}${tail}${opts.extra?.(cur) || ''}`;
+    const tail = cur === sc.events.length - 1 && sc.extra ? `<div class="wv-note">${sc.extra}</div>` : '';
+    const n = e.kind === 'fail' || e.kind === 'lost' ? '✗' : String(cur + 1).padStart(2, '0');
+    detail.innerHTML = `<h4><span>${n} · ${e.title}</span><span class="where">${LANE_LABEL[e.lane]}</span></h4>${e.body}${tail}${opts.extra?.(cur) || ''}`;
     // words first, code on demand
-    const pres = [...detail.querySelectorAll(`pre.${P}code`)];
+    const pres = [...detail.querySelectorAll('pre.wv-code')];
     if (pres.length) {
-      const d = h('details', { class: `${P}more` }, h('summary', null, 'show the code'), ...pres);
+      const d = h('details', null, h('summary', null, 'Show the code'), ...pres);
       detail.append(d);
     }
   }
@@ -554,14 +549,16 @@ function timeline(fig, app, opts = {}) {
     const [a, , st] = bandAt(now);
     const c = BAND_CARD[st](a > 0);
     refs.price.textContent = c.price == null ? '—' : inr(c.price);
+    refs.price.className = c.cls === 'is-stale' ? 'c-bad' : c.cls === 'is-ok' ? 'c-safe' : '';
     refs.cnote.textContent = c.note;
-    card.className = `${P}buyer ${c.cls}`;
+    card.className = `wv-card ${P}buyer ${c.cls === 'is-stale' || c.cls === 'is-down' ? 'is-bad' : c.cls === 'is-ok' ? 'is-good' : ''}`;
+    rg.el.querySelector('output').textContent = stepOf(now);
     renderDetail(cur);
   }
 
   function start() {
     if (now >= limit() - 0.01) setNow(0);
-    play.textContent = '❚❚ pause';
+    play.textContent = '❚❚ Pause';
     if (REDUCED) {
       playing = setInterval(() => {
         const nx = sc.events.find((e) => e.x > now + 1e-6 && e.x <= limit());
@@ -582,7 +579,7 @@ function timeline(fig, app, opts = {}) {
   function stop() {
     if (playing) { cancelAnimationFrame(playing); clearInterval(playing); }
     playing = null;
-    play.textContent = '▶ play';
+    play.textContent = '▶ Play';
   }
 
   onLayout(app, (k) => { kind = k; build(); }, 600);
@@ -596,82 +593,68 @@ function timeline(fig, app, opts = {}) {
   };
 }
 
-/* ---------------------------------------------------- Fig. 2: predict */
+/* ------------------------------------------ Fig. 3: guess, then scrub */
 
 function initChange(fig, app) {
   const SET = NORMAL.events.findIndex((e) => e.tag === 'SET');
   let mode = 'ask'; let guess = -1;
-  const ask = h('div', { class: `${P}prompt` },
-    h('p', null, h('b', null, 'Guess first. '), `The script has just changed the price to ${inr(NEW)}. At which step does a buyer first see it? Tap a dot.`),
-    h('button', { type: 'button', class: `${P}skip`, onclick: () => { mode = 'watch'; t.prompt(null); } }, 'skip the guess'));
+  const skip = h('button', { type: 'button', class: 'wv-btn wv-btn--ghost', onclick: () => { mode = 'watch'; t.prompt(null); } }, 'skip the guess');
+  const askEl = h('div', { class: 'wv-callout' },
+    h('p', null, h('b', null, 'Guess first. '), `The script has just changed the price to ${inr(NEW)}. At which step does a buyer first see it? Tap a dot.`), skip);
   const t = timeline(fig, app, {
     onDot(k) {
       if (mode !== 'ask') return false;
       guess = k; mode = 'watch';
       t.guess(k);
-      t.prompt(h('div', { class: `${P}prompt` }, h('p', null, `You picked step ${k + 1}. Now press play, or drag the purple line, and watch the buyer's card.`)));
+      t.prompt(h('div', { class: 'wv-callout' }, h('p', null, `You picked step ${k + 1}. Now press play, or drag the time slider, and watch the buyer's card.`)));
       return true;
     },
     onMove() { if (mode === 'watch') t.prompt(null); },
     extra(k) {
       if (k !== SET || guess < 0) return '';
       return guess === SET
-        ? `<p class="${P}verdict is-ok">You guessed step ${SET + 1}. The card changes only when the consumer writes the new JSON.</p>`
-        : `<p class="${P}verdict is-bad">You guessed step ${guess + 1}. The card changes only here, at step ${SET + 1}, when the consumer writes the new JSON. Until then Valkey serves the old one.</p>`;
+        ? `<div class="wv-note is-good"><b>You guessed step ${SET + 1}.</b> The card changes only when the consumer writes the new JSON.</div>`
+        : `<div class="wv-note is-bad"><b>You guessed step ${guess + 1}.</b> The card changes only here, at step ${SET + 1}, when the consumer writes the new JSON. Until then Valkey serves the old one.</div>`;
     },
   });
   t.load(NORMAL);
-  t.prompt(ask);
-  app.append(key([['look', 'now'], ['safe', 'cache matches MySQL'], ['gap', 'cache serves the old price'], ['data', 'sample car and price']]));
+  t.prompt(askEl);
+  app.append(key([['look', 'now, and your guess'], ['data', 'sample values'], ['safe', 'cache matches MySQL'], ['gap', 'cache serves the old price']]));
 }
 
-/* ------------------------------------------------ Fig. 3: what if … */
+/* ------------------------------------------------ Fig. 4: what if … */
 
 const OUTCOMES = [['lost', 'The change is lost'], ['longer', 'The page stays stale longer'], ['usual', 'Only the usual lag']];
 
 function initOutage(fig, app) {
   let cur = FAULTS[0]; let variant = 'one';
-  const btns = FAULTS.map((f) => h('button', { type: 'button', class: `${P}fault`, onclick: () => pick(f) }, h('i', null, String(f.id)), f.name));
-  const vbar = h('div', { class: `${P}variants`, role: 'group', 'aria-label': 'Producer acks' });
+  const faultChips = chips(FAULTS.map((f) => [f.id, `${f.id} · ${f.name}`]), (id) => pick(FAULTS.find((f) => f.id === id)), { value: 1, label: 'Failure' });
   const vnames = Object.keys(FAULTS[3].variants);
-  const vbtns = vnames.map((k) => h('button', {
-    type: 'button', class: `${P}opt ${P}opt--sm`, onclick: () => { variant = k; pick(cur); },
-  }, h('b', null, FAULTS[3].variants[k].label)));
-  vbar.append(h('span', null, 'producer setting:'), ...vbtns);
-  const verdict = h('div', { class: `${P}verdictbox`, 'aria-live': 'polite' });
-  const top = h('div', null, h('div', { class: `${P}faults`, role: 'group', 'aria-label': 'Failure' }, ...btns), vbar);
+  const vChips = chips(vnames.map((k) => [k, FAULTS[3].variants[k].label]), (k) => { variant = k; pick(cur); }, { value: variant, label: 'Producer acks setting' });
+  const vbar = h('div', { class: 'wv-field' }, h('label', null, 'producer setting'), vChips.el);
+  const slot = h('div', { 'aria-live': 'polite' });
+  const top = h('div', null, faultChips.el, vbar);
   let answered = false;
-  const t = timeline(fig, app, { top, below: verdict, onMove() { if (answered) t.prompt(null); } });
+  const t = timeline(fig, app, { top, below: slot, onMove() { if (answered) t.prompt(null); } });
 
   function pick(f) {
     cur = f; answered = false;
-    btns.forEach((b, k) => b.setAttribute('aria-pressed', String(FAULTS[k] === f)));
     vbar.hidden = !f.variants;
-    vbtns.forEach((b, k) => b.setAttribute('aria-pressed', String(vnames[k] === variant)));
     const sc = f.variants ? { ...f.variants[variant], ask: f.ask } : f;
-    verdict.hidden = true;
+    const rs = f.variants ? f.variants[variant].resume : f.resume;
     t.load(sc, { at: sc.ask, reveal: sc.ask });
-    const q = h('div', { class: `${P}prompt` },
-      h('p', null, h('b', null, 'What happens to the price change? '), sc.intro),
-      h('div', { class: `${P}answers` }, ...OUTCOMES.map(([k, label]) => h('button', {
-        type: 'button', class: `${P}answer`, onclick: () => answer(sc, k),
-      }, label))));
-    t.prompt(q);
-  }
-
-  function answer(sc, k) {
-    answered = true;
-    const ok = k === sc.answer;
-    const rs = cur.variants ? cur.variants[variant].resume : cur.resume;
-    verdict.hidden = false;
-    verdict.className = `${P}verdictbox ${ok ? 'is-ok' : 'is-bad'}`;
-    verdict.innerHTML = `<p><strong>${ok ? 'Right' : `Not quite: ${OUTCOMES.find((o) => o[0] === sc.answer)[1].toLowerCase()}`}.</strong> ${sc.why}</p>`
-      + `<p class="${P}resume"><span class="${P}num ${P}num--resume">↺</span> ${rs}</p>`;
-    t.reveal(Infinity);
-    t.prompt(h('div', { class: `${P}prompt` }, h('p', null, 'Press play, or tap a dot, to walk through what happened.')));
+    t.prompt(h('p', null, 'Answer above to see the rest of the timeline.'));
+    const q = ask(`What happens to the price change? ${sc.intro}`, OUTCOMES, sc.answer, (v, right) => {
+      answered = true;
+      t.reveal(Infinity);
+      t.prompt(h('p', null, 'Press Play, or tap a dot, to walk through what happened.'));
+      const said = OUTCOMES.find((o) => o[0] === sc.answer)[1].toLowerCase();
+      return `<b>${right ? 'Right.' : `Not quite: ${said}.`}</b> ${sc.why}<br><span class="c-look">↺ ${rs}</span>`;
+    });
+    slot.replaceChildren(q.el);
   }
   pick(cur);
-  app.append(key([['look', 'now'], ['down', 'component down'], ['resume', 'where it resumes'], ['gap', 'stale, or change lost'], ['safe', 'cache matches MySQL']]));
+  app.append(key([['look', 'now, and where it resumes'], ['data', 'sample values'], ['safe', 'cache matches MySQL'], ['gap', 'part down, stale price, or change lost']]));
 }
 
 register({ 'card-once': initCardOnce, 'hook-sets': initHookSets, 'change-timeline': initChange, 'outage-timeline': initOutage });

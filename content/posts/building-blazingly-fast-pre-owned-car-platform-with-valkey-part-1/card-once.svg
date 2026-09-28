@@ -4,20 +4,20 @@
     <marker id="h-ink" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="f-ink" d="M0,0 L8,4 L0,8 z" fill="#211a14"/></marker>
     <marker id="h-grn" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="f-safe" d="M0,0 L8,4 L0,8 z" fill="#1e6a3c"/></marker>
     <symbol id="h-car" viewBox="0 0 170 80">
-      <path class="f-paper s-ink" d="M12,62 L14,50 Q16,44 26,42 L44,40 L62,24 Q68,20 80,20 L112,20 Q122,20 128,26 L144,40 Q158,42 162,50 L164,62 Z" fill="#fbf7ef" stroke="#211a14" stroke-width="2.4" stroke-linejoin="round"/>
+      <path class="f-paper s-ink" d="M12,62 L14,50 Q16,44 26,42 L44,40 L62,24 Q68,20 80,20 L112,20 Q122,20 128,26 L144,40 Q158,42 162,50 L164,62 Z" fill="#fafaf7" stroke="#211a14" stroke-width="2.4" stroke-linejoin="round"/>
       <path class="f-tint s-ink" d="M68,27 L80,24 L100,24 L100,40 L54,40 Z M106,24 L114,24 Q120,24 124,29 L134,40 L106,40 Z" fill="#efe6d8" stroke="#211a14" stroke-width="1.6" stroke-linejoin="round"/>
-      <circle class="f-ink" cx="44" cy="62" r="12" fill="#211a14"/><circle class="f-paper" cx="44" cy="62" r="4.5" fill="#fbf7ef"/>
-      <circle class="f-ink" cx="134" cy="62" r="12" fill="#211a14"/><circle class="f-paper" cx="134" cy="62" r="4.5" fill="#fbf7ef"/>
+      <circle class="f-ink" cx="44" cy="62" r="12" fill="#211a14"/><circle class="f-paper" cx="44" cy="62" r="4.5" fill="#fafaf7"/>
+      <circle class="f-ink" cx="134" cy="62" r="12" fill="#211a14"/><circle class="f-paper" cx="134" cy="62" r="4.5" fill="#fafaf7"/>
     </symbol>
     <symbol id="h-phone" viewBox="0 0 36 56">
-      <rect class="f-paper s-ink" x="1" y="1" width="34" height="54" rx="6" fill="#fbf7ef" stroke="#211a14" stroke-width="1.6"/>
+      <rect class="f-paper s-ink" x="1" y="1" width="34" height="54" rx="6" fill="#fafaf7" stroke="#211a14" stroke-width="1.6"/>
       <rect class="f-tint" x="6" y="8" width="24" height="16" rx="2" fill="#efe6d8"/>
       <rect class="f-data" x="6" y="30" width="16" height="4" fill="#6f4a1f"/>
       <rect class="f-line" x="6" y="38" width="24" height="3" fill="#d8cfc2"/>
       <rect class="f-line" x="6" y="44" width="18" height="3" fill="#d8cfc2"/>
     </symbol>
   </defs>
-  <rect class="f-paper" width="960" height="440" fill="#fbf7ef"/>
+  <rect class="f-paper" width="960" height="440" fill="#fafaf7"/>
 
   <text class="f-ink" x="24" y="38" font-size="16" font-weight="800" fill="#211a14">Build the car card once. Serve every ad click from one key.</text>
 
@@ -39,11 +39,11 @@
   <text class="f-ink" x="275" y="194" font-size="11" text-anchor="middle" fill="#211a14">JSON</text>
 
   <!-- Valkey and the card -->
-  <rect class="f-paper s-ink" x="318" y="70" width="300" height="262" rx="6" fill="#fbf7ef" stroke="#211a14" stroke-width="1.6"/>
+  <rect class="f-paper s-ink" x="318" y="70" width="300" height="262" rx="6" fill="#fafaf7" stroke="#211a14" stroke-width="1.6"/>
   <text class="f-ink" x="334" y="94" font-size="14" font-weight="800" fill="#211a14">Valkey</text>
   <text class="f-data" x="602" y="94" font-weight="800" text-anchor="end" fill="#6f4a1f">dp:2323</text>
   <rect class="f-pickl s-pick" x="336" y="106" width="264" height="210" rx="10" fill="#fde0c2" stroke="#b8520f" stroke-width="2.2"/>
-  <rect class="f-paper" x="348" y="118" width="240" height="96" rx="6" fill="#fbf7ef"/>
+  <rect class="f-paper" x="348" y="118" width="240" height="96" rx="6" fill="#fafaf7"/>
   <use href="#h-car" x="383" y="126" width="170" height="80"/>
   <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
     <text class="f-ink" x="350" y="240" font-size="15" font-weight="700" fill="#211a14">Tata Nexon XZ+</text>

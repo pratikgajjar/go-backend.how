@@ -205,7 +205,7 @@ Anonymous users
 1. Store pre-computed `JSON` response of car
 2. Fetch `JSON` by `key` and return response
 
-{{< viz kind="card-once" frame="none" fig="1" fallback="card-once.svg" alt="The car card for car 2323 is built once from about 10 MySQL tables and stored in Valkey under dp:2323. Ad clicks from Google, Facebook and Instagram each read it with one key lookup. When any row changes, the binlog, producer, Kafka and consumer rebuild it." caption="Car 2323 and its price are samples. The green path is the rest of this post: how the card stays fresh." >}}
+{{< viz kind="card-once" fig="1" fallback="card-once.svg" alt="The car card for car 2323 is built once from about 10 MySQL tables and stored in Valkey under dp:2323. Ad clicks from Google, Facebook and Instagram each read it with one key lookup. When any row changes, the binlog, producer, Kafka and consumer rebuild it." caption="Car 2323 and its price are samples. The green path is the rest of this post: how the card stays fresh." >}}
 
 ```txt
 key_pattern = "dp:{car_id}"
@@ -259,7 +259,7 @@ We need to hear about every change to these tables. There are three places to ho
 2. **Domain layer.** Following Domain-Driven Design, send every write through a service that also updates the cache.
 3. **Binlog reader.** Attach a program that acts like a MySQL replica and receives every change.
 
-{{< viz kind="hook-sets" frame="none" fig="2" title="Which writes does each hook see?" fallback="hook-sets.svg" alt="Three nested rings of writes: save() and create() inside all Django inventory app writes, inside every committed write to MySQL. post_save sees the inner ring, a domain layer the middle ring, the binlog reader all of them" caption="Each ring is one hook and holds the writes that hook sees. Place five sample writes to car 2323, one at a time. The signal results are Django behaviour: `QuerySet.update()` and `bulk_create()` send no `post_save`." >}}
+{{< viz kind="hook-sets" fig="2" title="Which writes does each hook see?" fallback="hook-sets.svg" alt="Three nested rings of writes: save() and create() inside all Django inventory app writes, inside every committed write to MySQL. post_save sees the inner ring, a domain layer the middle ring, the binlog reader all of them" caption="Each ring is one hook and holds the writes that hook sees. Place five sample writes to car 2323, one at a time. The signal results are Django behaviour: `QuerySet.update()` and `bulk_create()` send no `post_save`." >}}
 
 We went with the third approach. Many clients write to this database, and cache logic in each of them would be easy to get wrong and would mix with business logic. Every committed write passes through the binlog, whichever client made it.
 
@@ -297,7 +297,7 @@ An insert (`WriteRowsEvent`) carries `row.values` instead. A consumer reads the 
 
 ## One price change, end to end
 
-{{< viz kind="change-timeline" frame="none" fig="3" title="One price change, in order" fallback="timeline.svg" alt="Swimlanes for the price script, MySQL, producer, Kafka, consumer, Valkey and buyer. A price UPDATE moves through each lane; Valkey serves the old price from the commit until the consumer SETs the new JSON" caption="Car 2323, prices, binlog positions and offsets are sample values. Producer calls follow mysql-data-stream-kafka and kafka-python 1.4.6, cache calls follow django-redis, and the consumer code is a sketch. Dots are in order; the spacing is not time." >}}
+{{< viz kind="change-timeline" fig="3" title="One price change, in order" fallback="timeline.svg" alt="Swimlanes for the price script, MySQL, producer, Kafka, consumer, Valkey and buyer. A price UPDATE moves through each lane; Valkey serves the old price from the commit until the consumer SETs the new JSON" caption="Car 2323, prices, binlog positions and offsets are sample values. Producer calls follow mysql-data-stream-kafka and kafka-python 1.4.6, cache calls follow django-redis, and the consumer code is a sketch. Dots are in order; the spacing is not time." >}}
 
 # When a part fails
 
@@ -313,7 +313,7 @@ Each of them can fail on its own, and so can the network between them.
 
 > 1. The network is reliable; - [Wiki](https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing)
 
-{{< viz kind="outage-timeline" frame="none" fig="4" title="The same change when one part fails" fallback="timeline.svg" alt="The price-change swimlanes with one component down: the change waits, resumes from a saved position or offset, and the stale stretch on the Valkey lane grows" caption="Numbers match the sections below. Pick a failure, answer before the rest of the timeline appears, then step through it. For the Kafka broker, compare the producer settings `acks=1` and `acks='all'`." >}}
+{{< viz kind="outage-timeline" fig="4" title="The same change when one part fails" fallback="timeline.svg" alt="The price-change swimlanes with one component down: the change waits, resumes from a saved position or offset, and the stale stretch on the Valkey lane grows" caption="Numbers match the sections below. Pick a failure, answer before the rest of the timeline appears, then step through it. For the Kafka broker, compare the producer settings `acks=1` and `acks='all'`." >}}
 
 ## 1. Consumer node fails
 
