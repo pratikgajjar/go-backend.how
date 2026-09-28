@@ -1,0 +1,74 @@
+/* Figures for the Valkey car platform post, part 1. Prefix: v-car1- */
+
+/* hook picker */
+.v-car1-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.6rem; margin: 0 0 0.5rem; }
+.v-car1-lbl { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; }
+.wv .v-car1-hook { color: var(--blue); border-color: var(--blue); }
+.wv .v-car1-hook[aria-pressed="true"] { background: var(--blue); color: var(--board); }
+.wv .v-car1-hook--pick { color: var(--orange); border-color: var(--orange); border-width: 2px; }
+.wv .v-car1-hook--pick[aria-pressed="true"] { background: var(--orange); border-color: var(--orange); color: var(--board); }
+.v-car1-ours { margin-left: 0.45em; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; }
+
+.wv ul.v-car1-pc { list-style: none; margin: 0 0 0.7rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.2rem 1.1rem; font-size: 12px; }
+.v-car1-pc li { padding-left: 1.1em; text-indent: -1.1em; }
+.v-car1-pc li.pro { color: var(--green); }
+.v-car1-pc li.con { color: var(--red); }
+.v-car1-pc li.pro::before { content: "+ "; font-weight: 800; }
+.v-car1-pc li.con::before { content: "− "; font-weight: 800; }
+
+/* coverage diagram */
+.wv .v-car1-hot { stroke: var(--purple); stroke-width: 2.6; }
+.wv .v-car1-tbl rect { transition: fill 0.3s, stroke 0.3s; }
+.wv .v-car1-tbl.is-hit rect { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.8; }
+.wv .v-car1-tbl.is-hit text { fill: var(--brown); font-weight: 800; }
+.wv .v-car1-hk rect { fill: var(--board); stroke: var(--line); stroke-width: 1.2; transition: fill 0.3s, stroke 0.3s, opacity 0.3s; }
+.wv .v-car1-hk text { fill: var(--mute); }
+.wv .v-car1-hk.is-opt rect { fill: var(--blue-l); stroke: var(--blue); stroke-width: 2; }
+.wv .v-car1-hk.is-opt text { fill: var(--blue); }
+.wv .v-car1-hk.is-pick rect { fill: var(--orange-l); stroke: var(--orange); stroke-width: 2; }
+.wv .v-car1-hk.is-pick text { fill: var(--ink); }
+.wv .v-car1-hk.is-caught rect { fill: var(--green-l); stroke: var(--green); stroke-width: 2.2; }
+.wv .v-car1-hk.is-caught text { fill: var(--green); }
+.wv .v-car1-hk.is-off text { opacity: 0.6; }
+.wv .v-car1-miss circle { fill: var(--red); stroke: var(--board); stroke-width: 2; }
+.wv .v-car1-miss text { fill: var(--board); }
+
+.wv-note .wv-code { margin: 0.45rem 0; }
+.wv-note p { margin-top: 0.3rem; }
+
+/* write × hook matrix */
+.wv .v-car1-matrix { margin-top: 0.8rem; }
+.wv .v-car1-matrix td, .wv .v-car1-matrix th { text-align: center; }
+.wv .v-car1-matrix td:first-child, .wv .v-car1-matrix th:first-child { text-align: left; }
+.wv .v-car1-matrix td.ok { background: none; }
+.wv .v-car1-matrix td.bad { background: none; }
+.wv .v-car1-matrix td.is-col.ok { background: var(--green-l); }
+.wv .v-car1-matrix td.is-col.bad { background: var(--red-l); }
+.wv .v-car1-matrix th.is-col { color: var(--ink); box-shadow: inset 0 -3px var(--blue); }
+.v-car1-th, .v-car1-row {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit;
+  text-transform: inherit; letter-spacing: inherit;
+}
+.v-car1-row b { display: block; font-size: 12px; }
+.v-car1-row span { display: block; font-size: 10.5px; color: var(--mute); }
+.wv .v-car1-matrix tr.is-sel td:first-child { box-shadow: inset 4px 0 var(--purple); background: var(--purple-l); }
+.wv .v-car1-matrix tr.is-sel td:first-child span { color: var(--ink); }
+.wv .v-car1-total td { font-weight: 800; border-bottom: 0; border-top: 1.25px solid var(--ink); }
+.wv .v-car1-total td.is-col { color: var(--ink); }
+
+/* moving chip */
+.wv .v-car1-chip { transition: transform 0.45s ease; }
+.wv .v-car1-chip rect { stroke-width: 1.5; }
+.wv .v-car1-chip.is-data rect { fill: var(--brown-l); stroke: var(--brown); }
+.wv .v-car1-chip.is-data text { fill: var(--brown); }
+.wv .v-car1-chip.is-safe rect { fill: var(--green-l); stroke: var(--green); }
+.wv .v-car1-chip.is-safe text { fill: var(--green); }
+.wv .v-car1-chip.is-look rect { fill: var(--purple); stroke: var(--purple); }
+.wv .v-car1-chip.is-look text { fill: var(--board); }
+
+/* keep code inside notes and the inspector on phones */
+.wv .wv-note pre.wv-code, .wv .wv-note pre.wv-code code,
+.wv.wv--change-path .wv-insp pre.wv-code, .wv.wv--change-path .wv-insp pre.wv-code code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.wv--change-path .wv-insp { align-content: start; }
+/* main.css forces `pre code { width: max-content }` on phones; wrap here instead */
+.wv .wv-note pre.wv-code code, .wv.wv--change-path .wv-insp pre.wv-code code { width: auto !important; padding-right: 0 !important; }
