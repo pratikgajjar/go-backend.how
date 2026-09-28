@@ -35,6 +35,7 @@ theme = "seafoam"
 | `periwinkle` | Postgres: Optimising Query |
 | `steel` | Lost SSH Access to EC2 |
 | `vanilla` | Creating Content |
+| `moss` | WAL Cake: Ordered ACKs from Parallel S3 Uploads |
 
 ### Available Unused Themes
 
@@ -48,7 +49,7 @@ theme = "seafoam"
 - `cream`, `butter`, `lemon`, `sand`, `wheat`
 
 **Greens:**
-- `sage`, `seafoam`, `olive`, `moss`, `forest`, `jade`, `emerald`, `eucalyptus`
+- `sage`, `seafoam`, `olive`, `forest`, `jade`, `emerald`, `eucalyptus`
 
 **Teals/Blues:**
 - `turquoise`, `aqua`, `cyan`, `ocean`

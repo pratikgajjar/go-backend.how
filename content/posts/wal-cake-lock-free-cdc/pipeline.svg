@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="100%" height="100%" style="background: #0d1310; border-radius: 12px; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="dataGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="ackGrad" x1="100%" y1="0%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    
+    <linearGradient id="nodeBgData" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#16221c" />
+      <stop offset="100%" stop-color="#0f1914" />
+    </linearGradient>
+    
+    <linearGradient id="nodeBgAck" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#13232b" />
+      <stop offset="100%" stop-color="#0c171e" />
+    </linearGradient>
+
+    <linearGradient id="ringHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#059669" stop-opacity="0.05" />
+    </linearGradient>
+
+    <linearGradient id="boundaryGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0" />
+      <stop offset="20%" stop-color="#f59e0b" stop-opacity="0.6" />
+      <stop offset="80%" stop-color="#f59e0b" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+
+    <!-- Markers -->
+    <marker id="arrowData" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
+    </marker>
+    <marker id="arrowAck" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8" />
+    </marker>
+  </defs>
+
+  <!-- Background grid pattern -->
+  <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+    <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#18261e" stroke-width="0.5" stroke-opacity="0.4" />
+  </pattern>
+  <rect width="960" height="470" fill="url(#grid)" rx="12" />
+  
+  <!-- Outer border -->
+  <rect x="1" y="1" width="958" height="468" fill="none" stroke="#233529" stroke-width="1.5" rx="11" />
+
+  <!-- Header / Caption bar -->
+  <g transform="translate(30, 24)">
+    <text x="0" y="0" fill="#6ee7b7" font-size="11" font-weight="700" letter-spacing="1.5">DATA PIPELINE &amp; DURABILITY BOUNDARY</text>
+    <text x="0" y="20" fill="#e2e8f0" font-size="14" font-weight="500">Postgres WAL changes stream down to S3 · Permission to forget flows back</text>
+  </g>
+
+  <!-- ==================== LANE 1: DATA FORWARD (DOWNSTREAM) ==================== -->
+  <g transform="translate(30, 78)">
+    <!-- Lane Label -->
+    <rect x="0" y="4" width="72" height="24" rx="4" fill="#064e3b" fill-opacity="0.6" stroke="#059669" stroke-width="1" />
+    <text x="36" y="20" fill="#34d399" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.5">DATA →</text>
+
+    <!-- Node 1: Postgres WAL -->
+    <g transform="translate(85, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="120" height="74" rx="8" fill="url(#nodeBgData)" stroke="#2d4a3e" stroke-width="1.2" />
+      <rect x="0" y="0" width="120" height="4" rx="2" fill="#10b981" />
+      <text x="12" y="24" fill="#10b981" font-size="9" font-weight="700" letter-spacing="0.8">SOURCE</text>
+      <text x="12" y="44" fill="#f1f5f9" font-size="13" font-weight="600">Postgres WAL</text>
+      <text x="12" y="60" fill="#94a3b8" font-size="10">Logical replication</text>
+    </g>
+
+    <!-- Arrow 1 -> 2 -->
+    <path d="M 210 37 L 230 37" stroke="#10b981" stroke-width="2" marker-end="url(#arrowData)" fill="none" />
+
+    <!-- Node 2: pgoutput -->
+    <g transform="translate(235, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="115" height="74" rx="8" fill="url(#nodeBgData)" stroke="#2d4a3e" stroke-width="1.2" />
+      <rect x="0" y="0" width="115" height="4" rx="2" fill="#10b981" />
+      <text x="12" y="24" fill="#10b981" font-size="9" font-weight="700" letter-spacing="0.8">DECODE</text>
+      <text x="12" y="44" fill="#f1f5f9" font-size="13" font-weight="600">pgoutput</text>
+      <text x="12" y="60" fill="#94a3b8" font-size="10">CDCEvent tuples</text>
+    </g>
+
+    <!-- Arrow 2 -> 3 -->
+    <path d="M 355 37 L 375 37" stroke="#10b981" stroke-width="2" marker-end="url(#arrowData)" fill="none" />
+
+    <!-- Node 3: Segmented Ring Buffer -->
+    <g transform="translate(380, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="145" height="74" rx="8" fill="url(#ringHighlight)" stroke="#10b981" stroke-width="1.5" />
+      <rect x="0" y="0" width="145" height="4" rx="2" fill="#34d399" />
+      <text x="12" y="24" fill="#34d399" font-size="9" font-weight="700" letter-spacing="0.8">OWNERSHIP / RING</text>
+      <text x="12" y="44" fill="#ffffff" font-size="13" font-weight="700">Ring Buffer</text>
+      <text x="12" y="60" fill="#a7f3d0" font-size="10">[StartIdx, EndIdx) cut</text>
+    </g>
+
+    <!-- Arrow 3 -> 4 -->
+    <path d="M 530 37 L 550 37" stroke="#10b981" stroke-width="2" marker-end="url(#arrowData)" fill="none" />
+
+    <!-- Node 4: N Parallel Workers -->
+    <g transform="translate(555, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="115" height="74" rx="8" fill="url(#nodeBgData)" stroke="#2d4a3e" stroke-width="1.2" />
+      <rect x="0" y="0" width="115" height="4" rx="2" fill="#10b981" />
+      <text x="12" y="24" fill="#10b981" font-size="9" font-weight="700" letter-spacing="0.8">PARALLEL</text>
+      <text x="12" y="44" fill="#f1f5f9" font-size="13" font-weight="600">N Workers</text>
+      <text x="12" y="60" fill="#94a3b8" font-size="10">Concurrent batches</text>
+    </g>
+
+    <!-- Arrow 4 -> 5 -->
+    <path d="M 675 37 L 695 37" stroke="#10b981" stroke-width="2" marker-end="url(#arrowData)" fill="none" />
+
+    <!-- Node 5: Parquet Writer -->
+    <g transform="translate(700, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="105" height="74" rx="8" fill="url(#nodeBgData)" stroke="#2d4a3e" stroke-width="1.2" />
+      <rect x="0" y="0" width="105" height="4" rx="2" fill="#10b981" />
+      <text x="12" y="24" fill="#10b981" font-size="9" font-weight="700" letter-spacing="0.8">ENCODE</text>
+      <text x="12" y="44" fill="#f1f5f9" font-size="13" font-weight="600">Parquet</text>
+      <text x="12" y="60" fill="#94a3b8" font-size="10">ZSTD compression</text>
+    </g>
+
+    <!-- Arrow 5 -> 6 -->
+    <path d="M 810 37 L 825 37" stroke="#10b981" stroke-width="2" marker-end="url(#arrowData)" fill="none" />
+
+    <!-- Node 6: S3 Object Store -->
+    <g transform="translate(830, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="100" height="74" rx="8" fill="#132e22" stroke="#059669" stroke-width="1.5" />
+      <rect x="0" y="0" width="100" height="4" rx="2" fill="#34d399" />
+      <text x="10" y="24" fill="#34d399" font-size="9" font-weight="700" letter-spacing="0.8">DURABLE</text>
+      <text x="10" y="44" fill="#ffffff" font-size="13" font-weight="700">S3 PUT</text>
+      <text x="10" y="60" fill="#a7f3d0" font-size="10">Object created</text>
+    </g>
+  </g>
+
+  <!-- ==================== DURABILITY BOUNDARY ==================== -->
+  <g transform="translate(30, 195)">
+    <!-- Glowing dashed line -->
+    <line x1="10" y1="12" x2="890" y2="12" stroke="url(#boundaryGrad)" stroke-width="2" stroke-dasharray="6,4" />
+    
+    <!-- Boundary Pill Badge -->
+    <g transform="translate(365, 0)">
+      <rect x="0" y="0" width="170" height="24" rx="12" fill="#1e180a" stroke="#f59e0b" stroke-width="1.2" />
+      <text x="85" y="16" fill="#fbbf24" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1">⚡ DURABILITY BOUNDARY</text>
+    </g>
+  </g>
+
+  <!-- ==================== LANE 2: ACK RETURN (UPSTREAM) ==================== -->
+  <g transform="translate(30, 265)">
+    <!-- Lane Label -->
+    <rect x="0" y="4" width="72" height="24" rx="4" fill="#075985" fill-opacity="0.6" stroke="#0284c7" stroke-width="1" />
+    <text x="36" y="20" fill="#38bdf8" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.5">← ACK</text>
+
+    <!-- Node 1: Worker Completion (Rightmost) -->
+    <g transform="translate(710, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="150" height="74" rx="8" fill="url(#nodeBgAck)" stroke="#1e3a4f" stroke-width="1.2" />
+      <rect x="0" y="0" width="150" height="4" rx="2" fill="#0284c7" />
+      <text x="12" y="24" fill="#38bdf8" font-size="9" font-weight="700" letter-spacing="0.8">WORKER</text>
+      <text x="12" y="44" fill="#f0f9ff" font-size="13" font-weight="600">Process() nil</text>
+      <text x="12" y="60" fill="#94a3b8" font-size="10">Sends to ackSeg</text>
+    </g>
+
+    <!-- Arrow 1 <- 2 -->
+    <path d="M 705 37 L 615 37" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrowAck)" fill="none" />
+
+    <!-- Node 2: Contiguous Walk / Ring Update -->
+    <g transform="translate(430, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="180" height="74" rx="8" fill="url(#nodeBgAck)" stroke="#0284c7" stroke-width="1.5" />
+      <rect x="0" y="0" width="180" height="4" rx="2" fill="#38bdf8" />
+      <text x="12" y="24" fill="#38bdf8" font-size="9" font-weight="700" letter-spacing="0.8">ORDERED RECLAIM</text>
+      <text x="12" y="44" fill="#ffffff" font-size="13" font-weight="700">Contiguous Walk</text>
+      <text x="12" y="60" fill="#bae6fd" font-size="10">findHighestContiguous()</text>
+    </g>
+
+    <!-- Arrow 2 <- 3 -->
+    <path d="M 425 37 L 365 37" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrowAck)" fill="none" />
+
+    <!-- Node 3: Ack Channel / Register -->
+    <g transform="translate(245, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="115" height="74" rx="8" fill="url(#nodeBgAck)" stroke="#1e3a4f" stroke-width="1.2" />
+      <rect x="0" y="0" width="115" height="4" rx="2" fill="#0284c7" />
+      <text x="12" y="24" fill="#38bdf8" font-size="9" font-weight="700" letter-spacing="0.8">CHANNEL</text>
+      <text x="12" y="44" fill="#f0f9ff" font-size="13" font-weight="600">ackCh</text>
+      <text x="12" y="60" fill="#94a3b8" font-size="10">Durable max LSN</text>
+    </g>
+
+    <!-- Arrow 3 <- 4 -->
+    <path d="M 240 37 L 170 37" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrowAck)" fill="none" />
+
+    <!-- Node 4: Postgres Slot Advance (Leftmost) -->
+    <g transform="translate(45, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="120" height="74" rx="8" fill="#102d3d" stroke="#0ea5e9" stroke-width="1.5" />
+      <rect x="0" y="0" width="120" height="4" rx="2" fill="#38bdf8" />
+      <text x="10" y="24" fill="#38bdf8" font-size="9" font-weight="700" letter-spacing="0.8">CURSOR ADVANCE</text>
+      <text x="10" y="44" fill="#ffffff" font-size="13" font-weight="700">Postgres Slot</text>
+      <text x="10" y="60" fill="#bae6fd" font-size="10">confirmed_flush_lsn</text>
+    </g>
+  </g>
+
+  <!-- Bottom Legend / Notes -->
+  <g transform="translate(30, 400)">
+    <circle cx="8" cy="8" r="4" fill="#10b981" />
+    <text x="18" y="12" fill="#94a3b8" font-size="11">Data flow: decoded WAL rows into segmented batches</text>
+
+    <circle cx="380" cy="8" r="4" fill="#38bdf8" />
+    <text x="390" y="12" fill="#94a3b8" font-size="11">ACK flow: out-of-order completions reconciled into highest contiguous LSN</text>
+  </g>
+</svg>

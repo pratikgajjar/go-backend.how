@@ -1,445 +1,364 @@
 +++
-title = "🍰 WAL Cake — Lock-Free Postgres-to-Parquet CDC, Inside the Ring Buffer"
-description = "How wal-cake streams Postgres logical replication into S3 Parquet without dropping data: the WAL byte format, a lock-free ring buffer that acks LSNs in contiguous order, and Parquet that's actually small."
-date = 2026-05-09T12:00:00+05:30
-lastmod = 2026-05-09T12:00:00+05:30
-publishDate = "2026-05-09T12:00:00+05:30"
-draft = true
+title = "🧁 WAL Cake: Ordered ACKs from Parallel S3 Uploads"
+description = "How WAL Cake reads the Postgres WAL in order, uploads Parquet files to S3 in parallel, and uses one ring buffer to keep the replication slot ACK in order."
+date = 2026-09-28T08:00:00+05:30
+lastmod = 2026-09-28T08:00:00+05:30
+publishDate = "2026-09-28T08:00:00+05:30"
+draft = false
 tags = ["postgres", "cdc", "parquet", "golang", "data-lake", "wal", "s3"]
-images = ["og-5044683b.png"]
-theme = "amber"
-featured = false
+images = ["og-feae11dd.png"]
+theme = "moss"
+featured = true
 math = false
+hide_toc = true
 +++
 
-> Most CDC pipelines lose data the same way: they ack the LSN before
-> they've actually durably written the data downstream. WAL Cake refuses
-> to.
+WAL Cake is a Go service that copies row changes from Postgres to Parquet
+files in S3, one folder per day, to build a data lake. Postgres sends those
+changes as one ordered stream, and expects one ordered answer: a single
+position that says "everything before this is safe". Both ends are sequential.
+The slow work in between, encoding Parquet and uploading to S3, does not have
+to be. This post shows how WAL Cake runs that middle part in parallel while it
+still reads and acknowledges the WAL in order, how it is tested, and where it
+can still replay or stall.
 
-Change-Data-Capture-to-data-lake is a deceptively boring problem. The
-spec is two lines: every row that changes in Postgres should appear in
-S3, exactly once, in a format the warehouse can read. The first ninety
-percent of a CDC pipeline is an afternoon. The last ten percent is the
-rest of your year.
+I wrote most of WAL Cake, and we ran it in production at a large Indian fintech
+company. Everything in this post refers to commit
+[`300e7ab`](https://github.com/pratikgajjar/wal-cake/tree/300e7abe41d4e8573657910cd51de65ebbc1d905).
+The benchmarks ran on an Apple M3 Max with Go 1.26.5, and the integration
+tests against Postgres 18.
 
-This post is about the three things that have to be right for a CDC-to-
-data-lake pipeline to be _actually_ correct, not just plausibly correct:
+# Terms
 
-1. The replication loop that doesn't drop bytes between Postgres' WAL
-   and your process.
-2. The ring buffer that doesn't lock — and acks LSNs in **contiguous
-   order** even when downstream writes complete out of order.
-3. The Parquet that's actually small and queryable, not just "Parquet."
+If you already know Postgres logical replication, skip to [the
+rule](#the-rule).
 
-The code is [`fampay-inc/wal-cake`][repo]. ~1,800 lines of Go (`wc -l`
-of `.go` files in the repo), one binary, four moving parts. Built it because I needed to spool a busy
-Postgres into a data lake without the dual-write fallacy and without
-the warehouse team filing tickets every Monday about "missing rows from
-Saturday." Numbers and protocol traces below.
+- **WAL** (write-ahead log): Postgres records every change in this log before
+  it writes the change to the table files.
+- **LSN** (log sequence number): a byte position in the WAL. A higher LSN
+  means a later change.
+- **Replication slot**: a bookmark in the WAL for one consumer. Postgres keeps
+  the WAL that the consumer still needs, so it can resume after a crash.
+- **`confirmed_flush_lsn`**: the slot's bookmark. The consumer moves it by
+  sending an LSN back to Postgres. This message is the **ACK**. On restart,
+  Postgres does not resend transactions that committed before this position.
+- **pgoutput**: the built-in plugin Postgres uses to stream row changes to a
+  consumer.
+- **CDC** (change data capture): reading these row changes and copying them to
+  another system.
+- **Parquet**: a columnar file format used by data lakes.
 
-[repo]: https://github.com/fampay-inc/wal-cake
+The figures use one colour code: black is structure, brown is data, green is
+durable, red is a problem, purple is the part to look at, blue is an option,
+and orange is the option we chose.
 
-# 1. The naive answer and why it fails
+# The rule
 
-Most teams build CDC the same way the first time. The shape goes:
+WAL Cake builds the raw layer of a data lake. It reads committed row changes,
+writes them to S3 as Parquet files, and tells Postgres which WAL it can delete.
+Files are split by the UTC day each transaction committed: each file holds rows
+from one day only, under a `YYYY/MM/DD` prefix. A query or a daily job for one
+day reads one prefix, and never has to filter out rows from the day before or
+after.
 
-```sql
--- the outbox
-CREATE TABLE outbox (
-  id          bigserial PRIMARY KEY,
-  table_name  text       NOT NULL,
-  payload     jsonb      NOT NULL,
-  created_at  timestamptz DEFAULT now(),
-  processed   boolean    DEFAULT false
-);
-CREATE INDEX outbox_unprocessed_idx
-  ON outbox (created_at) WHERE NOT processed;
+Postgres and S3 each keep data safely, but they do not know about each other.
+A row is safe in Postgres after commit. A file is safe in S3 after `PutObject`
+returns. Between them, WAL Cake holds rows only in memory. If it crashes,
+Postgres must still have every row that is not yet in S3. So the consumer must
+follow one rule:
+
+**Advance the slot only past rows that are already in S3.**
+
+# Existing options
+
+{{< walviz kind="options" fig="1" title="Options for copying Postgres changes to S3" fallback="pipeline.svg" alt="Four options for copying Postgres changes to S3 as Parquet, with benefits, costs, and the one WAL Cake chose" >}}
+
+Every option has to follow the same rule. They differ in which system keeps
+track of the slot position, and in how much control you get over the files.
+
+- **Debezium with Kafka Connect** reads pgoutput[^debezium-pg] and stores its
+  position in Kafka. An S3 sink connector writes the files and can partition
+  them by time. This is a good fit if you already run Kafka.
+- **Debezium Server** runs without Kafka[^debezium-server]. It has sinks for
+  Kinesis, Pub/Sub, HTTP, and more, and a community-maintained Iceberg sink,
+  but no sink for plain Parquet files in S3.
+- **AWS DMS** is a managed service that writes Parquet to S3 and can put files
+  in folders by transaction commit date[^dms]. You configure it instead of
+  writing code, and you run a replication instance.
+- **Direct pgoutput** is what WAL Cake does. One Go process reads pgoutput,
+  batches rows, writes Parquet, and uploads it.
+
+We chose direct pgoutput because we wanted day-split Parquet files from one Go
+binary, without a broker or a replication instance, and with control over batch
+size and the ACK. In exchange, we own reconnects, backpressure, and the ACK.
+This post is about the ACK.
+
+# Why one upload at a time is too slow
+
+The simplest correct consumer does this in a loop:
+
+1. Encode a batch of rows as Parquet.
+2. Upload it to S3 and wait.
+3. Send the batch's last LSN to Postgres.
+
+This follows the rule, because nothing is confirmed before it is in S3. The
+problem is step 2. The worker does nothing while it waits for S3, so upload
+latency sets the throughput.
+
+An S3 PUT from inside the same region usually takes tens to a few hundred
+milliseconds. One public benchmark of 500 KB PUTs measured a median of 70 ms
+and a p99 of 137 ms[^s3bench]. The estimate below uses 100 ms:
+
+```txt
+B = events per batch             1,000    (default)
+E = Parquet encode time          0.0012 s (benchmark below)
+P = S3 PUT time                  0.100 s  (assumed)
+R = incoming events per second   10,000
+
+one worker handles   B / (E + P)       = 1,000 / 0.1012      ≈ 9,881 events/s
+workers needed       ceil(R × (E+P)/B) = ceil(10,000 × 0.1012 / 1,000) = 2
 ```
 
-Then in app code: every business transaction ends with an
-`INSERT INTO outbox`, and a sidecar Go worker runs the obvious loop.
+At 100 ms, one worker handles about 9,900 events/s, so at 10,000 events/s the
+backlog grows by about 120 events every second and never shrinks. At 200 ms,
+three workers are needed. The worker count is a setting; the default is
+four[^defaults]. Use the figure below to try other values.
 
-```go
-// the worker
-for {
-    rows, _ := db.Query(`
-        SELECT id, table_name, payload FROM outbox
-        WHERE NOT processed ORDER BY id LIMIT 1000
-        FOR UPDATE SKIP LOCKED`)
-    batch := readAll(rows)
-    s3.PutObject(s3path(time.Now()), encodeJSON(batch))
-    db.Exec(`UPDATE outbox SET processed = true WHERE id = ANY($1)`, ids(batch))
-}
+{{< walviz kind="sizing" fig="2" title="How many workers?" fallback="s3-concurrency.svg" alt="Workers needed across S3 PUT latency and input rate" caption="Each grey band is one worker count from `ceil(R × (E + P) / B)`. The orange curve is the capacity of the workers you run. Move the cursor to evaluate any point, or change `B` and `E` to move the bands." >}}
+
+This is an upper bound: it assumes full batches and no retries. More workers do
+not make a single upload faster. They let other uploads run while one waits.
+
+# Where the parallelism can go
+
+The WAL has to be read in order, and the ACK has to be sent in order. So which
+part of the pipeline can run in parallel? Look at each step:
+
+- **Reading** is one stream. Only one connection can read from a replication
+  slot at a time[^logical], and Postgres sends each transaction after it
+  commits, in commit order. You could create one slot per group of tables and
+  read them in parallel. But each slot decodes the whole WAL on the Postgres
+  server, you lose ordering across tables, and you have more slots to monitor.
+- **Parsing and decoding** are fast. WAL Cake parses a pgoutput insert and
+  turns five columns into a Go map in about 0.5 µs, so 1,000 rows take about
+  0.5 ms.
+- **Encoding and uploading** the same 1,000 rows take about 101 ms with the
+  numbers above. Almost all of it is waiting for S3.
+- **The ACK** is one number, sent on the same replication connection.
+
+So WAL Cake keeps one reader and one ACK, and runs only encode and upload in
+parallel:
+
+```txt
+one reader  →  cut into segments  →  N workers: encode + upload  →  one ACK
+(in order)                           (finish in any order)           (in order)
 ```
 
-It works. Until it doesn't. Three failure modes you only see in
-production.
+This is Amdahl's law in practice. Per 1,000 rows, the serial part takes about
+0.5 ms and the parallel part about 101 ms, so the serial part is about 0.5% of
+the work. In theory, the single reader only becomes the limit at around 200
+workers. In practice, other limits come first: memory per worker, and the
+walsender, the single Postgres process that decodes the slot. I have not
+measured the walsender's ceiling. The 0.5 µs is for a short five-column row;
+wider rows cost more.
 
-**Failure 1: the dual-write fallacy.** The application writes the
-business row and the outbox row in two separate transactions, or — more
-commonly — in the same transaction but on a code path where the outbox
-insert is best-effort. Either way, the moment commit and outbox-insert
-are not the same atomic operation, you've lost rows. Reviewers always
-catch this on the first PR. Reviewers always miss it on the third PR
-when someone introduces a "fast path" for one specific endpoint.
+The hard part is the last arrow: turning results that finish in any order back
+into one ordered ACK.
 
-**Failure 2: vacuum cannot keep up at 1B/day.** Every outbox row is
-`INSERT`ed, `UPDATE`d once (the `processed = true` flip), then never
-read. That churn outpaces the visibility map; the partial index on
-`processed = false` bloats. The planner starts skipping it for seq
-scans on the table — `pg_stat_user_indexes.idx_scan` plateaus while
-`seq_scan` climbs. You write a `DELETE FROM outbox WHERE processed
-AND created_at < now() - '1 hour'` cron and it generates more WAL
-than the original inserts.
+# Parallel uploads break the ACK
 
-**Failure 3: JSON-on-S3 is unqueryable.** Athena
-[charges $5 per TB scanned](https://aws.amazon.com/athena/pricing/),
-and JSON is row-oriented: a 3-column query scans every byte of every
-JSON file. Columnar Parquet+ZSTD lets the engine project only the
-queried columns and skip pages that miss the predicate —
-order-of-magnitude scan reduction. At `~$14k/month` of estimated
-Athena spend with 90 s dashboard refreshes, you quietly start
-writing Parquet.
+Take four batches that start uploading in WAL order `S1`, `S2`, `S3`, `S4`,
+and finish in the order `S2`, `S4`, `S1`, `S3`.
 
-The fix isn't a smarter outbox. The fix is to stop dual-writing. The
-WAL is already an outbox — Postgres has been writing one durably on
-every commit, [since the WAL was introduced in PostgreSQL 7.1][pg71].
-You just need to read it.
+The ACK is a single LSN, and it confirms everything before it[^protocol].
+Postgres cannot accept "`S2` and `S4` are done, `S1` and `S3` are not." If the
+consumer sends the end of `S4`, it also confirms `S1` and `S3`. If the process
+crashes at that moment, Postgres will not send `S1` and `S3` again, and S3
+does not have them. Those rows are lost.
 
-[pg71]: https://www.postgresql.org/docs/release/7.1/ "PostgreSQL 7.1 Release Notes — \"Write-ahead log (WAL)\" added"
+So uploads can finish in any order, but the ACK must only move forward in
+order.
 
-# 2. The shape of the right answer
+# The fix: ACK only a contiguous prefix
 
-```
-┌────────────┐   logical  ┌──────────┐  CDCEvents   ┌──────────────┐
-│ Postgres   │  decode    │ pglogrepl│ ───────────► │ ring buffer  │
-│  pgoutput  │ ─────────► │ replicator│             │  (segments)  │
-└────────────┘            └──────────┘              └──────┬───────┘
-       ▲                       ▲                          │ batch
-       │                       │ ack LSN                  ▼
-       │ standby_status_update │                  ┌──────────────┐
-       └───────────────────────┴──────────────────┤ parquet+S3   │
-                                                  └──────────────┘
+Keep a cursor at the oldest batch that is not yet in S3. When a batch finishes,
+mark it done. If it is the batch at the cursor, move the cursor forward over it
+and every done batch directly after it. Stop at the first batch that is not
+done. Send the LSN at the new cursor.
+
+With the example above:
+
+```txt
+finishes   done so far        cursor stops before   ACK covers
+S2         S2                 S1                    nothing new
+S4         S2, S4             S1                    nothing new
+S1         S1, S2, S4         S3                    S1, S2
+S3         S1, S2, S3, S4     (end)                 S3, S4
 ```
 
-The whole binary is wired in `cmd/cake/main.go`. The wiring is a
-dozen lines (rest is logger setup, signal-handler context, and a
-graceful HTTP server shutdown). It's worth reading verbatim:
+To do this, the consumer needs three things:
+
+1. A place to keep each row after a worker takes it, until all earlier batches
+   are in S3. The ACK needs the LSN of the last row in the finished run.
+2. A list of every batch boundary, written before any worker starts. Without
+   it, the consumer cannot tell a slow batch from a missing one.
+3. A cursor that only moves forward and never skips a batch that is not done.
+
+A Go channel cannot do (1), because it forgets an item once it is received.
+WAL Cake uses a fixed-size ring of event pointers for (1), a small map of batch
+ranges for (2), and an atomic index for (3). A ring fits because its slots are
+freed in the same order that the cursor moves.
+
+The figure below follows one `INSERT` through the whole system, from commit to
+the ACK that lets Postgres delete its WAL.
+
+{{< walviz kind="map" fig="3" title="Follow one row" follow="true" fallback="pipeline.svg" alt="WAL Cake system map: data path from Postgres to S3 and the ACK path back" caption="One `INSERT` from commit to `confirmed_flush_lsn`. Hex bytes follow the pgoutput format. LSNs, keys, and times are sample values." >}}
+
+The components are connected in `cmd/cake/main.go`:
 
 ```go
 // cmd/cake/main.go (abridged)
 eventsCh := make(chan *model.CDCEvent, cfg.BatchSize*cfg.Concurrency)
-ackCh := make(chan uint64, cfg.Concurrency*2)
+acked := &ack.Position{} // highest LSN that is durable in S3
 
 repl := replication.NewPGReplicator(cfg)
-transformer := transform.NewParquetWriter()
-uploader := storage.NewS3Uploader(cfg)
-processor := buffer.NewParquetBatchProcessor(
-	transformer,
-	uploader,
-	&buffer.BatchProcessorConfig{
-		Namespace: cfg.Namespace,
-	},
-)
-rb := buffer.NewRingBuffer(cfg.BatchSize, cfg.Concurrency, cfg.FlushInterval, processor, ackCh)
+processor := buffer.NewParquetBatchProcessor(transformer, uploader, bpCfg)
+rb := buffer.NewRingBuffer(cfg.BatchSize, cfg.Concurrency,
+    cfg.FlushInterval, processor, acked)
 
-go repl.Start(ctx, eventsCh, ackCh)  // → events, ← LSN acks
-_ = rb.Start(ctx, eventsCh)          // ← events, → ackCh writes
+replCtx, stopRepl := context.WithCancel(context.Background())
+go repl.Start(replCtx, eventsCh, acked)
+
+rb.Start(ctx, eventsCh) // until SIGTERM, then drains
+stopRepl()              // the replicator sends the final ACK
 ```
 
-Two channels. One direction of data: WAL → events → ring → Parquet → S3.
-One direction of acknowledgement: S3-success → contiguous-LSN → standby
-status update. The replicator never moves the LSN forward on its own.
-The ring buffer never reads from S3. No shared mutex between the two
-halves; the only boundary is two channels (`eventsCh`, `ackCh`). An
-[`errgroup`](https://pkg.go.dev/golang.org/x/sync/errgroup) inside the
-ring buffer supervises receiver, workers, and ack pipeline.
+This gives at-least-once delivery, not exactly-once. No transaction covers both
+Postgres and S3. If the process crashes after an upload and before the ACK,
+the file is in S3 but the slot has not moved, so Postgres sends those rows
+again. [Figure 6](#the-s3-upload-and-its-key) shows what that does to the
+bucket.
 
-That is the entire program. Everything else is _what each box does
-correctly_.
+# Reading pgoutput
 
-# 3. Replication loop, byte by byte
+{{< walviz kind="map" focus="pg,rep,evc" wide="false" fallback="pipeline.svg" alt="System map with Postgres, the replicator, and eventsCh highlighted" >}}
 
-The replicator owns one connection in `replication=database` mode and
-one regular query connection. The replication-mode connection is
-**not pgx**; it's the lower-level `pgconn` because we need to pull raw
-`CopyData` messages off the wire and parse the pgoutput byte stream
-ourselves.
+The replicator opens a `?replication=database` connection and streams from the
+slot's `confirmed_flush_lsn`[^slots]. A short-lived normal connection runs the
+publication and slot queries first. Each `XLogData` frame becomes at most one
+event:
 
 ```go
-// internal/replication/pg_replicator.go
-r.repConn, err = pgconn.Connect(ctx, r.cfg.PGConn+"?replication=database")
+// internal/replication/pg_replicator.go (abridged)
+xld, err := pglogrepl.ParseXLogData(data[1:])
 if err != nil {
-    return fmt.Errorf("failed to connect to database for replication: %w", err)
+    return fmt.Errorf("parse XLogData: %w", err)
 }
-defer r.repConn.Close(ctx)
-
-// Create a separate connection for regular queries
-r.queryConn, err = pgx.Connect(ctx, r.cfg.PGConn)
-```
-
-The `?replication=database` suffix is the magic. It tells Postgres that
-this connection is a replication client and that the wire protocol
-will not be regular query traffic — it will be `START_REPLICATION`,
-`StandbyStatusUpdate`, `XLogData`, and friends. pgx as a higher-level
-driver doesn't expose those; pgconn does.
-
-## Bootstrap: publication + slot
-
-Two pieces of state on the Postgres side. A **publication** declares
-which tables are interesting — wal-cake creates one for `ALL TABLES` if
-none exists. A **replication slot** is the durable cursor: Postgres
-will keep WAL segments around as long as the slot has not advanced past
-them. Forget to clean up an unused slot and `pg_wal/` grows until the
-disk fills.
-
-```go
-// internal/replication/pg_replicator.go
-func (r *pgReplicator) ensurePublication(ctx context.Context) error {
-	var exists bool
-	err := r.queryConn.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_publication WHERE pubname = $1)", r.cfg.Publication).Scan(&exists)
-	if err != nil {
-		return fmt.Errorf("failed to check if publication exists: %w", err)
-	}
-
-	if !exists {
-		_, err = r.queryConn.Exec(ctx, fmt.Sprintf("CREATE PUBLICATION %s FOR ALL TABLES", r.cfg.Publication))
-		if err != nil {
-			return fmt.Errorf("failed to create publication: %w", err)
-		}
-	}
-	return nil
+logicalMsg, err := pglogrepl.Parse(xld.WALData)
+if err != nil {
+    return fmt.Errorf("parse logical replication message at %s: %w", xld.WALStart, err)
 }
+return r.proccessLogicalMsg(ctx, logicalMsg, xld.WALStart, ch)
 ```
 
-The slot is created via `pglogrepl.CreateReplicationSlot(..., "pgoutput", ...)`
-with `Temporary: false` — durable across restarts.
+Every event carries an LSN, and the ring may later send any of them as the ACK.
+So each one must be safe to confirm once the event and everything before it is
+in S3:
 
-## Resuming on restart
+- A **row event** carries `WALStart`, the LSN of its change record. If the ACK
+  lands there, in the middle of a transaction, Postgres resends that whole
+  transaction after a restart. Some rows arrive twice, and none are lost.
+- A **commit event** carries `TransactionEndLSN`, the end of the commit record.
+  The next transaction's commit record starts at or after it, so confirming it
+  never covers the next transaction.
 
-A CDC service that loses its place after a redeploy has no business
-calling itself one. Postgres remembers the slot's `confirmed_flush_lsn`
-— the highest LSN the consumer has acknowledged with a
-`StandbyStatusUpdate`. On boot, wal-cake reads it back:
+`WALStart + len(WALData)` is the right position in physical replication, where
+`WALData` is WAL bytes. In logical replication `WALData` holds pgoutput bytes,
+so the sum is not a WAL position. For a commit it points 26 bytes past the end
+of the record. When the next transaction commits right after, that lands inside
+its commit record, and Postgres would skip that transaction on restart.
+
+Commit events go into the ring, so a finished run can end on a commit. The
+Parquet writer skips them.
+
+A few pgoutput details[^msgformats]:
+
+- A `BEGIN` message carries the transaction's commit timestamp. Every event in
+  the transaction gets it as `CommitTime`, which picks the day folder.
+- A `RelationMessage` describes a table and its columns. Row messages refer to
+  it by ID.
+- For updates and deletes, the old row depends on the table's replica
+  identity. `K` means only the key columns are sent, `O` means the full old
+  row.
+- A large (TOASTed) value that did not change is sent as a marker, not a value.
+  WAL Cake writes the string `"<TOAST>"` for it.
+
+Any error ends the session: a lost connection, a server error, a failed status
+update, or a message that does not parse. The replicator reconnects with
+backoff from 1 to 30 seconds and resumes from `confirmed_flush_lsn`, so nothing
+is skipped. The readiness check passes only while a session is streaming and
+event delivery has not been blocked for more than a minute.
+
+# The ring buffer
+
+Two types move through the pipeline:
 
 ```go
-// internal/replication/pg_replicator.go
-err := r.queryConn.QueryRow(ctx, "SELECT confirmed_flush_lsn FROM pg_replication_slots WHERE slot_name = $1", r.cfg.Slot).Scan(&lsn)
-if err == nil {
-    log.Info().Str("lsn", lsn.String()).Msg("Starting replication from confirmed LSN position")
-    return lsn, nil
+// internal/model/cdc_event.go
+type CDCEvent struct {
+    Table      string         `json:"table"`
+    Operation  Operation      `json:"op"`
+    Before     map[string]any `json:"before,omitempty"`
+    After      map[string]any `json:"after,omitempty"`
+    Timestamp  time.Time      `json:"timestamp"`   // decode time
+    CommitTime time.Time      `json:"commit_time"` // from BEGIN
+    LSN        uint64         `json:"lsn"`
 }
-```
 
-If the slot has never been used, fall back to the cluster's current
-WAL position reported by the replication-protocol `IDENTIFY_SYSTEM`
-command, surfaced in Go as `pglogrepl.IdentifySystem(...).XLogPos`.
-Either way: **the next message we receive is the next byte after
-the last one we durably wrote to S3**, never the byte after the last
-one we _read_.
-
-That guarantee is the entire job.
-
-## The pgoutput protocol
-
-The output plugin produces a stream of strongly-typed messages. The
-ones that matter for a CDC consumer:
-
-| Message       | When                              | Carries                          |
-|---------------|-----------------------------------|----------------------------------|
-| `Relation`    | First time a table is referenced  | `RelationID`, name, columns + OIDs |
-| `Begin`       | Start of a transaction            | XID, commit LSN (final-end)      |
-| `Insert`      | Row inserted                      | `RelationID`, full new tuple     |
-| `Update`      | Row updated                       | `RelationID`, optional old tuple, new tuple, `OldTupleType` |
-| `Delete`      | Row deleted                       | `RelationID`, old tuple, `OldTupleType` |
-| `Commit`      | End of transaction                | commit LSN                       |
-| `Truncate`    | TRUNCATE                          | list of relation IDs             |
-
-Each `XLogData` payload is a single one of these messages, framed
-inside Postgres's `CopyData` packet. The dispatch loop in wal-cake is
-exactly that:
-
-```go
-// internal/replication/pg_replicator.go (err handling elided)
-switch copyData.Data[0] {
-case pglogrepl.PrimaryKeepaliveMessageByteID:
-	pkm, err := pglogrepl.ParsePrimaryKeepaliveMessage(copyData.Data[1:])
-	if pkm.ReplyRequested {
-		_ = r.SendStandbyStatusUpdate(ctx, true)
-	}
-case pglogrepl.XLogDataByteID:
-	xld, err := pglogrepl.ParseXLogData(copyData.Data[1:])
-	xLogPos := xld.WALStart + pglogrepl.LSN(len(xld.WALData))
-	logicalMsg, err := pglogrepl.Parse(xld.WALData)
-	r.proccessLogicalMsg(logicalMsg, xLogPos, ch)
-}
-```
-
-The interesting line is `xLogPos = xld.WALStart + len(WALData)`. That
-arithmetic is the LSN of the **byte after** this message. It's what
-flows through the pipeline: stored as `lastEvent.LSN`, written into
-the Parquet `lsn` column, and once the batch is durable on S3 fed
-back to Postgres as the `confirmed_flush_lsn` via
-`StandbyStatusUpdate`.
-
-## REPLICA IDENTITY: K vs O
-
-Updates and deletes carry an old-tuple, but only if the table's
-`REPLICA IDENTITY` allows it. The `OldTupleType` byte tells you which
-case you're in:
-
-```go
-// internal/replication/pg_replicator.go (pseudocode of the switch)
-const (
-    KEY = 'K'  // old-tuple has primary key columns only
-    ALL = 'O'  // old-tuple has every column
-)
-
-if msg.OldTupleType == KEY {
-    oldData = r.decoder.ExtractKeyOnlyTupleData(msg.OldTuple, relInfo.columns)
-} else if msg.OldTupleType == ALL {
-    oldData = r.decoder.ExtractTupleData(msg.OldTuple, relInfo.columns)
-}
-```
-
-The default is `K`: old-tuple is just the primary key. Cheap on the
-producer side. Useless on the consumer side if you wanted to compute
-column-level deltas — you can't tell what changed without joining
-back to a snapshot.
-
-The fix is `ALTER TABLE foo REPLICA IDENTITY FULL`. **The cost is
-real.** Every UPDATE now writes the full old-row image into the WAL.
-For a wide table this can double or triple WAL volume. On a busy OLTP
-cluster, doubled WAL means doubled `wal_writer` work, doubled
-streaming-replication bandwidth to all standbys, and an
-`fdatasync(pg_wal/...)` that has more bytes to flush per commit. The
-1B-payments post measured the fsync floor on Apple Silicon at ~600 µs
-per call[^fsync] — same syscall, more bytes.
-
-I default to `REPLICA IDENTITY DEFAULT` (key only) and accept that the
-consumer side gets `before = {pk: ...}`, `after = {full row}`. If you
-need full before-images, set it on a per-table basis: `ALTER TABLE
-high_value_audit REPLICA IDENTITY FULL` on the few tables that
-genuinely need column-level deltas.
-
-## Tuple decoding
-
-`internal/replication/tuple_decoder.go` is small but easy to get
-wrong. pgoutput emits each column as one of four `TupleDataType`s:
-`Null`, `Toast` (the value was de-TOASTed and not present in this
-message), `Text` (a UTF-8 textual representation), or `Binary`. The
-decoder dispatches on a `pgtype.Int2OID`/`pgtype.Int4OID`/...-keyed
-handler registry:
-
-```go
-// internal/replication/tuple_decoder.go
-registry.RegisterHandler(pgtype.Int2OID, &IntegerHandler{})
-registry.RegisterHandler(pgtype.Int4OID, &IntegerHandler{})
-registry.RegisterHandler(pgtype.Int8OID, &IntegerHandler{})
-registry.RegisterHandler(pgtype.Float4OID, &FloatHandler{})
-registry.RegisterHandler(pgtype.Float8OID, &FloatHandler{})
-registry.RegisterHandler(pgtype.NumericOID, &NumericHandler{})
-registry.RegisterHandler(pgtype.BoolOID, &BooleanHandler{})
-```
-
-`Null` becomes Go `nil`. `Toast` becomes the literal string `<TOAST>`
-— a deliberate choice, since the unmodified TOASTed value isn't on
-the wire and the consumer can either re-fetch it from the source or
-skip the column. Anything not in the registry falls through to a raw
-string. That's enough for ~95% of OLTP schemas — text, numbers,
-timestamps (which Postgres serialises as ISO-8601 text in pgoutput
-text-mode), booleans, JSON. UUIDs and JSONB just pass through as
-strings; the warehouse re-types them.
-
-## Standby status updates
-
-Every `5 s` and on every downstream ack, wal-cake sends a
-`StandbyStatusUpdate` with `lastAckedLSN`:
-
-```go
-// internal/replication/pg_replicator.go (err handling + log elided)
-func (r *pgReplicator) SendStandbyStatusUpdate(ctx context.Context, replyRequested bool) error {
-	status := pglogrepl.StandbyStatusUpdate{
-		WALWritePosition: r.lastAckedLSN,
-		WALFlushPosition: r.lastAckedLSN,
-		WALApplyPosition: r.lastAckedLSN,
-		ClientTime:       time.Now(),
-		ReplyRequested:   replyRequested,
-	}
-	err := pglogrepl.SendStandbyStatusUpdate(ctx, r.repConn, status)
-	return err
-}
-```
-
-Three position fields, all the same value. Postgres uses them to
-populate `pg_stat_replication.write_lag`, `flush_lag`, and
-`replay_lag` — the three columns your DBA stares at — and to drive
-WAL segment recycling: once `confirmed_flush_lsn` advances past a
-segment, that segment in `pg_wal/` is eligible for reuse.
-
-> If you ack too eagerly, you lose data. If you ack too late, Postgres'
-> `pg_wal/` explodes.
-
-The wal-cake invariant is that `lastAckedLSN` only ever advances when
-the ring buffer's contiguous-acknowledgement walker advances `readIdx`,
-which only happens after a `processor.Process(...)` call returned
-`nil`, which only happens after the S3 PUT returned 200. Three layers,
-one direction of monotonicity.
-
-# 4. The ring buffer that doesn't lock
-
-This is the heart of the post.
-
-The replicator is a **single producer**. It pushes `*CDCEvent` into
-`eventsCh` one at a time, in WAL order, on its own goroutine. The
-ring buffer is a **single producer, many consumer** structure:
-
-- One goroutine drains `eventsCh` into a fixed-size slice, slicing it
-  into _segments_.
-- N worker goroutines (`cfg.Concurrency`, default 4) pull segments off
-  a channel, write them to Parquet, upload to S3, and ack.
-- One goroutine drains the ack stream and advances `readIdx`.
-
-```go
 // internal/buffer/ring_buffer.go
-type RingBuffer struct {
-    buffer       []RingBufEvent
-    size         int64
-    writeIdx     atomic.Int64 // current write position
-    readIdx      atomic.Int64 // current read position (acked)
-    lastSegIdx   atomic.Int64 // end of last cut segment
-    nextSegSeq   atomic.Int64
-    batchSize    int
-    concurrency  int
-    segments     chan Segment
-    ticker       *time.Ticker
-    tickInterval time.Duration
-    processor    BatchProcessor
-    ackSeg       chan Segment
-    ackCh        chan<- uint64
-    tracker      *haxmap.Map[int64, *Segment] // completed segments
+type Segment struct {
+    StartIdx int64 // Start index in the ring buffer
+    EndIdx   int64 // End index in the ring buffer
+    done     bool
 }
 ```
 
-Four `atomic.Int64`s (`writeIdx`, `readIdx`, `lastSegIdx`,
-`nextSegSeq`), two channels (`segments`, `ackSeg`), one concurrent
-map (`alphadose/haxmap`). No `sync.Mutex` anywhere on the data path.
+A `CDCEvent` is one row change and its LSN. A `Segment` is a batch: the range
+`[StartIdx, EndIdx)` of positions in the ring. The rest of the post uses
+"segment" for a batch.
 
-## Sizing and bounded memory
+The ring has a fixed array, three counters, a tracker, and three channels:
 
-```go
-size := concurrency * batchSize
-rb.buffer = make([]RingBufEvent, size)
+```txt
+buffer      fixed array of *CDCEvent
+writeIdx    next position to write
+lastSegIdx  end of the last segment sent to workers
+readIdx     end of the finished prefix (the cursor)
+tracker     map: StartIdx → segment, guarded by a mutex
+segments    channel: segments going to workers
+ackSeg      channel: finished segments coming back
+space       channel: wakes the writer when readIdx moves
 ```
 
-Memory is bounded at construction. With `batchSize=1000, concurrency=4`,
-the buffer holds 4,000 `*model.CDCEvent` slots — 32 KB of pointer
-storage, plus whatever the events themselves take. There is no
-"oh no the buffer grew unbounded" failure mode by design. Either the
-producer is faster than the consumers and the buffer fills, or it
-isn't.
+The three counters only increase. Only the array index wraps, using
+`index % size`. Because of this, the ring is full exactly when
+`writeIdx - readIdx >= size`.
 
-## Add: the only fast path
+At any moment, the positions fall into four ranges:
+
+```txt
+[0, readIdx)             done; slots can be reused
+[readIdx, lastSegIdx)    sent to workers: waiting, running, or done behind a gap
+[lastSegIdx, writeIdx)   written, not yet in a segment
+[writeIdx, readIdx+size) free
+```
+
+## Writing to the ring
+
+{{< walviz kind="map" focus="evc,ring" wide="false" fallback="pipeline.svg" alt="System map with eventsCh and the ring highlighted" >}}
+
+One goroutine reads `eventsCh` and calls `Add`. It is the only writer, so it
+does not need a mutex:
 
 ```go
 // internal/buffer/ring_buffer.go
@@ -454,745 +373,305 @@ func (rb *RingBuffer) Add(event *model.CDCEvent) bool {
 }
 ```
 
-Five lines. Two `Load`s (`writeIdx` + `readIdx`), one subtract +
-compare, one slice write, one `Add`. The wraparound is `w % rb.size`.
-There's no compare-and-swap because there's only one writer goroutine
-(the receiver loop in `Start`). Reads at `w%rb.size` are safe because
-workers only read indices below `writeIdx` — and `writeIdx.Add(1)` is
-the publication barrier.
+If the ring is full, `Add` returns false and does not overwrite anything. The
+goroutine waits on `space` until the walker moves `readIdx`. While it waits,
+`eventsCh` fills up and the replicator blocks. No data is lost, but replication
+pauses until uploads finish.
 
-If `Add` returns false, the producer is full. The receiver doesn't
-drop. It backs off:
+The ring holds `2 × workers × batch` events: 8,000 pointers, or 64 KB, with the
+defaults. Half of that is what the workers hold at once. The other half lets
+the writer fill the next segments while every worker is busy. This limits the
+number of events, not their size: one large JSONB value can still use a lot of
+memory.
+
+## Sending segments to workers
+
+{{< walviz kind="map" focus="ring,seg,wrk" wide="false" fallback="pipeline.svg" alt="System map with the ring, the segments channel, and the workers highlighted" >}}
+
+The same goroutine creates a segment when 1,000 events are waiting. When
+traffic is low, a `30 s` timer creates a smaller one, so a few events do not
+wait forever and hold WAL in the slot. The segment is added to `tracker`
+before it is sent:
 
 ```go
-// internal/buffer/ring_buffer.go (Start, event branch)
-case event := <-eventsCh:
-    for !rb.Add(event) {
-        select {
-        case <-ctx.Done():
-            return ctx.Err()
-        case <-time.After(100 * time.Millisecond):
+// internal/buffer/ring_buffer.go (logging elided)
+segment := Segment{StartIdx: lastSegPos, EndIdx: writePos}
+rb.lastSegIdx.Store(writePos)
+rb.tracker.Set(segment.StartIdx, &segment)
+rb.segments <- segment
+```
+
+This order matters. Because every segment is in `tracker` before any worker
+starts, the walker can see a gap: a segment that exists but is not done yet.
+
+A channel send happens before the matching receive in the Go memory
+model[^gomem], so a worker sees the events written before its segment was
+sent. Only one goroutine, the walker, changes `done` and `readIdx`.
+
+## Moving the cursor
+
+When a worker finishes, it sends the segment back on `ackSeg`. The walker marks
+it done. If the segment starts at `readIdx`, the walker moves forward over
+every done segment:
+
+```go
+// internal/buffer/ring_buffer.go
+func (rb *RingBuffer) findHighestContiguous(start, read int64) int64 {
+    s, ok := rb.tracker.Get(start)
+    if !ok { return read }
+    s.done = true
+
+    if s.StartIdx == read {
+        cur := s
+        for cur.done {
+            rb.tracker.Del(cur.StartIdx)
+            read = cur.EndIdx
+            next, ok := rb.tracker.Get(cur.EndIdx)
+            if !ok { break }
+            cur = next
         }
     }
-```
-
-A `100 ms` sleep loop. Looks dumb. It's correct.
-
-Too short and a `1 µs` spin at, say, `100,000` saturating events/sec
-is `1 µs × 100,000 = 0.1 s/sec` of pointless CPU bleed. Too long and
-the ring stays stuck after a worker drained it, adding LSN-ack
-latency. `100 ms` produces a clear `pg_stat_replication.replay_lag`
-signal without burning a core.
-
-The dumber alternative — drop on full — is not on the table. CDC's
-contract is "every committed row gets to S3, exactly once." Dropping
-violates the contract. The `100 ms` backoff propagates pressure all
-the way back to `eventsCh`, which fills, which makes the replicator's
-`ch <- ev` block, which means we stop calling `repConn.ReceiveMessage`,
-which means Postgres' TCP send buffer to us fills, which means the
-walsender process on Postgres notices and pauses. Postgres has been
-designed for this — `pg_stat_replication.replay_lag` will start
-ticking up, your DBA will get an alert, and you'll know the lake is
-backed up. The sleep is a deliberate piece of backpressure plumbing.
-
-> A blocked CDC consumer is not a bug. A silent CDC consumer is.
-
-## Cutting segments
-
-A segment is just a half-open index range `[StartIdx, EndIdx)` into
-the ring:
-
-```go
-// internal/buffer/ring_buffer.go
-type Segment struct {
-	StartIdx int64 // Start index in the ring buffer
-	EndIdx   int64 // End index in the ring buffer
-	done     bool
+    return read
 }
 ```
 
-Two paths cut segments:
-
-**Size-triggered.** Every time we successfully `Add`, we check whether
-`writeIdx - lastSegIdx >= batchSize`:
+Then it publishes the new prefix:
 
 ```go
-// internal/buffer/ring_buffer.go (safety check + log elided)
-func (rb *RingBuffer) checkForNewSegment() bool {
-	writePos := rb.writeIdx.Load()
-	lastSegPos := rb.lastSegIdx.Load()
-	if int(writePos-lastSegPos) >= rb.batchSize {
-		segment := Segment{
-			StartIdx: lastSegPos,
-			EndIdx:   writePos,
-		}
-		rb.lastSegIdx.Store(writePos)
-		rb.tracker.Set(segment.StartIdx, &segment)
-		rb.segments <- segment
-		return true
-	}
-	return false
+// internal/buffer/ring_buffer.go (handleSegmentAck, abridged)
+lastEvent := rb.buffer[(highContiguous-1)%rb.size]
+rb.readIdx.Store(highContiguous)
+select {
+case rb.space <- struct{}{}: // wake the writer if it is waiting
+default:
 }
+rb.acked.Advance(lastEvent.LSN)
 ```
 
-**Time-triggered.** A `time.Ticker` fires every `flushInterval`
-(default 30 s). If anything is sitting between `lastSegIdx` and
-`writeIdx`, cut a segment regardless of size:
+It reads the last event before it stores `readIdx`, because the writer may
+reuse that slot as soon as `readIdx` moves. `acked` is an `ack.Position`: an
+atomic register that only moves forward. The replicator reads it on each loop
+iteration, which is at least once a second while it is receiving, and sends a
+status update when it grows. A
+register cannot drop an ACK, and it never holds a stale one, because only the
+highest value matters.
 
-```go
-// internal/buffer/ring_buffer.go (safety checks elided)
-func (rb *RingBuffer) createTickerSegment() {
-	writePos := rb.writeIdx.Load()
-	lastSegPos := rb.lastSegIdx.Load()
-	if writePos <= lastSegPos {
-		return
-	}
-	segment := Segment{
-		StartIdx: lastSegPos,
-		EndIdx:   writePos,
-	}
-	rb.lastSegIdx.Store(writePos)
-	rb.tracker.Set(segment.StartIdx, &segment)
-	rb.segments <- segment
-}
+The walk only ever sees each segment three times: added, marked done, and
+deleted. So the total work is `O(N)` for `N` segments.
+
+The figure below runs the `S1`–`S4` example with 2 events per segment and 8
+slots. Step through it and watch `tracker` and `readIdx`.
+
+{{< walviz kind="ring-walk" fig="4" title="The contiguous walk, one step at a time" fallback="ring-buffer-walk.svg" alt="An eight-slot ring: out-of-order completions and the contiguous readIdx walk" caption="Four workers, two events per batch, eight slots. Use ← and → to step." >}}
+
+At step 10, event `e9` is written to `buffer[0]`, the slot `e1` used before.
+Its position is 8, and `8 % 8 = 0`. The counters keep growing, and only the
+array index wraps.
+
+## The ring at production size
+
+The next figure uses the defaults: 4 workers, 1,000 events per segment, and
+8,000 slots. **Slow PUT** delays one upload, so later segments finish but wait
+behind it. **S3 stall** stops all uploads, so the ring fills and the replicator
+blocks.
+
+{{< walviz kind="ring-sim" fig="5" title="The ring at production size" fallback="ring-buffer-walk.svg" alt="Ring buffer simulator with 8,000 slots and four workers" caption="A model, not a benchmark. PUT times are sampled from a lognormal with the chosen p50 and an assumed p99 of 2 × p50. Encode time is `1.2 ms`. The receiver and the walk follow the source." >}}
+
+`TestRingCapacity` runs the real ring with a stand-in uploader that sleeps for
+`7 ms` plus a PUT time from the same lognormal (p50 `100 ms`). With four
+workers it sustains about 35,500 events/s, against an ideal of about 36,000.
+A variant with three workers, a p50 of `200 ms`, and a `1.2 ms` encode kept up
+with 14,000 events/s.
+
+## What "mutex-free" means
+
+`Add` uses no mutex: one writer, atomic counters, and slots that only the
+writer fills, and only workers and the walker read. The tracker takes a mutex a few times per
+segment, which is a few times per 1,000 events. Go channels lock internally,
+workers wait on the network, and a full ring blocks the replicator. So the
+system is not lock-free, and does not need to be. `Add` takes about 11 ns, and
+the ring's job is ordering.
+
+# Parquet: small files
+
+Each Parquet file has one row group and seven columns: `table`, `operation`,
+`timestamp`, `lsn`, `before`, `after`, and `commit_time`. `before` and `after`
+hold the old and new row as JSON, and are null when that image does not exist:
+an insert has no `before`, and a delete has no `after`. `NUMERIC` values are
+written as JSON numbers with their exact digits, so `9999999999999999.99`
+stays `9999999999999999.99`. All columns use ZSTD compression at level 3.
+
+The test fixture has 1,000 events across 12 tables, a third each inserts,
+updates, and deletes. Its file is 13,465 bytes, and the two JSON columns are
+90% of that.
+
+Benchmarks of the real code, three to five runs each:
+
+| Step | Time | Allocated |
+|---|---:|---:|
+| Ring `Add` | about 11 ns per event | 0 B |
+| Parse and decode one insert (five columns) | about 0.5 µs per event | 760 B |
+| Write 1,000 events to Parquet | 1.17–1.20 ms per batch | 2.7–2.9 MB |
+
+The Parquet library, arrow-go v18.2.0, creates a new ZSTD encoder for every
+page it compresses, and each encoder allocates about 18 MB. A 1,000-event file
+has one page per column plus two dictionary pages, so with the library's own
+codec the fixture takes about 6.5 ms and 170 MB per batch. WAL Cake registers a
+ZSTD codec that reuses encoders from a `sync.Pool`. It writes exactly the same
+bytes, and a test checks that.
+
+# The S3 upload and its key
+
+A segment can hold rows from two days around midnight. The processor checks
+every event's commit date and makes one `PutObject` call per run of equal
+dates. The key is:
+
+```txt
+namespace/YYYY/MM/DD/<decode-time-µs>-<seq>.ZSTD.parquet
 ```
 
-The ticker exists for the small-volume case. Without it, a Postgres
-that gets 100 inserts and goes quiet would never cut a batch — those
-events would sit in the ring forever and `lastAckedLSN` would never
-advance, so the slot would hoard WAL. The ticker is what makes
-"low-traffic, must still durably checkpoint" work.
-
-The two paths cooperate: the size path resets the ticker on every cut,
-so a busy Postgres effectively runs on size-triggered batches and a
-quiet one falls back to time-triggered.
-
-## Workers finish out of order
-
-```go
-// internal/buffer/ring_buffer.go (worker, abridged)
-case segment := <-rb.segments:
-	events := make([]*model.CDCEvent, 0, rb.batchSize)
-	start := segment.StartIdx
-	for start < segment.EndIdx {
-		idx := start % rb.size
-		if rb.buffer[idx] != nil {
-			events = append(events, rb.buffer[idx])
-		}
-		start++
-	}
-
-	if len(events) > 0 {
-		for i := range 3 {
-			err := rb.processor.Process(ctx, events)
-			if err == nil {
-				break
-			}
-			log.Error().Err(err).Int("retry", i+1).Msg("Error processing segment")
-			if i == 2 {
-				log.Fatal().Err(err).Msg("Failed to process segment")
-			}
-			time.Sleep(time.Second * (2 << i))
-		}
-	}
-	rb.ackSeg <- segment
-```
-
-N workers, all pulling from the same `rb.segments` channel. They
-process in parallel. They **finish in any order**. Segment 3 might
-beat segment 1 to S3 — illustrative example: segment 1 has 1,000 rows
-of TOASTed JSONB taking ~`400 ms` to write to Parquet (TOAST means a
-fetch from `pg_toast_*` per row, see the `<TOAST>` placeholder in
-`tuple_decoder.go`); segment 3 has 1,000 rows of small ints taking
-~`12 ms` (no TOAST, ZSTD-3 dominates).
-
-This is exactly where the naive design starts losing data.
-
-## The contiguous-ack walker
-
-If we acked `lastSegIdx = 3.End` to Postgres the moment segment 3
-completed, and segment 1 then crashed permanently before its retry
-budget expired, segment 1's events would be on the floor. The
-`confirmed_flush_lsn` on Postgres would be past them. They are gone.
-
-The walker fixes this. State is a `haxmap[int64, *Segment]` keyed by
-`StartIdx`. Workers send the segment to `rb.ackSeg` after `Process`
-returns nil; the ack-pipeline goroutine consumes `ackSeg`, marks the
-segment `done = true`, and walks forward over contiguous-done
-segments only:
-
-```go
-// internal/buffer/ring_buffer.go
-func (rb *RingBuffer) findHighestContiguous(segStartIdx, curReadIdx int64) int64 {
-	s, ok := rb.tracker.Get(segStartIdx)
-	if !ok {
-		return curReadIdx
-	}
-	s.done = true
-	if s.StartIdx == curReadIdx {
-		cur := s
-		for cur.done {
-			rb.tracker.Del(cur.StartIdx)
-			curReadIdx = cur.EndIdx
-			next, ok := rb.tracker.Get(cur.EndIdx)
-			if !ok {
-				break
-			}
-			cur = next
-		}
-	}
-	return curReadIdx
-}
-```
-
-Two cases. **(a)** Segment finishing isn't the one at `readIdx`: mark
-it done, return `readIdx` unchanged. **(b)** Segment finishing _is_
-the one at `readIdx`: walk forward through the tracker, removing each
-contiguous-done segment, until you hit a segment that isn't done
-(stop) or you fall off the end (also stop). The new `readIdx` is the
-`EndIdx` of the last contiguous-done segment.
-
-When the walker advances, the LSN to ack is the LSN of the **last
-event in the contiguous prefix**:
-
-```go
-// internal/buffer/ring_buffer.go (handleSegmentAck, log lines elided)
-if highContiguous > previousReadIdx {
-	rb.readIdx.Store(highContiguous)
-	idx := (highContiguous - 1) % rb.size
-	lastEvent := rb.buffer[idx]
-	if lastEvent != nil {
-		select {
-		case rb.ackCh <- lastEvent.LSN:
-		default:
-			log.Warn().Msg("Ack channel is full, could not send LSN after contiguous advancement")
-		}
-	}
-}
-```
-
-That `lastEvent.LSN` is the same `xLogPos = xld.WALStart + len(WALData)`
-we computed back in section 3. It travels:
-
-```
-pgoutput → CDCEvent.LSN → ring slot → ack walker → ackCh → replicator.lastAckedLSN
-                                                                      │
-                                                      StandbyStatusUpdate
-                                                                      ▼
-                                                       pg_replication_slots.confirmed_flush_lsn
-```
-
-End to end, that LSN is only forwarded to Postgres after every
-preceding event has been durably written to S3. Drop a worker mid-PUT,
-crash, restart, and the `confirmed_flush_lsn` is exactly where the
-last successful contiguous ack left it. Postgres replays from there.
-No gaps.
-
-## ASCII trace of out-of-order completion
-
-Four segments dispatched at `t=0`. Workers complete in the order
-`S2, S4, S1, S3`. Watch the walker:
-
-```
-time=0   tracker = { 0:S1(running), 1000:S2(running),
-                     2000:S3(running), 3000:S4(running) }
-         readIdx = 0,  lastAckedLSN = 0/0
-
-t=12ms   S2 done.   tracker = { 0:S1, 1000:S2(done), 2000:S3, 3000:S4 }
-         readIdx UNCHANGED (S1 not done) — no LSN sent.
-
-t=15ms   S4 done.   tracker = { 0:S1, 1000:S2(done), 2000:S3, 3000:S4(done) }
-         readIdx UNCHANGED.
-
-t=400ms  S1 done.   walker fires from StartIdx=0:
-                       0:S1     done → del, readIdx=1000
-                       1000:S2  done → del, readIdx=2000
-                       2000:S3  ?      stop (not done)
-         readIdx = 2000
-         ackCh ← buffer[(2000-1)%size].LSN  // last event of S2
-         standby_status_update sent to Postgres.
-
-t=420ms  S3 done.   walker fires from StartIdx=2000:
-                       2000:S3  done → del, readIdx=3000
-                       3000:S4  done → del, readIdx=4000
-         readIdx = 4000
-         ackCh ← buffer[(4000-1)%size].LSN  // last event of S4
-         standby_status_update sent.
-```
-
-S2 and S4 each "finished early." Their LSNs were withheld. Only when
-S1 cleared the queue did the walker emit one ack covering both S1 and
-S2 in a single update. When S3 cleared, the second ack covered both
-S3 and S4. **Two acks, four segments, in-order LSN advancement.**
-
-Out-of-order completion + in-order ack is what makes this both
-lock-free **and** correct. Drop the walker and you have to fall back
-to sequential processing (no concurrency). Drop the contiguous
-constraint and a worker crash mid-batch leaves a hole in S3 that
-Postgres has already moved past — exactly the data-loss the CDC
-contract forbids.
-
-## Why no mutex
-
-Three reasons. **(1)** The hot writer path (`Add`) has a single writer
-goroutine (the receiver loop in `Start`), so its `writeIdx` mutation
-is uncontended. **(2)** Workers read `buffer[i % size]` for
-`i ∈ [StartIdx, EndIdx)`, and the producer never re-uses those slots
-until `readIdx` has advanced past them — `Add` returns `false` while
-`writeIdx - readIdx >= size`. So worker reads and producer writes are
-always on disjoint ranges of `buffer`. **(3)** The tracker is a
-concurrent map (`haxmap`). The receiver `Set`s a segment when it cuts
-one; workers send the segment to `ackSeg` on completion (no shared
-state mutation); a single ack-pipeline goroutine consumes `ackSeg`
-and is the only writer of `s.done = true` inside `findHighestContiguous`.
-One writer per field, no mutex needed.
-
-## Tracker choice
-
-`alphadose/haxmap` over `sync.Map` was a deliberate choice. `sync.Map`
-optimizes for read-heavy "many readers, one writer" patterns and uses
-a read-mostly atomic snapshot under the hood. Our pattern is
-**balanced**: every segment is `Set` once, `Get` zero-or-many times by
-the walker, then `Del`. `haxmap` is a lock-free, CAS-based hashmap
-([source](https://github.com/alphadose/haxmap)) and reports `~3×`
-over `sync.Map` on this access pattern in its
-[README benchmarks](https://github.com/alphadose/haxmap#benchmarks)
-(don't take a README at face value; the gap is real but
-workload-dependent — derive your own with `go test -bench`).
-
-# 5. Parquet that's small AND fast
-
-Parquet is not one format. It's a compression and encoding _kit_ with
-two dozen knobs. "I dumped my JSON to Parquet" is, on a busy lake,
-the estimated difference between `~$400/month` and `~$4,000/month`
-in S3 scan + storage on a 100 GB/day mutation stream — roughly the
-spread between snappy-default-no-dict-no-sort and
-ZSTD-3-with-dict-and-sorted, per the
-[Parquet encoding spec](https://parquet.apache.org/docs/file-format/data-pages/encodings/)
-plus codec micro-benchmarks in the
-[zstd README](https://github.com/facebook/zstd#benchmarks). The
-knobs in `internal/transform/parquet_writer.go` are **deliberate**.
-
-```go
-// internal/transform/parquet_writer.go
-sorted := []parquet.SortingColumn{
-	{ColumnIdx: 2, Descending: false, NullsFirst: false}, // timestamp
-	{ColumnIdx: 3, Descending: false, NullsFirst: false}, // lsn
-}
-props := parquet.NewWriterProperties(
-	parquet.WithDictionaryDefault(false),
-	parquet.WithDictionaryFor("table", true),
-	parquet.WithDictionaryFor("operation", true),
-	parquet.WithEncodingFor("timestamp", parquet.Encodings.DeltaBinaryPacked),
-	parquet.WithEncodingFor("lsn", parquet.Encodings.DeltaBinaryPacked),
-	parquet.WithEncodingFor("before", parquet.Encodings.Plain),
-	parquet.WithEncodingFor("after", parquet.Encodings.Plain),
-	parquet.WithStats(true),
-	parquet.WithStatsFor("before", false),
-	parquet.WithStatsFor("after", false),
-	parquet.WithPageIndexEnabledFor("timestamp", true),
-	parquet.WithPageIndexEnabledFor("lsn", true),
-	parquet.WithSortingColumns(sorted),
-	parquet.WithCompression(compress.Codecs.Zstd),
-	parquet.WithCompressionLevel(3),
-	parquet.WithCreatedBy("wal-cake #pg"),
-)
-```
-
-Each line is a tradeoff. Walked one by one:
-
-| Setting | Choice | Why |
-|---|---|---|
-| Codec | ZSTD level 3 | Sweet spot for CDC payloads. Per [zstd benchmarks](https://github.com/facebook/zstd#benchmarks): several times faster than gzip at a comparable ratio, and tighter than snappy. Higher ZSTD levels (10+) trade order-of-magnitude more CPU for single-digit-percent size gains. |
-| Dict for `table`, `operation` | yes | Low cardinality on both (10s of tables; 3 ops in Parquet — `insert`/`update`/`delete`; `commit` is filter-excluded). Dict beats per-row string storage decisively. |
-| Dict default | OFF | Avoids overhead for high-cardinality JSON/timestamp/LSN columns where dict would just bloat the file. |
-| `timestamp` encoding | DELTA_BINARY_PACKED | Microsecond timestamps are monotonic in WAL order. DELTA_BINARY_PACKED stores `t[0]`, then `(t[i] - t[i-1])` packed at the minimum bit-width — typically 1–2 bytes/row instead of 8. |
-| `lsn` encoding | DELTA_BINARY_PACKED | LSN is also monotonic. Same trick, same ~75% savings on the column. |
-| Sorting columns | `(timestamp, lsn)` | Lets readers (Athena, Trino, DuckDB) skip whole pages on time-range predicates via the page index. Sort order is a header field, but it's only true if you actually wrote the rows in that order — which our ring buffer's contiguous-LSN guarantee gives us for free. |
-| Page index for ts, lsn | enabled | Without page index, pushdown prunes whole row groups only (each batch is one row group, so a `WHERE timestamp BETWEEN …` query reads the file or skips it whole). Page index lets the reader skip individual data pages, scanning only time-overlapping pages. |
-| Stats for `before`, `after` | OFF | These are JSON-as-bytes columns. Min/max on raw JSON bytes is meaningless to a reader and costs CPU during write. |
-| `before`, `after` type | `JSONLogicalType` over `BYTE_ARRAY` | The physical type is bytes; the logical-type annotation tells Athena, DuckDB, Spark to treat it as JSON. You preserve schema flexibility (every event's `before/after` shape can differ) without lying to the reader. |
-| Encoding for `before`, `after` | Plain | JSON bytes don't dictionary-compress well (every blob is unique-ish). With high cardinality, the dictionary itself ends up nearly as big as the data — no win, plus an index-lookup cost per row. Plain + ZSTD page compression beats dict + ZSTD. |
-| `WithCreatedBy("wal-cake #pg")` | string in the file footer | Forensics. When a downstream warehouse engineer asks "who wrote these files?", `parquet-tools meta` shows the producer string. |
-
-Schema construction is `JSONLogicalType`-aware:
-
-```go
-// internal/transform/parquet_writer.go
-beforeNode, err := schema.NewPrimitiveNodeLogical(
-	"before",
-	parquet.Repetitions.Required,
-	schema.JSONLogicalType{},
-	parquet.Types.ByteArray,
-	-1,
-	-1,
-)
-```
-
-A `parquet-tools meta` snippet on a representative wal-cake file
-(real layout, hand-formatted):
-
-```
-$ parquet-tools meta default/2026/05/09/1778328000000000.zstd.parquet
-file:        default/2026/05/09/1778328000000000.zstd.parquet
-creator:     wal-cake #pg
-extra:       {}
-file schema: schema
---------------------------------------------------------------------
-table:       REQUIRED BYTE_ARRAY (UTF8)        ENCODING:RLE_DICTIONARY
-operation:   REQUIRED BYTE_ARRAY (UTF8)        ENCODING:RLE_DICTIONARY
-timestamp:   REQUIRED INT64 (TIMESTAMP_MICROS) ENCODING:DELTA_BINARY_PACKED
-lsn:         REQUIRED INT64                    ENCODING:DELTA_BINARY_PACKED
-before:      REQUIRED BYTE_ARRAY (JSON)        ENCODING:PLAIN
-after:       REQUIRED BYTE_ARRAY (JSON)        ENCODING:PLAIN
-sort cols:   timestamp ASC, lsn ASC
-row group 0: RC:1000  TS:184_322
-  table:        SIZE:412      (dict+ZSTD reduces 1000 short-string column to <1 KB)
-  operation:    SIZE:78
-  timestamp:    SIZE:1_842    (DELTA_BINARY_PACKED + ZSTD)
-  lsn:          SIZE:1_904
-  before:       SIZE:48_120   (JSON + ZSTD)
-  after:        SIZE:131_966
-```
-
-(Numbers above are illustrative — ratios from a `~200 B/event` CDC
-shape, not a single file from this codebase. Treat bytes as
-approximate.)
-
-Two columns dominate: `before` and `after`. Everything else is in the
-noise — `table` and `operation` together are
-`(412 + 78) / 184,322 ≈ 0.3%` of the file's total bytes (computed
-from the illustrative `parquet-tools meta` row-group sizes above).
-The moral: **stop optimizing the small columns and optimize your
-JSON**. Which leads to the next decision.
-
-## go-json over encoding/json
-
-Commit `72bbcae` swapped `encoding/json` for `goccy/go-json`:
-
-```go
-// internal/transform/parquet_writer.go
-"github.com/goccy/go-json"
-// ...
-beforeJson, err := json.Marshal(ev.Before)
-if err != nil {
-    return fmt.Errorf("marshal CDC before data to JSON: %w", err)
-}
-```
-
-`encoding/json` uses reflection on every call, builds an internal
-`reflect.Type → encoder` cache the first time it sees a type, and
-synchronizes that cache. On the small `map[string]any` we marshal
-per row, the reflection overhead dominates. `goccy/go-json` uses
-`unsafe`-based type erasure plus per-type generated encoders; the
-[benchmarks][gojson-bench] in the repo show `2–4×` on small
-heterogeneous maps. On a `1,000`-event batch the JSON marshalling
-step is on the worker hot path the LSN walker is waiting for, so
-that 2-4× compounds across every batch.
-
-[gojson-bench]: https://github.com/goccy/go-json#benchmarks
-
-Pick the JSON encoder before you pick the Parquet codec.
-
-## Date-partitioned writes
-
-The processor splits each batch by `Date()` (truncated to UTC day):
-
-```go
-// internal/buffer/processor.go
-// Events are from the same day
-if events[0].Date().Equal(events[len(events)-1].Date()) {
-	return p.Upload(ctx, events)
-}
-
-curDate := events[0].Date()
-left, right := 0, 0
-for right, e := range events {
-	nextDate := e.Date()
-	if !nextDate.Equal(curDate) {
-		if err := p.Upload(ctx, events[left:right]); err != nil {
-			return err
-		}
-		curDate = nextDate
-		left = right
-	}
-}
-
-return p.Upload(ctx, events[left:right+1])
-```
-
-The fast-path same-day check (commit `f3a95a7`, "Avoid partition logic
-if all events same day") is the common case — a 30-second batch
-almost never spans midnight. The slow path matters once a day, for
-exactly one batch.
-
-S3 keys carry the partition:
-
-```go
-// internal/buffer/processor.go
-func (p *ParquetBatchProcessor) generateS3Key(timestamp time.Time) string {
-	key := fmt.Sprintf("%s/%s/%d.%s.parquet",
-		p.config.Namespace,
-		timestamp.Format("2006/01/02"),
-		timestamp.UnixMicro(),
-		p.transformer.GetCompressionCodec(),
-	)
-	return key
-}
-```
-
-Output: `myapp/2026/05/09/1715251200000000.zstd.parquet`. Hive-style
-`year=YYYY/month=MM/day=DD/` would let Athena auto-discover
-partitions; the slash form requires `MSCK REPAIR TABLE` or explicit
-`ALTER TABLE ... ADD PARTITION`. Trade-off: shorter keys, simpler
-S3 list ops, manual partition registration. On data-lake setups where
-a Glue crawler runs nightly, this is fine.
-
-# 6. S3 upload — the boring-but-critical bit
-
-Two screens of code, one design decision:
-
-```go
-// internal/storage/s3_uploader.go
-func (u *s3Uploader) UploadBytes(ctx context.Context, key string, data []byte) error {
-    _, err := u.client.PutObject(ctx, &s3.PutObjectInput{
-        Bucket: aws.String(u.bucket),
-        Key:    aws.String(key),
-        Body:   bytes.NewReader(data),
-        ACL:    types.ObjectCannedACLPrivate,
-    })
-    if err != nil {
-        return fmt.Errorf("uploaded bytes to S3: %w", err)
-    }
-    return nil
-}
-```
-
-**One PUT per batch**, no multipart. The reasoning is small. A typical
-wal-cake batch is `batchSize=1000` events × ~200 B/event uncompressed
-JSON = 200 KB pre-Parquet, ~30–50 KB post-Parquet+ZSTD. S3 multipart's
-[minimum part size is 5 MB](https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html)
-(except the last) — sub-MB objects can't usefully be split. A single
-PUT also avoids the three multipart round trips (`CreateMultipartUpload`,
-N × `UploadPart`, `CompleteMultipartUpload`) for no parallelism gain
-at this size.
-
-Idempotency comes from the key. The `Timestamp.UnixMicro()` of the
-last event in the batch (set in the replicator at decode time) is
-near-monotonic in practice — modulo wall-clock adjustments — and
-contiguous-LSN ordering guarantees no later-LSN batch is uploaded
-before any earlier-LSN batch. A PUT retry uses the same key; S3 PUT
-is last-write-wins, so identical key + identical bytes overwrites
-with the same content. If the process crashes mid-PUT and restarts,
-the LSN walker hasn't acked yet — on resume the same events are
-replayed under a **different** key (the ts is now slightly later).
-So we do double-write data, but **read-side dedup** is trivial: rows
-are uniquely identified by `(table, lsn, operation)`. For exactly-once
-on the lake side instead, the upgrade path is Apache Iceberg with
-`(min_lsn, max_lsn)` per-file metadata.
-
-## MinIO for local dev
-
-```go
-// internal/storage/s3_uploader.go
-endpoint := os.Getenv("AWS_ENDPOINT")
-if u.endpoint != "" {
-    o.BaseEndpoint = aws.String(u.endpoint)
-    o.UsePathStyle = true   // required for MinIO
-}
-```
-
-The `AWS_ENDPOINT` override + `UsePathStyle: true` is the standard
-two-line MinIO recipe. `docker-compose.yml` in the repo wires it up.
-Run `docker compose up -d`, point `AWS_ENDPOINT=http://localhost:9000`,
-and the same binary that ships to AWS writes to local MinIO. No code
-branches, no test mocks for S3.
-
-# 7. Throughput math
-
-Back-of-envelope for a single wal-cake instance with default config
-(`batchSize=1000, concurrency=4, flushInterval=30s`):
-
-**Upstream ceiling.** Postgres' WAL flush rate is the upstream limit.
-The 1B-payments post measured Apple Silicon NVMe `fdatasync()` at a
-weighted-average `163 µs`, with 100% under `512 µs`[^fsync] —
-that's `1 / 0.000163 ≈ 6,135` fsyncs/sec at the average and
-`~2,000` fsyncs/sec at the worst-case tail. Group commit batches
-many WAL records per fsync, so a typical OLTP cluster with
-`commit_delay=200µs` pushes `5k–20k` row-mutations per second on
-the WAL stream. Call it **10k events/sec** as a reasonable
-mid-range.
-
-**Decoding cost.** pgoutput Text-mode decoding in
-`internal/replication/tuple_decoder.go`'s `extractTuple` is dominated
-by `make(map[string]any)` + a `strconv.ParseInt`/`ParseFloat` per
-column. Both are well-trodden Go allocation patterns. Take
-`~5 µs/column` as a back-of-envelope; a real `go test -bench` on
-the decoder would refine it. For a 5-column row that's
-`5 × 5 µs ≈ 25 µs`. At `10,000 events/sec` the decoder uses
-`10,000 × 25 µs = 250,000 µs/sec = 0.25 s of CPU per wall-second`
-on the replicator goroutine — one core at 25%. Headroom is fine;
-it's not the bottleneck.
-
-**Ring buffer admission.** `Add` is ~50 ns (one atomic load, one
-slice store, one atomic add). 10k events/sec is 500 µs/sec on the
-receiver goroutine — 0.05%. Free.
-
-**Parquet+ZSTD writes.** Estimated on a single core, ZSTD-3 +
-arrow-go writes 1,000-event batches in `~10–25 ms` depending on JSON
-size (allocation-dominated; assumes `~30–50 KB` post-compress per
-batch and ZSTD-3 single-thread throughput in the
-[~500–700 MB/s range](https://github.com/facebook/zstd#benchmarks)).
-With concurrency 4 and a per-batch wall time of `~20 ms`, the
-upper bound is `4 / 0.020 s = 200 batches/sec`, i.e.
-`200 × 1,000 = 200,000 events/sec` of Parquet capacity. Comfortably
-over-provisioned for the upstream rate; Parquet is not the
-bottleneck.
-
-**S3 PUTs/min — busy case.** At sustained `10,000 events/sec`, the
-size trigger fires at every `1,000`-event boundary, i.e. every
-`1,000 / 10,000 = 0.1 s`. That's `1 / 0.1 = 10 batches/sec` of cuts,
-each a separate PUT. The 30-s ticker is *the cap on quiet-time
-delay*, not the busy-case cadence — when a size cut happens it
-resets the ticker (see `rb.ticker.Reset(rb.tickInterval)` in
-`internal/buffer/ring_buffer.go`). So the busy steady-state is:
-
-```
-10 PUT/sec × 60 sec/min                = 600 PUT/min
-600 × 60 min/hr × 24 hr/day × 30 day/mo
-   = 600 × 43,200 = 25,920,000 PUT/mo  ≈ 26M PUT/mo
-26M × ($5 / 1M PUT)                    ≈ $130/month  (PUT cost)
-```
-
-Plus storage. Estimated `~30 KB/Parquet × 26M files = 780 GB/month`
-of new data — at the S3 Standard
-[$0.023/GB-month](https://aws.amazon.com/s3/pricing/) tier, the
-month-1 storage delta is `780 × $0.023 ≈ $18/month` of *new* bytes
-(cumulative storage grows month-over-month). Steady-state monthly
-S3 spend at `10k events/sec` sustained: `~$148/month new`
-(`$130` PUT + `$18` storage delta). Half the cost is reducible by
-larger `batchSize`: bumping `batchSize` from `1,000` to `10,000`
-cuts PUT count by `10×` and per-month PUT spend to `~$13`, at the
-price of `10×` worst-case batching latency.
-
-**S3 PUTs/min — quiet case.** The crossover where the ticker beats
-the size trigger is `batchSize / flushInterval = 1,000 / 30 ≈ 33
-events/sec`. Below it the ticker wins (`60 / 30 = 2 PUT/min`,
-`~$0.43/month`). At `100 events/sec` the size trigger wins, firing
-every `1,000 / 100 = 10 sec` for `60 / 10 = 6 PUT/min` (`~$1.30/month`).
-The size trigger also resets the ticker, so wal-cake never cuts twice
-within a single batch's worth of events.
-
-**Where the upper limit lives.** Push events/sec to `100,000` and
-the Parquet+ZSTD math still works (`4 × 50 = 200 batches/sec` of
-ceiling), but the WAL itself becomes the issue. At `100,000`
-row-mutations/sec on typical OLTP rows, each WAL insert record is
-~`120` bytes (24-byte XLogRecord header per the
-[Postgres WAL docs](https://www.postgresql.org/docs/current/storage-page-layout.html#STORAGE-PAGE-LAYOUT-XLOG-RECORD)
-+ a small heap tuple); you're generating roughly
-`100,000 × 120 = 12,000,000 B/sec ≈ 12 MB/sec` of WAL. Postgres'
-default WAL segment size is `16 MB` (see
-[`pg_controldata`](https://www.postgresql.org/docs/current/app-pgcontroldata.html)
-and `wal_segment_size`), so `pg_wal/` recycles segments every
-`16 / 12 ≈ 1.3 s`. The `wal_writer` saturates; `fdatasync()` on the
-WAL becomes the floor. That's the upstream wall, not anything
-wal-cake can do about. The 1B-payments post discusses this floor in
-detail.
-
-[^fsync]: [1B Payments/Day — Watching fsync in real time](https://backend.how/posts/1b-payments-per-day/#watching-fsync-in-real-time) — measured weighted-average `fdatasync()` of `163 µs` (`97%` under `256 µs`, `100%` under `512 µs`) and `4.17M` fsync calls for `10M` Postgres inserts on a Mac Mini M4.
-
-# 8. What I'd change
-
-Honest list. Three I'd actually do, ordered by impact-per-effort.
-
-**Apache Iceberg over raw Parquet.** We write naked Parquet into key
-prefixes and rely on Glue/Athena/Trino to reconstruct "the table."
-Iceberg layers a manifest + metadata-pointer chain: schema evolution
-is metadata-only, `SELECT … AS OF TIMESTAMP …` is free, and
-exactly-once becomes a format property (manifest commits are atomic
-via S3 conditional-put). Cost: one extra write per batch and a
-metadata-store dependency. The right tradeoff once more than a
-handful of consumers read the lake.
-
-**Per-table Parquet streams.** One file mixes events from many
-tables. A query for "all changes to `users` last week" scans every
-wal-cake file in that week with a `WHERE table='users'` predicate.
-Per-table partitioning (`namespace/table/2026/05/09/...parquet`)
-turns the predicate into a path prefix; Athena scans 1/N of the
-bytes for N tables. Implementation cost: per-(table, day) sub-batches
-and the LSN-contiguity guarantee gets trickier across them. A
-per-table secondary ring with the global LSN walker as the authority
-is one workable shape.
-
-**Schema registry for `before`/`after`.** JSON-as-bytes makes every
-reader pay JSON-parse per row. A typed schema (Avro or Confluent
-Schema Registry + per-table Parquet `STRUCT<col1: type1, ...>`
-columns) would let warehouses scan typed columns directly with
-predicate pushdown. Cost: schema evolution is now a coordination
-problem between Postgres DDL and the registry. Worth it for
-high-value tables; for "change log of everything," JSON-as-bytes
-is pragmatic.
-
-Two more I'd consider but probably wouldn't ship in v1:
-
-- **Direct columnar buffer (skip JSON round-trip).** We decode
-  pgoutput → `map[string]any` → `json.Marshal` → `byte[]` → Parquet
-  `BYTE_ARRAY`. A more efficient pipeline decodes pgoutput directly
-  into Arrow column builders. The throughput estimated above
-  (`200,000 events/sec` Parquet ceiling vs `10,000 events/sec`
-  mid-range upstream = `200,000 / 10,000 = 20×` headroom) means this
-  isn't the current bottleneck. File it under "if profiling ever
-  shows JSON encoding on the hot path."
-
-# Where this leaves us
-
-The naive outbox-and-cron CDC works for a quarter and breaks for two.
-The lock-free version replaces three of its four moving parts:
-
-| Naive                          | wal-cake                                |
-|---|---|
-| App dual-writes outbox row     | Postgres dual-writes WAL (it already did) |
-| Cron polls `WHERE NOT processed` | pglogrepl streams pgoutput |
-| `UPDATE … SET processed=true`  | StandbyStatusUpdate moves slot LSN |
-| JSON files on S3               | ZSTD Parquet sorted by (ts, lsn) |
-
-The three things this post called out at the top:
-
-1. The replication loop reads pgoutput at the byte level and never
-   forwards an LSN it hasn't durably written downstream.
-2. The ring buffer ack-walks only contiguous-completed segments,
-   making concurrent S3 writes safe for in-order LSN ack.
-3. The Parquet writer uses dict for low-cardinality columns, delta
-   encoding for monotonic LSN/timestamp, JSON-typed bytes for
-   open-ended payloads, and ZSTD-3 page compression on every column.
-
-None of these are novel ideas. Logical replication has been in
-Postgres [since 9.4 (December 2014)](https://www.postgresql.org/docs/9.4/release-9-4.html).
-Lock-free ring buffers go back to
-[the LMAX Disruptor (2011)](https://lmax-exchange.github.io/disruptor/disruptor.html).
-Parquet encoding tradeoffs are documented in the
-[format spec](https://parquet.apache.org/docs/file-format/data-pages/encodings/).
-The interesting work is putting the three together so that no one of
-them sneaks past the CDC contract while the other two were looking
-the other way.
-
-The spec was two lines. The implementation is `~1,800`. Most of
-the bytes between the two are saying _no_ to the obvious thing.
-
-# Further reading
-
-- [Postgres Logical Decoding plugins](https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html) — the official protocol description for `pgoutput`.
-- [`pglogrepl`](https://github.com/jackc/pglogrepl) — Jack Christensen's Go client; what wal-cake builds on.
-- [Apache Parquet format spec](https://parquet.apache.org/docs/file-format/) — the encodings, page index, and sorted column semantics referenced above.
-- [LMAX Disruptor](https://lmax-exchange.github.io/disruptor/disruptor.html) — the canonical lock-free ring buffer paper. Different access pattern (multi-producer, single-consumer) than wal-cake's, same underlying ideas.
-- [1B Payments/Day](https://backend.how/posts/1b-payments-per-day/) — fsync floor and io_uring numbers cited throughout this post.
-- [Temporal — Under the Hood](https://backend.how/posts/temporal-under-the-hood/) — same dissection style applied to durable execution.
-
----
-
-_PostgreSQL® is a trademark of The PostgreSQL Global Development Group.
-Apache® and Parquet™ are trademarks of the Apache Software Foundation.
-Amazon S3® is a trademark of Amazon Web Services. This post is an
-independent engineering write-up — it is not affiliated with or
-endorsed by any of these projects. All trademarks belong to their
-respective owners._
+- The folder is the UTC date the transaction committed, from the `BEGIN`
+  message. It does not depend on when WAL Cake decoded the row, on a replay, or
+  on the server's time zone.
+- The file name is the last event's decode time in microseconds, plus a
+  sequence number that is unique within the process. The decode time alone is
+  not unique: events decode in well under a microsecond, so two files in one
+  folder can end on the same microsecond.
+
+After a crash, Postgres sends the same rows again. They decode at a new time,
+so they get a new key, and S3 now has two files with the same rows. Step
+through it in the figure, then switch to an LSN-based key.
+
+{{< walviz kind="replay" fig="6" title="Crash after PUT, then replay" fallback="pipeline.svg" alt="A crash after a successful PUT replays the segment; compare decode-time keys with LSN-range keys" caption="Both schemes keep at-least-once delivery. The LSN-range key turns the second PUT into a no-op." >}}
+
+An LSN-range key with an `If-None-Match` conditional write[^conditional] would
+make a replayed segment a no-op, but only when the replay cuts exactly the same
+segments. It often does not. A segment cut by the `30 s` timer can have
+different boundaries after a restart. A segment that ends inside a transaction
+makes Postgres resend the whole transaction, which shifts every later boundary.
+And a `COPY` writes up to 1,000 rows in one WAL record, so they share an LSN,
+and an LSN range does not name a unique set of rows. A table format such as Iceberg handles deduplication
+better, so WAL Cake leaves it to the reader.
+
+If processing fails, the worker retries the whole segment, up to three
+attempts, waiting `2 s` and then `4 s`. It reports the segment as done only
+after an attempt succeeds.
+
+# Shutdown
+
+On `SIGTERM`, the ring stops taking events. It sends the last partial segment,
+lets the workers finish their uploads, and moves the cursor over everything
+that finished. Workers use a context that shutdown does not cancel, so an
+upload is never cut off halfway. Then `main` stops the replicator, which sends
+one final status update with the latest `acked` position before it closes the
+connection.
+
+After a deploy, Postgres resends at most the transaction that the last segment
+ended in. A crash, such as an OOM kill or a lost node, replays everything after
+the last status update.
+
+# How it is tested
+
+The tests are in the repository. The ones that need Postgres run when
+`WALCAKE_TEST_PG` is set.
+
+- **Ring state machine.** `rapid` generates random sequences of events and
+  random completion orders against the real ring. After every step, the ACK
+  must be the LSN of an event inside the finished prefix, and `readIdx` must
+  equal the model's prefix. At the end, the drain must cover every admitted
+  event.
+- **Ring stress.** 200,000 one-event segments finish concurrently. The ring
+  must reach the last event without stalling.
+- **Processor property.** Random commit times around midnight, in several time
+  zones, with decode times that share microseconds. Each event must be
+  uploaded exactly once, in order, one UTC commit date per file, under the
+  right folder, with no key used twice.
+- **Replicator integration.** Back-to-back commits followed by a restart; a
+  killed walsender; a failing slot query; and the final status update on
+  shutdown.
+- **Whole pipeline state machine.** The real replicator, ring, processor, and
+  Parquet writer, with an S3 fake that fails each file once at random and adds
+  delays. `rapid` generates histories of single-row and multi-row
+  transactions, `COPY`, back-to-back commits, updates, deletes, rollbacks,
+  killed walsenders, crashes, and graceful restarts. After recovery, every
+  committed change must be in S3 with its exact values, no rolled-back row may
+  be, every row must sit under its commit date, and the slot must never have
+  moved backwards.
+
+To check that the pipeline test can fail, I pointed commit events 26 bytes past
+the end of the commit record. The state machine found a lost insert. The
+current code passes 25 random histories, and 5 more under the race detector.
+
+# What can still go wrong
+
+{{< walviz kind="map" fig="7" title="Where each fault lives" failures="true" fallback="pipeline.svg" alt="System map with eight numbered markers for replays, stalls, and changes WAL Cake does not capture" caption="Numbers match the list below." >}}
+
+None of these lose a committed row. The numbers match the markers in the
+figure.
+
+## Replays
+
+1. **Crash after a successful upload.** The slot has not moved, so Postgres
+   resends the rows and a second file holds them.
+2. **Segment ends inside a transaction.** The ACK is a change LSN, so after a
+   restart Postgres resends the whole transaction, including rows already in
+   S3.
+3. **Upload fails three times.** `log.Fatal` exits the process, and the slot
+   replays everything after the last ACK.
+
+Readers of the lake should expect duplicates, and deduplicate on `table`,
+`lsn`, `operation`, and the row's key.
+
+## Stalls and reconnects
+
+4. **The ring is full.** The receiver waits for free space, `eventsCh` fills,
+   and the replicator blocks. After a minute, the readiness check fails.
+5. **The replicator is blocked for a long time.** It cannot send status
+   updates while it is blocked, so Postgres drops the connection after
+   `wal_sender_timeout` (60 s by default). When the ring drains, WAL Cake
+   reconnects from the slot.
+6. **The walsender dies or the primary fails over.** The session ends, and WAL
+   Cake reconnects with backoff. The readiness check fails until it streams
+   again.
+
+The buffers only absorb short delays. At 10,000 events/s with the defaults, the
+ring holds `0.8 s` of events and `eventsCh` another `0.4 s`. Part of the ring
+is always taken by in-flight segments, so a longer S3 outage pauses
+replication, and WAL builds up on the primary.
+
+## Changes not captured
+
+7. **`TRUNCATE`** is logged and not written to the lake.
+8. **An unchanged TOASTed value** is stored as the string `"<TOAST>"`, because
+   pgoutput does not send it.
+
+# Takeaways
+
+- A CDC consumer should advance the replication slot only past rows that are
+  already in S3.
+- The WAL is read in order and acknowledged in order. Only the middle, encode
+  and upload, can run in parallel, and that is where the time goes.
+- Parallel uploads finish out of order. Recording every segment before it
+  starts, and moving the cursor only over finished segments, turns them back
+  into one ordered ACK.
+- Every LSN the consumer might send must be safe to confirm: the change LSN for
+  a row, and the commit record's end for a commit.
+- Give the ring room for one more batch per worker, and wake the writer when
+  space frees up, so the workers stay busy.
+- A day folder is only as exact as the timestamp used to split it. Use the
+  commit time from `BEGIN`.
+- Property tests over whole histories (crashes, restarts, back-to-back commits,
+  bulk loads) check the one rule directly: every committed change ends up in
+  S3.
+
+[^debezium-pg]: <https://debezium.io/documentation/reference/stable/connectors/postgresql.html>
+[^debezium-server]: <https://debezium.io/documentation/reference/stable/operations/debezium-server.html>
+[^dms]: <https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Target.S3.html>
+[^s3bench]: [S3 PUT latency benchmark, 500 KB objects, eu-north-1, 100 samples](https://topicpartition.io/misc/AWS-S3-PUT-latency-benchmark)
+[^defaults]: [WAL Cake config defaults](https://github.com/pratikgajjar/wal-cake/blob/300e7abe41d4e8573657910cd51de65ebbc1d905/internal/config/config.go#L35-L36)
+[^protocol]: [Postgres streaming replication protocol: standby status update](https://www.postgresql.org/docs/current/protocol-replication.html)
+[^logical]: [Postgres logical decoding: replication slots](https://www.postgresql.org/docs/current/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS)
+[^msgformats]: <https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html>
+[^slots]: <https://www.postgresql.org/docs/current/view-pg-replication-slots.html>
+[^gomem]: <https://go.dev/ref/mem>
+[^conditional]: <https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html>

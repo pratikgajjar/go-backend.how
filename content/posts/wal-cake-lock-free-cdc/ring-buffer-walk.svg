@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" width="100%" height="100%" style="background: #0d1310; border-radius: 12px; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <defs>
+    <linearGradient id="gradDone" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <linearGradient id="gradPending" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#334155" />
+    </linearGradient>
+    <linearGradient id="gradWait" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="100%" stop-color="#0ea5e9" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+    <marker id="arrowHead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8" />
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#34d399" />
+    </marker>
+  </defs>
+
+  <!-- Outer Border & Background -->
+  <rect width="960" height="540" fill="#0d1310" rx="12" />
+  <rect x="1" y="1" width="958" height="538" fill="none" stroke="#233529" stroke-width="1.5" rx="11" />
+
+  <!-- Header -->
+  <g transform="translate(32, 28)">
+    <text x="0" y="0" fill="#6ee7b7" font-size="11" font-weight="700" letter-spacing="1.5">RECONCILING OUT-OF-ORDER S3 COMPLETIONS</text>
+    <text x="0" y="22" fill="#f1f5f9" font-size="15" font-weight="600">Contiguous Prefix Walker advances readIdx and confirmed_flush_lsn</text>
+  </g>
+
+  <!-- Step 1 -->
+  <g transform="translate(32, 80)">
+    <rect x="0" y="0" width="896" height="88" rx="8" fill="#131d17" stroke="#233529" stroke-width="1" />
+    <text x="16" y="24" fill="#94a3b8" font-size="12" font-weight="600">Step 1: Uploads dispatched in WAL order (S1, S2, S3, S4)</text>
+    <text x="16" y="44" fill="#64748b" font-size="11">readIdx = 0 · All 4 segments in-flight to S3</text>
+    
+    <!-- Segments S1..S4 -->
+    <g transform="translate(380, 16)">
+      <rect x="0" y="0" width="115" height="38" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1.2" />
+      <text x="57" y="24" fill="#cbd5e1" font-size="12" font-weight="600" text-anchor="middle">S1 [0..1k)</text>
+      
+      <rect x="125" y="0" width="115" height="38" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1.2" />
+      <text x="182" y="24" fill="#cbd5e1" font-size="12" font-weight="600" text-anchor="middle">S2 [1k..2k)</text>
+      
+      <rect x="250" y="0" width="115" height="38" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1.2" />
+      <text x="307" y="24" fill="#cbd5e1" font-size="12" font-weight="600" text-anchor="middle">S3 [2k..3k)</text>
+      
+      <rect x="375" y="0" width="115" height="38" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1.2" />
+      <text x="432" y="24" fill="#cbd5e1" font-size="12" font-weight="600" text-anchor="middle">S4 [3k..4k)</text>
+
+      <!-- Cursor Pointer -->
+      <path d="M 0 46 L 0 58" stroke="#38bdf8" stroke-width="2" marker-start="url(#arrowHead)" />
+      <text x="0" y="68" fill="#38bdf8" font-size="10" font-weight="700">readIdx=0</text>
+    </g>
+  </g>
+
+  <!-- Step 2 -->
+  <g transform="translate(32, 180)">
+    <rect x="0" y="0" width="896" height="88" rx="8" fill="#131d17" stroke="#233529" stroke-width="1" />
+    <text x="16" y="24" fill="#fbbf24" font-size="12" font-weight="600">Step 2: S2 &amp; S4 finish early out of order</text>
+    <text x="16" y="44" fill="#64748b" font-size="11">S1 is pending → readIdx remains at 0 (No ACK sent to Postgres)</text>
+    
+    <g transform="translate(380, 16)">
+      <!-- S1 Pending -->
+      <rect x="0" y="0" width="115" height="38" rx="5" fill="#1e293b" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="4,3" />
+      <text x="57" y="24" fill="#fcd34d" font-size="12" font-weight="600" text-anchor="middle">S1 (Pending)</text>
+      
+      <!-- S2 Done -->
+      <rect x="125" y="0" width="115" height="38" rx="5" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
+      <text x="182" y="24" fill="#a7f3d0" font-size="12" font-weight="700" text-anchor="middle">S2 ✓ Done</text>
+      
+      <!-- S3 Pending -->
+      <rect x="250" y="0" width="115" height="38" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1.2" />
+      <text x="307" y="24" fill="#cbd5e1" font-size="12" font-weight="600" text-anchor="middle">S3 (Pending)</text>
+      
+      <!-- S4 Done -->
+      <rect x="375" y="0" width="115" height="38" rx="5" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
+      <text x="432" y="24" fill="#a7f3d0" font-size="12" font-weight="700" text-anchor="middle">S4 ✓ Done</text>
+
+      <!-- Cursor Pointer -->
+      <path d="M 0 46 L 0 58" stroke="#38bdf8" stroke-width="2" marker-start="url(#arrowHead)" />
+      <text x="0" y="68" fill="#38bdf8" font-size="10" font-weight="700">readIdx=0 (Blocked at gap)</text>
+    </g>
+  </g>
+
+  <!-- Step 3 -->
+  <g transform="translate(32, 280)">
+    <rect x="0" y="0" width="896" height="88" rx="8" fill="#131d17" stroke="#233529" stroke-width="1" />
+    <text x="16" y="24" fill="#34d399" font-size="12" font-weight="600">Step 3: S1 finishes → Walker crosses S1 &amp; S2</text>
+    <text x="16" y="44" fill="#64748b" font-size="11">readIdx advances to 2,000 · ACK emitted for S2's last LSN</text>
+    
+    <g transform="translate(380, 16)">
+      <!-- S1 Reclaimed -->
+      <rect x="0" y="0" width="115" height="38" rx="5" fill="#042f2e" stroke="#059669" stroke-width="1" opacity="0.6" />
+      <text x="57" y="24" fill="#5eead4" font-size="11" font-weight="600" text-anchor="middle">S1 Reclaimed</text>
+      
+      <!-- S2 Reclaimed -->
+      <rect x="125" y="0" width="115" height="38" rx="5" fill="#042f2e" stroke="#059669" stroke-width="1" opacity="0.6" />
+      <text x="182" y="24" fill="#5eead4" font-size="11" font-weight="600" text-anchor="middle">S2 Reclaimed</text>
+      
+      <!-- S3 Pending -->
+      <rect x="250" y="0" width="115" height="38" rx="5" fill="#1e293b" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="4,3" />
+      <text x="307" y="24" fill="#fcd34d" font-size="12" font-weight="600" text-anchor="middle">S3 (Pending)</text>
+      
+      <!-- S4 Done -->
+      <rect x="375" y="0" width="115" height="38" rx="5" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
+      <text x="432" y="24" fill="#a7f3d0" font-size="12" font-weight="700" text-anchor="middle">S4 ✓ Done</text>
+
+      <!-- Cursor Pointer Advanced -->
+      <path d="M 245 46 L 245 58" stroke="#34d399" stroke-width="2" marker-start="url(#arrowGreen)" />
+      <text x="245" y="68" fill="#34d399" font-size="10" font-weight="700" text-anchor="middle">readIdx=2,000 (ACK S2 LSN)</text>
+    </g>
+  </g>
+
+  <!-- Step 4 -->
+  <g transform="translate(32, 380)">
+    <rect x="0" y="0" width="896" height="88" rx="8" fill="#131d17" stroke="#233529" stroke-width="1" />
+    <text x="16" y="24" fill="#38bdf8" font-size="12" font-weight="600">Step 4: S3 finishes → Walker crosses S3 &amp; S4</text>
+    <text x="16" y="44" fill="#64748b" font-size="11">readIdx advances to 4,000 · All physical slots 0..4k reusable</text>
+    
+    <g transform="translate(380, 16)">
+      <!-- S1..S4 Reclaimed -->
+      <rect x="0" y="0" width="115" height="38" rx="5" fill="#042f2e" stroke="#059669" stroke-width="1" opacity="0.4" />
+      <text x="57" y="24" fill="#5eead4" font-size="11" text-anchor="middle">Reclaimed</text>
+      
+      <rect x="125" y="0" width="115" height="38" rx="5" fill="#042f2e" stroke="#059669" stroke-width="1" opacity="0.4" />
+      <text x="182" y="24" fill="#5eead4" font-size="11" text-anchor="middle">Reclaimed</text>
+      
+      <rect x="250" y="0" width="115" height="38" rx="5" fill="#042f2e" stroke="#059669" stroke-width="1" opacity="0.6" />
+      <text x="307" y="24" fill="#5eead4" font-size="11" font-weight="600" text-anchor="middle">S3 Reclaimed</text>
+      
+      <rect x="375" y="0" width="115" height="38" rx="5" fill="#042f2e" stroke="#059669" stroke-width="1" opacity="0.6" />
+      <text x="432" y="24" fill="#5eead4" font-size="11" font-weight="600" text-anchor="middle">S4 Reclaimed</text>
+
+      <!-- Cursor Pointer Advanced -->
+      <path d="M 490 46 L 490 58" stroke="#38bdf8" stroke-width="2" marker-start="url(#arrowHead)" />
+      <text x="490" y="68" fill="#38bdf8" font-size="10" font-weight="700" text-anchor="middle">readIdx=4,000 (ACK S4 LSN)</text>
+    </g>
+  </g>
+
+  <!-- Footer Guarantees -->
+  <g transform="translate(32, 490)">
+    <circle cx="6" cy="6" r="3.5" fill="#34d399" />
+    <text x="16" y="10" fill="#94a3b8" font-size="11">Amortized O(1) walk per segment</text>
+    
+    <circle cx="270" cy="6" r="3.5" fill="#38bdf8" />
+    <text x="280" y="10" fill="#94a3b8" font-size="11">Zero gap reporting: PostgreSQL confirmed_flush_lsn never skips uncommitted data</text>
+    
+    <circle cx="760" cy="6" r="3.5" fill="#fbbf24" />
+    <text x="770" y="10" fill="#94a3b8" font-size="11">At-least-once safety</text>
+  </g>
+</svg>
