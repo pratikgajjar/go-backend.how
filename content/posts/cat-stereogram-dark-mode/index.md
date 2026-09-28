@@ -11,10 +11,11 @@ images = ["og-eb3a0221.png"]
 theme = "lavender"
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei crossing its eyes to fuse two dotted panels into a 3D shape that pops out" >}}
+{{< viz kind="try" frame="none" fallback="try.svg" alt="Two white line cats on black, and a view from above showing the lines of sight from each eye crossing at a fingertip in front of the screen" caption="Fingertip distances assume eyes 63 mm apart and a typical screen: 35 cm away on a phone, 55 cm on a computer. Yours will differ a little." >}}
 
+A stereogram is a pair of images, one for each eye. When each eye aims at a different image, the brain merges the two into one. The pair above is a simple one: each cat has parts the other lacks. Merged, you see one cat with both ears, both sets of whiskers, and the tail. Try it now. Pick a spacing, hold a fingertip where the guide shows, and look at the fingertip until the middle two of the four cats meet.
 
-A stereogram is a pair of images, one for each eye. When each eye aims at a different image, the brain merges the two into one. The cat pair below is a simple one: the two outlines line up to within 2 px on a 7,016 px sheet, and each cat has parts the other lacks. Merged, you see one cat with both ears, both sets of whiskers, and the tail. It is flat, because the pair carries no depth. By the end of this post you will know where your eyes have to aim to see it, and where to hold a fingertip to get them there.
+By the end of this post you will know why the fingertip works, when you can look through the screen instead, and how a pair like this gets depth. The printed pair below is flat: its two outlines line up to within 2 px on a 7,016 px sheet.
 
 # The Cat Stereogram
 
@@ -36,25 +37,30 @@ There are two ways to merge the pair. You can cross your eyes, so the lines of s
 4. Once the images merge, try to hold them while slowly looking around the head and body of the cat.
 5. After merging the images, remove your finger or pen tip and keep the merged image. It sharpens once focus relaxes back to the page while your eyes stay crossed.
 
-The fingertip marks the point where the lines of sight cross. Pick where your pair is, then drag the vergence slider or press **Cross to fuse**.
-
-{{< viz kind="free-fusion" fig="1" title="Where your eyes aim" fallback="free-fusion.svg" alt="Top view of two eyes and the page: to fuse the A4 print at 40 cm, the lines of sight cross 149 mm from the eyes, and you see three cats" caption="Cat spacing on a phone and a laptop is estimated from this page at 390 and 1,512 CSS px wide (an iPhone 14 and a 14-inch MacBook Pro at default scaling). The crossing point is `D × e / (e + s)` from your eyes, where `D` is eyes to page, `e` the eye gap, and `s` the cat spacing. `Δ` is a prism dioptre: 1 Δ moves the aim 1 cm at 1 m." >}}
+The fingertip marks the point where the lines of sight cross. For eyes `e` apart, looking at cats `s` apart from a distance `D`, that point is `D × e / (e + s)` from your eyes. The guide under the pair at the top draws it for the spacing you pick. Wider cats move the fingertip closer to your eyes, and that is harder, so start with the cats close together.
 
 ## Adjust distance
 
-If you cannot cross that far, move back. The extra inward turn, beyond what the page itself needs, is the cat spacing divided by the viewing distance: 10.6 cm / 40 cm is 26.5 Δ for the print. Doubling the distance halves it.
+If you cannot cross that far, move back. The extra inward turn, beyond what the page itself needs, is the cat spacing divided by the viewing distance. For the print at 40 cm that is 10.6 / 40, or 26.5 prism dioptres (1 prism dioptre moves the aim 1 cm at 1 m). Doubling the distance halves it.
 
 ## Or look through it
 
-Hold the screen at a comfortable distance and look through it, as if at a wall behind it. This aims both eyes behind the page, so the left eye lands on the left cat and the right eye on the right cat. On a phone the cats are about 21 mm apart, so this works. On an A4 print it would need the eyes to turn outward, which they barely can.
+Hold the screen at a comfortable distance and look through it, as if at a wall behind it. This aims both eyes behind the page, so the left eye lands on the left cat and the right eye on the right cat. It works only when the cats are closer together than your eyes. On a phone, the cats at the top start less than 2 cm apart, so this works. On an A4 print it would need the eyes to turn outward, which they barely can.
 
-{{< figure src="cat-vision.png" title="Visual of cat stereogram" alt="cat stereogram visualized" caption="When vision merges both cats" width="auto" >}}
+## Give it depth
+
+The pair is flat because its two outlines line up exactly. A stereogram gets depth from small side-to-side differences between its two images. Move the heads below a few pixels, then fuse the pair again.
+
+{{< viz kind="depth" frame="none" fallback="depth.svg" alt="The cat pair with the heads moved 12 px further apart than the bodies; with crossed eyes the head sits in front of the body" >}}
+
+With crossed eyes, a part that is further apart in the two images needs the eyes to cross more, so it looks nearer. Looking through, the same part looks further away. That is why a stereogram made for one method shows its depth inside out with the other.
 
 ## What to remember
 
 - Merging a pair means aiming each eye at a different image. Crossed, the lines of sight meet in front of the page. Relaxed, they meet behind it.
 - Crossing works for any pair. Relaxing works only when the pair is narrower than your eyes.
 - The fingertip goes where the lines cross, `e / (e + s)` of the way from your eyes to the page.
+- Depth comes from small side-to-side differences between the two images.
 - The same exercise, with cards, is part of vision therapy for convergence insufficiency. It is not a proven fix for screen strain.
 
 Try making your own pair: draw one outline twice, the same size and height, and give each copy a part the other lacks.

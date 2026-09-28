@@ -1,47 +1,96 @@
-/* cat-stereogram-dark-mode figures. Classes are prefixed v-cs-. */
+/* cat-stereogram-dark-mode figures (frame="none"). Classes are prefixed v-cs-.
+ *
+ * The stage copies the printed card: white line cats on black. Everything
+ * else sits on the page in the page's own text and link colours.
+ * Colour: red = left eye, cyan = right eye, white = both eyes.
+ */
 
-.v-cs-presets .wv-btn { color: var(--blue); border-color: var(--blue); }
-.v-cs-presets .wv-btn:hover:not(:disabled) { background: var(--blue-l); }
-.v-cs-presets .wv-btn[aria-pressed="true"] { color: var(--board); background: var(--blue); }
-.v-cs-plabel { font-size: 11.5px; color: var(--mute); }
+.viz--try,
+.viz--depth {
+  --cs-black: #000;
+  --cs-white: #fff;
+  --cs-dim: oklch(72% 0 0);
+  --cs-rule: oklch(42% 0 0);
+  --cs-l: rgb(255 72 72);
+  --cs-r: rgb(64 224 255);
+  --cs-edge: transparent;
+  margin: 1.5rem 0 2.25rem;
+  font-family: var(--font-mono);
+}
+html[data-force-dark] .viz--try,
+html[data-force-dark] .viz--depth { --cs-edge: oklch(38% 0 0); }
 
-.v-cs-aimrow {
+.viz--try img.wv-fallback,
+.viz--depth img.wv-fallback { margin: 0; border: 0; }
+
+.v-cs-stage {
+  background: var(--cs-black);
+  outline: 1px solid var(--cs-edge);
+  padding: 0.25rem 0 0.4rem;
+}
+.v-cs-stage svg { display: block; width: 100%; overflow: visible; }
+.v-cs-guide { border-top: 1px solid var(--cs-rule); }
+
+/* cats */
+.v-cs-cat { fill: none; stroke: currentColor; stroke-linecap: butt; }
+.v-cs-cat .v-cs-solid { fill: currentColor; stroke: none; }
+.v-cs-cat.is-print { color: var(--cs-white); }
+.v-cs-black { fill: var(--cs-black); }
+.v-cs-three { display: block; width: 100%; isolation: isolate; }
+.v-cs-eyeimg { mix-blend-mode: screen; }
+.v-cs-eyeimg.is-l { color: var(--cs-l); }
+.v-cs-eyeimg.is-r { color: var(--cs-r); }
+
+/* fingertip guide, seen from above */
+.v-cs-screen { stroke: var(--cs-white); stroke-width: 2; }
+.v-cs-dot { fill: var(--cs-white); }
+.v-cs-ray { stroke-width: 1.6; }
+.v-cs-ray.is-l { stroke: var(--cs-l); }
+.v-cs-ray.is-r { stroke: var(--cs-r); }
+.v-cs-eye { fill: var(--cs-black); stroke-width: 2; }
+.v-cs-eye.is-l { stroke: var(--cs-l); }
+.v-cs-eye.is-r { stroke: var(--cs-r); }
+.v-cs-tip { fill: var(--cs-white); }
+.v-cs-dim { stroke: var(--cs-dim); stroke-width: 1; }
+.v-cs-dim.is-faint { stroke: var(--cs-rule); stroke-dasharray: 3 3; }
+.v-cs-t { font-family: var(--font-mono); font-size: 11.5px; fill: var(--cs-dim); }
+.v-cs-t.is-l { fill: var(--cs-l); font-weight: 700; }
+.v-cs-t.is-r { fill: var(--cs-r); font-weight: 700; }
+.v-cs-t.is-tip { fill: var(--cs-white); font-weight: 700; }
+
+/* controls: plain, in the page's colours */
+.v-cs-ctl {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1rem;
-  padding: 0.55rem 0.7rem;
-  margin: 0.2rem 0 0.9rem;
-  border: 1.25px solid var(--blue);
-  background: var(--blue-l);
+  gap: 0.6rem 1.25rem;
+  margin: 0.8rem 0 0.2rem;
+  font-size: 13px;
 }
-.v-cs-aim { flex: 1 1 260px; }
-.v-cs-aim label { font-weight: 800; }
-.v-cs-go { color: var(--blue); border-color: var(--blue); }
-.v-cs-go:hover:not(:disabled) { background: var(--board); }
-.v-cs-go.wv-btn--bad { color: var(--red); border-color: var(--red); border-style: dashed; }
+.v-cs-ctl label { display: flex; align-items: center; gap: 0.6rem; flex: 1 1 240px; }
+.v-cs-ctl input[type="range"] { flex: 1 1 auto; min-width: 0; margin: 0; accent-color: var(--color-link); height: 28px; }
+.v-cs-ctl output { min-width: 4.5em; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.v-cs-btn {
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-link);
+  background: none;
+  border: 1px solid currentColor;
+  padding: 0.45rem 0.8rem;
+  min-height: 34px;
+  cursor: pointer;
+}
+.v-cs-btn:focus-visible, .v-cs-ctl input:focus-visible { outline: 2px solid var(--color-link); outline-offset: 2px; }
+.v-cs-hint { font-size: 13.5px; line-height: 1.55; margin: 0.5rem 0 0; }
 
-.v-cs-cap { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; margin-bottom: 0.3rem; }
-.v-cs-sub { font-weight: 400; color: var(--mute); }
-.v-cs-stage > div { min-width: 0; }
-.v-cs-stage svg { max-width: 420px; margin: 0 auto; }
+.v-cs-view { margin-top: 0.9rem; }
+.v-cs-view[hidden] { display: none; }
+.v-cs-view p { font-size: 13.5px; line-height: 1.55; margin: 0.5rem 0 0; }
+.v-cs-key { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; font-size: 12px !important; }
+.v-cs-key i { display: inline-block; width: 1.6em; height: 0.8em; margin-right: 0.4em; vertical-align: -0.05em; border: 1px solid currentColor; }
+.v-cs-key i.k-l { background: var(--cs-l); }
+.v-cs-key i.k-r { background: var(--cs-r); }
+.v-cs-key i.k-both { background: var(--cs-white); }
 
-/* top view */
-.wv .v-cs-behind { fill: var(--tint); stroke: none; }
-.wv .v-cs-cat { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.4; }
-.wv .v-cs-cat.is-on { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2; }
-.wv .v-cs-sight { stroke: var(--ink); stroke-width: 1.5; fill: none; }
-.wv .v-cs-sight.is-bad { stroke: var(--red); }
-.wv .v-cs-hit { fill: var(--purple); stroke: var(--board); stroke-width: 1.5; }
-.wv .v-cs-hit.is-bad { fill: var(--red); }
-.wv .v-cs-meet { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2; }
-
-/* what you see */
-.wv .v-cs-copy { fill: none; stroke: var(--brown); stroke-linecap: butt; opacity: 0.9; }
-.wv .v-cs-copy .v-cs-fill { fill: var(--brown); stroke: none; }
-.wv .v-cs-copy.is-r { stroke-dasharray: 160 70; }
-.wv .v-cs-copy.is-fused { stroke: var(--purple); opacity: 1; stroke-dasharray: none; }
-.wv .v-cs-copy.is-fused .v-cs-fill { fill: var(--purple); }
-.wv .v-cs-copy.is-bad { stroke: var(--red); opacity: 0.5; }
-.wv .v-cs-copy.is-bad .v-cs-fill { fill: var(--red); }
-.wv .v-cs-finger { fill: var(--purple); }
+.viz--try figcaption,
+.viz--depth figcaption { font-size: 12.5px; margin-top: 0.7rem; }
