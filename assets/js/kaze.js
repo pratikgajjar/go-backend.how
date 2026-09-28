@@ -152,7 +152,7 @@ void main(){
   for (int i=0;i<2;i++){ dL=min(dL, sdSeg(p,uLeg[i].xy,uLeg[i].zw)-2.4*S); dL=min(dL, length((p-uLeg[i].zw+vec2(0.,.4*S))/vec2(1.3,1.))-2.6*S); }
   float dInk = smin(dB, dL, 2.4*S);
   float dS = 1e5;
-  for (int i=0;i<7;i++){ float fi=float(i)/7.; dS=min(dS, sdSeg(p,uSc[i],uSc[i+1])-mix(3.,1.4,fi)*(1.+g5*(.7+.45*sin(fi*17.+gt*3.)))*S); }
+  for (int i=0;i<7;i++){ float fi=float(i)/7.; dS=min(dS, sdSeg(p,uSc[i],uSc[i+1])-mix(3.,1.4,fi)*S); }
   vec2 sp=(p-uShadow.xy)/vec2(uShadow.z, uShadow.z*.2);
   float sh=(1.-smoothstep(.45,1.,length(sp)))*uShadow.w;
   vec4 col=vec4(0.);
@@ -166,10 +166,9 @@ void main(){
   }
   col=over(col,uInk,sh);
   /* sticker halo in the page colour: invisible on the page, separates him from images/code */
-  col=over(col,uPaper,cov(min(dInk,dS)-1.3*S)*.9);
-  vec3 scC=mix(uRed,WHITE,g5);                           /* gear 5: the scarf becomes cloud */
-  col=over(col,scC,cov(dS));
-  col=over(col,LINE,cov(abs(dS)-.5*S)*g5);
+  col=over(col,uPaper,cov(min(dInk,dS+g5*1e3)-1.3*S)*.9);
+  float scA=1.-g5;                                       /* gear 5: just the white body + hair */
+  col=over(col,uRed,cov(dS)*scA);
   if (uMisc.y>.5 && uMisc.z>.5){ vec4 hc=hatLayer(p); col=hc+col*(1.-hc.a); }   /* gear 5: hat hangs on his back */
   col=over(col,mix(uInk,uTint.rgb,uTint.a),cov(dInk));
   col=over(col,LINE,cov(abs(dInk)-.55*S)*g5);
@@ -177,13 +176,7 @@ void main(){
   /* scarf wrap + knot, clipped to the body */
   float band=max(sdSeg(q,vec2(-15.,7.8),vec2(15.,7.8))-2.5, bodyL(q)-.6);
   float knot=length(q-vec2(face*8.,8.6))-2.8;
-  col=over(col,scC,cov(min(band,knot)*ms));
-  if (g5>.01){                                            /* cloud collar around the neck + under the arms */
-    float dC=1e5;
-    for (int i=0;i<5;i++){ float fi=float(i)/4.; dC=smin(dC, length(q-vec2(mix(-15.,15.,fi), 7.2+sin(fi*9.+gt*2.)))-(3.8+.9*sin(fi*13.+gt*3.))*g5, 1.5); }
-    dC=smin(dC, length(q-vec2(-14.5,12.5))-3.4*g5, 1.5); dC=smin(dC, length(q-vec2(14.5,12.5))-3.4*g5, 1.5);
-    dC*=ms; col=over(col,WHITE,cov(dC)); col=over(col,LINE,cov(abs(dC)-.5*S)*g5);
-  }
+  col=over(col,uRed,cov(min(band,knot)*ms)*scA);
   if (hairA>.01){                                         /* the mane sits on top of the head */
     vec4 hr=hairL(q,hairA,gt,face); float dHr=hr.x*ms;
     float dUp=hairL(q+vec2(0.,3.6),hairA,gt,face).x*ms;
@@ -318,7 +311,7 @@ void main(){
     }
   }
   function stepArm(a, dt) {
-    const P = a.pts, sh = l2w(a.side * 11.8, 2.5), base = 2.25 * S;
+    const P = a.pts, sh = l2w(a.side * 11.8, 2.5), base = 2.25 * S * (1 + 0.55 * GV.g5);   // gear 5: longer, noodly rubber arms
     P[0].x = sh[0]; P[0].y = sh[1];
     let pin = null;
     if (a.mode === 'reach') {
@@ -343,8 +336,8 @@ void main(){
       if (Math.abs(a.rest - base) < 0.06 * S) { a.mode = 'pose'; a.rest = base; }
     }
     if (a.mode === 'pose') a.rest = base;
-    const pl = poseLocal(a), pw = l2w(pl[0], pl[1]);
-    const damp = a.mode === 'retract' ? 0.9 : 0.78, g = 900 * dt * dt;
+    const pl = poseLocal(a), g5w = GV.g5 * 5, pw = l2w(pl[0] + Math.sin(T * 8 + a.side * 2) * g5w, pl[1] + Math.cos(T * 9.3 + a.side) * g5w);
+    const damp = a.mode === 'retract' ? 0.9 : lerp(0.78, 0.88, GV.g5), g = 900 * dt * dt;
     for (let i = 1; i < 7; i++) {
       const p = P[i], vx = (p.x - p.px) * damp, vy = (p.y - p.py) * damp;
       p.px = p.x; p.py = p.y; p.x += vx; p.y += vy + g;
@@ -480,6 +473,23 @@ void main(){
     bannerEl.style.top = clamp(hp2[1] - 6, bannerEl.offsetHeight + 8, H) + 'px';
   }
   /* rubber world: the page ripples out from a hard impact */
+  let g5World = false;                              // gear 5 may turn the page to rubber (only when invited or not reading)
+  function jelly(x, y, power, radius) {
+    const R = radius || 380;
+    const els = document.querySelectorAll('main p, main li, main h1, main h2, main h3, main pre, main .image-frame, main blockquote, main table, main hr, header .container, header a, footer a');
+    let n = 0;
+    for (const el of els) {
+      if (n > 30) break;
+      const r = el.getBoundingClientRect(); if (r.bottom < 0 || r.top > H || !r.width) continue;
+      const dx = Math.max(r.left - x, 0, x - r.right), dy = Math.max(r.top - y, 0, y - r.bottom), d = hyp(dx, dy);
+      if (d > R) continue;
+      n++;
+      el.style.setProperty('--j', (power * (1 - d / R) * 0.06).toFixed(3));
+      el.style.animationDelay = (d / 1100).toFixed(3) + 's';
+      el.classList.remove('kz-jelly', 'kz-quake'); void el.offsetWidth; el.classList.add('kz-jelly');
+      el.addEventListener('animationend', function f() { el.classList.remove('kz-jelly'); el.style.animationDelay = ''; el.removeEventListener('animationend', f); });
+    }
+  }
   function quake(x, y, power) {
     const els = document.querySelectorAll('main p, main li, main h2, main h3, main pre, main .image-frame, main blockquote, main table');
     let n = 0;
@@ -505,6 +515,7 @@ void main(){
     kick(-4.5 * k - 1); hatKick(sgn(B.rot || 1) * 4 * k);
     const fy = B.y + FOOT * S; dust(B.x, fy, impact > 700 ? 6 : 3);
     if (impact > 1500 && !MOBILE()) quake(B.x, fy, clamp(impact / 2500, 0.4, 1.2));
+    else if (g5World && GV.g5 > 0.5 && impact > 300) jelly(B.x, fy, clamp(impact / 900, 0.4, 1));
     if (!onPerch) B.surf = null;
   }
   function groundStep(dt) {
@@ -524,7 +535,7 @@ void main(){
     const bob = -Math.abs(Math.sin(B.walkPh)) * 1.3 * S * sp;
     B.y = surfaceY() - lerp(FOOT, SEAT - 0.5, B.sitK) * S + bob - B.lev * S;
     const lim = 16 * S, rlim = B.surf ? lim : (MOBILE() ? lim : 76); if (B.x < lim) { B.x = lim; B.want = 0; } if (B.x > W - rlim) { B.x = W - rlim; B.want = 0; }
-    const tr = clamp(B.vx * 0.0014, -0.16, 0.16);
+    const tr = clamp(B.vx * 0.0014, -0.16, 0.16) + GV.g5 * Math.sin(T * 5.7) * 0.14;   // gear 5: rubbery sway
     B.rv += ((tr - B.rot) * 170 - B.rv * 15) * dt; B.rot += B.rv * dt;
   }
   function airStep(dt) {
@@ -1132,15 +1143,24 @@ void main(){
     start() { B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; B.eye = 0; say('ha ha ha ha!', 'kz-big'); this.k = 0; },
     update(t) {
       const e = t - this.t0; B.mouthO = 0.75 + Math.sin(t / 55) * 0.25;
-      if (t > this.k) { this.k = t + 90; kick(Math.random() < 0.5 ? 2.6 : -2.6); }
+      if (t > this.k) { this.k = t + 90; kick(Math.random() < 0.5 ? 2.6 : -2.6); if (g5World && Math.random() < 0.35) jelly(B.x, B.y, 0.45, 320); }
       GT.pop = e > 380 && e < 1250 ? 1.3 : 0; if (e > 380 && !this.p) { this.p = 1; kick(5); }
       return e > 1650;
     },
     end() { GT.pop = 0; },
   });
+  const g5stretch = () => ({                       // rubber body: boing — stretch tall, squash flat, noodle arms
+    name: 'g5stretch',
+    start() { B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; this.i = 0; this.at = [0, 330, 640, 900]; say('boing!'); },
+    update(t) {
+      const e = t - this.t0;
+      if (this.i < this.at.length && e > this.at[this.i]) { kick(this.i % 2 ? -13 : 14); if (g5World) jelly(B.x, B.y, 0.7, 360); this.i++; }
+      return e > 1350;
+    },
+  });
   const g5revert = () => ({                        // the price of Nika: shrivelled, tiny, exhausted
     name: 'g5revert',
-    start() { gearReset(); GT.gs = 0.8; steam(8); say('pshhh…'); B.eye = 2; B.pose = 'sleep'; B.sit = 1; B.mouth = 3; B.mouthO = 0.3; this.old = true; },
+    start() { gearReset(); g5World = false; GT.gs = 0.8; steam(8); say('pshhh…'); B.eye = 2; B.pose = 'sleep'; B.sit = 1; B.mouth = 3; B.mouthO = 0.3; this.old = true; },
     update(t) {
       const e = t - this.t0;
       if (e > 900 && !this.z) { this.z = 1; say('…so hungry'); }
@@ -1151,19 +1171,19 @@ void main(){
   });
   const gear5x = (rubberRun) => ({
     name: 'gear5x',
-    start() { neutral(); this.bi = 0; this.beats = [0, 260, 820, 1080, 1640, 1900]; B.mouth = 1; },
+    start() { neutral(); g5World = rubberRun; this.bi = 0; this.beats = [0, 260, 820, 1080, 1640, 1900]; B.mouth = 1; },
     update(t) {
       const e = t - this.t0;
       if (this.bi < this.beats.length && e > this.beats[this.bi]) {        // ba-dum … ba-dum … — his heartbeat is a drum
         this.bi++; kick(-5.5); hatKick(3); say(this.bi % 2 ? 'don' : 'don!', 'kz-drum');
-        GT.hair = Math.min(0.35, this.bi * 0.07); if (!readingMode() && this.bi % 2 === 0) quake(B.x, B.y, 0.2);
+        GT.hair = Math.min(0.35, this.bi * 0.07); if (g5World) jelly(B.x, B.y, this.bi % 2 ? 0.35 : 0.6, 300);
       }
       if (e > 2150 && !this.aw) {
-        this.aw = 1; Object.assign(GT, { hair: 1, g5: 1 }); gearTint(1, 1, 1, 1); say('gear 5!', 'kz-big'); B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; kick(9); steam(6);
+        this.aw = 1; Object.assign(GT, { hair: 1, g5: 1 }); gearTint(1, 1, 1, 1); say('gear 5!', 'kz-big'); B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; kick(9); steam(6); if (g5World) jelly(B.x, B.y, 1.2, 520);
       }
-      if (e > 2700) { this.pushed = true; const seq = [g5laugh(), toon()]; if (rubberRun && pickLine()) seq.push(gear5()); seq.push(g5revert()); queue.push(...seq); return true; }
+      if (e > 2700) { this.pushed = true; const seq = [g5laugh(), g5stretch(), toon()]; if (rubberRun && pickLine()) seq.push(gear5()); seq.push(g5revert()); queue.push(...seq); return true; }
     },
-    end() { if (!this.pushed) gearReset(); },
+    end() { if (!this.pushed) { gearReset(); g5World = false; } },
   });
   function gearAct(n, invited) { return n === 2 ? gear2() : n === 3 ? gear3() : n === 4 ? gear4() : gear5x(invited || !readingMode()); }
   function runGear(n, invited) { queue.length = 0; const a = gearAct(n, invited); if (B.mode === 'ground' && !drag) run(a); else queue.push(a); }
@@ -1270,7 +1290,7 @@ void main(){
     if (!drag) return;
     drag.x = e.clientX; drag.y = e.clientY; drag.hist.push([now(), e.clientX, e.clientY]); if (drag.hist.length > 8) drag.hist.shift();
     if (!drag.moved && hyp(e.clientX - drag.sx, e.clientY - drag.sy) > 5) {
-      drag.moved = true; queue.length = 0; run(null); gearReset(); resetArms(); neutral(); restoreLine(); dropWord();
+      drag.moved = true; queue.length = 0; run(null); gearReset(); g5World = false; resetArms(); neutral(); restoreLine(); dropWord();
       B.mode = 'held'; B.surf = null; B.pose = 'flail'; B.eye = 3; B.mouth = 3; B.mouthO = 0.7; root.classList.add('kz-held');
       if (Math.random() < 0.5) say(pick(['hey!', 'whoa', 'wheee']));
     }
@@ -1381,6 +1401,7 @@ void main(){
     if (B.mode === 'ground') groundStep(dt); else if (B.mode === 'air') airStep(dt); else if (B.mode === 'hang') hangStep(dt); else if (B.mode === 'held') heldStep(dt);
 
     // springs: squash, hat wobble, facing
+    if (GV.g5 > 0.05) B.sqv += (Math.sin(T * 10) * 34 + Math.sin(T * 16.7) * 14) * GV.g5 * dt;   // gear 5: the whole body jiggles like rubber
     if (B.mode !== 'held') { B.sqv += (-400 * B.sq - 13 * B.sqv) * dt; B.sq = clamp(B.sq + B.sqv * dt, -0.42, 0.42); }
     B.hatRv += (-B.hatRot * 140 - B.hatRv * 7) * dt; B.hatRot = clamp(B.hatRot + B.hatRv * dt, -0.7, 0.7);
     if (B.mode === 'air' || B.mode === 'hang') { if (Math.abs(B.vx) > 40) B.face = sgn(B.vx); }

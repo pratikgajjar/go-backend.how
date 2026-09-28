@@ -16,9 +16,10 @@
       the bar grows.
     - Mini gears (double-click to cycle): Gear 2 steam + jet dash, Gear 3
       giant balloon fist then chibi, Gear 4 bulked-up bounce, Gear 5 (Nika):
-      drums-of-liberation heartbeat, white flame-hair, cloud collar, red
-      glowing eyes, huge grin, eyes popping, toon flips and the rubber run
-      (plows a line of text into a pile, launched by the snap-back) — then
+      drums-of-liberation heartbeat, white body + white flame mane, red
+      glowing eyes, huge grin. Everything turns to rubber: his body jiggles,
+      arms go noodly, he stretches and squashes, and the page around him
+      wobbles like jelly; eyes pop, toon flips and the rubber run — then
       shrivelled and exhausted.
     - Reading mode (inside an article): never touches the text, stays in the
       gutter, big tricks only every few minutes.
@@ -76,6 +77,7 @@
   #kz-fx .kz-banner b{ color:#e8453c; }
   .kz-w{ display:inline-block; will-change:transform; transition:transform .4s cubic-bezier(.18,.9,.2,1); }
   .kz-quake{ animation:kz-quake .7s cubic-bezier(.3,.7,.3,1) both; }
+  .kz-jelly{ animation:kz-jelly .95s cubic-bezier(.3,.7,.3,1) both; transform-origin:50% 100%; }
 
   @keyframes kz-rise{ 0%{opacity:0; transform:translate(-50%,0) scale(.6)} 18%{opacity:.95}
     100%{opacity:0; transform:translate(calc(-50% + var(--dx,0px)),-48px) scale(1.08) rotate(var(--rot,0deg))} }
@@ -91,6 +93,9 @@
     100%{transform:translate(var(--dx), var(--dy)) rotate(var(--r)); opacity:0} }
   @keyframes kz-spin{ to{ transform:rotate(360deg) } }
   @keyframes kz-pop{ 0%{ transform:translate(-50%,-100%) scale(.3) } 100%{ transform:translate(-50%,-100%) scale(1) } }
+  @keyframes kz-jelly{ 0%{transform:none} 16%{transform:scale(calc(1 + var(--j,.03)),calc(1 - var(--j,.03)))}
+    36%{transform:scale(calc(1 - var(--j,.03)*.75),calc(1 + var(--j,.03)*.75))} 56%{transform:scale(calc(1 + var(--j,.03)*.4),calc(1 - var(--j,.03)*.4))}
+    76%{transform:scale(calc(1 - var(--j,.03)*.15),calc(1 + var(--j,.03)*.15))} 100%{transform:none} }
   @keyframes kz-quake{ 0%{transform:translateY(0)} 25%{transform:translateY(var(--q,6px)) scaleY(.985)}
     55%{transform:translateY(calc(var(--q,6px) * -.45))} 80%{transform:translateY(calc(var(--q,6px) * .15))} 100%{transform:none} }
 
