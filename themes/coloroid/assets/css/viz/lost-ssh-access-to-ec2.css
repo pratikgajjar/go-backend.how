@@ -1,0 +1,223 @@
+/* Figures for "Lost SSH Access to EC2" (all frame="none").
+ *
+ * Three surfaces, one colour meaning:
+ *   lssh-hero    drawn straight on the page: a question, then the answer
+ *   lssh-play    a dark console: you are cloud-init, checking the disk
+ *   lssh-choose  a paper card: two questions, then the line to paste
+ * brown data · purple the thing to look at · green runs / written ·
+ * red skipped / blocked · blue your input · orange the line to use */
+
+/* ---------------------------------------------------------- tokens */
+.viz--lssh-hero, .viz--lssh-choose {
+  --c-ink: oklch(20% 0.02 240);
+  --c-mute: oklch(30% 0.02 240);
+  --c-line: oklch(52% 0.03 240);
+  --c-card: oklch(84% 0.03 240);
+  --c-data: oklch(33% 0.07 55);    --c-data-l: oklch(90% 0.04 70);
+  --c-look: oklch(34% 0.17 305);   --c-look-l: oklch(90% 0.06 305);
+  --c-safe: oklch(33% 0.1 152);    --c-safe-l: oklch(90% 0.07 152);
+  --c-bad: oklch(38% 0.17 27);     --c-bad-l: oklch(91% 0.05 25);
+  --c-opt: oklch(33% 0.13 258);    --c-opt-l: oklch(91% 0.04 258);
+  --c-pick: oklch(42% 0.14 45);    --c-pick-l: oklch(91% 0.07 65);
+}
+.viz--lssh-play,
+html[data-force-dark] .viz--lssh-hero,
+html[data-force-dark] .viz--lssh-choose {
+  --c-ink: oklch(94% 0.008 245);
+  --c-mute: oklch(76% 0.02 245);
+  --c-line: oklch(44% 0.025 245);
+  --c-card: oklch(28% 0.02 245);
+  --c-data: oklch(83% 0.09 70);    --c-data-l: oklch(34% 0.05 65);
+  --c-look: oklch(80% 0.13 305);   --c-look-l: oklch(36% 0.1 305);
+  --c-safe: oklch(80% 0.14 152);   --c-safe-l: oklch(34% 0.07 152);
+  --c-bad: oklch(75% 0.16 27);     --c-bad-l: oklch(34% 0.09 25);
+  --c-opt: oklch(79% 0.11 250);    --c-opt-l: oklch(34% 0.07 255);
+  --c-pick: oklch(81% 0.14 62);    --c-pick-l: oklch(37% 0.08 55);
+}
+
+/* ---------------------------------------------------------- shared */
+.viz[class*="viz--lssh-"] {
+  position: relative;
+  margin: 2.5rem 0;
+  color: var(--c-ink);
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.viz[class*="viz--lssh-"] p { margin: 0; }
+.viz[class*="viz--lssh-"] img.wv-fallback { margin: 0; border: 0; border-radius: 6px; }
+body[class*="theme-"] .viz[class*="viz--lssh-"] code {
+  background: var(--c-card); color: var(--c-ink); border-radius: 3px; padding: 0 0.3em; font-size: 0.95em;
+}
+body[class*="theme-"] .viz[class*="viz--lssh-"] pre { margin: 0; border-radius: 0; box-shadow: none; background: none; color: var(--c-ink); }
+body[class*="theme-"] .viz[class*="viz--lssh-"] pre code { width: auto !important; }
+.viz[class*="viz--lssh-"] .wv-head { display: flex; flex-wrap: wrap; gap: 0.2rem 0.7rem; align-items: baseline; margin: 0 0 0.8rem; padding-bottom: 0.45rem; border-bottom: 1px solid var(--c-line); }
+.viz[class*="viz--lssh-"] .wv-fig { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-data); }
+.viz[class*="viz--lssh-"] .wv-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-ink); }
+.viz[class*="viz--lssh-"] figcaption { margin-top: 0.8rem; padding-top: 0.5rem; border-top: 1px solid var(--c-line); font-size: 12px; color: var(--c-ink); font-style: normal; }
+.viz[class*="viz--lssh-"] .t-data { color: var(--c-data); }
+.viz[class*="viz--lssh-"] .t-safe { color: var(--c-safe); }
+.viz[class*="viz--lssh-"] .t-bad { color: var(--c-bad); }
+.viz[class*="viz--lssh-"] .t-ink { color: var(--c-ink); }
+.viz[class*="viz--lssh-"] button:focus-visible { outline: 2px solid var(--c-look); outline-offset: 2px; }
+.v-lssh-key { display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; font-size: 11px; margin-top: 0.8rem; }
+.v-lssh-key span { white-space: nowrap; }
+.v-lssh-key i { display: inline-block; width: 1.4em; height: 0.85em; margin-right: 0.35em; vertical-align: -0.08em; border: 1.5px solid; border-radius: 2px; }
+.v-lssh-key i.k-data { border-color: var(--c-data); background: var(--c-data-l); }
+.v-lssh-key i.k-look { border-color: var(--c-look); background: var(--c-look-l); }
+.v-lssh-key i.k-safe { border-color: var(--c-safe); background: var(--c-safe-l); }
+.v-lssh-key i.k-bad { border-color: var(--c-bad); background: var(--c-bad-l); border-style: dashed; }
+.v-lssh-key i.k-opt { border-color: var(--c-opt); background: var(--c-opt-l); }
+.v-lssh-key i.k-pick { border-color: var(--c-pick); background: var(--c-pick-l); }
+@media (max-width: 640px) { .viz[class*="viz--lssh-"] { font-size: 12.5px; } }
+
+/* ============================================================ hero */
+/* Drawn on the page. The question is the headline; the picture answers. */
+.viz--lssh-hero { margin: 1.5rem 0 2.5rem; }
+.v-lssh-hq { font-size: clamp(17px, 2.4vw, 22px); font-weight: 800; line-height: 1.3; max-width: 34ch; min-height: 2.6em; }
+.v-lssh-hacts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.8rem 0 1rem; min-height: 40px; }
+.v-lssh-hb {
+  font: inherit; font-size: 13px; color: var(--c-opt); background: transparent;
+  border: 1.5px solid var(--c-opt); border-radius: 999px; padding: 0.45rem 0.9rem; min-height: 38px; cursor: pointer;
+}
+.v-lssh-hb:hover { background: var(--c-opt-l); }
+.v-lssh-hb.is-go { background: var(--c-opt); color: var(--c-opt-l); font-weight: 800; }
+.v-lssh-hb.is-quiet { border-style: dashed; }
+.v-lssh-hsay { font-size: 14px; max-width: 62ch; margin-top: 0.5rem !important; }
+.v-lssh-hsay:empty { display: none; }
+.viz--lssh-hero svg { display: block; width: 100%; height: auto; overflow: visible; }
+.viz--lssh-hero svg text { font-family: inherit; fill: var(--c-ink); font-size: 13px; }
+.viz--lssh-hero svg text.t-s { font-size: 11.5px; }
+.viz--lssh-hero svg text.t-b { font-weight: 800; }
+.viz--lssh-hero svg text.t-mute { fill: var(--c-mute); }
+.viz--lssh-hero svg text.t-data { fill: var(--c-data); }
+.viz--lssh-hero svg text.t-safe { fill: var(--c-safe); }
+.viz--lssh-hero svg text.t-bad { fill: var(--c-bad); }
+.viz--lssh-hero .v-lssh-file { stroke-width: 1.5; fill: var(--c-card); stroke: var(--c-ink); transition: opacity 0.3s; }
+.viz--lssh-hero .v-lssh-file.is-data { stroke: var(--c-data); stroke-dasharray: 5 4; }
+.viz--lssh-hero .v-lssh-file.is-bad { stroke: var(--c-bad); fill: var(--c-bad-l); stroke-width: 2.2; }
+.viz--lssh-hero .v-lssh-file.is-quiet { stroke-width: 1.2; }
+.viz--lssh-hero .v-lssh-file.is-absent { stroke: var(--c-safe); fill: var(--c-safe-l); stroke-dasharray: 6 5; stroke-width: 2.2; }
+.viz--lssh-hero .v-lssh-ghost { fill: none; stroke: var(--c-mute); stroke-dasharray: 3 4; }
+.viz--lssh-hero .v-lssh-rail { fill: none; stroke: var(--c-ink); stroke-width: 2; }
+.viz--lssh-hero .v-lssh-rail.is-safe { stroke: var(--c-safe); stroke-width: 2.6; }
+.viz--lssh-hero .v-lssh-stop { stroke: var(--c-bad); stroke-width: 6; }
+.viz--lssh-hero .v-lssh-m-safe { fill: var(--c-safe); }
+.viz--lssh-hero .v-lssh-kg circle, .viz--lssh-hero .v-lssh-kg path { fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.viz--lssh-hero .v-lssh-kg.is-data * { stroke: var(--c-data); }
+.viz--lssh-hero .v-lssh-kg.is-safe * { stroke: var(--c-safe); }
+.viz--lssh-hero .v-lssh-kg.is-bad * { stroke: var(--c-bad); stroke-dasharray: 3 3; }
+.viz--lssh-hero .v-lssh-kg.is-mute * { stroke: var(--c-mute); stroke-dasharray: 3 3; }
+
+/* ============================================================ play */
+/* A dark console: the reader is cloud-init. */
+.viz--lssh-play {
+  padding: 0.9rem 1.1rem 1rem;
+  background: oklch(23% 0.018 245);
+  border: 1px solid var(--c-line);
+  border-radius: 8px;
+  box-shadow: 0 14px 34px -18px oklch(10% 0.02 245 / 0.75);
+}
+html[data-force-dark] .viz--lssh-play { background: oklch(24% 0.016 245); border-color: oklch(46% 0.025 245); }
+@media (min-width: 900px) {
+  .viz--lssh-play.viz--wide { width: min(960px, 100vw - 2rem); margin-left: calc((100% - min(960px, 100vw - 2rem)) / 2); }
+}
+@media (max-width: 640px) { .viz--lssh-play { margin: 2rem -0.5rem; padding: 0.75rem 0.7rem 0.85rem; border-radius: 6px; } }
+.v-lssh-role { font-size: 14px; font-weight: 800; margin-bottom: 0.9rem !important; max-width: 60ch; }
+.v-lssh-play {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem 1rem; align-items: start;
+  grid-template-areas: "q" "t" "a" "l";   /* phone: find the file before you answer */
+}
+.v-lssh-a-q { grid-area: q; } .v-lssh-a-t { grid-area: t; } .v-lssh-a-a { grid-area: a; } .v-lssh-a-l { grid-area: l; }
+@media (min-width: 760px) {
+  .v-lssh-play { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "q t" "a t" "a l"; }
+}
+.v-lssh-cap { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-mute); margin: 0 0 0.35rem; }
+.v-lssh-queue { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; counter-reset: m; }
+.v-lssh-mod {
+  display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto; gap: 0 0.6rem; align-items: baseline;
+  padding: 0.35rem 0.55rem; border-left: 3px solid var(--c-line); color: var(--c-mute); font-size: 12px;
+}
+.v-lssh-mod .st { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.v-lssh-mod .nm { font-weight: 800; }
+.v-lssh-mod .fq { grid-column: 2; font-size: 11px; }
+.v-lssh-mod .res { grid-column: 3; grid-row: 1 / span 2; align-self: center; font-weight: 800; }
+.v-lssh-mod.is-done { color: var(--c-ink); }
+.v-lssh-mod.is-now { color: var(--c-ink); border-left-color: var(--c-look); background: var(--c-look-l); }
+.v-lssh-ask { min-height: 11.5em; }
+.v-lssh-mq { font-size: 13.5px; margin-bottom: 0.4rem !important; }
+.v-lssh-mq .from { color: var(--c-mute); font-size: 12px; }
+.v-lssh-mp { font-size: 12px; overflow-wrap: anywhere; margin-bottom: 0.4rem !important; }
+.v-lssh-mh { font-size: 12.5px; color: var(--c-ink); margin-bottom: 0.6rem !important; }
+.v-lssh-fb { font-size: 13px; margin-bottom: 0.7rem !important; }
+.v-lssh-pbs { display: flex; gap: 0.5rem; }
+.v-lssh-pb {
+  font: inherit; font-size: 13px; font-weight: 800; color: var(--c-opt); background: transparent;
+  border: 1.5px solid var(--c-opt); border-radius: 4px; padding: 0.5rem 1.1rem; min-height: 40px; cursor: pointer;
+}
+.v-lssh-pb:hover { background: var(--c-opt-l); }
+.v-lssh-pb.is-next { background: var(--c-opt); color: oklch(20% 0.02 245); }
+.v-lssh-pb.is-quiet { border-style: dashed; font-weight: 400; }
+body[class*="theme-"] .viz .v-lssh-tree, body[class*="theme-"] .viz .v-lssh-log {
+  display: block; padding: 0.5rem 0.6rem; font-size: 11.5px; line-height: 1.6;
+  background: oklch(17% 0.018 245); border: 1px solid var(--c-line); border-radius: 4px;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+body[class*="theme-"] .viz .v-lssh-log { min-height: 4.2em; }
+.v-lssh-tr { display: block; min-height: 1.6em; padding: 0 0.35rem; margin: 0 -0.35rem; border-left: 3px solid transparent; }
+.v-lssh-tr .pre { color: var(--c-mute); white-space: pre; }
+.v-lssh-tr.is-key .nm { color: var(--c-data); }
+.v-lssh-tr.is-hot { background: var(--c-look-l); border-left-color: var(--c-look); }
+.v-lssh-tr.is-hot .nm { font-weight: 800; }
+.v-lssh-tr.is-new { background: var(--c-safe-l); border-left-color: var(--c-safe); animation: v-lssh-in 0.8s ease; }
+.v-lssh-tr.is-new .nm { color: var(--c-safe); font-weight: 800; }
+@keyframes v-lssh-in { from { background: var(--c-look-l); } }
+.v-lssh-ll { display: block; }
+.v-lssh-ll.t-bad { font-weight: 700; }
+.v-lssh-ll.t-good { color: var(--c-safe); font-weight: 700; }
+
+/* ============================================================ choose */
+/* A paper card: two questions, then the line to paste. */
+.viz--lssh-choose {
+  padding: 1.1rem 1.2rem 1.1rem;
+  background: oklch(97% 0.006 240);
+  border-radius: 10px;
+  box-shadow: 0 1px 0 oklch(60% 0.03 240), 0 12px 30px -20px oklch(20% 0.04 240 / 0.6);
+  max-width: 44rem;
+}
+html[data-force-dark] .viz--lssh-choose { background: oklch(23% 0.012 245); box-shadow: 0 0 0 1px oklch(40% 0.02 245); }
+.viz--lssh-choose.viz--wide { margin-left: auto; margin-right: auto; }
+.v-lssh-q { margin-bottom: 1rem; }
+.v-lssh-ql { font-size: 14px; font-weight: 800; margin-bottom: 0.25rem !important; }
+.v-lssh-qh { font-size: 12px; color: var(--c-mute); margin-bottom: 0.35rem !important; }
+.v-lssh-qg { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.v-lssh-chip {
+  font: inherit; font-size: 13px; color: var(--c-opt); background: transparent;
+  border: 1.5px solid var(--c-opt); border-radius: 999px; padding: 0.4rem 0.95rem; min-height: 38px; cursor: pointer;
+}
+.v-lssh-chip:hover { background: var(--c-opt-l); }
+.v-lssh-chip[aria-checked="true"] { background: var(--c-opt); color: var(--c-opt-l); font-weight: 800; }
+.v-lssh-res { border-top: 1px solid var(--c-line); padding-top: 1rem; min-height: 15rem; }
+.v-lssh-res.is-wait p { color: var(--c-mute); font-style: italic; }
+.v-lssh-snip { display: flex; flex-direction: column; gap: 0.3rem; border: 2.5px solid var(--c-pick); background: var(--c-pick-l); border-radius: 6px; padding: 0.6rem 0.8rem; margin-bottom: 0.7rem; }
+.v-lssh-snip .lbl { font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-pick); }
+body[class*="theme-"] .viz .v-lssh-snip code { background: none; padding: 0; white-space: pre; font-size: 14px; font-weight: 800; color: var(--c-ink); }
+.v-lssh-why { font-size: 13px; margin-bottom: 0.9rem !important; max-width: 62ch; }
+.v-lssh-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+@media (max-width: 520px) { .v-lssh-strip { grid-template-columns: minmax(0, 1fr); } }
+.v-lssh-boot { border: 1px solid var(--c-line); border-radius: 6px; padding: 0.5rem 0.6rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.v-lssh-boot.is-safe { border: 1.5px solid var(--c-safe); }
+.v-lssh-boot.is-bad { border: 1.5px dashed var(--c-bad); }
+.v-lssh-boot .bt { font-size: 11px; color: var(--c-mute); }
+.v-lssh-boot .bv { font-weight: 800; font-size: 13px; }
+.v-lssh-boot .bk { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.v-lssh-kk { font-size: 11px; padding: 0 0.35rem; border-left: 3px solid var(--c-data); color: var(--c-data); background: var(--c-data-l); }
+.v-lssh-kk.is-added { border-left-color: var(--c-safe); color: var(--c-safe); background: var(--c-safe-l); font-weight: 800; }
+.v-lssh-kk.is-missing { border-left: 3px dashed var(--c-bad); color: var(--c-bad); background: var(--c-bad-l); font-weight: 800; }
+.v-lssh-boot .bm { font-size: 11px; }
+.v-lssh-boot .bc { font-size: 11px; font-weight: 700; }
+.v-lssh-link { font: inherit; font-size: 12px; color: var(--c-opt); background: none; border: 0; padding: 0.6rem 0 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .viz[class*="viz--lssh-"] *, .viz[class*="viz--lssh-"] *::before { animation: none !important; transition: none !important; }
+}
