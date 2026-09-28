@@ -1,27 +1,25 @@
 /*
  * Figures for "Building pre-owned Car Platform With Valkey - Part 2".
+ * House style (walviz.css); this file only draws and wires interactions.
  *
- * One visual language for the whole post: what the buyer sees (a phone),
- * what the server sends (a valkey-cli transcript), and the "set strip":
- * one row per filter set, one column per car, so an intersection is a
- * column that is filled in every row.
- *
- *   filter-sets      the reader switches filters; each is a set row, and
- *                    the full columns are the page
- *   sql-joins        which tables each django-filter filter joins
- *   keys             one card per Valkey key shape (data-key=hash|zset)
- *   reco-order       one unordered set, ranked per buyer in the web server
- *   listing-request  one listing query: miss, hit, sale, stale id
+ *   sql-joins        guess the joins for make=, then switch filters and see
+ *                    the tables Django joins and the SQL it generates
+ *   filter-sets      the reader switches filters; each is a row of car ids,
+ *                    and the columns full in every row are the page
+ *   keys             car: hash / car:price index, predict the reply
+ *   listing-request  one query: miss, hit, sale, stale id (stepper)
+ *   reco-order       predict Valkey writes on retrain; one set, two buyers
  *
  * Sample data: 12 cars. Valkey replies were produced by running the same
  * commands on Valkey 9.1 with this data; the SQL is what Django 6.1 +
  * django-filter 26.1 generate (SQLite backend, quotes removed).
  * LightFM scores are made up.
  */
-import { h, s, colorKey, register, REDUCED, fmt } from './lib.js';
+import { h, s, colorKey, codeBlock, stepper, range, chips, ask, register, REDUCED, fmt } from './lib.js';
 
 const P = 'v-vk2-';
 
+/* ---------------------------------------------------------------- data */
 /* ---------------------------------------------------------------- data */
 
 const CITY = { 1: 'Mumbai', 2: 'Pune' };
@@ -57,93 +55,70 @@ const HASH = '6d53b067e30c6df93d'; // sha1("city_id=1&features=20&make=10,12&pri
 const KEY = `page:price:${HASH}`;
 const CANON = 'city_id=1&features=20&make=10,12&price_max=800000&price_min=400000';
 
+
 /* ------------------------------------------------------------ helpers */
 
-function root(fig) {
-  fig.classList.add('v-vk2');
-  return fig;
-}
-function segBtns(opts, get, set, cls = '') {
-  const btns = opts.map(([k, label]) => h('button', {
-    class: `${P}btn ${cls}`, type: 'button', 'aria-pressed': 'false', onclick: () => { set(k); sync(); },
-  }, label));
-  function sync() { btns.forEach((b, i) => b.setAttribute('aria-pressed', String(opts[i][0] === get()))); }
-  sync();
-  return { el: h('span', { class: `${P}seg` }, ...btns), sync };
-}
-function keyHold(fig) {
-  // Arrow keys step the figure; stop them from reaching the site's
-  // post-to-post keyboard navigation on document.
-  return (fn) => fig.addEventListener('keydown', (e) => {
-    if (e.target.closest('input')) return;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-      fn(e.key === 'ArrowRight' ? 1 : -1);
-      e.preventDefault();
-      e.stopPropagation();
-    }
+/* Arrow keys step a figure; keep them from also reaching the site's
+   post-to-post keyboard navigation on document. */
+function holdArrows(fig) {
+  fig.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') e.stopPropagation();
   });
 }
 
-/* Set strip: one row per set, one column per car. */
-function strip({ rows, cols, cell, head = true, rowCls = () => '' }) {
-  const t = h('div', { class: `${P}strip`, style: `--n:${cols.length}`, role: 'table' });
-  if (head) {
-    t.append(h('div', { class: `${P}sl`, role: 'columnheader' }, h('span', null, 'cars 101–112')),
-      ...cols.map((c) => h('div', { class: `${P}sh`, role: 'columnheader' }, String(c.id).slice(1))));
-  }
+const label = (text) => h('div', { class: `wv-title ${P}lab` }, text);
+
+/* Set strip: one row per set, one column per car. cell(r, c) → state class. */
+function strip({ rows, cols, cell, rowCls = () => '' }) {
+  const t = h('div', { class: `${P}strip`, style: `--n:${cols.length}` });
+  t.append(h('div', { class: `${P}sl t-xs t-mute` }, 'cars 101–112'),
+    ...cols.map((c) => h('div', { class: `${P}sh t-xs` }, String(c.id).slice(1))));
   for (const r of rows) {
-    t.append(h('div', { class: `${P}sl ${rowCls(r)}`, role: 'rowheader' }, h('b', null, r.key), h('span', null, r.f)),
-      ...cols.map((c) => { const [cls, txt, title] = cell(r, c); return h('div', { class: `${P}sc ${cls}`, role: 'cell', title: title || '' }, txt || ''); }));
+    t.append(h('div', { class: `${P}sl ${rowCls(r)}` }, h('b', { class: 'c-data t-s' }, r.key), h('span', { class: 't-xs' }, r.f)),
+      ...cols.map((c) => { const [cls, title] = [].concat(cell(r, c)); return h('div', { class: `${P}sc ${cls || ''}`, title: title || '' }); }));
   }
   return t;
 }
 
+/* What the buyer sees: a small listing screen built from cards. */
+function screen(kids) {
+  return h('div', { class: `wv-card ${P}screen` }, h('div', { class: `wv-title ${P}lab` }, 'car.com · listing page'), ...kids);
+}
+function carCard(c, extra = '') {
+  return h('div', { class: `wv-card ${P}car` }, h('b', null, `${c.model} ${c.variant}`), h('span', { class: 'c-data t-s' }, `${lakh(c.price)}${extra} · #${c.id}`));
+}
+
 /* ========================================================= FILTER SETS */
 
-/* The reader switches filters. Each switched-on filter is one set row;
-   the cars whose column is full in every row are the page. */
 function initFilterSets(fig, app) {
-  root(fig);
-  const on = { city: true, price: true, make: true, amt: true };
   const LABEL = { city: 'Mumbai', price: '₹4–8 L', make: 'Tata or Hyundai', amt: 'AMT' };
-  const chips = ROWS.map((r) => h('button', {
-    class: `${P}btn ${P}fchip`, type: 'button', 'aria-pressed': 'true',
-    onclick: (e) => { on[r.id] = !on[r.id]; e.currentTarget.setAttribute('aria-pressed', String(on[r.id])); draw(); },
-  }, LABEL[r.id]));
-  const stripBox = h('div', { class: `${P}hsets` });
-  const phone = h('div', { class: `${P}phone ${P}hphone`, 'aria-live': 'polite' });
-  const count = h('div', { class: `${P}hcount` });
-  app.append(
-    h('div', { class: `${P}ctl` }, h('span', { class: `${P}lab` }, 'Filters · tap to switch'), h('div', { class: `${P}chips` }, ...chips)),
-    h('div', { class: `${P}hmid` }, stripBox, phone),
-    count,
-    colorKey([['k-data', 'car is in that set'], ['k-look', 'in every set: on the page'], ['k-safe', 'no SQL on the read path'], ['k-opt', 'filters you switch']]),
-  );
+  let on = ROWS.map((r) => r.id);
+  const pick = chips(ROWS.map((r) => [r.id, LABEL[r.id]]), (v) => { on = v; draw(); }, { value: on, multi: true, label: 'Filters' });
+  const stripBox = h('div');
+  const shot = h('div', { 'aria-live': 'polite' });
+  const kv = h('dl', { class: 'wv-kv' });
+  app.append(label('Filters · tap to switch'), pick.el,
+    h('div', { class: `${P}two` }, stripBox, shot), kv,
+    colorKey([['k-data', 'car is in that set'], ['k-look', 'in every set: on the page'], ['k-opt', 'filters you switch']]));
 
   function draw() {
-    const rows = ROWS.filter((r) => on[r.id]);
+    const rows = ROWS.filter((r) => on.includes(r.id));
     const page = CARS.filter((c) => rows.every((r) => r.test(c))).sort((a, b) => a.price - b.price);
     const ids = new Set(page.map((c) => c.id));
     const shown = rows.length ? rows : [{ id: 'none', key: 'car:price', f: 'no filter: every car', test: () => true }];
     stripBox.replaceChildren(strip({
       rows: [...shown, { id: 'res', key: 'the page', f: 'full columns' }], cols: CARS,
       rowCls: (r) => (r.id === 'res' ? 'is-res' : ''),
-      cell: (r, c) => {
-        if (r.id === 'res') return ids.has(c.id) ? ['is-look', ''] : ['', ''];
-        return [r.test(c) ? 'is-in' : '', ''];
-      },
+      cell: (r, c) => (r.id === 'res' ? (ids.has(c.id) ? 'is-look' : '') : (r.test(c) ? 'is-in' : '')),
     }));
-    phone.replaceChildren(...[
-      h('div', { class: `${P}pbar` }, 'car.com'),
-      h('div', { class: `${P}pmeta` }, `${page.length} car${page.length === 1 ? '' : 's'} · price ↑`),
-      ...page.slice(0, 3).map((c) => h('div', { class: `${P}pcard` }, h('b', null, `${c.model} ${c.variant}`), h('span', null, `${lakh(c.price)} · #${c.id}`))),
-      page.length > 3 ? h('div', { class: `${P}small` }, `+ ${page.length - 3} more on page 2`) : null,
-      page.length === 0 ? h('div', { class: `${P}small` }, 'no car is in every set') : null,
-    ].filter(Boolean));
-    count.replaceChildren(
-      h('span', null, 'Valkey sets read: ', h('b', { class: `${P}data` }, String(Math.max(rows.length, 1)))),
-      h('span', null, 'SQL queries: ', h('b', { class: `${P}good` }, '0')),
-    );
+    shot.replaceChildren(screen([
+      h('b', null, `${page.length} car${page.length === 1 ? '' : 's'} · price ↑`),
+      ...page.slice(0, 3).map((c) => carCard(c)),
+      page.length > 3 ? h('span', { class: 't-s' }, `+ ${page.length - 3} more on page 2`) : null,
+      page.length === 0 ? h('span', { class: 't-s' }, 'no car is in every set') : null,
+    ].filter(Boolean)));
+    kv.replaceChildren(h('dt', null, 'Valkey sets read'), h('dd', { class: 'c-data' }, String(Math.max(rows.length, 1))),
+      h('dt', null, 'SQL queries'), h('dd', { class: 'c-safe' }, '0'));
   }
   draw();
 }
@@ -223,39 +198,32 @@ function joinState(on) {
   return { joined, used, named };
 }
 
+
 function initSqlJoins(fig, app) {
-  root(fig);
   const on = { city: false, price: false, make: false, model: false, color: false, features: false };
   let distinct = false;
   let answered = false;
-  const chips = SQL_FILTERS.map(([k, label]) => h('button', {
-    class: `${P}btn ${P}fchip`, type: 'button', 'aria-pressed': String(on[k]), onclick: (e) => { on[k] = !on[k]; e.currentTarget.setAttribute('aria-pressed', String(on[k])); render(); },
-  }, label));
-  const dBtn = h('button', { class: `${P}btn`, type: 'button', 'aria-pressed': 'false', onclick: () => { distinct = !distinct; dBtn.setAttribute('aria-pressed', String(distinct)); render(); } }, '.distinct()');
   const svgBox = h('div', { class: `${P}graph` });
-  const sql = h('pre', { class: `${P}sql` });
+  const sql = h('div');
   const facts = h('div', { class: `${P}facts`, 'aria-live': 'polite' });
-  const chipRow = h('div', { class: `${P}ctl`, hidden: true }, h('span', { class: `${P}lab` }, 'Filters in the request · switch any'), h('div', { class: `${P}chips` }, ...chips));
-  const ask = h('div', { class: `${P}ask` },
-    h('p', null, h('b', null, 'Guess first. '), 'The request filters by ', h('code', null, 'make=120,121'), '. The make id sits on the ', h('code', null, 'make'), ' table, two hops from ', h('code', null, 'car'), '. How many tables does Django join to ', h('code', null, 'car'), '?'),
-    h('div', { class: `${P}seg` }, ...['1', '2', '3'].map((n) => h('button', { class: `${P}btn`, type: 'button', onclick: () => answer(+n) }, n))));
-  function answer(n) {
-    answered = true;
-    on.make = true;
-    chips.forEach((b, k) => b.setAttribute('aria-pressed', String(on[SQL_FILTERS[k][0]])));
-    ask.replaceChildren(h('p', null, h('b', { class: n === 2 ? `${P}good` : `${P}look` }, n === 2 ? 'Right: 2. ' : `2, not ${n}. `),
-      h('code', null, 'varient'), ' and ', h('code', null, 'model'), '. The filter compares ', h('code', null, 'model.make_id'), ', so the ', h('code', null, 'make'), ' table is never read. Now switch other filters on.'));
-    chipRow.hidden = false;
-    render();
-  }
-  app.append(
-    ask,
-    chipRow,
-    svgBox,
-    h('div', { class: `${P}sqlgrid` }, h('div', null, h('div', { class: `${P}lab` }, 'SQL from CarViewSet, page 2'), sql),
-      h('div', null, facts, h('div', { class: `${P}ctl` }, h('span', { class: `${P}lab` }, 'Queryset option'), dBtn))),
-    colorKey([['k-look', 'joined table'], ['k-data', 'column the WHERE reads'], ['k-gap', 'duplicate rows'], ['k-safe', 'one row per car, right guess'], ['k-opt', 'answers and filters you pick']]),
-  );
+  const filt = chips(SQL_FILTERS, (v) => { SQL_FILTERS.forEach(([k]) => { on[k] = v.includes(k); }); render(); }, { multi: true, value: [], label: 'Filters' });
+  const filtRow = h('div', { hidden: true }, label('Filters in the request · switch any'), filt.el);
+  const dBtn = h('button', { class: 'wv-btn', type: 'button', 'aria-pressed': 'false', onclick: () => { distinct = !distinct; dBtn.setAttribute('aria-pressed', String(distinct)); render(); } }, '.distinct()');
+  const q = ask('The request filters by make=120,121. The make id is on the make table, two hops from car. How many tables does Django join to car?',
+    [[1, '1'], [2, '2'], [3, '3']], 2,
+    () => {
+      answered = true;
+      on.make = true;
+      filt.set(['make']);
+      filtRow.hidden = false;
+      setTimeout(render);
+      return '<b>2: varient and model.</b> The filter compares <code>model.make_id</code>, so the <code>make</code> table is never read. Now switch other filters on.';
+    });
+  app.append(q.el, filtRow, svgBox,
+    h('div', { class: `${P}two` }, h('div', null, label('SQL from CarViewSet, page 2'), sql),
+      h('div', null, facts, h('div', { class: 'wv-bar' }, h('span', { class: 'c-opt t-s' }, 'Queryset option'), dBtn))),
+    colorKey([['k-look', 'joined table'], ['k-data', 'column the WHERE reads'], ['k-gap', 'duplicate rows'], ['k-safe', 'one row per car'], ['k-opt', 'answers and filters you pick']]));
+  holdArrows(fig);
   const mq = window.matchMedia('(max-width: 620px)');
   mq.addEventListener?.('change', render);
 
@@ -266,49 +234,44 @@ function initSqlJoins(fig, app) {
     const box = (id) => { const [x, y] = L.pos[id]; return { x, y, w: L.w, h: L.hh }; };
     for (const [a, b] of T_EDGES) {
       const A = box(a); const B = box(b);
-      const hot = joined.has(a) && joined.has(b);
       let d;
       if (L.trunk && a === 'car') d = `M${L.trunk},${A.y + A.h} V${B.y + B.h / 2} H${B.x}`;
       else if (Math.abs(A.y - B.y) < 1) d = `M${A.x + A.w},${A.y + A.h / 2} H${B.x}`;
       else if (A.x + A.w <= B.x) { const mx = (A.x + A.w + B.x) / 2; d = `M${A.x + A.w},${A.y + A.h / 2} H${mx} V${B.y + B.h / 2} H${B.x}`; }
       else if (Math.abs(A.x - B.x) < 1) d = `M${A.x + A.w / 2},${A.y + A.h} V${B.y}`;
       else { const my = A.y + A.h + (B.y - A.y - A.h) / 2; d = `M${A.x + A.w / 2},${A.y + A.h} V${my} H${B.x + B.w / 2} V${B.y}`; }
-      svg.append(s('path', { d, class: `${P}edge${hot ? ' is-hot' : ''}` }));
+      svg.append(s('path', { d, class: `edge ${P}e${joined.has(a) && joined.has(b) ? ' is-hot' : ''}` }));
     }
     for (const id of Object.keys(TABLES)) {
       const b = box(id);
-      const isJ = joined.has(id);
-      const isN = named.has(id);
-      const g = s('g', { class: `${P}tbl${isJ ? ' is-j' : ''}${isN ? ' is-n' : ''}` });
-      g.append(s('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 7 }));
-      g.append(s('text', { x: b.x + 10, y: b.y + 20, class: `${P}tn` }, id));
-      const col = used[id];
-      if (col) {
-        g.append(s('rect', { x: b.x + 6, y: b.y + 28, width: b.w - 12, height: 18, rx: 3, class: `${P}colbg` }));
-        g.append(s('text', { x: b.x + 10, y: b.y + 41, class: `${P}tc is-used` }, col));
+      const g = s('g', { class: `${P}tb${joined.has(id) ? ' is-j' : ''}${named.has(id) ? ' is-n' : ''}` });
+      g.append(s('rect', { x: b.x, y: b.y, width: b.w, height: b.h, class: 'box dash' }),
+        s('text', { x: b.x + 10, y: b.y + 20, class: 't-m t-b' }, id));
+      if (used[id]) {
+        g.append(s('rect', { x: b.x + 6, y: b.y + 28, width: b.w - 12, height: 18, class: `${P}col` }),
+          s('text', { x: b.x + 10, y: b.y + 41, class: 't-s t-data t-b' }, used[id]));
       } else {
-        g.append(s('text', { x: b.x + 10, y: b.y + 41, class: `${P}tc` }, isN ? 'not joined' : TABLES[id].cols[0]));
+        g.append(s('text', { x: b.x + 10, y: b.y + 41, class: 't-s t-mute' }, named.has(id) ? 'not joined' : TABLES[id].cols[0]));
       }
       svg.append(g);
     }
     svgBox.replaceChildren(svg);
-    sql.textContent = composeSQL(on, distinct).replace(/ (INNER JOIN|WHERE|ORDER BY|LIMIT)/g, '\n$1').replace(/ AND /g, '\n   AND ');
-    if (!answered) { facts.replaceChildren(h('p', { class: `${P}small` }, 'The SQL and the joins appear after your guess.')); sql.textContent = 'SELECT … FROM car …'; return; }
+    if (!answered) {
+      sql.innerHTML = codeBlock(['SELECT … FROM car …']);
+      facts.replaceChildren(h('p', { class: 't-s' }, 'The SQL and the joins appear after your guess.'));
+      return;
+    }
+    const lines = composeSQL(on, distinct).replace(/ (INNER JOIN|WHERE|ORDER BY|LIMIT)/g, '\n$1').replace(/ AND /g, '\n   AND ').split('\n');
+    sql.innerHTML = codeBlock(lines, lines.map((l, i) => (l.startsWith('INNER JOIN') ? i : -1)).filter((i) => i >= 0));
     const nj = joined.size - 1;
-    const skip = [...named];
-    const lines = [
-      h('p', null, h('b', null, `${nj} join${nj === 1 ? '' : 's'}`), `, ${joined.size} table${joined.size === 1 ? '' : 's'} read for one page.`),
-    ];
-    if (skip.length) {
-      lines.push(h('p', null, 'Not joined: ', h('b', null, skip.join(', ')),
-        '. The filter only compares ids, and the id is already a column on the table before it.'));
-    }
+    const out = [h('p', null, h('b', null, `${nj} join${nj === 1 ? '' : 's'}`), `, ${joined.size} table${joined.size === 1 ? '' : 's'} read for one page.`)];
+    if (named.size) out.push(h('p', null, 'Not joined: ', h('b', null, [...named].join(', ')), '. The filter only compares ids, and the id is already a column on the table before it.'));
     if (on.features) {
-      lines.push(distinct
-        ? h('p', { class: `${P}ok` }, 'DISTINCT: a car with both features is one row again, and count() counts it once.')
-        : h('p', { class: `${P}bad` }, 'A car with both features (20 AMT, 21 sunroof) matches two car_features rows, so it appears twice on the page and count() counts it twice.'));
+      out.push(distinct
+        ? h('div', { class: 'wv-note is-good' }, 'DISTINCT: a car with both features is one row again, and count() counts it once.')
+        : h('div', { class: 'wv-note is-bad' }, 'A car with both features (20 AMT, 21 sunroof) matches two car_features rows, so it appears twice on the page and count() counts it twice.'));
     }
-    facts.replaceChildren(...lines);
+    facts.replaceChildren(...out);
   }
   render();
 }
@@ -317,51 +280,44 @@ function initSqlJoins(fig, app) {
 
 const KEY_CARDS = {
   hash: {
-    key: 'car:', type: 'hash', enc: 'hashtable',
-    encNote: 'A hash stays listpack only while it has ≤ 512 fields and every value is ≤ 64 bytes.', bytes: [87, 64],
-    ask: 'car 999 does not exist. What does HMGET return for it?',
+    key: 'car:', type: 'hash', enc: 'hashtable', bytes: [87, 64],
+    encNote: 'A hash stays listpack only while it has ≤ 512 fields and every value is ≤ 64 bytes.',
     rows: [['field', 'value'], ['101', '{"id":101,"price":775000,…}'], ['102', '{"id":102,"price":455000,…}'], ['109', '{"id":109,"price":430000,…}']],
-    cmd: 'HMGET car: 101 102 999',
-    reply: ['1) "{\\"id\\":101,\\"price\\":775000,…}"', '2) "{\\"id\\":102,\\"price\\":455000,…}"', '3) (nil)'],
-    nilLast: true,
+    q: 'Car 999 does not exist. What does HMGET car: 101 102 999 return?',
+    choices: [['nil', 'two values, then nil'], ['err', 'an error'], ['two', 'two values; 999 is skipped']], answer: 'nil',
+    why: 'One reply per field asked for, in the same order. A missing field is nil, so the view must skip it.',
+    reply: ['> HMGET car: 101 102 999', '1) «"{\\"id\\":101,\\"price\\":775000,…}"»', '2) «"{\\"id\\":102,\\"price\\":455000,…}"»', '3) ⟦(nil)⟧'],
   },
   zset: {
     key: 'car:price', type: 'sorted set', enc: 'listpack → skiplist',
     encNote: 'listpack up to 128 members; a real index has thousands of cars, so skiplist.',
-    ask: 'which cars cost ₹4–5 L, and in what order?',
     rows: [['member', 'score'], ['109', '430000'], ['102', '455000'], ['108', '520000'], ['…', '…'], ['105', '1150000']],
-    cmd: 'ZRANGEBYSCORE car:price 400000 500000 WITHSCORES',
-    reply: ['1) "109"', '2) "430000"', '3) "102"', '4) "455000"'],
+    q: 'ZRANGEBYSCORE car:price 400000 500000: which cars come back, in what order?',
+    choices: [['price', '109, then 102'], ['id', '102, then 109'], ['all', 'every car, unsorted']], answer: 'price',
+    why: 'Members come back in score order, and the score is the price: 109 at ₹4.30 L, then 102 at ₹4.55 L.',
+    reply: ['> ZRANGEBYSCORE car:price 400000 500000 WITHSCORES', '1) «"109"»', '2) «"430000"»', '3) «"102"»', '4) «"455000"»'],
   },
 };
 
 function initKeys(fig, app) {
-  root(fig);
   const k = KEY_CARDS[fig.dataset.key || 'hash'];
-  const tbl = h('div', { class: `${P}kv` },
-    ...k.rows.flatMap((r, i) => r.map((c) => h('span', { class: i === 0 ? 'hd' : '' }, c))));
-  const replies = h('div', { class: `${P}kreply`, hidden: true },
-    ...k.reply.map((r, i) => h('div', { class: `${P}tl is-rep${k.nilLast && i === k.reply.length - 1 ? ' is-nil' : ''}` }, r)));
-  const run = h('button', { class: `${P}btn ${P}run`, type: 'button', onclick: () => { replies.hidden = false; run.disabled = true; run.textContent = 'ran'; } }, 'Run ▸');
-  const extra = [];
+  const [hd, ...body] = k.rows;
+  const tbl = h('table', { class: 'wv-table' }, h('thead', null, h('tr', null, ...hd.map((c) => h('th', null, c)))),
+    h('tbody', null, ...body.map((r) => h('tr', null, ...r.map((c) => h('td', { class: 'c-data' }, c))))));
+  const parts = [
+    h('p', null, h('b', { class: 'c-data' }, k.key), ` · ${k.type} · encoding: ${k.enc}`),
+    h('div', { class: `${P}data` }, tbl),
+  ];
   if (k.bytes) {
-    // one value against the listpack limit
     const [n, lim] = k.bytes;
-    extra.push(h('div', { class: `${P}bytes`, style: `--v:${n};--lim:${lim}` },
-      h('div', { class: `${P}bbar` }, h('i'), h('span', { class: `${P}blim` }, `${lim} B limit`)),
-      h('span', null, h('b', { class: `${P}data` }, `${n} B`), ` one value (car 101) · over the limit, so ${k.enc}`)));
+    parts.push(h('div', { class: `${P}bytes`, style: `--v:${n};--lim:${lim}` },
+      h('div', { class: `${P}bbar` }, h('i'), h('span', { class: `${P}blim t-xs` }, `${lim} B limit`)),
+      h('p', { class: 't-s' }, h('b', { class: 'c-data' }, `${n} B`), ` one value (car 101): over the limit, so ${k.enc}`)));
   }
-  app.append(h('div', { class: `${P}kcard` },
-    h('div', { class: `${P}khead` }, h('b', { class: `${P}kname` }, k.key), h('span', { class: `${P}ktype` }, k.type), h('span', { class: `${P}kenc` }, `encoding: ${k.enc}`)),
-    tbl, ...extra,
-    h('p', { class: `${P}knote` }, k.encNote),
-    h('p', { class: `${P}kq` }, h('b', null, 'Guess: '), k.ask),
-    h('div', { class: `${P}term ${P}kterm` },
-      h('div', { class: `${P}tl is-cmd` }, h('span', { class: `${P}pr` }, '> '), k.cmd, ' ', run),
-      replies)));
+  parts.push(h('p', { class: 't-s' }, k.encNote));
+  const q = ask(k.q, k.choices, k.answer, () => `${k.why}${codeBlock(k.reply)}`);
+  app.append(...parts, q.el, colorKey([['k-data', 'keys and values'], ['k-safe', 'right guess'], ['k-gap', 'nil, wrong guess'], ['k-opt', 'your answer']]));
 }
-
-/* ========================================================= RECO ORDER */
 
 const RECO_KEY = 'page:reco:921f36dad9ad8b977d'; // sha1("city_id=1")[:18]
 const RECO_IDS = [101, 102, 103, 104, 105, 107, 108, 109, 111];
@@ -378,72 +334,54 @@ const SCORES = {
 const BUYERS = [['A', 'Buyer A', 'browsed SUVs'], ['B', 'Buyer B', 'browsed hatchbacks']];
 const PAGE = 3;
 
+
 function initReco(fig, app) {
-  root(fig);
   let model = 'v1';
   let groups = 50;
-  let guessed = false;
-  const writes = h('span', { class: `${P}writes` });
-  const setBox = h('div', { class: `${P}rset` },
-    h('div', { class: `${P}rsethead` }, h('b', { class: `${P}kname` }, RECO_KEY), h('span', { class: `${P}ktype` }, 'set · 9 ids'), h('span', { class: `${P}kenc` }, 'intset: no order, no scores'), writes),
-    h('div', { class: `${P}rids` }, ...RECO_IDS.map((id) => h('i', null, String(id)))));
+  let answered = false;
+  const writes = h('span', { class: 'c-safe t-b' });
+  const setBox = h('div', { class: `wv-card is-data ${P}rest` },
+    h('p', null, h('b', { class: 'c-data' }, RECO_KEY), ' · set · 9 ids · intset: no order, no scores ', writes),
+    h('div', { class: `${P}ids` }, ...RECO_IDS.map((id) => h('i', null, String(id)))));
 
   const lanes = BUYERS.map(([b, name, what]) => {
     const row = h('div', { class: `${P}lane` });
-    const chips = {};
+    const cells = {};
     for (const id of RECO_IDS) {
-      const sc = h('small');
-      const el = h('div', { class: `${P}rc`, title: `${CAR[id].model} ${CAR[id].variant}, ${CAR[id].body}` }, h('b', null, String(id)), h('span', null, CAR[id].model), sc);
-      chips[id] = { el, sc };
+      const sc = h('span', { class: 't-xs' });
+      const el = h('div', { class: `${P}rc`, title: `${CAR[id].model} ${CAR[id].variant}, ${CAR[id].body}` },
+        h('b', null, String(id)), h('span', { class: 't-xs' }, CAR[id].model), sc);
+      cells[id] = { el, sc };
       row.append(el);
     }
-    const el = h('div', { class: `${P}lanebox` }, h('div', { class: `${P}lanehead` }, h('b', null, name), ` · ${what}`, h('span', { class: `${P}pg1` }, 'first 3 = page 1')), row);
-    return { b, el, row, chips };
+    return { b, row, cells, el: h('div', { class: `wv-card ${P}lanebox` }, h('p', null, h('b', null, name), ` · ${what} · `, h('span', { class: 'c-look' }, 'first 3 = page 1')), row) };
   });
 
-  const ask = h('div', { class: `${P}ask` });
-  const modelSeg = segBtns([['v1', 'model 10:00'], ['v2', 'model 10:45 · retrained']], () => model, (v) => { model = v; render(); });
-  const modelRow = h('div', { class: `${P}ctl`, hidden: true }, h('span', { class: `${P}lab` }, 'Model in the web server'), modelSeg.el);
-  function askView() {
-    ask.replaceChildren(
-      h('p', null, h('b', null, 'Guess first. '), 'At 10:45 the model is retrained, and both buyers get a new order. How many Valkey keys must be rewritten?'),
-      h('div', { class: `${P}seg` }, ...[['0', 0], ['1', 1], ['one per buyer', 2]].map(([l, v]) => h('button', { class: `${P}btn`, type: 'button', onclick: () => guess(v) }, l))));
-  }
-  function guess(v) {
-    guessed = true;
-    ask.replaceChildren(h('p', null, h('b', { class: v === 0 ? `${P}good` : `${P}look` }, v === 0 ? 'Right: 0. ' : 'Zero. '),
-      'The set holds members only. The order is computed in the web server on each request, so a retrain changes the lanes below and writes nothing to Valkey.'));
-    modelRow.hidden = false;
-    model = 'v2';
-    modelSeg.sync();
-    render();
-  }
+  const modelPick = chips([['v1', 'model 10:00'], ['v2', 'model 10:45 · retrained']], (v) => { model = v; render(); }, { value: model, label: 'Model version' });
+  const modelRow = h('div', { hidden: true }, label('Model in the web server'), modelPick.el);
+  const q = ask('At 10:45 the model is retrained, and both buyers get a new order. How many Valkey keys must be rewritten?',
+    [[0, '0'], [1, '1'], [2, 'one per buyer']], 0,
+    () => {
+      answered = true; model = 'v2'; modelPick.set('v2'); modelRow.hidden = false; setTimeout(render);
+      return '<b>0.</b> The set holds members only. The web server computes the order on each request, so a retrain changes the rows below and writes nothing to Valkey.';
+    });
+  const code = h('div');
+  const cmp = h('div', { class: 'wv-cards' });
+  const slider = range('Buyer groups', { min: 1, max: 500, value: groups, fmt: fmt, oninput: (v) => { groups = v; renderCmp(); } });
 
-  const code = h('details', { class: `${P}det` }, h('summary', null, 'The code for one request'), h('pre', { class: `${P}code` }));
-  const slider = h('input', { type: 'range', min: 1, max: 500, step: 1, value: groups, 'aria-label': 'Buyer groups' });
-  const out = h('output');
-  const cmp = h('div', { class: `${P}cmp` });
-  slider.addEventListener('input', () => { groups = +slider.value; renderCmp(); });
-
-  askView();
-  app.append(
-    ask, modelRow, setBox,
-    h('div', { class: `${P}fan`, 'aria-hidden': 'true' }, 'SMEMBERS, then LightFM scores each id for this buyer'),
+  app.append(q.el, modelRow, setBox,
+    h('p', { class: `t-s ${P}fan` }, '↓ SMEMBERS, then LightFM scores each id for this buyer'),
     ...lanes.map((l) => l.el),
-    code,
-    h('div', { class: `${P}range` }, h('label', null, 'The other way: store one sorted set per buyer group. Groups'), slider, out),
-    cmp,
-    colorKey([['k-data', 'car ids'], ['k-look', 'page 1 for this buyer'], ['k-pick', 'what we store'], ['k-gap', 'cost of the other way'], ['k-opt', 'answers and controls']]),
-  );
+    h('details', null, h('summary', null, 'The code for one request'), code),
+    h('div', { class: `${P}gap` }, label('The other way: one stored order per buyer group')), slider.el, cmp,
+    colorKey([['k-data', 'car ids'], ['k-look', 'page 1 for this buyer'], ['k-pick', 'what we store'], ['k-gap', 'cost of the other way'], ['k-opt', 'answers and controls']]));
 
   function renderCmp() {
-    out.textContent = fmt(groups);
     const n = RECO_IDS.length;
     cmp.replaceChildren(
-      h('div', { class: `${P}alt is-pick` }, h('b', null, 'One unordered set'), h('span', null, `1 key · ${n} ids`), h('span', { class: `${P}good` }, '0 writes per retrain')),
-      h('div', { class: `${P}alt is-cost` }, h('b', null, 'One sorted set per buyer group'), h('span', null, `${fmt(groups)} keys · ${fmt(groups * n)} ids`),
-        h('span', { class: `${P}bad` }, `${fmt(groups)} rewrites per retrain · ${fmt(groups * 32)} a day`)),
-    );
+      h('div', { class: 'wv-card is-pick' }, h('h5', null, 'One unordered set'), h('p', null, `1 key · ${n} ids`), h('p', { class: 'c-safe' }, '0 writes per retrain')),
+      h('div', { class: 'wv-card is-bad' }, h('h5', null, 'One sorted set per buyer group'), h('p', null, `${fmt(groups)} keys · ${fmt(groups * n)} ids`),
+        h('p', { class: 'c-bad' }, `${fmt(groups)} rewrites per retrain · ${fmt(groups * 32)} a day`)));
   }
 
   let first = true;
@@ -452,37 +390,35 @@ function initReco(fig, app) {
       const sc = SCORES[l.b][model];
       const ranked = [...RECO_IDS].sort((a, b) => sc[b] - sc[a]);
       const before = {};
-      if (!first) for (const id of RECO_IDS) { const r = l.chips[id].el.getBoundingClientRect(); before[id] = [r.left, r.top]; }
+      if (!first) for (const id of RECO_IDS) { const r = l.cells[id].el.getBoundingClientRect(); before[id] = [r.left, r.top]; }
       ranked.forEach((id, k) => {
-        const c = l.chips[id];
+        const c = l.cells[id];
         l.row.append(c.el);
         c.el.classList.toggle('is-page', k < PAGE);
         c.sc.textContent = sc[id].toFixed(2);
       });
       if (!first && !REDUCED) {
         for (const id of RECO_IDS) {
-          const r = l.chips[id].el.getBoundingClientRect();
+          const r = l.cells[id].el.getBoundingClientRect();
           const dx = before[id][0] - r.left; const dy = before[id][1] - r.top;
-          if (Math.abs(dx) + Math.abs(dy) > 1) l.chips[id].el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 550, easing: 'cubic-bezier(.3,.7,.3,1)' });
+          if (Math.abs(dx) + Math.abs(dy) > 1) l.cells[id].el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 550, easing: 'cubic-bezier(.3,.7,.3,1)' });
         }
       }
     }
     first = false;
     const pa = [...RECO_IDS].sort((a, b) => SCORES.A[model][b] - SCORES.A[model][a]).slice(0, PAGE);
-    code.querySelector('pre').textContent = [
+    code.innerHTML = codeBlock([
       `ids = r.smembers("${RECO_KEY}")      # same 9 ids for everyone`,
       'scores = model.predict(user_idx, item_idx(ids))   # LightFM, in process',
       'ranked = [i for _, i in sorted(zip(scores, ids), reverse=True)]',
-      `r.hmget("car:", *ranked[0:3])        # buyer A: ${pa.join(', ')}`,
-    ].join('\n');
-    writes.textContent = guessed && model === 'v2' ? 'retrained: 0 writes' : '';
-    writes.classList.toggle('is-flash', guessed && model === 'v2');
+      `r.hmget("car:", *ranked[0:3])        # buyer A: «${pa.join(', ')}»`,
+    ], [1]);
+    writes.textContent = answered && model === 'v2' ? '· retrained: 0 writes' : '';
     renderCmp();
   }
   render();
 }
 
-/* ==================================================== LISTING REQUEST */
 
 // Terminal lines: [kind, text]. kind: c = command, r = reply, n = nil/miss,
 // q = queued (not sent yet), m = comment.
@@ -550,7 +486,7 @@ const STEPS = [
     title: 'Car 111 is sold',
     text: 'The change-log consumer removes 111 from the hash and from every index. The stored result is not an index, and it still holds 111 until its TTL ends.',
     term: [['m', '# change log: car 111 status → sold'], ['c', 'HDEL car: 111'], ['r', '(integer) 1'], ['c', 'ZREM car:price 111'], ['r', '(integer) 1'], ['c', 'ZREM car:city 111 · car:make 111 · car:feature:20 111'], ['r', '(integer) 1 · 1 · 1']],
-    phone: 'same', strip: { read: 4, res: 'ttl', ttl: 500, sold: true }, tone: 'bad', dim: ['phone'],
+    phone: [104, 101], count: 5, pageNo: 2, strip: { read: 4, res: 'ttl', ttl: 500, sold: true }, tone: 'bad', dim: ['phone'],
   },
   {
     label: 'Stale id', who: 'request 3', rt: 2, cmds: 3,
@@ -562,143 +498,113 @@ const STEPS = [
   },
 ];
 
+
+function termLines(term) {
+  const lines = []; const hot = [];
+  for (const [k, t] of term) {
+    if (k === 'c') lines.push(`> ${t}`);
+    else if (k === 'q') { hot.push(lines.length); lines.push(`+ ${t}`); }
+    else if (k === 'r') lines.push(`  «${t}»`);
+    else if (k === 'n') lines.push(`  ⟦${t}⟧`);
+    else lines.push(`// ${t.replace(/^# /, '')}`);
+  }
+  return codeBlock(lines, hot);
+}
+
 function initListing(fig, app) {
-  root(fig);
-  let cur = -1;
+  let cur = 0;
   let weights = true;
-  let lastPhone = null;
-
-  const stops = STEPS.map((st, k) => h('button', { class: `${P}stop`, type: 'button', onclick: () => go(k), 'aria-label': `Step ${k + 1}: ${st.label}` },
-    h('span', { class: `${P}dot` }, String(k + 1)), h('span', { class: `${P}sl2` }, st.label)));
-  const back = h('button', { class: `${P}btn ${P}nav`, type: 'button', onclick: () => go(cur - 1), 'aria-label': 'Previous step' }, '←');
-  const next = h('button', { class: `${P}btn ${P}nav`, type: 'button', onclick: () => go(cur + 1), 'aria-label': 'Next step' }, '→');
-  const route = h('div', { class: `${P}route` }, back, h('div', { class: `${P}stops`, role: 'group', 'aria-label': 'Steps' }, ...stops), next);
-
-  const head = h('div', { class: `${P}step`, 'aria-live': 'polite' });
-  const phone = h('div', { class: `${P}phone ${P}lphone` });
-  const term = h('div', { class: `${P}term ${P}lterm` });
+  const answers = {};
+  const asks = {};
+  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const shot = h('div');
+  const term = h('div');
   const meter = h('div', { class: `${P}meter` });
   const stripBox = h('div', { class: `${P}lstrip` });
-
-  app.append(route, head,
-    h('div', { class: `${P}lgrid` }, phone, h('div', { class: `${P}lright` }, term, meter)),
+  const stp = stepper(fig, STEPS, (i) => { cur = i; render(); });
+  holdArrows(fig);
+  const askBox = h('div');
+  app.append(stp.el, note, askBox,
+    h('div', { class: `${P}lgrid` }, shot, h('div', null, label('valkey-cli'), term, meter)),
     stripBox,
-    colorKey([['k-data', 'car ids, replies'], ['k-look', 'this step, the result'], ['k-safe', 'hit, fewer round trips'], ['k-gap', 'miss, stale id'], ['k-opt', 'switch scores']]));
-  keyHold(fig)((d) => go(cur + d));
+    colorKey([['k-data', 'car ids, replies'], ['k-look', 'this step, the result'], ['k-safe', 'hit, fewer round trips'], ['k-gap', 'miss, stale id'], ['k-opt', 'answers, score switch']]));
 
-  function renderPhone(st) {
-    let ids = st.phone;
-    if (ids === 'same') ids = lastPhone;
-    else lastPhone = ids;
+  function renderShot(st, ids) {
     const url = st.url || STEPS.slice(0, cur + 1).reverse().find((x) => x.url).url;
-    const kids = [
-      h('div', { class: `${P}pbar` }, st.cdc ? 'car.com · no request' : 'car.com'),
-      h('div', { class: `${P}purl` }, `/listing/?${url}`),
-      h('div', { class: `${P}pchips` }, ...['Mumbai', '₹4–8 L', 'Tata, Hyundai', 'AMT', 'price ↑'].map((t) => h('span', null, t))),
-    ];
-    if (ids === 'loading' || !ids) {
-      kids.push(h('div', { class: `${P}pmeta` }, 'loading…'), h('div', { class: `${P}pskel` }), h('div', { class: `${P}pskel` }), h('div', { class: `${P}pskel` }));
+    const kids = [h('p', { class: `t-xs c-data ${P}url` }, `/listing/?${url}`)];
+    if (!ids || ids === 'loading') {
+      kids.push(h('p', { class: 't-s' }, st.cdc ? 'no request from the buyer' : 'loading…'));
     } else {
-      kids.push(h('div', { class: `${P}pmeta${st.stale ? ` ${P}bad` : ''}` }, `${st.count} cars · page ${st.pageNo} of 2${st.stale ? ' · shows 2' : ''}`));
+      kids.push(h('b', { class: st.stale ? 'c-bad' : '' }, `${st.count} cars · page ${st.pageNo} of 2${st.stale ? ' · shows 2' : ''}`));
       for (const id of ids) {
-        const c = CAR[id];
-        if (st.stale && id === 111) { kids.push(h('div', { class: `${P}pcard is-nil` }, h('b', null, '111 · nil'), h('span', null, 'sold; skipped'))); continue; }
-        kids.push(h('div', { class: `${P}pcard` }, h('b', null, `${c.model} ${c.variant}`), h('span', null, `${lakh(c.price)} · ${CITY[c.city]} · #${c.id}`)));
+        if (st.stale && id === 111) kids.push(h('div', { class: `wv-card is-bad ${P}car` }, h('b', null, '111 · nil'), h('span', { class: 't-s' }, 'sold; skipped')));
+        else kids.push(carCard(CAR[id], ` · ${CITY[CAR[id].city]}`));
       }
     }
-    phone.classList.toggle('is-idle', !!st.cdc);
-    phone.replaceChildren(...kids);
+    const el = screen(kids);
+    el.classList.toggle(`${P}dim`, !!st.dimShot);
+    shot.replaceChildren(el);
   }
 
   function renderStrip(st) {
     const { read, res, ttl, sold } = st.strip;
     const rows = ROWS.map((r) => ({ ...r }));
-    let resLabel = 'not cached';
-    if (res === 'new' || res === 'ttl') resLabel = `zset · TTL ${ttl || 600} s`;
-    rows.push({ id: 'res', key: 'page:price:6d53…', f: resLabel });
-    const idx = cur;
-    const g = strip({
-      rows, cols: CARS,
-      rowCls: (r) => (r.id === 'res' ? `is-res${res === 'nil' ? ' is-miss' : ''}` : (idx === 2 ? 'is-read' : '')),
-      cell: (r, c) => {
-        if (r.id === 'res') {
-          if (!res || res === 'nil') return ['', ''];
-          if (!RES_IDS.has(c.id)) return ['', ''];
-          if (sold && c.id === 111) return ['is-stale', '', '111 is still in the stored result'];
-          return ['is-look', ''];
-        }
-        if (sold && c.id === 111 && r.test(c)) return ['is-gone', '', 'removed by ZREM'];
-        const on = read > 0 && r.test(c);
-        return [on ? 'is-in' : '', ''];
-      },
-    });
-    const kids = [h('div', { class: `${P}lab` }, idx <= 1 ? 'Valkey: the four filters (not read yet) and the result key' : 'Valkey: the cars each filter selects, and the stored result'), g];
+    rows.push({ id: 'res', key: 'page:price:6d53…', f: res === 'new' || res === 'ttl' ? `zset · TTL ${ttl || 600} s` : 'not cached' });
+    const kids = [label(cur <= 1 ? 'Valkey: the four filters (not read yet) and the result key' : 'Valkey: the cars each filter selects, and the stored result'),
+      strip({
+        rows, cols: CARS,
+        rowCls: (r) => (r.id === 'res' ? `is-res${res === 'nil' ? ' is-miss' : ''}` : ''),
+        cell: (r, c) => {
+          if (r.id === 'res') {
+            if (!res || res === 'nil' || !RES_IDS.has(c.id)) return '';
+            return sold && c.id === 111 ? ['is-stale', '111 is still in the stored result'] : 'is-look';
+          }
+          if (sold && c.id === 111 && r.test(c)) return ['is-gone', 'removed by ZREM'];
+          return read > 0 && r.test(c) ? 'is-in' : '';
+        },
+      })];
     if (st.weights) {
-      const sw = segBtns([[true, 'WEIGHTS 1 0 0 0'], [false, 'default: SUM']], () => weights, (v) => { weights = v; render(); });
       const sc = (c) => (weights ? c.price : c.price + c.city + c.make + 1);
       const order = [...RESULT].sort((a, b) => sc(a) - sc(b));
-      kids.push(h('div', { class: `${P}ctl` }, h('span', { class: `${P}lab` }, 'Scores in the result'), sw.el),
-        h('div', { class: `${P}scores${weights ? '' : ' is-bad'}` }, ...order.map((c) => h('span', null, h('b', null, String(c.id)), ` ${sc(c)}`))),
-        h('p', { class: `${P}small ${weights ? '' : P + 'bad'}` }, weights
-          ? 'Score = price.'
-          : 'Default AGGREGATE SUM: score = price + city_id + make_id + 1. The order survives here, but the score is no longer the price. In this query only make_id differs (10 or 12), so cars within 2 rupees of each other can change places.'));
+      kids.push(h('div', { class: 'wv-bar' }, h('span', { class: 'c-opt t-s' }, 'Scores in the result'),
+        chips([[true, 'WEIGHTS 1 0 0 0'], [false, 'default: SUM']], (v) => { weights = v; render(); }, { value: weights, label: 'Scores' }).el),
+      h('div', { class: `wv-note ${weights ? 'is-good' : 'is-bad'}` },
+        h('p', null, order.map((c) => `${c.id} → ${sc(c)}`).join(' · ')),
+        h('p', null, weights ? 'Score = price.'
+          : 'Default AGGREGATE SUM: score = price + city_id + make_id + 1. The order survives here, but the score is no longer the price. In this query only make_id differs (10 or 12), so cars within 2 rupees of each other can change places.')));
     }
     stripBox.replaceChildren(...kids);
+    stripBox.classList.toggle(`${P}dim`, !!st.dimStrip);
   }
 
-  const answers = {};
   function render() {
     const st0 = STEPS[cur];
     const pending = st0.ask && !(cur in answers);
-    // Before the reader answers, show the question and hold back the outcome.
-    const st = pending ? { ...st0, phone: 'loading', tone: null, term: st0.term.filter(([k]) => k === 'c'), rt: 0, cmds: 0, strip: st0.strip } : st0;
-    meter.hidden = pending;
-    head.className = `${P}step${st.tone ? ` is-${st.tone}` : ''}`;
-    head.innerHTML = `<div class="${P}who">${st.who}</div><h4>${st.title}</h4>`;
-    if (pending) {
-      head.append(h('div', { class: `${P}ask` }, h('p', null, h('b', null, 'Guess first. '), st0.ask.q),
-        h('div', { class: `${P}seg` }, ...st0.ask.opts.map((o) => h('button', { class: `${P}btn`, type: 'button', onclick: () => { answers[cur] = o; render(); } }, o)))));
-    } else {
-      if (st0.ask) {
-        const ok = answers[cur] === st0.ask.right;
-        head.append(h('p', { class: `${P}verdict` }, h('b', { class: ok ? `${P}good` : `${P}look` }, ok ? `Right: ${st0.ask.right}. ` : `${st0.ask.right}, not ${answers[cur]}. `), st0.ask.why));
-      }
-      const p = h('p'); p.innerHTML = st.text; head.append(p);
-    }
+    const st = pending ? { ...st0, tone: null, term: st0.term.filter(([k]) => k === 'c'), rt: 0, cmds: 0 } : st0;
+    note.className = `wv-note${st.tone ? ` is-${st.tone}` : ''}`;
+    note.replaceChildren(h('span', { class: 'k' }, st.who), h('b', null, st.title));
+    if (!pending) { const p = h('p'); p.innerHTML = st.text; note.append(p); }
+    if (st0.ask) {
+      asks[cur] ??= ask(`Guess first. ${st0.ask.q}`, st0.ask.opts.map((o) => [o, o]), st0.ask.right, (v) => {
+        answers[cur] = v; setTimeout(render); return st0.ask.why;
+      }).el;
+      askBox.replaceChildren(asks[cur]);
+    } else askBox.replaceChildren();
     const dim = pending ? ['strip'] : (st.dim || []);
-    phone.classList.toggle('is-dim', dim.includes('phone'));
-    stripBox.classList.toggle('is-dim', dim.includes('strip'));
-    renderPhone(st);
-    term.replaceChildren(h('div', { class: `${P}thead` }, st.cdc ? 'valkey-cli · change-log consumer' : 'valkey-cli · web server'),
-      ...st.term.map(([k, t]) => h('div', { class: `${P}tl ${{ c: 'is-cmd', r: 'is-rep', n: 'is-nil', q: 'is-q', m: 'is-cm' }[k]}` },
-        k === 'c' || k === 'q' ? h('span', { class: `${P}pr` }, k === 'q' ? '+ ' : '> ') : null, t)));
+    renderShot({ ...st, dimShot: dim.includes('phone') }, pending ? 'loading' : st.phone);
+    term.innerHTML = termLines(st.term);
     const hit = st.tone === 'good';
+    meter.hidden = pending;
     meter.replaceChildren(...[
-      h('span', { class: `${P}lab` }, st.who),
       h('span', { class: `${P}trips`, title: 'filled: round trips used; hollow: extra round trips if each command were sent alone' },
-        ...Array.from({ length: st.cmds }, (_, i) => h('i', { class: i < st.rt ? `is-rt${hit ? ' is-hit' : ''}` : 'is-extra' }))),
-      h('span', null, h('b', { class: hit ? `${P}good` : '' }, String(st.rt)), ` round trip${st.rt === 1 ? '' : 's'} · `, h('b', null, String(st.cmds)), ' commands',
-        st.queued ? h('span', { class: `${P}q` }, ` + ${st.queued} queued`) : null),
-      st.cmds > st.rt ? h('span', { class: `${P}small` }, `hollow: ${st.cmds - st.rt} more round trip${st.cmds - st.rt === 1 ? '' : 's'} if each command were sent alone`) : null].filter(Boolean));
-    renderStrip(st);
+        ...Array.from({ length: st.cmds }, (_, i) => h('i', { class: i < st.rt ? `is-rt${hit ? ' is-hit' : ''}` : '' }))),
+      h('span', null, h('b', { class: hit ? 'c-safe' : '' }, String(st.rt)), ` round trip${st.rt === 1 ? '' : 's'} · `, h('b', null, String(st.cmds)), ' commands',
+        st.queued ? h('span', { class: 'c-look' }, ` + ${st.queued} queued`) : null),
+      st.cmds > st.rt ? h('p', { class: 't-s' }, `hollow: ${st.cmds - st.rt} more round trip${st.cmds - st.rt === 1 ? '' : 's'} if each command were sent alone`) : null,
+    ].filter(Boolean));
+    renderStrip({ ...st, dimStrip: dim.includes('strip') });
   }
-
-  function go(n) {
-    n = Math.max(0, Math.min(STEPS.length - 1, n));
-    if (n === cur) return;
-    cur = n;
-    stops.forEach((b, k) => {
-      b.classList.toggle('is-past', k < cur);
-      if (k === cur) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
-    });
-    back.disabled = cur === 0;
-    next.disabled = cur === STEPS.length - 1;
-    const sr = stops[cur].parentElement;
-    const br = stops[cur].getBoundingClientRect(); const pr = sr.getBoundingClientRect();
-    if (br.left < pr.left || br.right > pr.right) sr.scrollLeft += br.left - pr.left - pr.width / 3;
-    render();
-  }
-  go(0);
+  stp.go(0);
 }
 
 register({ 'filter-sets': initFilterSets, 'sql-joins': initSqlJoins, keys: initKeys, 'reco-order': initReco, 'listing-request': initListing });

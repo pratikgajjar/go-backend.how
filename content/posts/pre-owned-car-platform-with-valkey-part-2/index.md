@@ -117,7 +117,7 @@ tables a filter needs: `city_id` is already a column on `locality`, and
 `make_id` a column on `model`, so `city` and `make` are never joined. Guess
 the joins for one filter, then switch the others on:
 
-{{< viz kind="sql-joins" fig="1" title="What each filter joins" frame="none" fallback="sql-joins.svg" alt="The car schema as a graph of tables; switching filters on shows which tables Django joins and the SQL it generates" caption="SQL from Django 6.1 and django-filter 26.1 with this post's filter set (SQLite backend, quotes removed). `features` joins the through table, so a car with two of the requested features comes back twice until you add `.distinct()`." >}}
+{{< viz kind="sql-joins" fig="1" title="What each filter joins" fallback="sql-joins.svg" alt="The car schema as a graph of tables; switching filters on shows which tables Django joins and the SQL it generates" caption="SQL from Django 6.1 and django-filter 26.1 with this post's filter set (SQLite backend, quotes removed). `features` joins the through table, so a car with two of the requested features comes back twice until you add `.distinct()`." >}}
 
 The response carries one page of cars and the total count:
 
@@ -204,7 +204,7 @@ Each filter value picks a set of car ids: the cars in Mumbai, the cars priced
 asked for, which is an intersection. A filter with several values, such as
 `make=10,12`, is a union. Try it:
 
-{{< viz kind="filter-sets" fig="2" title="Filters are sets" frame="none" fallback="filter-sets.svg" alt="A listing request's four filters drawn as rows of car ids; the cars filled in every row are the page, served from Valkey while the SQL database stays off the read path" caption="Sample data: 12 cars. Each filter you switch on is one sorted set in Valkey, one row here. A car is on the page when its column is full in every row." >}}
+{{< viz kind="filter-sets" fig="2" title="Filters are sets" fallback="filter-sets.svg" alt="A listing request's four filters drawn as rows of car ids; the cars filled in every row are the page, served from Valkey while the SQL database stays off the read path" caption="Sample data: 12 cars. Each filter you switch on is one sorted set in Valkey, one row here. A car is on the page when its column is full in every row." >}}
 
 Valkey[^1] keeps these sets in memory as sorted sets, one per filter
 attribute, with the attribute as the score. A range filter is then a range
@@ -244,7 +244,7 @@ less memory than one string key per car. The large savings in
 come from many small hashes with short values; the setting it names,
 `hash-zipmap-max-entries`, is now called `hash-max-listpack-entries`.
 
-{{< viz kind="keys" key="hash" title="The car: hash" frame="none" wide="false" fallback="keys.svg" alt="The car: hash maps car ids to listing JSON; HMGET returns one value per id and nil for a missing id" caption="Sample values. Encodings and replies from Valkey 9.1." >}}
+{{< viz kind="keys" key="hash" title="The car: hash" wide="false" fallback="keys.svg" alt="The car: hash maps car ids to listing JSON; HMGET returns one value per id and nil for a missing id" caption="Sample values. Encodings and replies from Valkey 9.1." >}}
 
 ## `car:<attribute>` holds the indexes
 
@@ -252,7 +252,7 @@ One sorted set per filter attribute. The members are car ids, and the score is
 the attribute: `car:price` scores by price, `car:city` by city id, `car:make`
 by make id. Each set holds every live car, so it has thousands of members.
 
-{{< viz kind="keys" key="zset" title="The car:price index" frame="none" wide="false" fallback="keys.svg" alt="The car:price sorted set maps car ids to prices; ZRANGEBYSCORE returns the cars in a price range" caption="Sample values. Encodings and replies from Valkey 9.1." >}}
+{{< viz kind="keys" key="zset" title="The car:price index" wide="false" fallback="keys.svg" alt="The car:price sorted set maps car ids to prices; ZRANGEBYSCORE returns the cars in a price range" caption="Sample values. Encodings and replies from Valkey 9.1." >}}
 
 ## Keeping them fresh
 
@@ -316,7 +316,7 @@ operations of a miss in one pipeline.
 The figure follows one request over 12 sample cars: a miss, a hit for page 2,
 and what a sale does to a stored result.
 
-{{< viz kind="listing-request" fig="3" title="One listing request through Valkey" frame="none" fallback="listing-request.svg" alt="A listing request is turned into a canonical key; on a miss, four index sets are intersected and stored with a TTL; page 2 is a hit; a sold car leaves a stale id in the stored result" caption="Sample data. The commands are one way to build the result on the server; every reply shown came from running them on Valkey 9.1 with this data. The key is `sha1` of the canonical query, first 18 hex digits. Use ← and → to step." >}}
+{{< viz kind="listing-request" fig="3" title="One listing request through Valkey" fallback="listing-request.svg" alt="A listing request is turned into a canonical key; on a miss, four index sets are intersected and stored with a TTL; page 2 is a hit; a sold car leaves a stale id in the stored result" caption="Sample data. The commands are one way to build the result on the server; every reply shown came from running them on Valkey 9.1 with this data. The key is `sha1` of the canonical query, first 18 hex digits. Use ← and → to step." >}}
 
 # Personalised order
 
@@ -337,7 +337,7 @@ rewritten after every retrain. The set is one key per query, and a retrain
 writes nothing to Valkey. The cost moves to the web server, which scores every
 id in the set on each request.
 
-{{< viz kind="reco-order" fig="4" title="One set, ranked per buyer" frame="none" fallback="reco-order.svg" alt="One unordered set of nine car ids in Valkey, ranked differently for two buyers and two model versions by LightFM in the web server" caption="Sample scores. The set in Valkey is the same for both buyers and both model versions; only the order in the web server changes. At one retrain every 45 minutes, a day has 32 retrains." >}}
+{{< viz kind="reco-order" fig="4" title="One set, ranked per buyer" fallback="reco-order.svg" alt="One unordered set of nine car ids in Valkey, ranked differently for two buyers and two model versions by LightFM in the web server" caption="Sample scores. The set in Valkey is the same for both buyers and both model versions; only the order in the web server changes. At one retrain every 45 minutes, a day has 32 retrains." >}}
 
 # Where this hurts
 

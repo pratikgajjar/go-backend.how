@@ -1,94 +1,94 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" width="960" height="330" font-family="ui-monospace, 'JetBrains Mono', Menlo, monospace" font-size="13">
 <title>Four filters as rows of car ids; the cars filled in every row are the page</title>
-<rect width="960" height="330" rx="16" fill="#fdf9f7" stroke="#cbbfbb"/>
-<text x="24" y="38" font-weight="800" fill="#1b1210">GET /listing/?</text>
-<rect x="150" y="23" width="126" height="22" rx="11" fill="#f6e3ce" stroke="#6c4122"/><text x="213" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">city_id=1</text><rect x="284" y="23" width="126" height="22" rx="11" fill="#f6e3ce" stroke="#6c4122"/><text x="347" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">price_min=400000</text><rect x="418" y="23" width="126" height="22" rx="11" fill="#f6e3ce" stroke="#6c4122"/><text x="481" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">price_max=800000</text><rect x="552" y="23" width="126" height="22" rx="11" fill="#f6e3ce" stroke="#6c4122"/><text x="615" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">make=10,12</text><rect x="686" y="23" width="126" height="22" rx="11" fill="#f6e3ce" stroke="#6c4122"/><text x="749" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">features=20</text>
-<text x="24" y="78" font-size="10" fill="#5a4f4c">cars 101–112</text>
-<text x="187.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">01</text>
-<text x="217.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">02</text>
-<text x="247.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">03</text>
-<text x="277.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">04</text>
-<text x="307.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">05</text>
-<text x="337.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">06</text>
-<text x="367.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">07</text>
-<text x="397.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">08</text>
-<text x="427.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">09</text>
-<text x="457.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">10</text>
-<text x="487.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">11</text>
-<text x="517.0" y="78" font-size="10" text-anchor="middle" fill="#5a4f4c">12</text>
-<text x="24" y="98" font-size="11.5" font-weight="700" fill="#6c4122">car:city</text><text x="24" y="111" font-size="10" fill="#5a4f4c">city_id=1</text>
-<rect x="176" y="88" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="206" y="88" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="236" y="88" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="266" y="88" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="296" y="88" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="326" y="88" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="356" y="88" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="386" y="88" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="416" y="88" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="446" y="88" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="476" y="88" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="506" y="88" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<text x="24" y="130" font-size="11.5" font-weight="700" fill="#6c4122">car:price</text><text x="24" y="143" font-size="10" fill="#5a4f4c">price 4–8 L</text>
-<rect x="176" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="206" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="236" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="266" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="296" y="120" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="326" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="356" y="120" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="386" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="416" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="446" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="476" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="506" y="120" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<text x="24" y="162" font-size="11.5" font-weight="700" fill="#6c4122">car:make</text><text x="24" y="175" font-size="10" fill="#5a4f4c">make 10 ∪ 12</text>
-<rect x="176" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="206" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="236" y="152" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="266" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="296" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="326" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="356" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="386" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="416" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="446" y="152" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="476" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="506" y="152" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<text x="24" y="194" font-size="11.5" font-weight="700" fill="#6c4122">car:feature:20</text><text x="24" y="207" font-size="10" fill="#5a4f4c">AMT</text>
-<rect x="176" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="206" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="236" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="266" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="296" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="326" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="356" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="386" y="184" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="416" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="446" y="184" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="476" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<rect x="506" y="184" width="25" height="25" rx="4" fill="#f6e3ce" stroke="#6c4122"/>
-<text x="24" y="232" font-size="11.5" font-weight="700" fill="#6c4122">page:price:6d53…</text><text x="24" y="245" font-size="10" fill="#5a4f4c">all four sets</text>
-<rect x="176" y="222" width="25" height="25" rx="4" fill="#7024ab" stroke="#7024ab"/>
-<rect x="206" y="222" width="25" height="25" rx="4" fill="#7024ab" stroke="#7024ab"/>
-<rect x="236" y="222" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="266" y="222" width="25" height="25" rx="4" fill="#7024ab" stroke="#7024ab"/>
-<rect x="296" y="222" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="326" y="222" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="356" y="222" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="386" y="222" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="416" y="222" width="25" height="25" rx="4" fill="#7024ab" stroke="#7024ab"/>
-<rect x="446" y="222" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="476" y="222" width="25" height="25" rx="4" fill="#7024ab" stroke="#7024ab"/>
-<rect x="506" y="222" width="25" height="25" rx="4" fill="none" stroke="#cbbfbb" stroke-dasharray="3 3"/>
-<rect x="720" y="66" width="216" height="206" rx="22" fill="#fdf9f7" stroke="#1b1210" stroke-width="2"/>
-<text x="828" y="86" font-size="10.5" text-anchor="middle" fill="#5a4f4c">car.com</text>
-<text x="734" y="108" font-size="11" font-weight="700" fill="#1b1210">5 cars · price ↑</text>
-<rect x="734" y="118" width="188" height="38" rx="10" fill="#f5efec" stroke="#cbbfbb"/><text x="744" y="134" font-size="12" font-weight="700" fill="#1b1210">Grand i10 Sportz</text><text x="744" y="149" font-size="10.5" font-weight="700" fill="#6c4122">₹4.30 L · #109</text><rect x="734" y="162" width="188" height="38" rx="10" fill="#f5efec" stroke="#cbbfbb"/><text x="744" y="178" font-size="12" font-weight="700" fill="#1b1210">Tiago XZ</text><text x="744" y="193" font-size="10.5" font-weight="700" fill="#6c4122">₹4.55 L · #102</text><rect x="734" y="206" width="188" height="38" rx="10" fill="#f5efec" stroke="#cbbfbb"/><text x="744" y="222" font-size="12" font-weight="700" fill="#1b1210">Nexon XZ+</text><text x="744" y="237" font-size="10.5" font-weight="700" fill="#6c4122">₹6.90 L · #111</text>
-<text x="734" y="264" font-size="11" fill="#1b1210">page 1 of 2</text>
-<rect x="24" y="282" width="210" height="36" rx="10" fill="none" stroke="#1b1210" stroke-width="1.4"/>
-<text x="36" y="298" font-size="12" font-weight="800" fill="#1b1210">SQL database</text><text x="36" y="312" font-size="10.5" fill="#5a4f4c">writes; change log to Valkey</text>
-<text x="250" y="305" font-size="12" fill="#5a4f4c">not on the listing read path</text>
-<rect x="560" y="296" width="16" height="10" rx="2" fill="#f6e3ce" stroke="#6c4122"/><text x="582" y="305" font-size="11" fill="#1b1210">car id in the set</text>
-<rect x="720" y="296" width="16" height="10" rx="2" fill="#7024ab"/><text x="742" y="305" font-size="11" fill="#1b1210">in every set: the page</text>
+<rect width="960" height="330" fill="#fbfaf7" stroke="#0a0d12" stroke-width="1.5"/>
+<text x="24" y="38" font-weight="800" fill="#0a0d12">GET /listing/?</text>
+<rect x="150" y="23" width="126" height="22" fill="#f6e3ce" stroke="#6c4122"/><text x="213" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">city_id=1</text><rect x="284" y="23" width="126" height="22" fill="#f6e3ce" stroke="#6c4122"/><text x="347" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">price_min=400000</text><rect x="418" y="23" width="126" height="22" fill="#f6e3ce" stroke="#6c4122"/><text x="481" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">price_max=800000</text><rect x="552" y="23" width="126" height="22" fill="#f6e3ce" stroke="#6c4122"/><text x="615" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">make=10,12</text><rect x="686" y="23" width="126" height="22" fill="#f6e3ce" stroke="#6c4122"/><text x="749" y="38" font-size="11" font-weight="700" text-anchor="middle" fill="#6c4122">features=20</text>
+<text x="24" y="78" font-size="10" fill="#44484e">cars 101–112</text>
+<text x="187.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">01</text>
+<text x="217.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">02</text>
+<text x="247.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">03</text>
+<text x="277.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">04</text>
+<text x="307.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">05</text>
+<text x="337.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">06</text>
+<text x="367.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">07</text>
+<text x="397.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">08</text>
+<text x="427.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">09</text>
+<text x="457.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">10</text>
+<text x="487.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">11</text>
+<text x="517.0" y="78" font-size="10" text-anchor="middle" fill="#44484e">12</text>
+<text x="24" y="98" font-size="11.5" font-weight="700" fill="#6c4122">car:city</text><text x="24" y="111" font-size="10" fill="#44484e">city_id=1</text>
+<rect x="176" y="88" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="206" y="88" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="236" y="88" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="266" y="88" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="296" y="88" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="326" y="88" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="356" y="88" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="386" y="88" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="416" y="88" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="446" y="88" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="476" y="88" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="506" y="88" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<text x="24" y="130" font-size="11.5" font-weight="700" fill="#6c4122">car:price</text><text x="24" y="143" font-size="10" fill="#44484e">price 4–8 L</text>
+<rect x="176" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="206" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="236" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="266" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="296" y="120" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="326" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="356" y="120" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="386" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="416" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="446" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="476" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="506" y="120" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<text x="24" y="162" font-size="11.5" font-weight="700" fill="#6c4122">car:make</text><text x="24" y="175" font-size="10" fill="#44484e">make 10 ∪ 12</text>
+<rect x="176" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="206" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="236" y="152" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="266" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="296" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="326" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="356" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="386" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="416" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="446" y="152" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="476" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="506" y="152" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<text x="24" y="194" font-size="11.5" font-weight="700" fill="#6c4122">car:feature:20</text><text x="24" y="207" font-size="10" fill="#44484e">AMT</text>
+<rect x="176" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="206" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="236" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="266" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="296" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="326" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="356" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="386" y="184" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="416" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="446" y="184" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="476" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<rect x="506" y="184" width="25" height="25" fill="#f6e3ce" stroke="#6c4122"/>
+<text x="24" y="232" font-size="11.5" font-weight="700" fill="#6c4122">page:price:6d53…</text><text x="24" y="245" font-size="10" fill="#44484e">all four sets</text>
+<rect x="176" y="222" width="25" height="25" fill="#7024ab" stroke="#7024ab"/>
+<rect x="206" y="222" width="25" height="25" fill="#7024ab" stroke="#7024ab"/>
+<rect x="236" y="222" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="266" y="222" width="25" height="25" fill="#7024ab" stroke="#7024ab"/>
+<rect x="296" y="222" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="326" y="222" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="356" y="222" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="386" y="222" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="416" y="222" width="25" height="25" fill="#7024ab" stroke="#7024ab"/>
+<rect x="446" y="222" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="476" y="222" width="25" height="25" fill="#7024ab" stroke="#7024ab"/>
+<rect x="506" y="222" width="25" height="25" fill="none" stroke="#babec4" stroke-dasharray="3 3"/>
+<rect x="720" y="66" width="216" height="206" fill="#fbfaf7" stroke="#0a0d12" stroke-width="2"/>
+<text x="828" y="86" font-size="10.5" text-anchor="middle" fill="#44484e">car.com</text>
+<text x="734" y="108" font-size="11" font-weight="700" fill="#0a0d12">5 cars · price ↑</text>
+<rect x="734" y="118" width="188" height="38" fill="#f1f0ed" stroke="#babec4"/><text x="744" y="134" font-size="12" font-weight="700" fill="#0a0d12">Grand i10 Sportz</text><text x="744" y="149" font-size="10.5" font-weight="700" fill="#6c4122">₹4.30 L · #109</text><rect x="734" y="162" width="188" height="38" fill="#f1f0ed" stroke="#babec4"/><text x="744" y="178" font-size="12" font-weight="700" fill="#0a0d12">Tiago XZ</text><text x="744" y="193" font-size="10.5" font-weight="700" fill="#6c4122">₹4.55 L · #102</text><rect x="734" y="206" width="188" height="38" fill="#f1f0ed" stroke="#babec4"/><text x="744" y="222" font-size="12" font-weight="700" fill="#0a0d12">Nexon XZ+</text><text x="744" y="237" font-size="10.5" font-weight="700" fill="#6c4122">₹6.90 L · #111</text>
+<text x="734" y="264" font-size="11" fill="#0a0d12">page 1 of 2</text>
+<rect x="24" y="282" width="210" height="36" fill="none" stroke="#0a0d12" stroke-width="1.4"/>
+<text x="36" y="298" font-size="12" font-weight="800" fill="#0a0d12">SQL database</text><text x="36" y="312" font-size="10.5" fill="#44484e">writes; change log to Valkey</text>
+<text x="250" y="305" font-size="12" fill="#44484e">not on the listing read path</text>
+<rect x="560" y="296" width="16" height="10" fill="#f6e3ce" stroke="#6c4122"/><text x="582" y="305" font-size="11" fill="#0a0d12">car id in the set</text>
+<rect x="720" y="296" width="16" height="10" fill="#7024ab"/><text x="742" y="305" font-size="11" fill="#0a0d12">in every set: the page</text>
 </svg>
