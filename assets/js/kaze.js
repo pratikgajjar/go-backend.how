@@ -113,8 +113,9 @@ void main(){
   if (md<.5){ vec2 r=vec2(2.05,2.9*bl); float k=min(r.x,r.y); dE=min((length(e1/r)-1.)*k,(length(e2/r)-1.)*k); }
   else if (md<1.5){ dE=min(max(abs(length(e1-vec2(0.,1.3))-2.3)-.72, e1.y-1.3), max(abs(length(e2-vec2(0.,1.3))-2.3)-.72, e2.y-1.3)); }
   else if (md<2.5){ dE=min(sdSeg(e1,vec2(-2.3,.7),vec2(2.3,.7)), sdSeg(e2,vec2(-2.3,.7),vec2(2.3,.7)))-.72; }
-  else { dE=min(min(sdSeg(e1,vec2(-2.,-2.1),vec2(1.9,0.)), sdSeg(e1,vec2(1.9,0.),vec2(-2.,2.1))),
+  else if (md<3.5){ dE=min(min(sdSeg(e1,vec2(-2.,-2.1),vec2(1.9,0.)), sdSeg(e1,vec2(1.9,0.),vec2(-2.,2.1))),
                min(sdSeg(e2,vec2(2.,-2.1),vec2(-1.9,0.)), sdSeg(e2,vec2(-1.9,0.),vec2(2.,2.1))))-.72; }
+  else { dE=min(max(abs(length(e1-vec2(0.,-1.6))-2.4)-.68, -1.6-e1.y), max(abs(length(e2-vec2(0.,-1.6))-2.4)-.68, -1.6-e2.y)); }
   float dBl=min(length((q-(ec+vec2(-8.4,3.)))/vec2(1.9,1.))-1.25, length((q-(ec+vec2(8.4,3.)))/vec2(1.9,1.))-1.25);
   col=over(col, mix(uRed,vec3(1.,.62,.72),.55), cov(dBl*ms)*uSq.z*.85);
   col=over(col,uPaper,cov(dE*ms));
@@ -183,7 +184,7 @@ void main(){
   const B = {
     x: 60, y: H - 30, vx: 0, vy: 0, want: 0, rot: 0, rv: 0, sq: 0, sqv: 0,
     face: 1, faceS: 1, mode: 'ground', surf: null, surfDX: 0, sit: 0, sitK: 0, walkPh: 0,
-    blink: 1, eye: 0, mouth: 0, mouthO: 0, blush: 0, pose: 'rest',
+    blink: 1, eye: 0, mouth: 0, mouthO: 0, blush: 0, pose: 'rest', lotus: 0, lev: 0,
     hatRot: 0, hatRv: 0, hatSlide: 0, hatToss: null, hatFree: null, visible: true, bounces: 0,
   };
   let T = 0;                                         // seconds
@@ -225,6 +226,7 @@ void main(){
       case 'hat': return fr ? [s * 2, -24] : [s * 17, 4 + Math.sin(t * 20) * 3];
       case 'shrug': return [s * 19, -3];
       case 'sleep': return [s * 8.5, 15];
+      case 'lotus': return [s * (18.5 + Math.sin(t * 0.9) * 0.6), 12.5 + Math.sin(t * 1.1 + s) * 0.9];
       case 'swing': return [s * 20 + Math.sin(t * 5 + s) * 3, 2 + Math.cos(t * 4) * 5];
       default: {
         const sw = walking ? Math.sin(B.walkPh + (s > 0 ? 0 : Math.PI)) * 3.5 : 0;
@@ -298,8 +300,8 @@ void main(){
   function stepScarf(dt) {
     const anc = l2w(-frontSide() * 10.5, 8), rest = 3.7 * S;
     const wind = clamp(Math.abs(scrollV) / 2800, 0, 1);
-    const fx = (-frontSide() * (620 + Math.sin(T * 1.3) * 260) - B.vx * 0.5) * dt * dt;
-    const fy = (260 + Math.sin(T * 2.1) * 180 - clamp(scrollV * 0.9, -2600, 2600) - B.vy * 0.35) * dt * dt;
+    const fx = (-frontSide() * (620 + Math.sin(T * 1.3) * 260) * (1 - 0.7 * B.lotus) - B.vx * 0.5) * dt * dt;
+    const fy = (lerp(260, -170, B.lotus) + Math.sin(T * 2.1) * 180 * (1 - 0.6 * B.lotus) - clamp(scrollV * 0.9, -2600, 2600) * (1 - B.lotus) - B.vy * 0.35) * dt * dt;
     scarf[0].x = anc[0]; scarf[0].y = anc[1];
     for (let i = 1; i < 8; i++) {
       const p = scarf[i], vx = (p.x - p.px) * 0.93, vy = (p.y - p.py) * 0.93;
@@ -326,6 +328,8 @@ void main(){
         const ph = B.walkPh + (k ? Math.PI : 0);
         fx = B.x + (side * 5.6 + Math.sin(ph) * 5.5 * sp * B.face) * S;
         fy = gy - Math.max(0, Math.cos(ph)) * 3.6 * S * sp;
+      } else if (B.mode === 'ground' && B.lotus > 0.4) {      // lotus: feet tucked across
+        fx = hip[0] - side * 6.8 * S; fy = hip[1] + 5.4 * S;
       } else if (B.mode === 'ground' && !B.surf) {            // sitting on the floor: feet out front
         fx = hip[0] + (B.face * 5 + side * 2.6) * S; fy = gy - 0.5;
       } else if (B.mode === 'ground') {                       // sitting: dangle over the edge
@@ -423,7 +427,7 @@ void main(){
     B.sitK += (B.sit - B.sitK) * Math.min(1, dt * 9);
     const sp = Math.min(1, Math.abs(B.vx) / 70);
     const bob = -Math.abs(Math.sin(B.walkPh)) * 1.3 * S * sp;
-    B.y = surfaceY() - lerp(FOOT, SEAT - 0.5, B.sitK) * S + bob;
+    B.y = surfaceY() - lerp(FOOT, SEAT - 0.5, B.sitK) * S + bob - B.lev * S;
     const lim = 16 * S, rlim = B.surf ? lim : (MOBILE() ? lim : 76); if (B.x < lim) { B.x = lim; B.want = 0; } if (B.x > W - rlim) { B.x = W - rlim; B.want = 0; }
     const tr = clamp(B.vx * 0.0014, -0.16, 0.16);
     B.rv += ((tr - B.rot) * 170 - B.rv * 15) * dt; B.rot += B.rv * dt;
@@ -689,6 +693,41 @@ void main(){
     end() { if (this.sub) this.sub.end(); B.pose = 'rest'; B.eye = 0; B.mouth = 0; B.blush = 0; },
   });
 
+  /* meditation: lotus, levitate, ommm — the wind can't touch him */
+  function om() {
+    say(Math.random() < 0.35 ? 'ॐ' : 'ommm…', 'kz-om');
+    const c = l2w(0, 4);
+    for (let i = 0; i < 2; i++) {
+      const a = document.createElement('span'); a.className = 'kz-aura';
+      a.style.left = c[0] + 'px'; a.style.top = c[1] + 'px'; a.style.width = a.style.height = (74 * S) + 'px';
+      a.style.animationDelay = (i * 0.55) + 's';
+      fx.appendChild(a); a.addEventListener('animationend', () => a.remove());
+    }
+  }
+  const meditate = (dur) => ({
+    name: 'meditate',
+    start() { neutral(); B.sit = 1; B.pose = 'lotus'; this.om = now() + 1700; this.mo = 0; },
+    update(t) {
+      if (B.mode !== 'ground') return true;
+      const e = t - this.t0;
+      if (!this.out) {
+        B.lotus = Math.min(1, B.lotus + 0.04);
+        const lift = e < 1100 ? 0 : Math.min(1, (e - 1100) / 2400), hi = MOBILE() ? 17 : 11;
+        B.lev = lift * (hi + Math.sin(t / 850) * 2.2);
+        B.eye = e > 450 ? 4 : 0; B.blush = 0.3; lookAt = null; lookLock = t + 400;
+        if (t > this.om) { this.om = t + rnd(2700, 3500); this.mo = t; om(); }
+        const m = this.mo ? (t - this.mo) / 1500 : 1;
+        if (m < 1) { B.mouth = 3; B.mouthO = Math.sin(m * Math.PI) * 0.75; } else B.mouth = 1;
+        if (e > dur || this.wake) { this.out = t; this.l0 = B.lev; say(pick(['ahh…', 'peace ☮', 'zen.'])); }
+      } else {
+        const k = Math.min(1, (t - this.out) / 750);
+        B.lev = this.l0 * (1 - k * k); B.lotus = 1 - k; B.eye = k > 0.55 ? 1 : 4; B.mouth = 1;
+        if (k >= 1) { kick(-2.5); return true; }
+      }
+    },
+    end() { B.lev = 0; B.lotus = 0; B.sit = 0; B.pose = 'rest'; B.eye = 0; B.mouth = 0; B.blush = 0; lookLock = 0; },
+  });
+
   /* rubber pluck: stretch an arm to a word, yank it, read or eat it, put it back */
   const pluck = () => ({
     name: 'pluck',
@@ -909,7 +948,7 @@ void main(){
   });
 
   /* ───────────────────────── brain ───────────────────────── */
-  let bigReadyAt = now() + 14000, swingReadyAt = now() + 8000, rocketReadyAt = now() + 9000, hatReadyAt = now() + 20000;
+  let omReadyAt = now() + 25000, bigReadyAt = now() + 14000, swingReadyAt = now() + 8000, rocketReadyAt = now() + 9000, hatReadyAt = now() + 20000;
   const busy = () => now() - lastScrollAt < 2600;
   function think() {
     const t = now(), idleFor = t - Math.max(lastScrollAt, lastMouseAt, lastInputAt);
@@ -920,8 +959,10 @@ void main(){
       const r = Math.random();
       if (r < 0.55) return run(idle(rnd(2500, 6000)));
       if (r < 0.85) return run(walkTo(rnd(14, 64)));
+      if (t > omReadyAt && !busy()) { omReadyAt = t + rnd(60000, 120000); return run(meditate(rnd(12000, 20000))); }
       return run(cheer());
     }
+    if (idleFor > 18000 && idleFor < 45000 && t > omReadyAt && !B.surf) { omReadyAt = t + rnd(80000, 140000); return run(meditate(rnd(14000, 22000))); }
     if (idleFor > 45000) return run(sleep(rnd(30000, 90000)));
     const r = Math.random(), sel = String(getSelection && getSelection()).trim();
     if (busy() && t > swingReadyAt && barOK() && r < 0.4) { swingReadyAt = t + rnd(45000, 80000); return run(swing()); }
@@ -944,6 +985,7 @@ void main(){
       if (near.length) return run(hopTo(pick(near)));
       rocketReadyAt = t + rnd(18000, 35000); if (!busy()) return run(rocket());
     }
+    if (r < 0.62 && !busy() && t > omReadyAt) { omReadyAt = t + rnd(60000, 120000); return run(meditate(rnd(12000, 20000))); }
     if (r < 0.75) return run(idle(rnd(1600, 4200)));
     if (r < 0.85) return run(sit(rnd(2500, 5000)));
     if (r < 0.93) return run(laugh(900));
@@ -961,7 +1003,7 @@ void main(){
     if (!IS_ARTICLE) return;
     const p = articleProgress(); if (p < 0) return;
     const a = document.querySelector('.article-content'); if (a.getBoundingClientRect().height < H * 2) return;
-    const free = !act || ['idle', 'walk', 'sit', 'wave', 'laugh', 'sleep'].includes(act.name);
+    const free = !act || ['idle', 'walk', 'sit', 'wave', 'laugh', 'sleep', 'meditate'].includes(act.name);
     if (!ms.half && p > 0.5 && free && B.mode === 'ground') { ms.half = true; run(cheer('halfway! ⛵')); }
     if (!ms.end && p > 0.985 && free && B.mode === 'ground') {
       ms.end = true;
@@ -982,6 +1024,7 @@ void main(){
   function pet() {
     const t = now(); pets = t - petAt < 4000 ? pets + 1 : 1; petAt = t;
     if (act && act.name === 'sleep') { act.wake = t; return; }
+    if (act && act.name === 'meditate' && !act.out) { act.shh = (act.shh || 0) + 1; say(act.shh >= 3 ? 'ok, ok…' : 'shh… ☮'); if (act.shh >= 3) act.wake = true; return; }
     if (pets >= 4) { pets = 0; run(love()); return; }
     run(laugh(1000, pick(['hehe', 'hi!', 'ha ha!', '♪']))); say('♥', 'kz-heart');
     if (B.mode === 'ground') { B.vy = -380; B.mode = 'air'; B.surf = null; kick(6); }
@@ -1065,7 +1108,7 @@ void main(){
     const fy = floorY(), grounded = B.mode === 'ground' && !B.surf;
     const shH = Math.max(0, fy - (B.y + FOOT * S));
     const shA = B.mode === 'hang' || B.mode === 'held' ? 0.07 * clamp(1 - shH / 600, 0, 1) : (grounded ? 0.13 : 0.13 * clamp(1 - shH / 260, 0, 1));
-    const shX = B.x, shY = B.surf ? surfaceY() - 1 : fy - 1, shW = 15 * S * (1 - clamp(shH / 400, 0, 0.5));
+    const shX = B.x, shY = B.surf ? surfaceY() - 1 : fy - 1, shW = 15 * S * (1 - clamp(shH / 400, 0, 0.5)) * (1 - B.lev * 0.022);
     if (shA > 0.005) grow(shX, shY, shW + 4);
     x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(W, x1); y1 = Math.min(H, y1);
     if (x1 <= x0 || y1 <= y0) return;
@@ -1174,12 +1217,12 @@ void main(){
     end() { pendingHello = visits >= 2 ? (visits % 10 === 0 ? `visit #${visits}! ♥` : 'welcome back!') : visits === 1 ? 'hi! I’m Kaze' : null; },
   });
 
-  // hash triggers (for demos): #pluck #rocket #swing #gear5 #hat #finale #love #hello
+  // hash triggers (for demos): #pluck #rocket #swing #gear5 #hat #finale #love #hello #om
   function fireHash() {
     const h = location.hash.slice(1); const go = () => {
       if (B.mode !== 'ground') return setTimeout(go, 300);
       ({ pluck: () => run(pluck()), play: () => run(pluck()), rocket: () => run(rocket()), swing: () => run(swing()), hang: () => run(swing()), gear5: () => run(gear5()), rubber: () => run(gear5()),
-        hat: () => { blowHat(B.x < W / 2 ? rnd(250, 450) : rnd(-450, -250), -1050); run(chaseHat()); }, finale: () => run(finale(false)), banner: () => run(finale(false)), love: () => run(love()), hello: () => run(wave('hi! I’m Kaze', 2200)) }[h] || (() => {}))();
+        hat: () => { blowHat(B.x < W / 2 ? rnd(250, 450) : rnd(-450, -250), -1050); run(chaseHat()); }, finale: () => run(finale(false)), banner: () => run(finale(false)), love: () => run(love()), om: () => run(meditate(22000)), meditate: () => run(meditate(22000)), zen: () => run(meditate(22000)), hello: () => run(wave('hi! I’m Kaze', 2200)) }[h] || (() => {}))();
     };
     if (h) setTimeout(go, 900);
   }

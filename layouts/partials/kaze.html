@@ -22,7 +22,9 @@
     - Click to say hi (hearts if you keep going). Halfway cheer, end-of-post
       finale (hat toss + banner), "tl;dr?" if you skipped to the end.
     - Stays out of your way while you're actively reading (attention budget).
-  Hash triggers: #pluck #rocket #swing #gear5 #hat #finale #love #hello
+    - Meditates when you pause: lotus pose, levitates, "ommm… ॐ" with aura
+      ripples; the scroll wind can't touch him (pets get a "shh… ☮").
+  Hash triggers: #pluck #rocket #swing #gear5 #hat #finale #love #hello #om
 
   Remove completely: delete this file + assets/js/kaze.js + the include in
     layouts/partials/xiaohei.html (which is what baseof.html calls).
@@ -44,6 +46,9 @@
   #kz-fx .kz-g{ position:absolute; font:700 14px/1 ui-monospace,"JetBrains Mono",monospace; color:var(--article-text,#222);
     white-space:nowrap; opacity:0; animation:kz-rise 1.6s ease-out forwards; }
   #kz-fx .kz-g.kz-z{ font-size:17px; animation-duration:2.6s; }
+  #kz-fx .kz-g.kz-om{ font-size:15px; font-style:italic; letter-spacing:.14em; animation:kz-float 3.4s ease-out forwards; }
+  #kz-fx .kz-aura{ position:absolute; border:1.5px solid var(--article-text,#222); border-radius:50%; opacity:0;
+    transform:translate(-50%,-50%) scale(.4); animation:kz-aura 2.8s cubic-bezier(.2,.6,.3,1) forwards; }
   #kz-fx .kz-g.kz-heart{ color:#e8453c; font-size:16px; }
   #kz-fx .kz-g.kz-big{ font-size:16px; }
   #kz-fx .kz-dust{ position:absolute; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%;
@@ -62,6 +67,9 @@
 
   @keyframes kz-rise{ 0%{opacity:0; transform:translate(-50%,0) scale(.6)} 18%{opacity:.95}
     100%{opacity:0; transform:translate(calc(-50% + var(--dx,0px)),-48px) scale(1.08) rotate(var(--rot,0deg))} }
+  @keyframes kz-float{ 0%{opacity:0; transform:translate(-50%,8px) scale(.85)} 25%{opacity:.85}
+    100%{opacity:0; transform:translate(calc(-50% + var(--dx,0px) * .4),-78px) scale(1.18)} }
+  @keyframes kz-aura{ 0%{opacity:.32; transform:translate(-50%,-50%) scale(.4)} 100%{opacity:0; transform:translate(-50%,-50%) scale(2.7)} }
   @keyframes kz-puff{ 0%{opacity:.45; transform:scale(.5)} 100%{opacity:0; transform:translate(var(--dx,0px),-4px) scale(1.7)} }
   @keyframes kz-conf{ 0%{transform:translate(0,0) rotate(0); opacity:1}
     35%{transform:translate(calc(var(--dx)*.6), var(--up)) rotate(calc(var(--r)*.4)); opacity:1}
