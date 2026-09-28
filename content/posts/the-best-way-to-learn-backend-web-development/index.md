@@ -52,7 +52,7 @@ Here's why: Context-switching destroys learning momentum. Every time you switch 
 
 How often can you afford that restart? The figure below gives you one year, one brick per month, and lets you choose how often you switch.
 
-{{< viz kind="one-stack" frame="none" fallback="one-stack.svg" alt="Twelve months drawn as twelve bricks. Switching stacks every three months makes four columns of three that stop below the months 4 to 6 window for feeling comfortable in a stack. Switching every six months reaches it twice; one stack reaches it and continues into the junior-roles window." caption="Each brick is one month in one stack. The two windows come from the timeline later in this post, counted from the day you start a stack." >}}
+{{< viz kind="one-stack" fig="1" title="How often can you switch?" fallback="one-stack.svg" alt="Twelve months drawn as twelve bricks. Switching stacks every three months makes four columns of three that stop below the months 4 to 6 window for feeling comfortable in a stack. Switching every six months reaches it twice; one stack reaches it and continues into the junior-roles window." caption="Each brick is one month in one stack. The two windows come from the timeline later in this post, counted from the day you start a stack." >}}
 
 **Pick one. Commit for 6 months. No switching.**
 
@@ -240,7 +240,7 @@ Here's a realistic timeline for someone learning backend development seriously (
 
 The first four rows count months in one stack. That is why the post asks you to commit for six months: a switch restarts the syntax, the framework idioms, and the debugging habits, and those rows start again. Three questions place you on this timeline.
 
-{{< viz kind="where-you-are" frame="none" fallback="where-you-are.svg" alt="Three questions about your months, your week, and what you have built. Your months appear on the post's timeline with the next milestone highlighted, followed by one suggested next step for the next hour" caption="The figure takes the post at its word and counts the timeline from the start of your current stack. Concepts do carry over, so a real switch costs less than a full restart; read the shift as an upper bound. The timeline assumes 2–3 hours a day." >}}
+{{< viz kind="where-you-are" fig="2" title="Where you are on the timeline" fallback="where-you-are.svg" alt="Three questions about your months, your week, and what you have built. Your months appear on the post's timeline with the next milestone highlighted, followed by one suggested next step for the next hour" caption="The figure takes the post at its word and counts the timeline from the start of your current stack. Concepts do carry over, so a real switch costs less than a full restart; read the shift as an upper bound. The timeline assumes 2–3 hours a day." >}}
 
 ---
 
