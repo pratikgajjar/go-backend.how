@@ -11,8 +11,7 @@ featured: true
 math: true
 ---
 
-{{< viz kind="one-batch" frame="none" title="One request of 8,190 transfers, made durable two ways" fallback="one-batch.svg" alt="A grid of 8,190 transfers twice. TigerBeetle makes the whole request durable with one prepare, two writes. PostgreSQL single-row inserts need 3,421 fdatasync calls at the measured 0.42 per row." caption="Flush counts follow the measured rates: 0.42 `fdatasync` calls per row for single-row inserts, 0.76 per transfer. Times come from the measured throughputs. TigerBeetle writes the prepare, which makes the batch durable, before it executes the batch." >}}
-
+This post answers one question with numbers you can reproduce: can a single machine's worth of hardware keep a ledger for a billion payments a day? By the end you will know why PostgreSQL, committing one payment per transaction, tops out at a few thousand transfers per second on an SSD that could move hundreds of times more data, why TigerBeetle does about 48,000 on the same Mac Mini, and which syscalls explain the gap. I ran every benchmark here myself and traced both databases with eBPF.
 
 India moves money like no other country. By February 2026, UPI was clearing **20+ billion** digital transactions per month — nearly half of all real-time payments on Earth.
 
@@ -33,9 +32,9 @@ That's ~700 million transactions per day today, spread across 694 banks. At 28% 
 
 **What does it take for one node to handle 1 billion payments per day?** That's ~12,000 TPS average, ~30,000 TPS at the normal daily peak (2.5× the average — morning 11 AM rush and evening 8-10 PM burst). Seasonal spikes (Diwali shopping, IPL finals, tax deadline) push another 2× on top, so budget closer to **5× the average (~60,000 TPS)** for actual worst-case capacity.
 
-Can a single node handle it? Could you do it on a laptop? The answer to both is "closer than you'd think," but the interesting question is *how*. This post walks through the first-principles design, then actually runs it on a Mac Mini (M4, 10-core, 24 GB), tracing every io_uring and fsync call from the kernel. The headline numbers:
+Can a single node handle it? Could you do it on a laptop? The answer to both is "closer than you'd think," but the interesting question is *how*. This post starts with the napkin math, then measures the familiar design (PostgreSQL, one transaction per payment) and a ledger built around batching (TigerBeetle) on a Mac Mini (M4, 10-core, 24 GB), tracing every fsync and io_uring call from the kernel. The headline numbers:
 
-- Single TigerBeetle process sustaining **~48K transfers/sec** (63K burst) vs same machine's PostgreSQL at **3,356 RPS** — a **~14×** gap traceable to one syscall.
+- Single TigerBeetle process sustaining **~48K transfers/sec** (63K burst) vs same machine's PostgreSQL at **3,356 RPS** — a **~14×** gap that comes down to how often each one asks the disk to confirm a write.
 - What `io_uring` looks like from the kernel: 90% of I/O in 64–512 μs, **zero `fsync()` syscalls** — the data file is opened with `O_DSYNC`, which fuses the durability barrier into `write()` itself: the syscall only returns once the device confirms the data is on stable storage.
 - TigerBeetle is **single-threaded by design** — one writer thread, one core, ~48K sustained / 63K burst.
 - **4.17 million fsync calls** for 10M PostgreSQL inserts — ~89% of wall-clock accounted for by durability syscalls.
@@ -119,7 +118,7 @@ type Transfer struct {
 }
 ```
 
-Both records are **128 bytes** — this isn't arbitrary. It fits cache lines, aligns with page boundaries, and packs 8,190 of them into a single 1 MB network batch (which is why that magic 8,190 keeps showing up in TigerBeetle's docs).
+Both records are **128 bytes**: two 64-byte cache lines, and 32 of them fit in a 4 KiB page. 8,190 of them plus a 256 B header fill one 1 MiB TigerBeetle request, which is why 8,190 keeps showing up in this post.
 
 ## What the ledger has to store
 
@@ -141,18 +140,6 @@ $$
 128 \text{ GB/day} \times 365 \text{ days} \times 10 \text{ years} = 467.2 \text{ TB}
 $$
 
-I tested every Parquet codec on TB's 128-byte Transfer schema. The winner: **zstd(3) with dictionary encoding — 27.3 B/row, 4.7× compression, 0.16 s to write 100 MB.**
-
-- **zstd(3) does ~97%** of the work. Levels 9 and 22 buy <1% more at 10–50× the CPU.
-- **Dictionary** adds ~2% on the 12 low-cardinality columns (`ledger`, `flags`, `code`, zero-fields).
-- **Delta** on `id_hi` and `timestamp` contributes **<1%** — noise once zstd has a pass. If you want the last percent, `BYTE_STREAM_SPLIT` on random u64s gets you to 25.7 B/row (4.98×) for free.
-- **80 of 128 bytes are random** (amount + account IDs) — no structural compression possible there.
-- Ratio saturates at **81K rows** (10× a TB batch) — no need for millions to measure.
-
-**10-year cold tier: ~94 TB on S3, ~$2,150/month.** The [full benchmark](https://github.com/pratikgajjar/1b-payments/blob/main/bench/parquet_scales.py) is 200 lines of Python, 15 seconds to run.
-
-For the hot tier: each primary takes `500M × 128 B × 8.2 × 90 days = 47 TB`. That's **3 × 20 TB NVMe per node, 22% headroom for LSM compaction**. With two sharded clusters of 6 nodes each, that's 36 drives total — still a single rack.
-
 ## What 30K TPS means on disk
 
 $$
@@ -161,175 +148,21 @@ $$
 
 That's trivial — a 2010-era HDD could sustain it if fsync didn't exist. Modern NVMe (1–7 GB/s sequential, depending on hardware) is **hundreds of times oversized** for the raw data rate. The entire challenge is in the indirection between "user-visible throughput" and "actual bytes written to disk + syncs issued per byte."
 
-### Batching math (the TigerBeetle approach)
+The rest of the post measures that for two designs: PostgreSQL with one transaction per payment, and TigerBeetle, which makes a whole batch durable at once.
 
-TigerBeetle's client packs **8,190 transfers per batch** (fits one 1 MB message envelope):
+# Test setup
 
-$$
-8{,}190 \text{ transfers} \times 128 \text{ B} = 1{,}048{,}320 \text{ B} \approx 1 \text{ MB}
-$$
+Everything below was measured on a single Apple M4 Mac Mini[^4] (10-core, 24 GB RAM, macOS 26.1). Both databases ran in containers inside a Podman Linux VM (Fedora CoreOS 41, kernel 6.12.13-aarch64, 4 CPU / 8 GB memory allocated): [PostgreSQL 17](https://www.postgresql.org/about/news/postgresql-174-168-1512-1417-and-1320-released-3018/) and TigerBeetle 0.16.78. Setup and cleanup instructions are in the [reproduction guide](https://github.com/pratikgajjar/1b-payments).
 
-At 30K TPS, one batch fills in:
+The workload is the same for both: 10M accounts, then transfers where 80% debit the top 20% of accounts (hot accounts, think merchants receiving many small payments) and 20% debit the rest.
 
-$$
-t_{\text{fill}} = \frac{8{,}190}{30{,}000} = 273 \text{ ms}
-$$
+# PostgreSQL: one transaction per payment
 
-That's ~3.66 batches/sec. How long does each batch take on the server? We measured ~48K RPS sustained, which is \(48{,}000 / 8{,}190 \approx 5.9\) batches/sec — so **~170 ms per batch** of server-side processing. The raw NVMe write for 1 MB is ~1 ms; the rest goes to executing the batch: account lookups through the LSM tree, balance checks, index updates, and compaction.
-
-At 30K TPS the server keeps up, so the batch never has to fill. A TigerBeetle client keeps at most one request in flight and packs whatever arrived meanwhile into the next request[^tb-batching]. Each request carries the transfers that arrived during the previous round trip, far fewer than 8,190, and a payment waits one to two round trips, not the 273 ms it would take to fill a batch. 8,190 is the ceiling, reached only when the server falls behind.
-
-# TigerBeetle
-
-[TigerBeetle](https://tigerbeetle.com/) is a financial transactions database written in Zig. It makes a narrow but aggressive set of design choices: double-entry accounting as the only data model, one writer thread per node, `io_uring` + `O_DIRECT` for all disk I/O, and deterministic simulation testing as the primary correctness story.
-
-Those two flags are worth unpacking, because they're half the reason the numbers later in this post look the way they do.
-
-**`O_DIRECT` — "don't cache this in RAM first."** Normally when you "write" to a file, Linux copies your bytes into a kernel page cache and returns immediately, promising to really save them later. That's fast, but the data hasn't actually reached the disk — which is why a crash can lose committed work unless you also call `fsync`. `O_DIRECT` skips the page cache: your bytes go straight from your program's memory to the storage device. You manage the buffers; the kernel doesn't lie to you about durability.
-
-**`io_uring` — "stop calling me for every little I/O."** The old way, every single read or write is a round trip through the kernel — a syscall: dial, pass arguments, wait for the answer, hang up. For a database doing millions of small I/Os, all that dialling is pure overhead. `io_uring` replaces the phone with two shared ring buffers sitting in memory that both your program and the kernel can see: you drop requests onto a "submission" ring, the kernel posts results onto a "completion" ring. One syscall (`io_uring_enter`, the doorbell) can hand off a thousand I/Os at once.
-
-Together they give TigerBeetle the shortest path from "I want to write this transfer" to "the platter has the bits": no kernel page cache to lie about durability, no syscall tax per I/O. We'll watch this directly with eBPF later — thousands of I/Os completing with tens of syscalls total.
-
-The production topology is a 6-node VR-style[^7] consensus cluster: one primary processes all writes, five followers replicate. Critically, **adding followers buys reliability, not throughput** — the primary is still a single thread. You scale TigerBeetle by sharding account ranges across *multiple* clusters, not by adding cores to one cluster.
-
-$$
-\begin{CD}
-  \text{client writes} \\
-  @VVV \\
-  \boxed{\;\text{PRIMARY}\;} @>\text{replicate}>> \boxed{\;\text{follower}\;} \times 5 \\
-  @VVV \\
-  \text{commit ACK} @<<{\text{quorum: } 3/6}< \\
-\end{CD}
-$$
-
-_one thread · LSM + journal · io_uring + O_DIRECT_
-
-With 6 replicas, a commit needs the prepare on 3 of them, and electing a new primary needs 4, so the cluster keeps running with 2 replicas down. These are flexible quorums[^tb-cluster]: a small replication quorum keeps each commit fast, a larger view-change quorum keeps elections safe, and the two always overlap because 3 + 4 > 6.
-
-## Benchmarks — on a Mac Mini M4
-
-Everything below was measured on a single Apple M4 Mac Mini[^4] (10-core, 24 GB RAM, macOS 26.1) with TigerBeetle 0.16.78 running inside a Podman Linux VM (Fedora CoreOS 41, kernel 6.12.13-aarch64, 4 CPU / 8 GB memory allocated). Setup and cleanup instructions are in the [reproduction guide](https://github.com/pratikgajjar/1b-payments).
-
-### Account creation
-
-```shell
-$ go run ./cmd/tb/accounts/main.go -tbAddress "3000" -startAt 1 -endAt 10000000
-Created accounts from 1 to 10000000 (total: 10000000, failed: 0)
-Time taken: 12.277s
-```
-
-**10 million accounts in 12.3 seconds — 815,000 accounts/second.**
-
-That's a batched operation: the client pushes 8,190 accounts per batch (the TigerBeetle default, sized to fit its 1 MB message envelope). Each batch is one network round-trip.
-
-### Transfers — the single-worker baseline
-
-Transfers are where it gets interesting. The workload: 80% of transfers debit from the top 20% of accounts (hot accounts — think merchants receiving many small payments), 20% from the rest.
-
-```shell
-$ go run ./cmd/tb/transfers/main.go -concurrency 1 -totalTransfer 10000000
-done: ok=9999995 err=5 time=3m34.5s RPS=46614
-```
-
-**1 worker goroutine → 46,614 transfers/sec.**
-
-Five errors out of 10 million: those are the edge cases in the 80/20 distribution where top-20 accounts don't generate enough volume — negligible. The five failures are `exceeds_credits` — expected in any skewed workload.
-
-A shorter 1M-transfer burst on a fresh database pushed it to **63K RPS**. Client concurrency (1, 4, or 8 goroutines) doesn't meaningfully change throughput — the server is single-threaded, so batches serialize regardless of how many clients submit them.
-
-### What `io_uring` actually looks like
-
-TigerBeetle uses Linux's [io_uring](https://en.wikipedia.org/wiki/Io_uring) for disk I/O — a ring buffer where the program submits I/O requests and the kernel completes them asynchronously, without syscalls per operation. You can watch this from outside using eBPF.
-
-```d
-# io_uring.bt — trace submission → completion latency per request
-tracepoint:io_uring:io_uring_submit_req
-{
-  @start[args->user_data] = nsecs;
-}
-
-tracepoint:io_uring:io_uring_complete
-/ @start[args->user_data] != 0 /
-{
-  $lat = (nsecs - @start[args->user_data]) / 1000;
-  @latency_us = hist($lat);
-  delete(@start[args->user_data]);
-}
-```
-
-Run it against a live 100K-transfer workload:
-
-```d
-$ sudo bpftrace io_uring.bt
-
-@completions: 45,819
-
-@latency_us:
-[0]                   37 |                                                    |
-[1]                   81 |                                                    |
-[2, 4)                38 |                                                    |
-[4, 8)               281 |                                                    |
-[8, 16)               76 |                                                    |
-[16, 32)              90 |                                                    |
-[32, 64)             299 |                                                    |
-[64, 128)          7,785 |@@@@@@@@@@@@@@@@@@@@@@@                             |
-[128, 256)        17,467 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
-[256, 512)        16,158 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    |
-[512, 1K)            899 |@@                                                  |
-[1K, 2K)             593 |@                                                   |
-[2K, 4K)             596 |@                                                   |
-[4K, 8K)             725 |@@                                                  |
-[8K, 16K)            643 |@                                                   |
-[16K, 32K)            37 |                                                    |
-[128K, 256K)          13 |                                                    |
-[512K, 1M)             1 |                                                    |
-```
-
-**90% of I/O completes in 64–512 μs** (93% if you extend to 1 ms). The tail — a handful of completions in the 128–512 ms range — are the checkpoint flushes, where TigerBeetle moves an on-disk manifest to the next LSM-tree level. Nothing is blocking the hot path on a per-transfer `fsync`.
-
-### Counting every syscall TigerBeetle makes
-
-```d
-$ sudo bpftrace --unsafe raw_sys.d $TB_PID
-# 100,000 transfers processed
-@syscalls[64]:      2   (write)
-@syscalls[206]:    14   (sendto — network replies)
-@syscalls[426]: 4,225   (io_uring_enter)
-```
-
-**4,241 syscalls to commit 100,000 transfers.** That is one `io_uring_enter` per ~24 transfers — one doorbell ring to tell the kernel "process this batch of ready I/Os." There are **zero `fsync()` syscalls** because the data file is opened with `O_DSYNC` ([source](https://github.com/tigerbeetle/tigerbeetle/blob/main/src/io/linux.zig)) — the durability barrier is fused into every `write()`. Per the Linux spec, the syscall only returns once the data is on stable storage at the device. `O_DIRECT` complements this by bypassing the page cache, which lets TigerBeetle [handle fsync failures correctly](https://www.usenix.org/system/files/atc20-rebello.pdf) (page-cached writes can lose dirty pages silently on `EIO`). The throughput win comes from batching: one durable WAL prepare covers up to 8,190 transfers.
-
-Hold this number. PostgreSQL, committing one row per transaction, makes 0.42 `fdatasync` calls per row: about 42,000 for the same 100,000 rows.
-
-### Storage: 8× amplification
-
-After 10M accounts + 10M transfers, the data file is **21 GB**.
-
-```shell
-$ ls -lh ~/bench/tb/0_0.tigerbeetle
--rw-r--r--. 1 core core 21G Apr  5 00:36 0_0.tigerbeetle
-```
-
-Raw expected: `10M × 128B + 10M × 128B = 2.56 GB`. **Actual: 21 GB. 8.2× amplification.**
-
-Everything lives in one file, `0_0.tigerbeetle`. The figure follows one `create_transfers` batch through it, from the client's request to the checkpoint that makes its WAL slot reusable.
-
-{{< viz kind="batch-path" frame="none" fig="1" title="One batch through the data file" fallback="batch-path.svg" alt="One create_transfers batch through a TigerBeetle replica: the WAL prepare and header writes, the state machine and its 33 LSM trees, compaction into the grid, and the superblock checkpoint" caption="Zone sizes, intervals, and tree counts are from the [TigerBeetle 0.16.78 source](https://github.com/tigerbeetle/tigerbeetle/tree/0.16.78/src) with the production config. The op number, slot, and field values are samples. Pick a journal entry, or use ← and →." >}}
-
-The reply waits for two writes, the prepare and its header sector, and for the in-memory execution. Compaction and checkpoints come after the reply. The next batch still waits for its slice of compaction, so they cost throughput, not latency.
-
-The 8.2× comes from two places. First, a 128 B transfer becomes up to 824 B of LSM values: the transfer and 6 index entries, two new account versions, and a 256 B `AccountEvent` that records both balances after the transfer. The Transfer groove has 14 trees, but a benchmark transfer touches only 7 of them: its optional fields are zero, which is not indexed, and it is not pending, imported, or closing. Second, compaction writes those values again at each level they pass through.
-
-At 8.2×, the napkin-math[^2] figure of `128 GB/day raw` becomes about `1 TB/day on disk`. We measured 8.2× after 10M transfers; I have not measured how it changes as the file grows.
-
-# PostgreSQL
-
-Same workload, same machine — now through a general-purpose database. [PostgreSQL 17](https://www.postgresql.org/about/news/postgresql-174-168-1512-1417-and-1320-released-3018/) running in a container on the same Mac Mini.
+PostgreSQL is where most payment systems start, so it goes first.
 
 ## Schema
 
-We have created the schema in PostgreSQL to match the same account and transaction model in TigerBeetle
+The schema mirrors the two 128-byte records:
 
 ```sql
 
@@ -362,10 +195,6 @@ CREATE TABLE transfers (
 
 ```
 
-## Benchmarks
-
-Same hardware, same workload — now running against PostgreSQL 17 in a container on the same Mac Mini.
-
 ### Accounts, two ways
 
 There are two patterns for account creation. `COPY` is the bulk path — send N rows to the server, parse once, write once, fsync once. `INSERT` is the "realistic" path where each account comes in as its own transaction with its own commit boundary.
@@ -377,7 +206,7 @@ $ go run ./cmd/pg/accounts/main.go -totalAccounts 10000000 -concurrency 1
 Inserted 10000000 accounts in 22.3s
 ```
 
-**22.3 seconds for 10M accounts — 448,763 accts/sec.** About half of TigerBeetle's 815K/sec, not bad for a general-purpose DB.
+**22.3 seconds for 10M accounts — 448,763 accts/sec.**
 
 **INSERT (one row per transaction, 8 workers):**
 
@@ -410,7 +239,11 @@ $PGDATA/
 
 ### Watching fsync in real time
 
-A PostgreSQL commit returns only after its WAL record is flushed with `fdatasync()` on the active WAL segment. Without that flush, a power loss could lose committed transactions. Count these calls with bpftrace:
+A PostgreSQL commit returns only after its WAL record is flushed with `fdatasync()` on the active WAL segment. Without that flush, a power loss could lose committed transactions. So with 8 backends each committing one row at a time, how many flushes does it take to make a batch of rows durable? Guess before you look at the trace.
+
+{{< viz kind="one-batch" frame="none" fig="1" title="8,190 transfers, made durable two ways" fallback="one-batch.svg" alt="A grid of 8,190 transfers twice. TigerBeetle makes the whole request durable with one prepare, two writes. PostgreSQL single-row inserts need 3,421 fdatasync calls at the measured 0.42 per row." caption="Flush counts follow the measured rates: 0.42 `fdatasync` calls per row for single-row inserts, 0.76 per transfer. Times come from the measured throughputs. TigerBeetle writes the prepare, which makes the batch durable, before it executes the batch." >}}
+
+Here is the trace behind that number. Count the calls with bpftrace:
 
 ```d
 # fsync_count.d — count fsync/fdatasync calls per fd for postgres process
@@ -530,26 +363,169 @@ Transfers make almost 2× more flushes per row. Each transaction spends much lon
 
 This is why the transfer throughput (3.4K) is 4× lower than INSERT throughput (13K), not the 1.8× you'd predict from the fsync ratio alone. The two account updates, the foreign key checks, and the row-lock waits add time per transfer that doesn't show up in fsync counts. TigerBeetle, doing the same semantic work (debit A, credit B, enforce balance invariants), batches up to 8,190 transfers into one WAL prepare — same per-write durability, but paid once per batch and with strict serializability instead of row-level locks.
 
-# Hot / Warm / Cold Tiering
+**So far.** PostgreSQL makes each commit durable with a WAL flush. Flushes run one at a time, so at 163 µs each the disk confirms only about 6,000 a second, and group commit can share each flush only among the commits already waiting. With one payment per transaction, that holds a node to a few thousand transfers per second: 3,356 measured. The SSD is not slow; it is asked to confirm too often. A ledger that makes thousands of transfers durable with one write avoids that, and TigerBeetle is built that way.
 
-Indian banking regulations require **10 years of transaction retention**. At 128 GB/day raw, that's 467 TB before compression. You can't keep all of that in TigerBeetle's hot tier. We ran 10M transfers in 1M sequential chunks on a single M4 Mac Mini and throughput held steady at **~41–46K RPS from 3M to 10M** (10 GB → 27 GB file) — the LSM compaction keeps up at this scale. But at 1B/day the data file grows by ~1 TB/day (after 8.2× amplification); at some point the working set exceeds the grid cache and throughput will drop. Tiering isn't optional, it's structural.
+# TigerBeetle: one durable write per batch
 
-The solution: **checkpoint and archive**. TigerBeetle's accounts already represent a running balance — the cumulative effect of every transfer ever processed. If you snapshot account balances at a cutoff date, every transfer before that date becomes archival. The account balances ARE the checkpoint: you don't need the old transfers to know the current state, only to audit history.
+[TigerBeetle](https://tigerbeetle.com/) is a financial transactions database written in Zig. It makes a narrow but aggressive set of design choices: double-entry accounting as the only data model, one writer thread per node, `io_uring` + `O_DIRECT` for all disk I/O, and deterministic simulation testing as the primary correctness story.
 
-| Age | Tier | Storage | Query Latency |
-|---|---|---|---|
-| 0–90 days | **Hot** — TigerBeetle cluster | ~100 TB × 6 replicas = ~600 TB | single-digit ms |
-| 90 days–1 year | **Warm** — ClickHouse / Parquet on NVMe | ~45 TB (compressed 2–3×) | seconds |
-| 1–10 years | **Cold** — S3 / GCS Parquet, partitioned by day | ~150 TB (compressed 3–5×) | minutes |
+Those two flags are worth unpacking, because they're half the reason the numbers later in this post look the way they do.
 
-## The archival pipeline
+**`O_DIRECT` — "don't cache this in RAM first."** Normally when you "write" to a file, Linux copies your bytes into a kernel page cache and returns immediately, promising to really save them later. That's fast, but the data hasn't actually reached the disk — which is why a crash can lose committed work unless you also call `fsync`. `O_DIRECT` skips the page cache: your bytes go straight from your program's memory to the storage device. You manage the buffers; the kernel doesn't lie to you about durability.
 
-1. **Scheduled rollover job** (nightly): query TigerBeetle for transfers with `timestamp < NOW() - 90d`, stream to Parquet files partitioned by day. The account balances at the cutoff date are the checkpoint — save those alongside the archived transfers.
-2. **Columnar compression** on the way out: zstd gets ~4.7× on this schema (we measured it — 27 B/row with dictionary encoding on the low-cardinality fields).
-3. **Compact the hot tier.** TigerBeetle doesn't have DELETE — it's an append-only ledger by design. The current path for compaction is a rolling data-file migration: format a new file, replay accounts + recent transfers, swap.
-4. **Rehydration**: on a legal-hold query or dispute, pull the relevant Parquet partition back into a warm ClickHouse instance. The checkpoint balances let you validate the rehydrated transactions against the known-good state at that date. Don't try to import back into the hot ledger — that invalidates the immutability guarantee.
+**`io_uring` — "stop calling me for every little I/O."** The old way, every single read or write is a round trip through the kernel — a syscall: dial, pass arguments, wait for the answer, hang up. For a database doing millions of small I/Os, all that dialling is pure overhead. `io_uring` replaces the phone with two shared ring buffers sitting in memory that both your program and the kernel can see: you drop requests onto a "submission" ring, the kernel posts results onto a "completion" ring. One syscall (`io_uring_enter`, the doorbell) can hand off a thousand I/Os at once.
 
-## Head-to-Head
+Together they give TigerBeetle the shortest path from "I want to write this transfer" to "the platter has the bits": no kernel page cache to lie about durability, no syscall tax per I/O. We'll watch this directly with eBPF later — thousands of I/Os completing with tens of syscalls total.
+
+The production topology is a 6-node VR-style[^7] consensus cluster: one primary processes all writes, five followers replicate. Critically, **adding followers buys reliability, not throughput** — the primary is still a single thread. You scale TigerBeetle by sharding account ranges across *multiple* clusters, not by adding cores to one cluster.
+
+$$
+\begin{CD}
+  \text{client writes} \\
+  @VVV \\
+  \boxed{\;\text{PRIMARY}\;} @>\text{replicate}>> \boxed{\;\text{follower}\;} \times 5 \\
+  @VVV \\
+  \text{commit ACK} @<<{\text{quorum: } 3/6}< \\
+\end{CD}
+$$
+
+_one thread · LSM + journal · io_uring + O_DIRECT_
+
+With 6 replicas, a commit needs the prepare on 3 of them, and electing a new primary needs 4, so the cluster keeps running with 2 replicas down. These are flexible quorums[^tb-cluster]: a small replication quorum keeps each commit fast, a larger view-change quorum keeps elections safe, and the two always overlap because 3 + 4 > 6.
+
+## Benchmarks
+
+### Account creation
+
+```shell
+$ go run ./cmd/tb/accounts/main.go -tbAddress "3000" -startAt 1 -endAt 10000000
+Created accounts from 1 to 10000000 (total: 10000000, failed: 0)
+Time taken: 12.277s
+```
+
+**10 million accounts in 12.3 seconds — 815,000 accounts/second.**
+
+That's a batched operation: the client pushes 8,190 accounts per batch (the TigerBeetle default, sized to fit its 1 MB message envelope). Each batch is one network round-trip.
+
+### Transfers — the single-worker baseline
+
+Same 80/20 workload as the PostgreSQL run, sent in full 8,190-transfer requests from one client goroutine.
+
+```shell
+$ go run ./cmd/tb/transfers/main.go -concurrency 1 -totalTransfer 10000000
+done: ok=9999995 err=5 time=3m34.5s RPS=46614
+```
+
+**1 worker goroutine → 46,614 transfers/sec.**
+
+Five errors out of 10 million: those are the edge cases in the 80/20 distribution where top-20 accounts don't generate enough volume — negligible. The five failures are `exceeds_credits` — expected in any skewed workload.
+
+A shorter 1M-transfer burst on a fresh database pushed it to **63K RPS**. Client concurrency (1, 4, or 8 goroutines) doesn't meaningfully change throughput — the server is single-threaded, so batches serialize regardless of how many clients submit them.
+
+### Batching math (the TigerBeetle approach)
+
+The benchmark client packs **8,190 transfers per request** (one 1 MiB message):
+
+$$
+8{,}190 \text{ transfers} \times 128 \text{ B} = 1{,}048{,}320 \text{ B} \approx 1 \text{ MB}
+$$
+
+At 30K TPS, one batch fills in:
+
+$$
+t_{\text{fill}} = \frac{8{,}190}{30{,}000} = 273 \text{ ms}
+$$
+
+That's ~3.66 batches/sec. How long does each batch take on the server? We measured ~48K RPS sustained, which is \(48{,}000 / 8{,}190 \approx 5.9\) batches/sec — so **~170 ms per batch** of server-side processing. The raw NVMe write for 1 MB is ~1 ms; the rest goes to executing the batch: account lookups through the LSM tree, balance checks, index updates, and compaction.
+
+At 30K TPS the server keeps up, so the batch never has to fill. A TigerBeetle client keeps at most one request in flight and packs whatever arrived meanwhile into the next request[^tb-batching]. Each request carries the transfers that arrived during the previous round trip, far fewer than 8,190, and a payment waits one to two round trips, not the 273 ms it would take to fill a batch. 8,190 is the ceiling, reached only when the server falls behind.
+
+### What `io_uring` actually looks like
+
+TigerBeetle uses Linux's [io_uring](https://en.wikipedia.org/wiki/Io_uring) for disk I/O — a ring buffer where the program submits I/O requests and the kernel completes them asynchronously, without syscalls per operation. You can watch this from outside using eBPF.
+
+```d
+# io_uring.bt — trace submission → completion latency per request
+tracepoint:io_uring:io_uring_submit_req
+{
+  @start[args->user_data] = nsecs;
+}
+
+tracepoint:io_uring:io_uring_complete
+/ @start[args->user_data] != 0 /
+{
+  $lat = (nsecs - @start[args->user_data]) / 1000;
+  @latency_us = hist($lat);
+  delete(@start[args->user_data]);
+}
+```
+
+Run it against a live 100K-transfer workload:
+
+```d
+$ sudo bpftrace io_uring.bt
+
+@completions: 45,819
+
+@latency_us:
+[0]                   37 |                                                    |
+[1]                   81 |                                                    |
+[2, 4)                38 |                                                    |
+[4, 8)               281 |                                                    |
+[8, 16)               76 |                                                    |
+[16, 32)              90 |                                                    |
+[32, 64)             299 |                                                    |
+[64, 128)          7,785 |@@@@@@@@@@@@@@@@@@@@@@@                             |
+[128, 256)        17,467 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+[256, 512)        16,158 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    |
+[512, 1K)            899 |@@                                                  |
+[1K, 2K)             593 |@                                                   |
+[2K, 4K)             596 |@                                                   |
+[4K, 8K)             725 |@@                                                  |
+[8K, 16K)            643 |@                                                   |
+[16K, 32K)            37 |                                                    |
+[128K, 256K)          13 |                                                    |
+[512K, 1M)             1 |                                                    |
+```
+
+**90% of I/O completes in 64–512 μs** (93% if you extend to 1 ms). The tail — a handful of completions in the 128–512 ms range — are the checkpoint flushes, where TigerBeetle moves an on-disk manifest to the next LSM-tree level. Nothing is blocking the hot path on a per-transfer `fsync`.
+
+### Counting every syscall TigerBeetle makes
+
+```d
+$ sudo bpftrace --unsafe raw_sys.d $TB_PID
+# 100,000 transfers processed
+@syscalls[64]:      2   (write)
+@syscalls[206]:    14   (sendto — network replies)
+@syscalls[426]: 4,225   (io_uring_enter)
+```
+
+**4,241 syscalls to commit 100,000 transfers.** That is one `io_uring_enter` per ~24 transfers — one doorbell ring to tell the kernel "process this batch of ready I/Os." There are **zero `fsync()` syscalls** because the data file is opened with `O_DSYNC` ([source](https://github.com/tigerbeetle/tigerbeetle/blob/main/src/io/linux.zig)) — the durability barrier is fused into every `write()`. Per the Linux spec, the syscall only returns once the data is on stable storage at the device. `O_DIRECT` complements this by bypassing the page cache, which lets TigerBeetle [handle fsync failures correctly](https://www.usenix.org/system/files/atc20-rebello.pdf) (page-cached writes can lose dirty pages silently on `EIO`). The throughput win comes from batching: one durable WAL prepare covers up to 8,190 transfers.
+
+Compare PostgreSQL above: 0.42 `fdatasync` calls per row, about 42,000 for the same 100,000 rows.
+
+### Storage: 8× amplification
+
+After 10M accounts + 10M transfers, the data file is **21 GB**.
+
+```shell
+$ ls -lh ~/bench/tb/0_0.tigerbeetle
+-rw-r--r--. 1 core core 21G Apr  5 00:36 0_0.tigerbeetle
+```
+
+Raw expected: `10M × 128B + 10M × 128B = 2.56 GB`. **Actual: 21 GB. 8.2× amplification.**
+
+Everything lives in one file, `0_0.tigerbeetle`. The figure follows one `create_transfers` batch through it, from the client's request to the checkpoint that makes its WAL slot reusable.
+
+{{< viz kind="batch-path" frame="none" fig="3" title="One batch through the data file" fallback="batch-path.svg" alt="One create_transfers batch through a TigerBeetle replica: the WAL prepare and header writes, the state machine and its 33 LSM trees, compaction into the grid, and the superblock checkpoint" caption="Zone sizes, intervals, and tree counts are from the [TigerBeetle 0.16.78 source](https://github.com/tigerbeetle/tigerbeetle/tree/0.16.78/src) with the production config. The op number, slot, and field values are samples. Pick a journal entry, or use ← and →." >}}
+
+The reply waits for two writes, the prepare and its header sector, and for the in-memory execution. Compaction and checkpoints come after the reply. The next batch still waits for its slice of compaction, so they cost throughput, not latency.
+
+The 8.2× comes from two places. First, a 128 B transfer becomes up to 824 B of LSM values: the transfer and 6 index entries, two new account versions, and a 256 B `AccountEvent` that records both balances after the transfer. The Transfer groove has 14 trees, but a benchmark transfer touches only 7 of them: its optional fields are zero, which is not indexed, and it is not pending, imported, or closing. Second, compaction writes those values again at each level they pass through.
+
+At 8.2×, the napkin-math[^2] figure of `128 GB/day raw` becomes about `1 TB/day on disk`. We measured 8.2× after 10M transfers; I have not measured how it changes as the file grows.
+
+# Head-to-head
 
 Same hardware. Same workload. Same afternoon.
 
@@ -564,55 +540,11 @@ Same hardware. Same workload. Same afternoon.
 | io_uring_enter per 100K rows | 4,225 | n/a | — |
 | Concurrency model | single-threaded (by design) | scales with workers | different tradeoffs |
 
-Two ratios: **~14×** compares TB's sustained (48K) to PG's transfer rate (3.4K). On the INSERT-only workload (per-row commit, 10M rows), the gap is **~5×** (63K vs 13K). The difference: PG transfers do two FK lookups + row-level locking + MVCC bookkeeping per row that the INSERT-only test skips.
+Two ratios: **~14×** compares TB's sustained (48K) to PG's transfer rate (3.4K). On the INSERT-only workload (per-row commit, 10M rows), the gap is **~5×** (63K vs 13K). The difference: each PG transfer also updates two account rows, checks two foreign keys, and waits on row locks for hot accounts, which the INSERT-only test skips.
 
 > PostgreSQL makes 0.42 `fsync()` syscalls per transfer. TigerBeetle makes zero — durability is in the write itself (O_DSYNC), and one batched WAL prepare commits up to 8,190 transfers, costing one `io_uring_enter` per ~24 transfers.
 
-## What 1B/Day Actually Costs
-
-Plug the real numbers into the original question. Average = 12,000 TPS, daily peak = 30,000 TPS, seasonal peak = ~60,000 TPS.
-
-**TigerBeetle on a Mac Mini:** One node measured at ~48K transfers/sec sustained, ~63K burst. That's **4 billion transfers/day** from a single $600 box.
-
-One node comfortably handles the 1B target — but you don't run payments on one node. TigerBeetle's 6-replica cluster (the recommended production topology) still processes through a single primary, so you're getting the same ~47K TPS throughput with 6× the reliability, not 6× the throughput.
-
-For daily 30K peaks, one cluster is fine. For the 60K seasonal peak, **two clusters (12 nodes total)** sharded by account range is the right shape — half the account space per cluster, each primary handling ~30K TPS headroom.
-
-**PostgreSQL on a Mac Mini:** ~3,400 transfers/sec. To hit 60K seasonal peak, you need **~18 sharded primary instances**, each with a read replica, each with connection pooling, each with its own VACUUM schedule. The operational surface area is roughly order-of-magnitude larger than the TigerBeetle footprint.
-
-**Storage for 90-day hot retention** (with real amplification, not napkin math):
-
-$$
-\underbrace{10^9 \times 128 \text{ B}}_{128 \text{ GB/day raw}} \times \underbrace{8.2}_{\text{TB amp}} \times 90 \text{ days} \times 6 \text{ replicas} \approx 567 \text{ TB}
-$$
-
-Distributed across 12 nodes (two 6-replica clusters, sharded by account range) = **47 TB per node = 3 × 20 TB NVMe each, 36 drives total — a single rack.** Whether you use TigerBeetle's 8× amplification or PostgreSQL's 1.2× + separate WAL/index maintenance, the order-of-magnitude is the same (~100 TB hot tier per data center).
-
-The hard constraint isn't storage. It isn't throughput. It's the **operational blast radius** of each design choice.
-
-## What the eBPF traces proved
-
-The syscall traces tell the story clearly:
-
-- **Single-core by design works.** TigerBeetle sustains ~48K RPS (10M steady-state) and bursts to ~63K (1M fresh) on one thread. Client concurrency (1, 4, or 8 goroutines) doesn't change throughput — batches serialize at the primary regardless.
-
-- **Zero `fsync()` syscalls, durability intact.** 100,000 transfers committed in 4,241 total syscalls (4,225 `io_uring_enter`, 14 `sendto`, 2 `write`). Durability is in the write itself (O_DSYNC); the throughput delta vs PostgreSQL is batching — one durable WAL prepare per 8,190 transfers.
-
-- **io_uring works.** 90% of TigerBeetle's I/O completes in 64–512 μs, with one doorbell ring per ~24 ops.
-
-- **fsync is PostgreSQL's budget.** 4.17 million fsyncs for 10M INSERTs account for ~89% of wall-clock time. The latency histogram shows a healthy 163 µs per call — this isn't a "slow SSD" story, it's a "4.17 million calls" story. Change the per-row-commit pattern (to COPY, or to pipelined transactions) and PG gets 34× faster instantly.
-
-- **Storage amplification is the hidden cost.** TigerBeetle's 8.2× isn't waste. Each transfer writes up to 824 B of values into 11 of the 33 LSM trees (the transfer and its indexes, two account versions, and an `AccountEvent`), and compaction rewrites them at each level. Plan for ~1 TB/day of actual disk usage per 128 GB of raw transfers — the comparison with Postgres here is at the use-case level (transactions + ledger), not at matching indexes.
-
-- **The real TB cost is read amplification, not writes.** During a 10M-transfer run, `/proc/pid/io` showed 142 MB/s writes (well within disk capacity) but **9 GB/s reads** — 1.95 TB total. Each transfer triggers ~24 random 8 KB page reads through the LSM tree for account balance lookups. On this workload throughput held steady at ~41–46K RPS from 3M to 10M transfers (10 GB → 27 GB file) — LSM compaction keeps up at this scale. The open question is where the throughput cliff is when the working set exceeds the 1 GB grid cache.
-
-## When to use what
-
-The question isn't "which is better" — it's "where does each one belong in the same system?"
-
-TigerBeetle is a **ledger accelerator**. If the operation is `debit A, credit B, enforce invariants, commit` — and it happens millions of times per day — that's TigerBeetle. Everything else (KYC, disputes, merchant metadata, reporting, anything that needs a JOIN or a WHERE clause you haven't thought of yet) stays in Postgres. Most production deployments will run both.
-
-## Does napkin math predict this?
+# Does napkin math predict this?
 
 Two numbers from sirupsen's napkin-math[^2] settle both arguments:
 
@@ -621,7 +553,7 @@ Two numbers from sirupsen's napkin-math[^2] settle both arguments:
 
 **Hypothesis: PG is fsync-bound.** PG commits one row = one fsync. A disk can do \(1\text{ s} / 300\text{ µs} \approx 3{,}300\) fsyncs per second, so one worker tops out at 3,300 RPS. Eight workers with group commit buy a modest boost (maybe 3–4×), so expect **~10K RPS**. Measured: 13K RPS → same order of magnitude → **hypothesis holds**.
 
-**Hypothesis: TB is write-bandwidth-bound.** With `O_DSYNC` fusing durability into `write()` and 8,190-deep batches, the per-transfer overhead collapses to raw write bandwidth. Raw data per transfer is 128 B, but each transfer writes up to 824 B of values into 11 LSM trees ([Figure 1](#storage-8-amplification), step 4), and compaction writes them again at each level. Empirically the disk sees ~1 KB per transfer (8.2× total amp). Using sirupsen's 3 GiB/s reference:
+**Hypothesis: TB is write-bandwidth-bound.** With `O_DSYNC` fusing durability into `write()` and 8,190-deep batches, the per-transfer overhead collapses to raw write bandwidth. Raw data per transfer is 128 B, but each transfer writes up to 824 B of values into 11 LSM trees ([Figure 3](#storage-8-amplification), step 4), and compaction writes them again at each level. Empirically the disk sees ~1 KB per transfer (8.2× total amp). Using sirupsen's 3 GiB/s reference:
 
 $$
 \frac{3 \text{ GiB/s}}{128 \text{ B} \times 8 \text{ amp}} \approx 3 \text{ million TPS}
@@ -642,24 +574,99 @@ Each transfer requires account balance lookups through the LSM tree. With 10M ac
 
 The napkin-math story ends here: **sirupsen's write numbers correctly told us writes aren't the bottleneck. But predicting the actual throughput requires knowing the LSM read amplification — and that depends on data size, tree depth, and bloom filter effectiveness.** Those are implementation details that don't fit on a napkin. Napkin math is best at ruling things OUT, not at predicting the final answer.
 
-## The lesson
+# What 1B/day actually costs
+
+Plug the real numbers into the original question. Average = 12,000 TPS, daily peak = 30,000 TPS, seasonal peak = ~60,000 TPS.
+
+**TigerBeetle on a Mac Mini:** One node measured at ~48K transfers/sec sustained, ~63K burst. That's **4 billion transfers/day** from a single $600 box.
+
+One node comfortably handles the 1B target — but you don't run payments on one node. TigerBeetle's 6-replica cluster (the recommended production topology) still processes through a single primary, so you're getting the same ~47K TPS throughput with 6× the reliability, not 6× the throughput.
+
+For daily 30K peaks, one cluster is fine. For the 60K seasonal peak, **two clusters (12 nodes total)** sharded by account range is the right shape — half the account space per cluster, each primary handling ~30K TPS headroom.
+
+**PostgreSQL on a Mac Mini:** ~3,400 transfers/sec. To hit 60K seasonal peak, you need **~18 sharded primary instances**, each with a read replica, each with connection pooling, each with its own VACUUM schedule. The operational surface area is roughly order-of-magnitude larger than the TigerBeetle footprint.
+
+**Storage for 90-day hot retention** (with real amplification, not napkin math):
+
+$$
+\underbrace{10^9 \times 128 \text{ B}}_{128 \text{ GB/day raw}} \times \underbrace{8.2}_{\text{TB amp}} \times 90 \text{ days} \times 6 \text{ replicas} \approx 567 \text{ TB}
+$$
+
+Distributed across 12 nodes (two 6-replica clusters, sharded by account range) = **47 TB per node = 3 × 20 TB NVMe each, 36 drives total — a single rack.** Whether you use TigerBeetle's 8× amplification or PostgreSQL's 1.2× + separate WAL/index maintenance, the order-of-magnitude is the same (~100 TB hot tier per data center).
+
+Neither storage nor throughput is the hard constraint. The **operational blast radius** of each design is.
+
+## Hot, warm, and cold tiers
+
+Indian banking regulations require **10 years of transaction retention**. At 128 GB/day raw, that's 467 TB before compression. You can't keep all of that in TigerBeetle's hot tier. We ran 10M transfers in 1M sequential chunks on a single M4 Mac Mini and throughput held steady at **~41–46K RPS from 3M to 10M** (10 GB → 27 GB file) — the LSM compaction keeps up at this scale. But at 1B/day the data file grows by ~1 TB/day (after 8.2× amplification); at some point the working set exceeds the grid cache and throughput will drop. So tiering is part of the design from the start.
+
+The solution: **checkpoint and archive**. TigerBeetle's accounts already represent a running balance — the cumulative effect of every transfer ever processed. If you snapshot account balances at a cutoff date, every transfer before that date becomes archival. The account balances ARE the checkpoint: you don't need the old transfers to know the current state, only to audit history.
+
+| Age | Tier | Storage | Query Latency |
+|---|---|---|---|
+| 0–90 days | **Hot** — TigerBeetle cluster | ~100 TB × 6 replicas = ~600 TB | single-digit ms |
+| 90 days–1 year | **Warm** — ClickHouse / Parquet on NVMe | ~45 TB (compressed 2–3×) | seconds |
+| 1–10 years | **Cold** — S3 / GCS Parquet, partitioned by day | ~150 TB (compressed 3–5×) | minutes |
+
+For the cold tier, I tested every Parquet codec on TigerBeetle's 128-byte Transfer schema. The winner: **zstd(3) with dictionary encoding — 27.3 B/row, 4.7× compression, 0.16 s to write 100 MB.**
+
+- **zstd(3) does ~97%** of the work. Levels 9 and 22 buy <1% more at 10–50× the CPU.
+- **Dictionary** adds ~2% on the 12 low-cardinality columns (`ledger`, `flags`, `code`, zero-fields).
+- **Delta** on `id_hi` and `timestamp` contributes **<1%** — noise once zstd has a pass. If you want the last percent, `BYTE_STREAM_SPLIT` on random u64s gets you to 25.7 B/row (4.98×) for free.
+- **80 of 128 bytes are random** (amount + account IDs) — no structural compression possible there.
+- Ratio saturates at **81K rows** (10× a TB batch) — no need for millions to measure.
+
+**10-year cold tier: ~94 TB on S3, ~$2,150/month.** The [full benchmark](https://github.com/pratikgajjar/1b-payments/blob/main/bench/parquet_scales.py) is 200 lines of Python, 15 seconds to run.
+
+### The archival pipeline
+
+1. **Scheduled rollover job** (nightly): query TigerBeetle for transfers with `timestamp < NOW() - 90d`, stream to Parquet files partitioned by day. The account balances at the cutoff date are the checkpoint — save those alongside the archived transfers.
+2. **Columnar compression** on the way out: zstd gets ~4.7× on this schema (we measured it — 27 B/row with dictionary encoding on the low-cardinality fields).
+3. **Compact the hot tier.** TigerBeetle doesn't have DELETE — it's an append-only ledger by design. The current path for compaction is a rolling data-file migration: format a new file, replay accounts + recent transfers, swap.
+4. **Rehydration**: on a legal-hold query or dispute, pull the relevant Parquet partition back into a warm ClickHouse instance. The checkpoint balances let you validate the rehydrated transactions against the known-good state at that date. Don't try to import back into the hot ledger — that invalidates the immutability guarantee.
+
+# When to use what
+
+The question isn't "which is better" — it's "where does each one belong in the same system?"
+
+TigerBeetle is a **ledger accelerator**. If the operation is `debit A, credit B, enforce invariants, commit` — and it happens millions of times per day — that's TigerBeetle. Everything else (KYC, disputes, merchant metadata, reporting, anything that needs a JOIN or a WHERE clause you haven't thought of yet) stays in Postgres. Most production deployments will run both.
+
+# The lesson
 
 Both systems run on the same SSD. The difference is **what they ask the disk to do per transfer**:
 
 ```txt
 TigerBeetle:  O_DSYNC + O_DIRECT + io_uring, 8,190-tx batches    →  47K RPS   (not disk-bound)
-PostgreSQL:   one fdatasync per row commit (no batching)         →  13K RPS   (fsync-bound)
+PostgreSQL:   one WAL flush per ~2.4 commits (group commit)       →  13K RPS   (fsync-bound)
 
                         ↓
                   ~4× throughput gap on the per-row-commit workload
                   same durability guarantees -- different batching model, not a knob
 ```
 
-Both systems provide strong per-commit durability when configured correctly (PostgreSQL with `synchronous_commit = on`, TigerBeetle via `O_DSYNC` writes). TigerBeetle's win is the batched interface: clients hand it up to 8,190 transfers and one durable WAL prepare commits the whole batch. PostgreSQL *has* to `fdatasync` on every commit by default — turning `synchronous_commit` off gives you faster COMMITs at the price of losing the last few hundred ms of committed data on crash.
+Both systems provide strong per-commit durability when configured correctly (PostgreSQL with `synchronous_commit = on`, TigerBeetle via `O_DSYNC` writes). TigerBeetle's win is the batched interface: clients hand it up to 8,190 transfers and one durable WAL prepare commits the whole batch. PostgreSQL, by default, flushes the WAL before a commit returns, and group commit lets only the commits already waiting share that flush. Turning `synchronous_commit` off gives you faster COMMITs at the price of losing the last few hundred ms of committed data on crash.
 
 **If every payment must be durable the instant it's written and your clients can't batch, the per-commit fsync cost is the budget you're working with.** If they can batch, the cost amortizes.
 
-## Reproduce this yourself
+# What we showed
+
+What the traces and benchmarks showed:
+
+- **Postgres already batches, but only across commits that are waiting.** Group commit shares each WAL flush among the commits already queued: about 2.4 with 8 backends. A TigerBeetle client puts up to 8,190 transfers in one request before the database sees them, and one prepare makes them durable.
+
+- **Single-core by design works.** TigerBeetle sustains ~48K RPS (10M steady-state) and bursts to ~63K (1M fresh) on one thread. Client concurrency (1, 4, or 8 goroutines) doesn't change throughput — batches serialize at the primary regardless.
+
+- **Zero `fsync()` syscalls, durability intact.** 100,000 transfers committed in 4,241 total syscalls (4,225 `io_uring_enter`, 14 `sendto`, 2 `write`). Durability is in the write itself (O_DSYNC); the throughput delta vs PostgreSQL is batching — one durable WAL prepare per 8,190 transfers.
+
+- **io_uring works.** 90% of TigerBeetle's I/O completes in 64–512 μs, with one doorbell ring per ~24 ops.
+
+- **fsync is PostgreSQL's budget.** 4.17 million fsyncs for 10M INSERTs account for ~89% of wall-clock time. The latency histogram shows a healthy 163 µs per call — this isn't a "slow SSD" story, it's a "4.17 million calls" story. Batch the rows with `COPY` and the same PostgreSQL loads accounts 34× faster.
+
+- **Storage amplification is the hidden cost.** TigerBeetle's 8.2× isn't waste. Each transfer writes up to 824 B of values into 11 of the 33 LSM trees (the transfer and its indexes, two account versions, and an `AccountEvent`), and compaction rewrites them at each level. Plan for ~1 TB/day of actual disk usage per 128 GB of raw transfers — the comparison with Postgres here is at the use-case level (transactions + ledger), not at matching indexes.
+
+- **The real TB cost is read amplification, not writes.** During a 10M-transfer run, `/proc/pid/io` showed 142 MB/s writes (well within disk capacity) but **9 GB/s reads** — 1.95 TB total. Each transfer triggers ~24 random 8 KB page reads through the LSM tree for account balance lookups. On this workload throughput held steady at ~41–46K RPS from 3M to 10M transfers (10 GB → 27 GB file) — LSM compaction keeps up at this scale. The open question is where the throughput cliff is when the working set exceeds the 1 GB grid cache.
+
+# Reproduce this yourself
 
 Every number above was measured on one Mac Mini, in one afternoon, on a live Podman VM you can create in three commands.
 
@@ -692,7 +699,7 @@ Full setup, teardown, and bpftrace scripts are in the [benchmark repo](https://g
 
 _TigerBeetle® is a trademark of TigerBeetle, Inc. PostgreSQL® is a trademark of The PostgreSQL Global Development Group. This post is an independent benchmark and analysis — it is not affiliated with, endorsed by, or sponsored by either project. All trademarks belong to their respective owners._
 
-## Corrections
+# Corrections
 
 *2026-05-06* — Two corrections from **[Chaitanya Bhandari](https://github.com/chaitanyabhandari)** ([@chaitybhandari](https://x.com/chaitybhandari)) of the TigerBeetle team:
 
@@ -706,12 +713,12 @@ Deeply grateful to Chaitanya for the close read and source-level pointers.
 - **A benchmark transfer writes to 7 of the Transfer groove's 14 trees, not all 14.** Zero fields in optional indexes (`pending_id`, `user_data_*`) are not indexed. Per transfer, TigerBeetle also writes two account versions and a 256 B `AccountEvent`: up to 824 B of values in 11 trees.
 - **The superblock zone is 96 KiB (4 × 24 KiB), not ~64 MiB.** The 64 MiB is the client-replies zone, which the old diagram left out.
 - **The commit quorum for 6 replicas is 3, not 4.** 4 is the view-change quorum. The old text also called the replica count Byzantine-safe; VSR tolerates crashes and storage faults, not Byzantine replicas.
-- **Postgres does batch commits.** 0.42 fsyncs per row means about 2.4 commits share each WAL flush (group commit), not one flush per commit as the old hero image said. A TigerBeetle prepare is also two writes (the prepare and its header sector), not one.
+- **Postgres does batch commits.** 0.42 fsyncs per row means about 2.4 commits share each WAL flush (group commit), not one flush per commit as the old hero image and summary box said. A TigerBeetle prepare is also two writes (the prepare and its header sector), not one.
 - **The Postgres transfer benchmark runs two `UPDATE`s and one `INSERT` per transaction**, not an `INSERT` with FK checks alone.
 - **TigerBeetle clients do not wait to fill a batch**, so the 273 ms fill time is not the latency at 30K TPS.
 - **4,241 syscalls per 100,000 transfers** (one `io_uring_enter` per ~24), not ~4,600 (one per ~22).
 
-## Colophon
+# Colophon
 
 This post sat in `draft: true` for 13 months before an LLM with infinite patience for re-running benchmarks showed up. **Sonnet 4.6** drafted and ran the first traces; **Opus 4.6** came later for the skepticism sweep — caught a 4.5M→4.17M fsync discrepancy, a 567-vs-564 TB Parquet math bug, two dead TB-docs links, and a concurrency-degradation claim that turned out to be an artifact of dirty test state. **1,279 tool turns, $266, 95% cache hit.** Writing a blog post about a $600 box that can do 4 billion payments/day cost half a $600 box.
 

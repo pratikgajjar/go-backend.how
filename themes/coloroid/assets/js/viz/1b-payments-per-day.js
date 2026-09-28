@@ -88,14 +88,14 @@ function initOneBatch(fig, app) {
   const pg = sheet('PostgreSQL');
   const choices = GUESSES.map(([v, label, hint]) => h('button', { type: 'button', class: 'v-1b-tg', onclick: () => pick(v) }, label, hint ? h('span', { class: 'v-1b-hintx' }, ` · ${hint}`) : null));
   const ask = h('div', { class: 'v-1b-ask' },
-    h('p', { class: 'v-1b-q' }, 'How many times must Postgres flush its WAL to make these 8,190 transfers durable?'),
+    h('p', { class: 'v-1b-q' }, 'How many WAL flushes does Postgres need to make all 8,190 durable?'),
     h('div', { class: 'v-1b-choices', role: 'group', 'aria-label': 'Your guess' }, ...choices));
   const answer = h('p', { class: 'v-1b-answer', 'aria-live': 'polite' });
   const tg = toggle('Postgres run', Object.entries(PG_RUNS).map(([k, v]) => [k, v.label]), run, (v) => { run = v; revealAt = 1; say(); draw(); });
   tg.el.hidden = true;
 
   app.append(
-    h('p', { class: 'v-1b-lede' }, 'One full request: ', h('b', { class: 'c-data' }, '8,190 transfers'), ' × 128 B = 1 MiB. At a billion payments a day (11,574/s), that is 0.71 s of traffic. Each square is one transfer.'),
+    h('p', { class: 'v-1b-lede' }, 'Take ', h('b', { class: 'c-data' }, '8,190 transfers'), ': one full TigerBeetle request (8,190 × 128 B = 1 MiB), or 0.71 s of traffic at a billion payments a day. Each square is one transfer. Postgres commits each one in its own transaction, from 8 backends.'),
     ask,
     h('div', { class: 'v-1b-sheets' }, tb.el, pg.el),
     answer,
@@ -151,7 +151,7 @@ function initOneBatch(fig, app) {
     const R = PG_RUNS[run]; const n = flushEnds(R.perRow).length;
     const lead = run === 'ins' ? `${guess === 3400 ? '<b class="c-safe">Right.</b> ' : ''}Postgres flushed <b class="c-safe">${fmt(n)}</b> times for 8,190 single-row inserts, measured. ${guess === 8190 ? 'Not one per commit: ' : ''}with 8 backends, about 2.4 commits share each flush (Figure 2 shows how).`
       : `For transfers with 10 backends it is <b class="c-safe">${fmt(n)}</b> flushes: each transaction runs longer, so only about 1.3 commits share a flush.`;
-    answer.innerHTML = `${lead} TigerBeetle made the whole request durable with <b class="c-safe">one prepare</b> before it ran any of it.`;
+    answer.innerHTML = `${lead} TigerBeetle made the whole request durable with <b class="c-safe">one prepare</b> before it ran any of it; the TigerBeetle section below shows how.`;
   }
 
   function pick(v) {
