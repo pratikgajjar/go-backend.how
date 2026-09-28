@@ -111,6 +111,39 @@ Every number, byte layout, SQL statement, and behaviour shown in a figure
 must be true. Check it against the source, the docs, or a script you run.
 Label sample values as samples.
 
+## Design for how people learn
+
+Be creative. Before you build, ask what a reader's brain needs to take this
+idea in, then design for that. Do not start from a widget you have seen.
+Some findings from learning research to design with:
+
+- **Working memory holds about four chunks** (Cowan, 2001). Show one new
+  idea per view. Reveal detail on demand instead of all at once.
+- **Words plus a picture beat either alone** (Paivio's dual coding; Mayer's
+  multimedia principles). Put the label next to the thing it names, not in
+  a legend far away. Do not narrate on screen what the picture already shows.
+- **Signal what matters.** One highlighted thing per view. Everything else
+  recedes.
+- **Concrete before abstract.** Start with one real row, one real runner,
+  one real question, then generalise.
+- **Predict, then see** (prediction error drives learning). Let the reader
+  guess before the answer appears when the answer is surprising.
+- **Do, don't watch** (generation effect). Knowledge the reader produces
+  sticks better than knowledge they read. Let them move the input, make the
+  choice, or place themselves.
+- **Retrieval beats rereading** (testing effect). A small "what happens
+  if…" the reader answers can fix an idea better than a summary.
+- **Segment.** Break a long process into steps the reader controls; let
+  them set the pace.
+- **Spatial memory is strong.** Keep a stable layout across states so the
+  reader's map of the figure stays valid while the contents change.
+- **Emotion and relevance.** People remember what connects to their own
+  goals. Tie the figure to the reader's situation where the post allows.
+
+A figure that follows these beats one that looks impressive. Different
+posts will need different answers, so different posts should look and
+behave differently.
+
 ## Match the interaction to the kind of post
 
 Systems posts (Postgres, Temporal, TigerBeetle, Valkey) explain a
