@@ -1,41 +1,129 @@
-/* creating-content — revision-log figure. Classes prefixed v-cc-. */
+/* creating-content — Winston's formula as type. frame="none": no sheet,
+   the figure sits on the page like a line of the essay. Classes: v-cc-*. */
 
-.wv--revision-log .v-cc-split { gap: 1.1rem; }
-@media (min-width: 740px) {
-  .wv--revision-log .v-cc-split { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); }
+.viz--formula,
+.viz--formula-hero {
+  --ink: var(--article-text, oklch(26% 0.03 95));
+  --paper: var(--article-bg, oklch(92% 0.04 95));
+  --rule: color-mix(in oklch, var(--ink) 22%, transparent);
+  --blue: oklch(42% 0.16 258);
+  --blue-l: color-mix(in oklch, var(--blue) 12%, var(--paper));
+  --brown: oklch(40% 0.08 55);
+  --red: oklch(48% 0.19 27);
+  margin: 2.5rem 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1.5;
+}
+html[data-force-dark] .viz--formula,
+html[data-force-dark] .viz--formula-hero {
+  --blue: oklch(78% 0.12 255);
+  --brown: oklch(80% 0.07 65);
+  --red: oklch(72% 0.17 27);
+}
+.viz--formula .wv-fallback,
+.viz--formula-hero .wv-fallback { max-width: 560px; margin: 0 auto; border: 0; }
+
+/* ---------- the equation ---------- */
+.v-cc-eq {
+  display: grid;
+  grid-template-columns: repeat(7, auto);
+  justify-content: center;
+  justify-items: center;
+  align-items: baseline;
+  gap: 0 0.55em;
+  padding: 0.6rem 0 0.2rem;
+}
+.v-cc-term { display: contents; }
+.v-cc-glyph {
+  font-family: var(--font-display);
+  line-height: 1;
+  color: var(--ink);
+  transition: font-size 0.25s ease, color 0.25s;
+}
+.v-cc-t .v-cc-glyph { font-style: italic; }
+.v-cc-name { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.4rem; min-width: 5.5em; text-align: center; }
+.v-cc-val { font-size: 13px; font-weight: 700; color: var(--brown); font-variant-numeric: tabular-nums; min-height: 1.3em; }
+.v-cc-op { font-family: var(--font-display); font-size: 1.6em; line-height: 1; }
+.v-cc-q.is-zero .v-cc-glyph { color: transparent; -webkit-text-stroke: 1.5px var(--red); }
+.v-cc-q.is-zero .v-cc-val { color: var(--red); }
+
+.v-cc-eq.is-hero { padding-top: 0.2rem; }
+.v-cc-line { text-align: center; max-width: 34em; margin: 0.6rem auto 0; font-size: 14px; }
+
+/* ---------- people and sliders ---------- */
+.v-cc-people { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 0.5rem; margin: 1.1rem 0 0.9rem; }
+.v-cc-chip {
+  font: inherit; font-size: 12.5px; line-height: 1.2;
+  padding: 0.45rem 0.7rem; min-height: 34px;
+  color: var(--blue); background: transparent;
+  border: 1px solid var(--blue); border-radius: 999px;
+  cursor: pointer; touch-action: manipulation;
+}
+.v-cc-chip:hover { background: var(--blue-l); }
+.v-cc-chip[aria-pressed="true"] { background: var(--blue); color: var(--paper); }
+.v-cc-chip:focus-visible, .v-cc-ctl input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.v-cc-ctls { display: grid; gap: 0.35rem; max-width: 34rem; margin: 0 auto; }
+.v-cc-ctl {
+  display: grid;
+  grid-template-columns: 1.4em 11.5em minmax(0, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 13px;
+  cursor: pointer;
+}
+.v-cc-sym { font-family: var(--font-display); font-size: 17px; }
+.v-cc-ctl.is-t .v-cc-sym { font-style: italic; }
+.v-cc-track { display: block; }
+/* Talent gets a short track: you cannot move it far. */
+.v-cc-ctl.is-t .v-cc-track { width: 30%; min-width: 64px; }
+.v-cc-ctl input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 28px; margin: 0; background: transparent; cursor: pointer;
+}
+.v-cc-ctl input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--blue); }
+.v-cc-ctl input[type="range"]::-moz-range-track { height: 2px; background: var(--blue); }
+.v-cc-ctl input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; margin-top: -7px;
+  border-radius: 50%; background: var(--paper); border: 2px solid var(--blue);
+}
+.v-cc-ctl input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--paper); border: 2px solid var(--blue); }
+
+/* ---------- reading ---------- */
+.v-cc-read { max-width: 34rem; margin: 1rem auto 0; min-height: 4.6em; }
+.v-cc-read p { margin: 0 0 0.45rem; font-size: 14px; }
+.v-cc-n { color: var(--brown); font-variant-numeric: tabular-nums; }
+.v-cc-bad { color: var(--red); font-weight: 700; }
+.v-cc-said { font-style: italic; padding-left: 0.8rem; border-left: 2px solid var(--rule); }
+.v-cc-src { font-style: normal; font-size: 12px; }
+.v-cc-key { max-width: 34rem; margin: 0.6rem auto 0; font-size: 11.5px; }
+.v-cc-key .is-opt { color: var(--blue); font-weight: 700; }
+.v-cc-key .is-data { color: var(--brown); font-weight: 700; }
+.v-cc-key .is-bad { color: var(--red); font-weight: 700; }
+
+figure.viz--formula figcaption,
+figure.viz--formula-hero figcaption {
+  opacity: 1;
+  max-width: 34rem;
+  margin: 0.9rem auto 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--rule);
+  font-size: 12px;
+  font-style: normal;
+  color: var(--ink);
 }
 
-/* rows */
-.wv .v-cc-row { transition: opacity 0.3s; }
-.wv .v-cc-row.is-future { opacity: 0.32; }
-.wv .v-cc-hl { fill: transparent; transition: fill 0.3s; }
-.wv .v-cc-row.is-now .v-cc-hl { fill: var(--purple-l); }
-.wv .v-cc-row:hover:not(.is-now) .v-cc-hl { fill: var(--tint); }
-.wv .v-cc-bar { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.2; }
-
-/* spine and dots */
-.wv .v-cc-live { stroke: var(--green); stroke-width: 2.5; fill: none; }
-.wv .v-cc-log line.is-future { opacity: 0.3; }
-.wv .v-cc-dot { fill: var(--board); stroke: var(--line); stroke-width: 1.5; transition: fill 0.3s, stroke 0.3s; pointer-events: none; }
-.wv .v-cc-dot.is-past { fill: var(--ink); stroke: var(--ink); }
-.wv .v-cc-dot.is-pick { fill: var(--orange); stroke: var(--orange); }
-.wv .v-cc-dot.is-pick.is-future { fill: var(--orange-l); }
-.wv .v-cc-dot.is-now { fill: var(--purple); stroke: var(--board); stroke-width: 2.5; }
-
-/* inspector: diff lines are prose, so wrap instead of scrolling */
-.wv .v-cc-insp { margin-top: 0; min-height: 0; align-content: start; }
-.wv .v-cc-insp pre.wv-code { white-space: pre-wrap; overflow-wrap: anywhere; }
-/* main.css gives every `pre code` width: max-content !important on phones,
-   which stops the wrap. Undo it inside this figure only. */
-.wv .v-cc-insp pre.wv-code code {
-  width: auto !important;
-  max-width: 100% !important;
-  padding-right: 0 !important;
-  font-size: inherit !important;
+@media (max-width: 480px) {
+  .viz--formula, .viz--formula-hero { font-size: 13px; }
+  .v-cc-eq { gap: 0 0.3em; }
+  .v-cc-name { font-size: 9.5px; letter-spacing: 0.04em; min-width: 0; }
+  .v-cc-ctl { grid-template-columns: 1.2em minmax(0, 1fr); gap: 0.1rem 0.5rem; }
+  .v-cc-ctl .v-cc-track { grid-column: 1 / -1; }
+  .v-cc-ctl.is-t .v-cc-track { width: 34%; }
 }
-.wv .v-cc-kv { margin-top: 0.1rem; }
 
-.wv-key i.v-cc-k-dash { height: 0; border: 0; border-top: 2px dashed var(--ink); vertical-align: 0.2em; }
-
-/* The fallback is a narrow tall log; keep it readable, not huge. */
-.wv--revision-log .wv-fallback { max-width: 440px; margin: 0 auto; }
+.v-cc-still .v-cc-glyph { transition: none; }
+@media (prefers-reduced-motion: reduce) { .v-cc-glyph { transition: none; } }

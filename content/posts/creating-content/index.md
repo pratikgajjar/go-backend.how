@@ -10,8 +10,7 @@ hnItemId = 40781712
 theme = "vanilla"
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei pressing knowledge and practice together and shipping content in one chosen format" >}}
-
+{{< viz kind="formula-hero" frame="none" fallback="formula.svg" alt="Q = K × P × t, set as type: quality equals knowledge times practice times talent, with K and P large and t small" >}}
 
 At the end of this, you'll understand the importance of creating content, when to start, and how to begin.
 
@@ -19,11 +18,20 @@ At the end of this, you'll understand the importance of creating content, when t
 
 There's no ideal time; start as soon as possible. Start NOW!
 
-This post is one example. I set `draft = false` nine minutes after the first commit, with typos still in it. The typo fixes, the rewrite, and one of its quotes came later. Step through its history below.
+This post is an example. I set `draft = false` nine minutes after the first commit[^3]. The next section read like this:
 
-{{< viz kind="revision-log" fig="1" title="This post, version by version" fallback="revision-log.svg" alt="Eight versions of this post from June 11 to July 27, 2024: draft, draft = false nine minutes later, typo fixes, a rewrite, thanks to a reader, a Hacker News submission, a quote added from a comment, and footnotes. Word count grows from 427 to 719." caption="From the post's git history and its [Hacker News thread](https://news.ycombinator.com/item?id=40781712). Times are IST. Word counts cover the body without front matter. Click a row or use ← and → to step." >}}
+```txt
+## What ?
 
-Look at step 07. The Calvin Coolidge quote in the Talent section came from a Hacker News comment. Nobody could have commented if the post had stayed a draft.
+to write ? serveral options.
+
+1. Pick anything that interest you
+2. One find it easy for you but challenging for others
+3. One has put lot of efforts and hard work in learning skill, teach.
+4. Anything out of ordinary, or just simple topic like.
+```
+
+I rewrote it five days later. The Calvin Coolidge quote in the Talent section came from a Hacker News comment[^4], which a draft could not have received.
 
 # What? {#what}
 
@@ -36,7 +44,7 @@ What should you write about? Here are several options:
 
 # Quality {#quality}
 
-How do you determine the quality of the content you're creating? It depends on three things:
+The quality of what you create depends on three things. Patrick Winston puts them in a formula: quality depends on knowledge (K), practice (P), and talent (T), and "the T is very small"[^2].
 
 ## Knowledge
 
@@ -44,17 +52,23 @@ With the right amount of knowledge, you can surpass those with natural talent. C
 
 _Note:_ Having knowledge and knowing when it becomes useful is a non-linear process—you never know when it might come in handy.
 
-### Practice
+## Practice
 
 Practice is the bridge between talent and knowledge. Given your talent, practice leads to growth.
 
-#### Talent
+## Talent
 
 Consider this as gift. No?
 
 "I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right; he's doing very well now.
 
 > Nothing in this world can take the place of persistence. Talent will not; nothing is more common than unsuccessful men with talent. Genius will not; unrewarded genius is almost a proverb. Education will not; the world is full of educated derelicts. Persistence and determination alone are omnipotent. The slogan 'Press On!' has solved and always will solve the problems of the human race. ― Calvin Coolidge
+
+Put the three together and play with them. Pick a person or move the terms.
+
+{{< viz kind="formula" frame="none" fallback="formula.svg" alt="A playable version of Q = K × P × t. Each letter grows with its value; the talent slider is short." caption="A toy model. Winston does not give the formula's shape; here it is a plain product, and t runs only from 0.8 to 1.2, which is my reading of \"the T is very small\". The values for each person are made up." >}}
+
+In a product, Q is 0 whenever P is 0. So talent can only scale what you have already practised.
 
 # Why? {#why}
 
@@ -126,4 +140,6 @@ As long as necessary to cover your content. Have someone pre-read or consume it 
 
     The world is full of oddities and nuances. By writing about them, you can turn everyday moments into powerful narratives. So don't wait for the perfect topic or the perfect time. Start now, observe the world, and write about what you find.
 
+[^3]: [Commit d82539a](https://github.com/pratikgajjar/go-backend.how/commit/d82539a), 11 June 2024, 02:15 IST.
+[^4]: [Hacker News thread](https://news.ycombinator.com/item?id=40781712), 25 June 2024.
 [^2]: [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/)
