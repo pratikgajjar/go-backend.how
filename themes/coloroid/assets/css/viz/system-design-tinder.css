@@ -286,7 +286,7 @@ html[data-force-dark] .v-tdr-msg .st.is-safe { color: var(--green); }
 :is(.viz--deck-hero, .viz--arch-paths, .viz--geo-reach, .viz--swipe-race, .viz--chat-timeline) .no { color: var(--red); font-weight: 750; }
 
 /* ---------------------------------------------------------- hero: swipe your own deck (no card frame) */
-.viz--deck-hero, html[data-force-dark] .viz--deck-hero { background: none; border: 0; box-shadow: none; padding: 0; margin-top: 1rem; }
+.viz--deck-hero, html[data-force-dark] .viz--deck-hero { background: none; border: 0; box-shadow: none; padding: 0; }
 .viz--deck-hero .wv-head { margin-bottom: 0.8rem; }
 .viz--deck-hero .wv-title { font-size: 18px; color: var(--article-text, var(--ink)); }
 .viz--deck-hero figcaption { color: var(--article-text, var(--mute)); opacity: 0.8; border-top-color: currentColor; }

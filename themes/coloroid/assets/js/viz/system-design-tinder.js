@@ -1,7 +1,7 @@
 /*
  * system-design-tinder — figures for "System Design - Tinder".
  *
- *   deck-hero      the reader swipes their own precomputed deck and sees
+ *   deck-hero      (Fig. 2) the reader swipes a precomputed deck and sees
  *                  what each swipe costs (one write, one pop per 10 cards)
  *                  next to the offline work that built the deck.
  *   arch-paths     the architecture, one path at a time, hop by hop at the
@@ -137,7 +137,7 @@ function initDeckHero(fig, app) {
     if (!L) cmd.innerHTML = `Opening the app popped your top ${PAGE} cards: <code>ZPOPMAX deck:u42 ${PAGE}</code>. No ranking ran. Swipe with the buttons or the arrow keys.`;
     else if (L.pop) cmd.innerHTML = `That was your last card on the phone, so the app popped ${PAGE} more: <code>ZPOPMAX deck:u42 ${PAGE}</code>. One read for the next ${PAGE} swipes.`;
     else cmd.innerHTML = L.dir === 'right'
-      ? `Your right swipe is two small writes: <code>SADD right:u42 ${L.id}</code> and the match check in Fig. 3. The deck did not change.`
+      ? `Your right swipe is two small writes: <code>SADD right:u42 ${L.id}</code> and the match check in Fig. 4. The deck did not change.`
       : `Your left swipe is one small write: <code>SADD left:u42 ${L.id}</code>. The deck did not change.`;
   }
   function swipe(dir) {
@@ -218,7 +218,7 @@ const PATHS = {
     hops: [
       ['gw', 'Phone → API gateway', 'POST /swipe {target: "u7", dir: "right"}'],
       ['swipe', 'Gateway → Swipe svc', ''],
-      ['swipes', 'Save the like and count the pair (Fig. 3)', 'MULTI · SADD likes:{u42:u7} u42 · SCARD · EXEC'],
+      ['swipes', 'Save the like and count the pair (Fig. 4)', 'MULTI · SADD likes:{u42:u7} u42 · SCARD · EXEC'],
       ['notif', 'On a match, queue one notification', ''],
       ['push', 'APNs / FCM tell both phones', '"It\'s a Match!"'],
     ],
@@ -230,7 +230,7 @@ const PATHS = {
       ['scylla', 'Store the message first', 'INSERT INTO messages … \'pending\''],
       ['pub', 'Publish to the recipient\'s channel', 'PUBLISH user:riya …'],
       ['sub', 'The recipient\'s gateway writes it to their socket', ''],
-      [null, 'No ACK in time: push, then the phone syncs (Fig. 4)', ''],
+      [null, 'No ACK in time: push, then the phone syncs (Fig. 5)', ''],
     ],
   },
   location: {
@@ -238,7 +238,7 @@ const PATHS = {
     hops: [
       ['kafka', 'Phone → Kafka, as a buffer', '{user_id, lat, lng}'],
       ['loc', 'The processor reads a batch', ''],
-      ['geo', 'Move the user to their new cell (Fig. 2)', 'SREM active:dr5rd:… u42 · SADD active:dr5re:… u42'],
+      ['geo', 'Move the user to their new cell (Fig. 3)', 'SREM active:dr5rd:… u42 · SADD active:dr5re:… u42'],
       ['geooff', 'Every 15 min: read candidates from 9 cells', 'SMEMBERS active:<cell>:<bucket> ×9'],
       ['pgoff', 'Join profile fields and preferences', ''],
       ['offdeck', 'Rank and write the top 200', 'ZADD deck:u42 0.91 u7 …'],
