@@ -10,20 +10,15 @@ images = ["og-0cb5c2d7.png"]
 theme = "tangerine"
 +++
 
-{{< viz kind="car1-hero" frame="none" fallback="hero.svg" alt="The car card for car 2323 is built once from about 10 MySQL tables and stored in Valkey under dp:2323. Ad clicks from Google, Facebook and Instagram each read it with one key lookup. When any row changes, the binlog, producer, Kafka and consumer rebuild it." >}}
-
-
-**Introduction**
-
-The content will cover how to leverage [Valkey](https://valkey.io/) for serving web pages at blazingly fast speeds. This guide assumes you have some familiarity with backend technology.
+Buyers reached our pre-owned car platform from ads, and the car page they landed on had to answer in 60 ms. This post shows how we served that page from one pre-computed JSON in [Valkey](https://valkey.io/), how a reader on the MySQL binlog kept that JSON fresh when three different apps changed prices and photos, and what happens to a price change when each part of that pipeline fails. The listing page is covered in [Part 2](/posts/pre-owned-car-platform-with-valkey-part-2/). This guide assumes some familiarity with backend technology.
 
 {{< details "What is Valkey?" >}}
 Valkey is an open-source, high-performance key/value datastore licensed under BSD. It supports a variety of workloads such as caching, message queues, and can function as a primary database. Valkey can operate as a standalone daemon or in a cluster with options for replication and high availability.
 
-{{</details>}}
 It originated as a fork of Redis after Redis changed its license terms. More details on the forking issue can be found at [arstechnica.com](https://arstechnica.com/information-technology/2024/04/redis-license-change-and-forking-are-a-mess-that-everybody-can-feel-bad-about/).
+{{</details>}}
 
-# What ?
+# The platform
 
 Our platform for pre-owned cars allows buyers to access detailed reports, schedule test drives, and make purchase decisions. It combines a marketplace and inventory model.
 
@@ -47,7 +42,7 @@ The typical user journey involves
 
 Our goal is to maximize lead generation by providing a fast and seamless user experience.
 
-# Why ?
+# Why 60 ms
 
 - Aim to achieve a 60ms response time for critical entry points, a target set by our co-founder.
 - 95%+ traffic comes from ads on Google, Facebook, Instagram, leading users to either a detailed car page or a listing page.
@@ -66,7 +61,7 @@ Our goal is to maximize lead generation by providing a fast and seamless user ex
 - Filters available based on car attributes.
 - Handles both anonymous and logged-in users for personalized recommendations.
 
-# Exisitng design
+# The existing design
 
 - Frontend: React Progressive Web App (PWA) built using [create-react-app](https://create-react-app.dev/) as the frontend.
 - Backend: REST API implemented via [Django](https://www.djangoproject.com/) and Django-Rest-Framework.
@@ -81,7 +76,7 @@ The request-response lifecycle involves multiple steps, with significant time sp
 
 ### Dedicated Page
 
-```md
+```txt
 GET https://api.car.com/listing/14006824/
 ```
 
@@ -101,7 +96,7 @@ Dynamic Entities
 
 ### Listing Page
 
-```md
+```txt
 1. GET https://api.car.com/listing/?city_id=1&model_id=123&owner=1
 2. GET https://api.car.com/listing/?slug=used-tata-nexon-cars-in-mumbai
 3. GET https://api.car.com/listing/?slug=used-tata-nexon-cars-in-mumbai&buyer_id=123
@@ -156,7 +151,7 @@ Order Options
 3. `price_asc` - Cars sorted by ascending price.
 4. `price_desc` - Cars sorted by descending price.
 
-```md
+```txt
 GET https://api.car.com/listing/?city_id=1&order_by=reco&page_no=2&page_size=10
 ```
 
@@ -210,10 +205,12 @@ Anonymous users
 1. Store pre-computed `JSON` response of car
 2. Fetch `JSON` by `key` and return response
 
-```JavaScript
+{{< viz kind="card-once" frame="none" fig="1" fallback="card-once.svg" alt="The car card for car 2323 is built once from about 10 MySQL tables and stored in Valkey under dp:2323. Ad clicks from Google, Facebook and Instagram each read it with one key lookup. When any row changes, the binlog, producer, Kafka and consumer rebuild it." caption="Car 2323 and its price are samples. The green path is the rest of this post: how the card stays fresh." >}}
+
+```txt
 key_pattern = "dp:{car_id}"
 expiry = 12 hours
-value = gziped json payload
+value = gzipped json payload
 "dp:2323" : '{"id":2323, "images": ["url1", "url2", "url3"], "owner": "2nd", "inspection_report": ...}'
 ```
 
@@ -238,14 +235,12 @@ Logged in users
 
 Computing results at runtime as response had many dynamic entities. Since most users would come from marketing campaigns, we wanted to optimize their experience first.
 
-Are we done ?
+# Keeping the card fresh
+
+So far, a car page for an anonymous buyer is one Valkey lookup. That only helps while the stored JSON matches MySQL.
 
 > There are only two hard things in Computer Science: cache invalidation and naming things.
 > -- [Phil Karlton](https://martinfowler.com/bliki/TwoHardThings.html)
-
-Not yet.
-
-#### Cache Invalidation
 
 We must update the cache whenever a database change affects the JSON response.
 Otherwise users see stale data, such as an old price or a car that is already sold.
@@ -256,17 +251,21 @@ Say the JSON for one car uses these tables:
 2. car_images (`car_id`, `image_url`)
 3. car_features (`car_id`, `feature_id`)
 
-How do we find out about every change to these tables? There are three places to hook in:
+## Where to hook in
+
+We need to hear about every change to these tables. There are three places to hook in:
 
 1. **Model signals.** Add the logic to the model's `save` method, or to a [signal](https://docs.djangoproject.com/en/5.0/topics/signals/), in the Django app.
 2. **Domain layer.** Following Domain-Driven Design, send every write through a service that also updates the cache.
 3. **Binlog reader.** Attach a program that acts like a MySQL replica and receives every change.
 
-{{< viz kind="hook-sets" frame="none" fig="1" title="Which writes does each hook see?" fallback="hook-sets.svg" alt="Three nested rings of writes: save() and create() inside all Django inventory app writes, inside every committed write to MySQL. post_save sees the inner ring, a domain layer the middle ring, the binlog reader all of them" caption="Each ring is one hook and holds the writes that hook sees. Place five sample writes to car 2323, one at a time. The signal results are Django behaviour: `QuerySet.update()` and `bulk_create()` send no `post_save`." >}}
+{{< viz kind="hook-sets" frame="none" fig="2" title="Which writes does each hook see?" fallback="hook-sets.svg" alt="Three nested rings of writes: save() and create() inside all Django inventory app writes, inside every committed write to MySQL. post_save sees the inner ring, a domain layer the middle ring, the binlog reader all of them" caption="Each ring is one hook and holds the writes that hook sees. Place five sample writes to car 2323, one at a time. The signal results are Django behaviour: `QuerySet.update()` and `bulk_create()` send no `post_save`." >}}
 
 We went with the third approach. Many clients write to this database, and cache logic in each of them would be easy to get wrong and would mix with business logic. Every committed write passes through the binlog, whichever client made it.
 
 We listen to changes on these three tables and rebuild the cached JSON for the affected `car_id`.
+
+## Reading the binlog
 
 In MySQL, we can listen to the binlog[^1] to get notifications about all changes to the database,
 including both DDL (Data Definition Language) and DML (Data Modification Language) operations.
@@ -296,9 +295,11 @@ The library uses the table name as the topic and sends one JSON message per chan
 
 An insert (`WriteRowsEvent`) carries `row.values` instead. A consumer reads the topics that affect the car page and rebuilds or invalidates the cached JSON.
 
-{{< viz kind="change-timeline" frame="none" fig="2" title="One price change, in order" fallback="timeline.svg" alt="Swimlanes for the price script, MySQL, producer, Kafka, consumer, Valkey and buyer. A price UPDATE moves through each lane; Valkey serves the old price from the commit until the consumer SETs the new JSON" caption="Car 2323, prices, binlog positions and offsets are sample values. Producer calls follow mysql-data-stream-kafka and kafka-python 1.4.6, cache calls follow django-redis, and the consumer code is a sketch. Dots are in order; the spacing is not time." >}}
+## One price change, end to end
 
-## Infrastructure
+{{< viz kind="change-timeline" frame="none" fig="3" title="One price change, in order" fallback="timeline.svg" alt="Swimlanes for the price script, MySQL, producer, Kafka, consumer, Valkey and buyer. A price UPDATE moves through each lane; Valkey serves the old price from the commit until the consumer SETs the new JSON" caption="Car 2323, prices, binlog positions and offsets are sample values. Producer calls follow mysql-data-stream-kafka and kafka-python 1.4.6, cache calls follow django-redis, and the consumer code is a sketch. Dots are in order; the spacing is not time." >}}
+
+# When a part fails
 
 We added four components to the existing MySQL database:
 
@@ -312,28 +313,28 @@ Each of them can fail on its own, and so can the network between them.
 
 > 1. The network is reliable; - [Wiki](https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing)
 
-{{< viz kind="outage-timeline" frame="none" fig="3" title="The same change when one part fails" fallback="timeline.svg" alt="The price-change swimlanes with one component down: the change waits, resumes from a saved position or offset, and the stale stretch on the Valkey lane grows" caption="Numbers match the sections below. Pick a failure, answer before the rest of the timeline appears, then step through it. For the Kafka broker, compare the producer settings `acks=1` and `acks='all'`." >}}
+{{< viz kind="outage-timeline" frame="none" fig="4" title="The same change when one part fails" fallback="timeline.svg" alt="The price-change swimlanes with one component down: the change waits, resumes from a saved position or offset, and the stale stretch on the Valkey lane grows" caption="Numbers match the sections below. Pick a failure, answer before the rest of the timeline appears, then step through it. For the Kafka broker, compare the producer settings `acks=1` and `acks='all'`." >}}
 
-### 1. Consumer node fails
+## 1. Consumer node fails
 
 The consumer commits the Kafka offset only after it has rebuilt or invalidated the cache, so processing is at-least-once. After a restart it continues from the last committed offset and may rebuild a few cars twice, with the same result. Kafka keeps messages for 7 days by default (`log.retention.hours=168`). An outage longer than that needs a full rebuild.
 
-### 2. Producer node fails
+## 2. Producer node fails
 
 The producer reads the binlog and pushes changes into Kafka. If it cannot push, it must not lose its place. We store the binlog position with each message we send to Kafka, and after a failure we resume reading the binlog from the last position Kafka has. A few events can be sent twice, and the consumer handles that. The public library is simpler: it saves the position to a local file when it stops on a signal or an error.
 
-### 3. Valkey server fails
+## 3. Valkey server fails
 
 Use a managed service such as AWS ElastiCache, or run Valkey with a replica and automatic failover. If the consumer cannot write to Valkey, it does not commit the offset, and it clears the backlog once Valkey is back. Replication to the replica is asynchronous, so a failover can lose the last few writes. The 12-hour TTL limits how long such a key stays stale.
 
 For 10,000 active cars with a 20 KB payload each, the cache needs about 200 MB before compression.
 To keep memory bounded, set `maxmemory-policy` to `volatile-lru` and give every key a TTL. Valkey then evicts the least recently used keys that have a TTL.
 
-### 4. Kafka broker fails
+## 4. Kafka broker fails
 
 Run at least 3 brokers, with a topic replication factor of 3 and `min.insync.replicas=2`, and set `acks='all'` on the producer. Then one broker can fail without losing a change. kafka-python defaults to `acks=1`: the leader confirms before any follower has the message, so a leader crash at that moment can drop it. More replicas cost more disk and network bandwidth.
 
-### 5. MySQL fails
+## 5. MySQL fails
 
 The binlog is on disk, so a restart or a dropped connection loses nothing while the binlog files are kept. The producer resumes from its last position.
 
@@ -341,13 +342,16 @@ A long producer outage lets the binlog grow. Keep enough disk and retention (`bi
 
 If binlog is lost anyway, a Django management command rebuilds the cache for all active cars.
 
-## Optimize Listing Page ?
+# What this post showed
 
-Stay tuned for Part 2, where we will explore practical techniques for achieving pagination with Redis, including strategies for using sorted sets, lists, and other data structures.
+1. The car page for anonymous buyers is one pre-computed, gzipped JSON under `dp:{car_id}` in Valkey, read with one key lookup.
+2. Model signals and a domain layer see only writes that go through Django. The binlog sees every committed write, including the CakePHP portal and the price scripts.
+3. A price change reaches the cache through the binlog, the producer, Kafka and the consumer. Until the consumer writes the new JSON, buyers see the old price.
+4. The consumer commits its offset after the write, and the producer resumes from a saved binlog position, so most failures delay a change instead of losing it. A Kafka leader crash with `acks=1` and a Valkey failover can still lose one; the 12-hour TTL bounds how long it stays wrong.
 
-_Just like a good joke, a cache should never be stale. Keep it fresh, keep it fun. Happy coding!_ 😄
+[Part 2](/posts/pre-owned-car-platform-with-valkey-part-2/) covers the listing page: pagination and per-buyer ordering with Redis sorted sets, lists, and other data structures.
 
-**Thank you** Vaibhav for reading drafts and suggesions.
+**Thank you** Vaibhav for reading drafts and suggestions.
 
 [^1]:
     Database systems utilize various methods to track and manage changes to data. Two common approaches are the [binary log](https://dev.mysql.com/doc/refman/8.0/en/binary-log.html) in MySQL and Write-Ahead Logging [WAL](https://www.postgresql.org/docs/current/wal-intro.html) in PostgreSQL.

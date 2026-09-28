@@ -3,7 +3,7 @@
  * Own look (frame="none"): a cream spec card with a number-plate figure tag,
  * mono for the system, the app's sans font for the car card a buyer sees.
  *
- *   car1-hero         the post in one picture: one card, built once, read by every ad click
+ *   card-once         one card, built once, read by every ad click, rebuilt on change
  *   hook-sets         place each write in the smallest hook ring that sees it
  *   change-timeline   swimlanes: guess when the buyer sees the new price, then scrub
  *   outage-timeline   the same lanes: predict what a failure does, then see it
@@ -62,16 +62,16 @@ function carIcon() {
     s('circle', { cx: 44, cy: 62, r: 4.5, class: 'hub' }), s('circle', { cx: 134, cy: 62, r: 4.5, class: 'hub' }));
 }
 
-/* ================================================================ HERO */
+/* =========================================================== CARD ONCE */
 
-function initHero(fig, app) {
+function initCardOnce(fig, app) {
   const img = fig.querySelector('.wv-fallback');
   const base = img ? img.getAttribute('src').replace(/[^/]*$/, '') : '';
-  const stage = h('div', { class: `${P}hero` });
+  const stage = h('div', { class: `${P}card1` });
   app.append(stage, key([['pick', 'the pre-computed card (our choice)'], ['data', 'data'], ['safe', 'the path that keeps it fresh']]));
   const cache = {};
   onLayout(app, async (kind) => {
-    const file = kind === 'tall' ? 'hero-tall.svg' : 'hero.svg';
+    const file = kind === 'tall' ? 'card-once-tall.svg' : 'card-once.svg';
     try {
       cache[file] ??= await fetch(base + file).then((r) => (r.ok ? r.text() : Promise.reject(r.status)));
       stage.innerHTML = cache[file];
@@ -79,6 +79,7 @@ function initHero(fig, app) {
       svg.setAttribute('role', 'img');
       svg.setAttribute('aria-label', fig.getAttribute('aria-label') || '');
       svg.querySelector('title')?.remove();
+      svg.querySelectorAll('.fb-only').forEach((n) => n.remove()); // the HTML key replaces it
     } catch (e) {
       fig.classList.remove('wv-live');
     }
@@ -673,4 +674,4 @@ function initOutage(fig, app) {
   app.append(key([['look', 'now'], ['down', 'component down'], ['resume', 'where it resumes'], ['gap', 'stale, or change lost'], ['safe', 'cache matches MySQL']]));
 }
 
-register({ 'car1-hero': initHero, 'hook-sets': initHookSets, 'change-timeline': initChange, 'outage-timeline': initOutage });
+register({ 'card-once': initCardOnce, 'hook-sets': initHookSets, 'change-timeline': initChange, 'outage-timeline': initOutage });
