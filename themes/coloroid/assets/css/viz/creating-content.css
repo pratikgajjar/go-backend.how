@@ -1,0 +1,41 @@
+/* creating-content — revision-log figure. Classes prefixed v-cc-. */
+
+.wv--revision-log .v-cc-split { gap: 1.1rem; }
+@media (min-width: 740px) {
+  .wv--revision-log .v-cc-split { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); }
+}
+
+/* rows */
+.wv .v-cc-row { transition: opacity 0.3s; }
+.wv .v-cc-row.is-future { opacity: 0.32; }
+.wv .v-cc-hl { fill: transparent; transition: fill 0.3s; }
+.wv .v-cc-row.is-now .v-cc-hl { fill: var(--purple-l); }
+.wv .v-cc-row:hover:not(.is-now) .v-cc-hl { fill: var(--tint); }
+.wv .v-cc-bar { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.2; }
+
+/* spine and dots */
+.wv .v-cc-live { stroke: var(--green); stroke-width: 2.5; fill: none; }
+.wv .v-cc-log line.is-future { opacity: 0.3; }
+.wv .v-cc-dot { fill: var(--board); stroke: var(--line); stroke-width: 1.5; transition: fill 0.3s, stroke 0.3s; pointer-events: none; }
+.wv .v-cc-dot.is-past { fill: var(--ink); stroke: var(--ink); }
+.wv .v-cc-dot.is-pick { fill: var(--orange); stroke: var(--orange); }
+.wv .v-cc-dot.is-pick.is-future { fill: var(--orange-l); }
+.wv .v-cc-dot.is-now { fill: var(--purple); stroke: var(--board); stroke-width: 2.5; }
+
+/* inspector: diff lines are prose, so wrap instead of scrolling */
+.wv .v-cc-insp { margin-top: 0; min-height: 0; align-content: start; }
+.wv .v-cc-insp pre.wv-code { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* main.css gives every `pre code` width: max-content !important on phones,
+   which stops the wrap. Undo it inside this figure only. */
+.wv .v-cc-insp pre.wv-code code {
+  width: auto !important;
+  max-width: 100% !important;
+  padding-right: 0 !important;
+  font-size: inherit !important;
+}
+.wv .v-cc-kv { margin-top: 0.1rem; }
+
+.wv-key i.v-cc-k-dash { height: 0; border: 0; border-top: 2px dashed var(--ink); vertical-align: 0.2em; }
+
+/* The fallback is a narrow tall log; keep it readable, not huge. */
+.wv--revision-log .wv-fallback { max-width: 440px; margin: 0 auto; }

@@ -19,6 +19,12 @@ At the end of this, you'll understand the importance of creating content, when t
 
 There's no ideal time; start as soon as possible. Start NOW!
 
+This post is one example. I set `draft = false` nine minutes after the first commit, with typos still in it. The typo fixes, the rewrite, and one of its quotes came later. Step through its history below.
+
+{{< viz kind="revision-log" fig="1" title="This post, version by version" fallback="revision-log.svg" alt="Eight versions of this post from June 11 to July 27, 2024: draft, draft = false nine minutes later, typo fixes, a rewrite, thanks to a reader, a Hacker News submission, a quote added from a comment, and footnotes. Word count grows from 427 to 719." caption="From the post's git history and its [Hacker News thread](https://news.ycombinator.com/item?id=40781712). Times are IST. Word counts cover the body without front matter. Click a row or use ← and → to step." >}}
+
+Look at step 07. The Calvin Coolidge quote in the Talent section came from a Hacker News comment. Nobody could have commented if the post had stayed a draft.
+
 # What? {#what}
 
 What should you write about? Here are several options:
@@ -95,7 +101,7 @@ I've encountered many talented people who don't share their knowledge. A common 
 1. Games
 2. Commenting on posts with ideas
 
-> Your success in life will be largely determined by your ability to speak, your ability to write, and the quality of your ideas—in that order. - Professor Patrick H. Winston[^2]
+> Your success in life will be determined largely by your ability to speak, your ability to write, and the quality of your ideas, in that order. - Professor Patrick H. Winston[^2]
 
 May the force be with you 🧙
 
@@ -109,7 +115,7 @@ No, you can always improve upon it. It takes time. Don't wait for it to be perfe
 As long as necessary to cover your content. Have someone pre-read or consume it before publishing.
 {{</details>}}
 
-**Thank you** Vaibhav for reading drafts and suggesions.
+**Thank you** Vaibhav for reading drafts and suggestions.
 
 [^1]:
     Writing is about more than just putting words on paper—it's about capturing ideas, sharing knowledge, and making connections. But one of the most compelling reasons to write is to observe and reflect on the world around you.
