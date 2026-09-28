@@ -9,12 +9,9 @@ images = ["og-dabd1a53.png"]
 theme = "blush"
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei precomputing each user's recommendations offline into a Redis deck and dealing the top cards in under 50ms" >}}
+{{< viz kind="deck-hero" frame="none" title="Swipe your deck" fallback="deck-hero.svg" alt="A phone showing the top card of a precomputed deck, the deck as a Redis sorted set of IDs and scores, and the offline pipeline that builds it every 15 minutes" caption="IDs and scores are samples. The rest of the post takes each part apart." >}}
 
-
-Here's the question that keeps engineers up at night when building a dating app at scale: **How do you show someone the right person, right now, within 10 miles, when 75 million people are swiping simultaneously?**
-
-Let's dig in.
+A dating app at scale has to answer one question: **how do you show someone the right person, right now, within 10 miles, when 75 million people use the app every day?** The answer is in the figure above: rank each user's deck of candidates ahead of time, and serve the top of it when they open the app. Swipe a few cards and watch what each swipe costs. This post derives the load, then works through the four places where that design can break: the geo lookup, the ranking, the match check, and chat delivery.
 
 ---
 
@@ -54,7 +51,7 @@ The **recommendations engine is 80% of your system's complexity**. Everything el
 Let's derive real numbers from business metrics instead of guessing:
 
 **Starting assumptions:**
-- 75M DAU (Tinder's reported numbers)
+- 75M DAU (an upper bound: Tinder has reported about 75M *monthly* active users)
 - Average session: 7 minutes
 - Average swipes per session: 50
 - Peak hours: 8 PM - 11 PM local time (3-hour window)
@@ -97,82 +94,19 @@ Peak: 150M × 0.4 / 10,800 ≈ 5,500 messages/second
 
 # High-Level Architecture
 
-```txt
-                                    ┌─────────────────────────────────────────┐
-                                    │              CDN (Images)               │
-                                    │         CloudFront / Fastly             │
-                                    └─────────────────────────────────────────┘
-                                                       ▲
-                                                       │
-┌──────────┐     ┌─────────────┐     ┌─────────────────┴─────────────────┐
-│  Mobile  │────▶│   API GW    │────▶│         Service Mesh              │
-│   Apps   │     │  (Kong/AWS) │     │    (Envoy + Istio or Linkerd)     │
-└──────────┘     └─────────────┘     └─────────────────┬─────────────────┘
-                                                       │
-                 ┌─────────────────────────────────────┼─────────────────────────────────────┐
-                 │                                     │                                     │
-                 ▼                                     ▼                                     ▼
-    ┌────────────────────────┐        ┌────────────────────────┐        ┌────────────────────────┐
-    │   Profile Service      │        │  Recommendation Svc    │        │     Chat Service       │
-    │                        │        │                        │        │                        │
-    │  - CRUD operations     │        │  - Candidate gen       │        │  - WebSocket gateway   │
-    │  - Photo management    │        │  - Ranking/scoring     │        │  - Message routing     │
-    │  - Verification        │        │  - Queue management    │        │  - Delivery tracking   │
-    └───────────┬────────────┘        └───────────┬────────────┘        └───────────┬────────────┘
-                │                                  │                                 │
-                ▼                                  ▼                                 ▼
-    ┌────────────────────────┐        ┌────────────────────────┐        ┌────────────────────────┐
-    │   PostgreSQL (Users)   │        │   Redis Cluster        │        │   Cassandra/ScyllaDB   │
-    │   + Read Replicas      │        │   (Recommendation Q)   │        │   (Messages)           │
-    └────────────────────────┘        └───────────┬────────────┘        └────────────────────────┘
-                                                  │
-                                                  ▼
-                                      ┌────────────────────────┐
-                                      │   Elasticsearch        │
-                                      │   (Geo-queries)        │
-                                      │   or Redis Geo         │
-                                      └────────────────────────┘
-```
+Each user action takes its own path through the system. Pick one to see the services it touches, the commands it sends, its peak load from the numbers above, and its latency target from the table near the end.
 
-The diagram becomes clearer when we trace the **data flow for each critical path**.
+{{< viz kind="arch-paths" frame="none" fig="1" title="Four paths through the system" fallback="arch-paths.svg" alt="Architecture of the design: mobile app, API gateway, profile, recommendation and swipe services, WebSocket gateways, Redis, Postgres, ScyllaDB, Kafka, the location processor and the offline pipeline, with the swipe path highlighted" caption="The design in this post, not Tinder's production system. Rates and targets come from the requirements above." >}}
 
 ---
 
 # Recommendation Engine
 
-This is where your system lives or dies. Let me walk you through exactly how it works.
-
 ## The Two-Phase Architecture
 
-You cannot compute recommendations in real-time. 74,000 swipes/second with a 200ms recommendation latency budget? Impossible if you're querying a database every time.
+You cannot compute recommendations per request. At 74,000 swipes per second, a geo query plus a ranking model per swipe will not fit in a 100 ms P99 budget.
 
-**Solution: Pre-computation + Queue**
-
-```txt
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        OFFLINE PIPELINE (Every 15 min)                      │
-│                                                                             │
-│  ┌───────────┐    ┌───────────┐    ┌───────────┐    ┌───────────────────┐  │
-│  │  User     │───▶│  Candidate│───▶│   ML      │───▶│  Redis Sorted Set │  │
-│  │  Location │    │  Generator│    │  Ranker   │    │  per User         │  │
-│  │  Updates  │    │  (Geo)    │    │           │    │  (Top 200 cards)  │  │
-│  └───────────┘    └───────────┘    └───────────┘    └───────────────────┘  │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        ONLINE SERVING (Real-time)                           │
-│                                                                             │
-│  User opens app                                                             │
-│       │                                                                     │
-│       ▼                                                                     │
-│  ┌────────────────┐    ┌────────────────┐    ┌────────────────────────┐    │
-│  │ Fetch from     │───▶│ Filter already │───▶│ Return top 10 cards   │    │
-│  │ Redis Queue    │    │ swiped         │    │ (< 50ms P99)          │    │
-│  └────────────────┘    └────────────────┘    └────────────────────────┘    │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+**Solution: pre-computation plus a queue.** This is the split in the figure at the top of the post. Every 15 minutes, an offline pipeline generates candidates from nearby geohash cells, ranks them, and writes each user's top 200 into a Redis sorted set. When the user opens the app, the service pops the top 10 (`ZPOPMAX deck:u42 10`), drops anyone swiped since the deck was built, and returns the cards within a 50 ms P99 target.
 
 ## Candidate Generation: The Geo Problem
 
@@ -187,12 +121,13 @@ AND last_active > NOW() - INTERVAL '7 days'
 LIMIT 200;
 ```
 
-**The challenge:** At 75K location updates/second, geo-indexes are constantly rebuilding. PostGIS struggles with this write volume.
+**The challenge:** At 75K location updates per second, each update writes a new row version and a new GiST index entry, and vacuum has to clean up the old ones. One Postgres primary struggles with that write rate.
 
 **The solution: Geohashing with temporal sharding**
 
 ```python
-# Divide the world into geohash cells (precision 5 ≈ 5km × 5km)
+# Divide the world into geohash cells (precision 5 is 4.9 km × 4.9 km at the
+# equator; cells get narrower east-west as you move away from it)
 # Store users in Redis sets keyed by geohash + time bucket
 
 def get_candidates(user):
@@ -210,10 +145,15 @@ def get_candidates(user):
 ```
 
 **Why this works:**
-1. Geohash lookups are O(1) Redis SMEMBERS
-2. Neighbor cells give you ~15-20km radius
-3. Time bucketing auto-expires stale users
-4. Write path is just SADD—handles 100K+ writes/second
+1. One `SMEMBERS` per cell, so 9 reads per request. `SMEMBERS` is O(N) in the size of the set, so in a dense cell read a sample with `SRANDMEMBER key count` instead.
+2. Time bucketing drops stale users, as long as each bucket key has a TTL.
+3. The write path is pipelined `SADD`s, and one Redis node handles well over 100K of those per second.
+
+The part that is easy to get wrong is the reach. Nine square cells are not a circle, and a cell's width depends on latitude. Move the user, the radius, and the precision:
+
+{{< viz kind="geo-reach" frame="none" fig="2" title="How far do 9 geohash cells reach?" fallback="geo-reach.svg" alt="A 3 by 3 block of precision-5 geohash cells around a user in New York, with a 16 km search circle; 80% of the circle falls outside the block" caption="Geohash strings are real for the chosen point. Distances assume a spherical Earth." >}}
+
+In the worst case, when the user stands in a corner of their cell, the block reaches only one cell side: 4.9 km at precision 5 on the equator, 3.7 km in New York. That is far short of the 10 miles (16 km) in the opening question. So choose the precision from the radius: use the smallest cells whose 3×3 block still holds the circle, then drop candidates by real distance. Redis `GEOSEARCH` works the same way. It estimates the cell size from the radius, reads the 3×3 block, and moves to bigger cells when the block does not cover the search area[^geosearch].
 
 ## Ranking: The Bilateral Problem
 
@@ -256,103 +196,86 @@ When both users swipe right, you need to:
 
 ## Race Condition
 
-```txt
-Timeline:
-T0: User A swipes right on User B
-T1: User B swipes right on User A
-T2: Both check "has other user swiped right?"
-T3: Both see "no" (eventual consistency)
-T4: Match never created. Both users confused.
-```
+A and B swipe right on each other within the same few milliseconds. Each request must save its own swipe and check for the other one. Whether the match is found depends on how those two steps are written, and on the order in which the calls reach Redis.
 
-**Solution: Use Redis atomic operations**
+{{< viz kind="swipe-race" frame="none" fig="3" title="Two right swipes at the same moment" fallback="swipe-race.svg" alt="Outcomes of two simultaneous right swipes for five ways of saving a swipe, across every order of the Redis calls" caption="A and B are sample user IDs. Hash slots are from `CLUSTER KEYSLOT`, and the `CROSSSLOT` reply is what a Valkey 9.1 cluster returns for this transaction." >}}
+
+Checking before writing can miss the match, and a replica that lags the primary has the same effect. Writing before checking can create the match twice. A `MULTI`/`EXEC` transaction fixes both on one Redis node, and redis-py's `pipeline()` already sends one. On Redis Cluster, though, `right:A` and `right:B` hash to different slots, and a transaction may only touch keys in one slot[^crossslot]. One key per pair, with a hash tag, keeps the transaction in one slot:
 
 ```python
 def record_swipe(swiper_id, target_id, direction):
     if direction == 'left':
         redis.sadd(f"left:{swiper_id}", target_id)
         return None
-    
-    # Right swipe - check for mutual match atomically
-    pipe = redis.pipeline()
-    
-    # Add our swipe
-    pipe.sadd(f"right:{swiper_id}", target_id)
-    
-    # Check if they already swiped right on us
-    pipe.sismember(f"right:{target_id}", swiper_id)
-    
-    results = pipe.execute()
-    they_liked_us = results[1]
-    
-    if they_liked_us:
-        # MATCH! Create conversation atomically
-        match_id = create_match(swiper_id, target_id)
-        
+
+    # One key per pair. Both users build the same key, and Redis Cluster
+    # hashes only the part inside {…}, so the key has a single slot.
+    lo, hi = sorted((swiper_id, target_id))
+    key = f"likes:{{{lo}:{hi}}}"
+
+    pipe = redis.pipeline()        # transaction=True: MULTI … EXEC
+    pipe.sadd(key, swiper_id)
+    pipe.scard(key)
+    added, likes = pipe.execute()
+
+    if added == 1 and likes == 2:  # true for exactly one of the two swipes
+        match_id = create_match(lo, hi)
+
         # Fan out notifications
         notification_queue.publish({
             'type': 'match',
             'match_id': match_id,
-            'users': [swiper_id, target_id]
+            'users': [lo, hi]
         })
-        
+
         return match_id
-    
+
     return None
 ```
+
+`added == 1` keeps a repeated swipe from creating the match again. The cost is one small key for every pair with at least one like. If the app has a "Likes You" screen, keep `right:{user}` for it as well; the match decision does not read it.
 
 ---
 
 # Chat System
 
-Chat seems simple until you realize:
+Chat has to handle all of this:
 - Users switch between WiFi and cellular
 - WebSocket connections drop silently
-- Messages must be delivered exactly once
+- A message must never be lost, and must never show twice
 - Read receipts need real-time sync
 - Users might be offline for days
 
 ## Architecture
 
-```txt
-┌──────────────┐         ┌──────────────────┐         ┌──────────────────┐
-│   Client A   │◀───────▶│  WS Gateway Pod  │◀───────▶│  Redis Pub/Sub   │
-│              │         │  (Connection A)  │         │                  │
-└──────────────┘         └──────────────────┘         └────────┬─────────┘
-                                                               │
-┌──────────────┐         ┌──────────────────┐                  │
-│   Client B   │◀───────▶│  WS Gateway Pod  │◀─────────────────┘
-│              │         │  (Connection B)  │
-└──────────────┘         └──────────────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │   Message Store  │
-                         │   (ScyllaDB)     │
-                         └──────────────────┘
-```
+Each phone holds a WebSocket to one gateway pod. Gateways pass messages to each other through Redis Pub/Sub, and every message is stored in ScyllaDB. Pub/Sub delivers at most once and keeps no copy[^pubsub], so the live path alone cannot keep the first promise above. Pick a fault and follow the first message:
+
+{{< viz kind="chat-timeline" frame="none" fig="4" title="The first message, as both phones see it" fallback="chat-timeline.svg" alt="Arjun's phone, the backend event log, and Riya's phone: the message is stored, the live Pub/Sub path drops it, a push goes out, and Riya's phone syncs it from ScyllaDB" caption="Names, IDs, text, and the 5-second timeout are samples. The `message_id` is a real version-1 UUID for 2026-02-14 15:11:07 UTC." >}}
+
+Every fault ends the same way, because only two things carry the guarantee: the row in ScyllaDB and the phone's ACK. A successful socket write is not an ACK. The kernel accepts the bytes even when the phone is gone, and Linux keeps retransmitting for 13 to 30 minutes before it reports the connection dead[^tcp].
 
 ## The Delivery Guarantee
 
 ```python
-async def send_message(sender_id, recipient_id, content):
-    message_id = uuid7()  # Time-ordered UUID
-    
+async def send_message(conversation_id, sender_id, recipient_id, content):
+    # timeuuid columns accept only version-1 UUIDs, so not uuid4() or uuid7()
+    message_id = uuid1()
+
     message = {
-        'id': message_id,
-        'sender': sender_id,
-        'recipient': recipient_id,
+        'conversation_id': conversation_id,
+        'message_id': message_id,
+        'sender_id': sender_id,
         'content': content,
         'status': 'pending',
-        'created_at': now()
     }
-    
+
     # 1. Persist first (durability)
     await scylla.insert('messages', message)
-    
-    # 2. Try real-time delivery
-    delivered = await try_websocket_delivery(recipient_id, message)
-    
+
+    # 2. Try real-time delivery. True only if the phone ACKs message_id
+    #    within the timeout, not when the socket write returns.
+    delivered = await try_websocket_delivery(recipient_id, message, ack_timeout=5)
+
     if delivered:
         await scylla.update('messages', message_id, {'status': 'delivered'})
     else:
@@ -362,11 +285,13 @@ async def send_message(sender_id, recipient_id, content):
             'type': 'new_message',
             'preview': content[:50]
         })
-        
-        # 4. Message waits in "pending" until recipient fetches
-    
+
+        # 4. Message waits in "pending" until the phone syncs and ACKs
+
     return message_id
 ```
+
+On every connect, the phone asks for messages newer than the newest one it has, and stores them by `message_id`. That query is what recovers a lost message, and the ID is what stops a message from showing twice.
 
 **ScyllaDB schema for messages:**
 
@@ -384,29 +309,17 @@ CREATE TABLE messages (
 **Why ScyllaDB?**
 - Time-series write pattern (append-only messages)
 - Excellent write throughput (100K+ writes/sec per node)
-- Natural time-ordering with timeuuid
+- Natural time-ordering with `timeuuid`, a version-1 UUID that carries its creation time[^timeuuid]
 - Partition by conversation keeps related messages together
 
 ---
 
 # Location Update Pipeline
 
-This is your most write-heavy path: 75,000 updates/second.
+This is your most write-heavy path: 75,000 updates/second. Pick *Location update* in [Figure 1](#high-level-architecture) to see it: phone, Kafka as a buffer, the location processor, the geohash sets, and the offline pipeline that rebuilds decks from them.
 
-```txt
-┌──────────┐     ┌──────────────┐     ┌──────────────┐     ┌───────────────┐
-│  Mobile  │────▶│    Kafka     │────▶│   Location   │────▶│ Geohash Index │
-│   GPS    │     │   (Buffer)   │     │   Processor  │     │    (Redis)    │
-└──────────┘     └──────────────┘     └──────────────┘     └───────────────┘
-                                              │
-                                              ▼
-                                      ┌───────────────┐
-                                      │   Trigger     │
-                                      │   Reco Rebuild│
-                                      └───────────────┘
-```
 
-**Key insight:** You don't need real-time location accuracy. A 5-minute delay is fine. This lets you batch writes and reduce pressure on downstream systems.
+You don't need real-time location accuracy. A 5-minute delay is fine. This lets you batch writes and reduce pressure on downstream systems.
 
 ```python
 # Kafka consumer processing location updates
@@ -525,3 +438,9 @@ Every architectural decision ties back to these questions. The best systems engi
 ---
 
 Hope this helps in your system design journey. Now go build something people will swipe right on.
+
+[^geosearch]: <https://github.com/redis/redis/blob/unstable/src/geohash_helper.c>, `geohashCalculateAreasByShapeWGS84`
+[^crossslot]: <https://redis.io/docs/latest/develop/using-commands/multi-key-operations/>
+[^pubsub]: <https://redis.io/docs/latest/develop/pubsub/#delivery-semantics>
+[^tcp]: <https://man7.org/linux/man-pages/man7/tcp.7.html>, `tcp_retries2`
+[^timeuuid]: <https://docs.datastax.com/en/cql-oss/3.x/cql/cql_reference/uuid_type_r.html>

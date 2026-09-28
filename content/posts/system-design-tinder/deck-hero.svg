@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 310" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<rect x="4" y="4" width="300" height="300" rx="20" fill="#fefcfc" stroke="#e3d3d5"/>
+<text x="20" y="30" font-size="11.5" font-weight="800" fill="#6b5a5c" text-anchor="start">YOUR PHONE</text>
+<rect x="79" y="46" width="150" height="200" rx="24" fill="none" stroke="#2a1c1e" stroke-width="2"/>
+<rect x="91" y="58" width="126" height="120" rx="14" fill="#f5e8dc"/>
+<circle cx="154" cy="95" r="22" fill="#fefcfc"/>
+<text x="154" y="142" font-size="15" font-weight="700" fill="#7b5431" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace">u5340</text>
+<text x="154" y="160" font-size="11" font-weight="400" fill="#7b5431" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace">score 0.93</text>
+<circle cx="126" cy="210" r="20" fill="#fefcfc" stroke="#2a55b8" stroke-width="2"/>
+<text x="126" y="216" font-size="16" font-weight="400" fill="#2a55b8" text-anchor="middle">✕</text>
+<circle cx="182" cy="210" r="20" fill="#fefcfc" stroke="#2a55b8" stroke-width="2"/>
+<text x="182" y="216" font-size="16" font-weight="400" fill="#2a55b8" text-anchor="middle">♥</text>
+<text x="154" y="270" font-size="12" font-weight="600" fill="#2a1c1e" text-anchor="middle">Each swipe: one write</text>
+<text x="154" y="288" font-size="11" font-weight="700" fill="#7b5431" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace">SADD right:u42 u5340</text>
+<rect x="324" y="4" width="300" height="300" rx="20" fill="#fefcfc" stroke="#e3d3d5"/>
+<text x="340" y="30" font-size="11.5" font-weight="800" fill="#6b5a5c" text-anchor="start">YOUR DECK IN REDIS</text>
+<text x="340" y="52" font-size="12" font-weight="700" fill="#7b5431" text-anchor="start" font-family="ui-monospace, Menlo, Consolas, monospace">deck:u42 · sorted set</text>
+<rect x="340" y="64" width="268" height="28" rx="10" fill="#fefcfc" stroke="#7b5431" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="352" y="83" font-size="12" font-weight="400" fill="#7b5431" text-anchor="start" font-family="ui-monospace, Menlo, Consolas, monospace">u4160</text>
+<text x="596" y="83" font-size="12" font-weight="400" fill="#7b5431" text-anchor="end" font-family="ui-monospace, Menlo, Consolas, monospace">0.898</text>
+<rect x="340" y="100" width="268" height="28" rx="10" fill="#fefcfc" stroke="#7b5431" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="352" y="119" font-size="12" font-weight="400" fill="#7b5431" text-anchor="start" font-family="ui-monospace, Menlo, Consolas, monospace">u7674</text>
+<text x="596" y="119" font-size="12" font-weight="400" fill="#7b5431" text-anchor="end" font-family="ui-monospace, Menlo, Consolas, monospace">0.896</text>
+<rect x="340" y="136" width="268" height="28" rx="10" fill="#fefcfc" stroke="#7b5431" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="352" y="155" font-size="12" font-weight="400" fill="#7b5431" text-anchor="start" font-family="ui-monospace, Menlo, Consolas, monospace">u6994</text>
+<text x="596" y="155" font-size="12" font-weight="400" fill="#7b5431" text-anchor="end" font-family="ui-monospace, Menlo, Consolas, monospace">0.892</text>
+<rect x="340" y="172" width="268" height="28" rx="10" fill="#fefcfc" stroke="#7b5431" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="352" y="191" font-size="12" font-weight="400" fill="#7b5431" text-anchor="start" font-family="ui-monospace, Menlo, Consolas, monospace">u7345</text>
+<text x="596" y="191" font-size="12" font-weight="400" fill="#7b5431" text-anchor="end" font-family="ui-monospace, Menlo, Consolas, monospace">0.891</text>
+<rect x="340" y="208" width="268" height="28" rx="10" fill="#fefcfc" stroke="#7b5431" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="352" y="227" font-size="12" font-weight="400" fill="#7b5431" text-anchor="start" font-family="ui-monospace, Menlo, Consolas, monospace">u3133</text>
+<text x="596" y="227" font-size="12" font-weight="400" fill="#7b5431" text-anchor="end" font-family="ui-monospace, Menlo, Consolas, monospace">0.887</text>
+<text x="474" y="262" font-size="11.5" font-weight="400" fill="#6b5a5c" text-anchor="middle">… 185 more · 190 in Redis</text>
+<text x="474" y="286" font-size="11" font-weight="700" fill="#7b5431" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace">Every 10 swipes: ZPOPMAX deck:u42 10</text>
+<rect x="644" y="4" width="300" height="300" rx="20" fill="#f9f1f2" stroke="#6b5a5c" stroke-dasharray="5 4"/>
+<text x="660" y="30" font-size="11.5" font-weight="800" fill="#6b5a5c" text-anchor="start">BUILT OFFLINE, EVERY 15 MIN</text>
+<text x="662" y="64" font-size="12.5" font-weight="400" fill="#2a1c1e" text-anchor="start">1. Read 9 nearby geohash cells</text>
+<text x="662" y="94" font-size="12.5" font-weight="400" fill="#2a1c1e" text-anchor="start">2. Keep up to 500 candidates</text>
+<text x="662" y="124" font-size="12.5" font-weight="400" fill="#2a1c1e" text-anchor="start">3. Score each pair:</text>
+<text x="662" y="154" font-size="12.5" font-weight="400" fill="#2a1c1e" text-anchor="start">4. Write the top 200 into your deck</text>
+<text x="680" y="125" font-size="10.5" font-weight="400" fill="#7b5431" text-anchor="start" font-family="ui-monospace, Menlo, Consolas, monospace">P(A→B) × P(B→A) × fairness</text>
+<text x="794" y="230" font-size="12" font-weight="400" fill="#6b5a5c" text-anchor="middle">None of this runs</text>
+<text x="794" y="248" font-size="12" font-weight="400" fill="#6b5a5c" text-anchor="middle">while you swipe.</text>
+</svg>
