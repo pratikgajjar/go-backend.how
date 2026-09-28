@@ -1,0 +1,46 @@
+{{- /*
+  walviz — interactive diagram host.
+
+  Usage:
+    {{< walviz kind="map" fig="1" title="System map" follow="true"
+               fallback="pipeline.svg" alt="..." caption="..." >}}
+
+  Params:
+    kind      options | map | ring-walk | ring-sim | sizing | replay   (required)
+    fig       figure number shown in the header
+    title     short header title
+    focus     map only: comma list of node ids to highlight
+    follow    map only: "true" adds the follow-one-row stepper
+    failures  map only: "true" adds numbered failure markers
+    wide      "false" keeps the figure in the text column
+    fallback  page resource (SVG/PNG) shown without JavaScript
+    alt       alt text for the fallback and aria-label for the figure
+    caption   markdown caption
+
+  CSS/JS are loaded by baseof.html only when a page uses this shortcode.
+*/ -}}
+{{- $kind := .Get "kind" -}}
+{{- if not $kind }}{{ errorf "walviz: missing kind in %s" .Position }}{{ end -}}
+{{- $wide := ne (.Get "wide") "false" -}}
+{{- $alt := .Get "alt" | default (.Get "title") -}}
+<figure class="wv wv--{{ $kind }}{{ if $wide }} wv--wide{{ end }}" data-wv="{{ $kind }}"
+  {{- with .Get "focus" }} data-focus="{{ . }}"{{ end }}
+  {{- with .Get "follow" }} data-follow="{{ . }}"{{ end }}
+  {{- with .Get "failures" }} data-failures="{{ . }}"{{ end }}
+  {{- with $alt }} aria-label="{{ . }}"{{ end }}>
+  {{- if or (.Get "fig") (.Get "title") }}
+  <div class="wv-head">
+    {{- with .Get "fig" }}<span class="wv-fig">Fig. {{ . }}</span>{{ end }}
+    {{- with .Get "title" }}<span class="wv-title">{{ . }}</span>{{ end }}
+  </div>
+  {{- end }}
+  {{- with .Get "fallback" }}
+    {{- with $.Page.Resources.Get . }}
+  <img class="wv-fallback" src="{{ .RelPermalink }}" alt="{{ $alt }}" loading="lazy" decoding="async">
+    {{- else }}{{ errorf "walviz: fallback %q not found in %s" . $.Position }}{{ end }}
+  {{- end }}
+  <div class="wv-app"></div>
+  {{- with .Get "caption" }}
+  <figcaption>{{ . | markdownify }}</figcaption>
+  {{- end }}
+</figure>

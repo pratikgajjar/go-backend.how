@@ -16,10 +16,12 @@
   <h1 class="article-title">{{ .Title }}</h1>
 
   <article class="article-content">
+    {{ if not .Params.hide_toc }}
     <nav class="table-of-content" aria-labelledby="toc-heading">
       <h2 id="toc-heading">Contents</h2>
       {{ .TableOfContents }}
     </nav>
+    {{ end }}
     {{ partial "ext_link.html" .Content }}
   </article>
 

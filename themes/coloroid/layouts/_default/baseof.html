@@ -27,6 +27,24 @@
     {{- end }}
     {{- end }}
     {{ partial "head.html" . }}
+    {{- /* Interactive diagrams: load only on pages that use the walviz shortcode. */ -}}
+    {{- if .HasShortcode "walviz" }}
+      {{- with resources.Get "css/walviz.css" }}
+        {{- if eq hugo.Environment "development" }}
+    <link rel="stylesheet" href="{{ .RelPermalink }}">
+        {{- else }}
+          {{- with . | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous">
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- with resources.Get "js/walviz.js" }}
+        {{- $opts := dict "minify" (ne hugo.Environment "development") "target" "es2020" }}
+        {{- with . | js.Build $opts | fingerprint }}
+    <script src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous" defer></script>
+        {{- end }}
+      {{- end }}
+    {{- end }}
   </head>
   <body{{ with $theme }} class="theme-{{ . }}" data-theme="{{ . }}"{{ end }}>
     <header class="container">
