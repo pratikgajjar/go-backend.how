@@ -1,40 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 330" font-family="JetBrains Mono, ui-monospace, Menlo, Consolas, monospace" role="img" aria-label="A new SSH key in EC2 user data meets two cloud-init marker files. The init-stage marker for users_groups exists, so the key is blocked. The final-stage marker config_users_groups.once does not exist, so users-groups runs and appends the key to authorized_keys.">
-  <defs><marker id="g" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#71d790"/></marker></defs>
-  <rect width="900" height="330" rx="8" fill="#161e25"/>
-  <text x="20" y="30" font-size="15" font-weight="800" fill="#e7ecf0">Cloud-init skips a module when its marker file exists.</text>
+  <defs><marker id="g" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#00682e"/></marker></defs>
+  <rect width="900" height="330" fill="#fbfaf7"/>
+  <text x="20" y="30" font-size="15" font-weight="800" fill="#0a0d12">Cloud-init skips a module when its marker file exists.</text>
   <g transform="translate(0,34)">
     <!-- user data -->
-    <path d="M20,100 H168 L180,112 V192 H20 Z M168,100 V112 H180" fill="#212a32" stroke="#edbd86" stroke-width="1.5" stroke-dasharray="5 4"/>
-    <text x="34" y="122" font-size="13" font-weight="800" fill="#e7ecf0">user data</text>
-    <g transform="translate(44,150)" fill="none" stroke="#edbd86" stroke-width="2.2" stroke-linecap="round"><circle r="8"/><path d="M8,0 H34 M26,0 V7 M31,0 V6"/></g>
-    <text x="88" y="155" font-size="11.5" fill="#edbd86">new key</text>
-    <text x="34" y="180" font-size="10" fill="#a7b3bd">edited while stopped</text>
+    <path d="M20,100 H168 L180,112 V192 H20 Z M168,100 V112 H180" fill="#f1f0ed" stroke="#6c4122" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="34" y="122" font-size="13" font-weight="800" fill="#0a0d12">user data</text>
+    <g transform="translate(44,150)" fill="none" stroke="#6c4122" stroke-width="2.2" stroke-linecap="round"><circle r="8"/><path d="M8,0 H34 M26,0 V7 M31,0 V6"/></g>
+    <text x="88" y="155" font-size="11.5" fill="#6c4122">new key</text>
+    <text x="34" y="180" font-size="10" fill="#44484e">edited while stopped</text>
     <!-- rails -->
-    <path d="M180,146 L240,146 L240,76 L322,76" fill="none" stroke="#e7ecf0" stroke-width="2"/>
-    <path d="M320,63 V89" stroke="#ff8175" stroke-width="5"/>
-    <path d="M240,146 L240,216 L326,216" fill="none" stroke="#71d790" stroke-width="2.4" marker-end="url(#g)"/>
-    <path d="M630,216 L660,216 L660,150 L686,150" fill="none" stroke="#71d790" stroke-width="2.4" marker-end="url(#g)"/>
+    <path d="M180,146 L240,146 L240,76 L322,76" fill="none" stroke="#0a0d12" stroke-width="2"/>
+    <path d="M320,63 V89" stroke="#be1219" stroke-width="5"/>
+    <path d="M240,146 L240,216 L326,216" fill="none" stroke="#00682e" stroke-width="2.4" marker-end="url(#g)"/>
+    <path d="M630,216 L660,216 L660,150 L686,150" fill="none" stroke="#00682e" stroke-width="2.4" marker-end="url(#g)"/>
     <!-- card A -->
-    <path d="M330,24 H618 L630,36 V128 H330 Z M618,24 V36 H630" fill="#5e211f" stroke="#ff8175" stroke-width="2"/>
-    <text x="344" y="46" font-size="13" font-weight="800" fill="#e7ecf0">init stage · users_groups</text>
-    <text x="344" y="64" font-size="11.5" fill="#a7b3bd">frequency: once per instance</text>
-    <text x="344" y="86" font-size="11.5" fill="#edbd86">/var/lib/cloud/instances/&lt;id&gt;/sem/</text>
-    <text x="344" y="101" font-size="11.5" font-weight="800" fill="#edbd86">config_users_groups</text>
-    <text x="616" y="116" font-size="11.5" font-weight="800" fill="#ff8175" text-anchor="end">marker exists → skip</text>
+    <path d="M330,24 H618 L630,36 V128 H330 Z M618,24 V36 H630" fill="#ffdad6" stroke="#be1219" stroke-width="2"/>
+    <text x="344" y="46" font-size="13" font-weight="800" fill="#0a0d12">init stage · users_groups</text>
+    <text x="344" y="64" font-size="11.5" fill="#44484e">frequency: once per instance</text>
+    <text x="344" y="86" font-size="11.5" fill="#6c4122">/var/lib/cloud/instances/&lt;id&gt;/sem/</text>
+    <text x="344" y="101" font-size="11.5" font-weight="800" fill="#6c4122">config_users_groups</text>
+    <text x="616" y="116" font-size="11.5" font-weight="800" fill="#be1219" text-anchor="end">marker exists → skip</text>
     <!-- card B -->
-    <path d="M330,164 H618 L630,176 V268 H330 Z M618,164 V176 H630" fill="none" stroke="#71d790" stroke-width="2" stroke-dasharray="6 5"/>
-    <text x="344" y="186" font-size="13" font-weight="800" fill="#e7ecf0">final stage · users-groups</text>
-    <text x="344" y="204" font-size="11.5" fill="#a7b3bd">frequency: once</text>
-    <text x="344" y="226" font-size="11.5" fill="#edbd86">/var/lib/cloud/sem/</text>
-    <text x="344" y="241" font-size="11.5" font-weight="800" fill="#edbd86">config_users_groups.once</text>
-    <text x="616" y="256" font-size="11.5" font-weight="800" fill="#71d790" text-anchor="end">no marker → run</text>
+    <path d="M330,164 H618 L630,176 V268 H330 Z M618,164 V176 H630" fill="none" stroke="#00682e" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="344" y="186" font-size="13" font-weight="800" fill="#0a0d12">final stage · users-groups</text>
+    <text x="344" y="204" font-size="11.5" fill="#44484e">frequency: once</text>
+    <text x="344" y="226" font-size="11.5" fill="#6c4122">/var/lib/cloud/sem/</text>
+    <text x="344" y="241" font-size="11.5" font-weight="800" fill="#6c4122">config_users_groups.once</text>
+    <text x="616" y="256" font-size="11.5" font-weight="800" fill="#00682e" text-anchor="end">no marker → run</text>
     <!-- authorized_keys -->
-    <path d="M690,88 H874 L886,100 V192 H690 Z M874,88 V100 H886" fill="#212a32" stroke="#edbd86" stroke-width="1.5" stroke-dasharray="5 4"/>
-    <text x="704" y="110" font-size="13" font-weight="800" fill="#e7ecf0">authorized_keys</text>
-    <g transform="translate(712,136)" fill="none" stroke="#edbd86" stroke-width="2.2" stroke-linecap="round"><circle r="8"/><path d="M8,0 H34 M26,0 V7 M31,0 V6"/></g>
-    <text x="754" y="141" font-size="11.5" fill="#edbd86">old@laptop</text>
-    <g transform="translate(712,164)" fill="none" stroke="#71d790" stroke-width="2.2" stroke-linecap="round"><circle r="8"/><path d="M8,0 H34 M26,0 V7 M31,0 V6"/></g>
-    <text x="754" y="169" font-size="11.5" font-weight="800" fill="#71d790">new@laptop</text>
-    <text x="690" y="226" font-size="11.5" font-weight="800" fill="#71d790">ubuntu@ip-172-31-5-20:~$</text>
+    <path d="M690,88 H874 L886,100 V192 H690 Z M874,88 V100 H886" fill="#f1f0ed" stroke="#6c4122" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="704" y="110" font-size="13" font-weight="800" fill="#0a0d12">authorized_keys</text>
+    <g transform="translate(712,136)" fill="none" stroke="#6c4122" stroke-width="2.2" stroke-linecap="round"><circle r="8"/><path d="M8,0 H34 M26,0 V7 M31,0 V6"/></g>
+    <text x="754" y="141" font-size="11.5" fill="#6c4122">old@laptop</text>
+    <g transform="translate(712,164)" fill="none" stroke="#00682e" stroke-width="2.2" stroke-linecap="round"><circle r="8"/><path d="M8,0 H34 M26,0 V7 M31,0 V6"/></g>
+    <text x="754" y="169" font-size="11.5" font-weight="800" fill="#00682e">new@laptop</text>
+    <text x="690" y="226" font-size="11.5" font-weight="800" fill="#00682e">ubuntu@ip-172-31-5-20:~$</text>
   </g>
 </svg>
