@@ -5,3 +5,4 @@ resources/
 mm.sh
 .autoresearch/__pycache__/
 writePos
+assets/jsconfig.json

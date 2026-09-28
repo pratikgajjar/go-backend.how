@@ -27,22 +27,32 @@
     {{- end }}
     {{- end }}
     {{ partial "head.html" . }}
-    {{- /* Interactive diagrams: load only on pages that use the walviz shortcode. */ -}}
-    {{- if .HasShortcode "walviz" }}
-      {{- with resources.Get "css/walviz.css" }}
-        {{- if eq hugo.Environment "development" }}
+    {{- /* Interactive diagrams: load only on pages that use walviz or viz.
+         walviz.css is the shared figure look; viz pages add css/js from
+         assets/{css,js}/viz/<post-slug>.{css,js}. */ -}}
+    {{- $walviz := .HasShortcode "walviz" }}
+    {{- $viz := .HasShortcode "viz" }}
+    {{- $vizSlug := "" }}
+    {{- if $viz }}{{ with .File }}{{ $vizSlug = path.Base .Dir }}{{ end }}{{ end }}
+    {{- $vizCSS := slice }}
+    {{- if or $walviz $viz }}{{ with resources.Get "css/walviz.css" }}{{ $vizCSS = $vizCSS | append . }}{{ end }}{{ end }}
+    {{- if $vizSlug }}{{ with resources.Get (printf "css/viz/%s.css" $vizSlug) }}{{ $vizCSS = $vizCSS | append . }}{{ end }}{{ end }}
+    {{- range $vizCSS }}
+      {{- if eq hugo.Environment "development" }}
     <link rel="stylesheet" href="{{ .RelPermalink }}">
-        {{- else }}
-          {{- with . | minify | fingerprint }}
+      {{- else }}
+        {{- with . | minify | fingerprint }}
     <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous">
-          {{- end }}
         {{- end }}
       {{- end }}
-      {{- with resources.Get "js/walviz.js" }}
-        {{- $opts := dict "minify" (ne hugo.Environment "development") "target" "es2020" }}
-        {{- with . | js.Build $opts | fingerprint }}
+    {{- end }}
+    {{- $vizJS := slice }}
+    {{- if $walviz }}{{ with resources.Get "js/walviz.js" }}{{ $vizJS = $vizJS | append . }}{{ end }}{{ end }}
+    {{- if $vizSlug }}{{ with resources.Get (printf "js/viz/%s.js" $vizSlug) }}{{ $vizJS = $vizJS | append . }}{{ end }}{{ end }}
+    {{- range $vizJS }}
+      {{- $opts := dict "minify" (ne hugo.Environment "development") "target" "es2020" }}
+      {{- with . | js.Build $opts | fingerprint }}
     <script src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous" defer></script>
-        {{- end }}
       {{- end }}
     {{- end }}
   </head>
