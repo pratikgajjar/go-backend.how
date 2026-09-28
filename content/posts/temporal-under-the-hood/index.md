@@ -11,7 +11,7 @@ theme = "teal"
 featured = true
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei feeding an event log through a projector that replays and rebuilds a faded workflow" >}}
+{{< viz kind="tuth-receipts" frame="none" fallback="receipts.svg" alt="Two receipts for the same 3-step order: Temporal's lists 23 history events and about 145 SQL statements across 16 tables; Absurd's lists 3 checkpoints and about 32 SQL statements across 3 tables" caption="One order, two receipts. Temporal records every event of the workflow. Absurd records the result of each step. Counts are from the benchmark below." >}}
 
 
 # What you'll learn
@@ -62,19 +62,7 @@ execution to another machine and keep going as if nothing happened.
 Almost everyone is in distributed-systems land without realising. A microservice
 making a network call looks like this:
 
-```txt
-┌────────┐  1   ┌──────────┐  2  ⚠️  ╔════╗
-│  App   │─────▶│ Backend  │────────▶║ DB ║
-│        │      │          │         ║    ║
-└────────┘      └────┬─────┘         ╚════╝
-                     │
-                     │  3  ⚠️
-                     ▼
-               ┌──────────┐
-               │ External │
-               │  Service │
-               └──────────┘
-```
+{{< viz kind="tuth-request" frame="none" fig="1" title="A request with two writes" wide="false" fallback="request.svg" alt="App calls Backend; Backend writes to its DB (step 2) and calls an external service (step 3); steps 2 and 3 are failure points" >}}
 
 Any of **2** (DB write) or **3** (external service call) can fail for a
 dozen reasons — buggy code, a network blip, the third-party is down, the
@@ -139,43 +127,7 @@ Your worker is stateless and talks to the Temporal server via gRPC. The
 Temporal server itself is _not_ a single binary; it's four internal
 services (processes you run) that all share one database:
 
-```txt
-    Solid box = process you deploy and run
-    Double box = database (state lives here, not in processes)
-
-       ┌───────────────┐
-       │  Your worker  │  ← your code, as many replicas as you want
-       └───────┬───────┘
-               │  gRPC
-               ▼
- ┌─────────────────────────────────────┐
- │             Frontend                │  gRPC terminator:
- │    auth · rate-limit · routing      │  stateless, scale out freely
- └───┬─────────────┬─────────────┬─────┘
-     │             │             │
-     ▼             ▼             ▼
- ┌─────────┐  ┌──────────┐  ┌──────────┐
- │ History │  │ Matching │  │  Worker  │  ← "Worker" here is a
- │         │  │          │  │          │    Temporal service,
- │workflow │  │  task    │  │ internal │    NOT your worker
- │ state   │  │ dispatch │  │ mainte-  │
- │machines │  │  queues  │  │ nance    │
- └────┬────┘  └─────┬────┘  └─────┬────┘
-      │             │             │
-      │      all read/write       │
-      └─────────────┼─────────────┘
-                    ▼
-         ╔═══════════════════════╗
-         ║  Postgres/MySQL/      ║   ← one logical DB (may be a
-         ║  Cassandra            ║     clustered one under the hood)
-         ║                       ║
-         ║  37 tables:           ║
-         ║  executions           ║
-         ║  history_node         ║
-         ║  shards · tasks       ║
-         ║  ... etc              ║
-         ╚═══════════════════════╝
-```
+{{< viz kind="tuth-services" frame="none" fig="2" title="Temporal's services and one database" fallback="services.svg" alt="Your worker calls the frontend over gRPC; the frontend routes to history, matching, and the internal worker service; all three read and write one Postgres database with 37 tables" caption="The database can also be MySQL or Cassandra. It is one logical database, which may itself be a cluster." >}}
 
 **Frontend** terminates gRPC, authenticates, and routes requests to one of
 the three back-end services. **History** owns workflow state machines
@@ -264,9 +216,10 @@ CREATE TABLE shards (
 );
 ```
 
-`range_id` is a fencing token. Before a history service processes any workflow
-on a shard, it bumps `range_id` via `UPDATE shards SET range_id = range_id + 1`.
-Any other instance that tries to write with a stale `range_id` gets rejected.
+`range_id` is a fencing token. When a history host takes ownership of a shard,
+it increments `range_id` with an `UPDATE shards`. Every later write from that
+host checks `range_id` in the same transaction, so a host that lost the shard
+gets rejected.
 This is how Temporal guarantees that only one host is mutating a workflow's
 state at a time.
 
@@ -355,24 +308,12 @@ benchmark, which calls three activities in sequence:
 23  WorkflowExecutionCompleted {Result:...}
 ```
 
-**23 events** for 3 activities. The pattern per activity is:
+**23 events** for 3 activities: 4 to start, 6 per activity, and 1 to finish.
+So an N-activity workflow writes **`4 + 6×N + 1`** events. History writes them
+in batches, one batch per transaction, and each batch is one row in
+`history_node`: 23 events become 12 rows.
 
-```txt
-┌─────────────────────────┐
-│ ActivityTaskScheduled   │   ← workflow decided to run it
-│ ActivityTaskStarted     │   ← worker picked it up
-│ ActivityTaskCompleted   │   ← worker returned result
-│ WorkflowTaskScheduled   │   ← workflow wakes up again
-│ WorkflowTaskStarted     │   ← worker runs the workflow code
-│ WorkflowTaskCompleted   │   ← workflow made next decision
-└─────────────────────────┘   = 6 events per activity
-```
-
-Plus 4 framing events (`WorkflowExecutionStarted`, then the first workflow
-task's Scheduled/Started/Completed trio) and 1 to finish
-(`WorkflowExecutionCompleted`). So: **`4 + 6×N + 1`** events per N-activity
-workflow. For N=3 that's 23. Every one is a proto-serialised row in
-`history_node`.
+{{< viz kind="tuth-tape" frame="none" fig="3" title="The history of one workflow" wide="false" fallback="tape.svg" alt="The event history of the order workflow, grouped into history_node rows, with the six events of one activity explained" caption="Event names are from the benchmark run above. Batches follow the Temporal 1.28.2 source; the measured `INSERT INTO history_node` counts are in the tables below." >}}
 
 **Why all this ceremony?** Because replay is deterministic. If your worker
 crashes mid-workflow, Temporal replays the entire event history against your
@@ -386,47 +327,24 @@ _(Not to be confused with the four services above. These are four
 background queues that live **inside** the History service, each a
 Postgres table with its own polling loop.)_
 
-When a workflow decides to schedule an activity, _that intent_ is a row written
-to `transfer_tasks`. A separate loop in the history service picks it up and
-tells the matching service to dispatch it. Here's the rough flow:
+When a workflow schedules an activity, History writes _that intent_ as a row in
+`transfer_tasks`, in the same transaction as the workflow's new state. A
+separate loop in History reads the row and tells Matching to dispatch the task.
+The figure follows one activity, `ProcessPayment`, from the workflow code that
+schedules it to the workflow code that gets its result.
 
-```txt
-user code: "ExecuteActivity(ProcessPayment)"
-    │
-    ▼
-┌───────────────────────────────┐
-│ history service               │
-│  1. appends to history_node   │
-│  2. inserts into              │
-│     transfer_tasks            │   ← "schedule this activity"
-│  3. updates executions blob   │
-│  4. bumps shards.range_id     │
-└───────────────────────────────┘
-    │
-    ▼
-┌───────────────────────────────┐
-│ history service transfer loop │
-│  SELECT from transfer_tasks   │
-│  → call matching.AddTask      │
-└───────────────────────────────┘
-    │
-    ▼
-┌───────────────────────────────┐
-│ matching service              │
-│  INSERT INTO tasks            │   ← actual dispatch queue
-└───────────────────────────────┘
-    │
-    ▼
-┌───────────────────────────────┐
-│ worker long-polls matching    │
-│ SELECT FROM tasks             │
-│ FOR UPDATE SKIP LOCKED        │
-└───────────────────────────────┘
-```
+{{< viz kind="tuth-trip" frame="none" fig="4" title="One activity, four transactions" fallback="trip.svg" alt="One activity through your worker, the frontend, history, and matching, with the Postgres statements each of its four transactions runs" caption="`ProcessPayment` in the 3-activity benchmark workflow. Statements and event batches follow the Temporal 1.28.2 source and match the measured per-activity deltas below. Shard 3 is a sample value." >}}
 
-There is a similar loop for `timer_tasks` (scheduled wake-ups), `visibility_tasks`
-(search index updates), and `replication_tasks` (cross-cluster replication).
-Four background loops per history service, all polling the database.
+Two details are easy to miss. Each of the four transactions starts with the
+same five statements: the shard lock, then a lock and an update on
+`current_executions` and on `executions`. And a worker never queries Postgres.
+It long-polls Matching over gRPC, and Matching writes to `tasks` only when no
+worker is waiting.
+
+`timer_tasks` (scheduled wake-ups, including the timeouts in the figure),
+`visibility_tasks` (search index updates), and `replication_tasks`
+(cross-cluster replication) each have a similar loop. Four background loops
+per history service, all polling the database.
 
 ## A real query trace
 
@@ -517,19 +435,25 @@ and computed the delta per activity:
 | SELECT/UPDATE task_queues       |  1.5 |  5.1  |  **0.9**|
 |                                 |      | **sum**| **~34** |
 
-Each activity triggers:
+These deltas are the four transactions from [Figure 4](#the-four-internal-task-queues):
 
-- **4×** fencing writes (shard range_id, executions × 2, current_executions × 2)
-- **3×** history event writes (schedule, start, complete) into `history_node`
-- **3×** timer task inserts (retry timeouts, heartbeat timeouts, schedule-to-start)
-- **2×** activity lifecycle writes (transfer task enqueue + dispatch via matching)
-- **2×** activity metadata writes (insert on schedule, delete on completion)
-- **1×** history read for replay
-- **~1×** matching service round-trip via `tasks`/`task_queues`
+- **20** fencing statements: four transactions, each with the shard lock and a
+  lock and an update on `current_executions` and on `executions`
+- **3** `history_node` inserts: events 4–5, 6–8, and 9 are written as three
+  batches
+- **3** `timer_tasks` inserts: the activity's StartToClose timeout, and the
+  ScheduleToStart and StartToClose timeouts of the next workflow task
+- **3** `activity_info_maps` writes: insert on schedule, update on start,
+  delete on completion
+- **2** `transfer_tasks` inserts: one for the activity, one for the workflow
+  task that follows it
+- **1** `history_node` read: the new events for the worker
+- **~2** `tasks` and `task_queues` statements, when Matching has no worker
+  waiting
 
-That is the decomposition of the 35. None of it is wasted — every statement
+That is the decomposition of the 35. None of it is wasted: every statement
 corresponds to a specific distributed-systems guarantee. But every
-statement **also** corresponds to a row you've got to vacuum, a WAL entry
+statement also corresponds to a row you've got to vacuum, a WAL entry
 you've got to flush, and a lock you've got to acquire.
 
 Run these numbers against your own workflow: a 20-activity checkout flow is
@@ -586,7 +510,7 @@ and concurrent starts from a single client:
 Adding spawn concurrency lifts throughput because Temporal's backend is doing
 dozens of writes per workflow and the client bottleneck at 16 is the
 round-trip time, not the backend. The backend saturates near ~80 workflows/s
-on this hardware — **~11,000 SQL statements/s across all those tables**
+on this hardware — **about 11,600 SQL statements/s across all those tables**
 (80 × 145).
 
 This is a single `auto-setup` pod on a 4-CPU VM. Real Temporal clusters run
@@ -750,12 +674,13 @@ for step in ["process-payment", "reserve-inventory", "send-notification"]:
 complete_run(queue, run_id, result)
 ```
 
-If the process dies mid-task, another worker picks up the same task (its lease
-expires), calls `claim_task`, and starts from step 1 again. Steps that already
-checkpointed return their cached value immediately. No event replay, no
-deterministic-execution constraint — just "if the checkpoint is there, use it".
+If the process dies mid-task, its lease expires. The next `claim_task` call
+fails that run and creates a new one, and a worker starts the task from step 1
+again. Steps that already have a checkpoint return it at once. Absurd does not
+replay events and does not require deterministic code: if the checkpoint is
+there, the step uses it.
 
-This is the philosophical difference from Temporal:
+This is the main difference from Temporal:
 
 | | Temporal | Absurd |
 |---|---|---|
@@ -764,9 +689,14 @@ This is the philosophical difference from Temporal:
 | State source | Event history (append-only) | Checkpoint table (last-write-wins by attempt) |
 | Code between steps | Must be deterministic & bounded | Runs however many times it runs |
 
-The Absurd model is weaker — you can re-run an LLM call or a random number
-generator between steps, and the system doesn't care — but the mental model
-is dramatically simpler.
+The figure kills the worker during step 3 in both systems. Switch the code
+between steps to read the clock to see where the two models part.
+
+{{< viz kind="tuth-crash" frame="none" fig="5" title="The worker dies during step 3" fallback="crash.svg" alt="Timeline of Temporal and Absurd recovering from a worker crash during the third step, with and without code that reads the clock" caption="Behaviour from Temporal 1.28.2, Go SDK 1.34, and `absurd.sql`. Timeouts are the benchmark's: a 30 s activity StartToClose and a 30 s Absurd claim. Clock times are sample values. `exec` stands for `workflow.ExecuteActivity(…).Get(…)`." >}}
+
+The Absurd model checks less. You can re-run an LLM call or a random number
+generator between steps, and Absurd does not notice. In exchange, the mental
+model is much simpler: a step either has a checkpoint or it runs.
 
 ## A real query trace
 
@@ -810,39 +740,14 @@ Absurd cost model:  ~11 + 7 × N   SQL statements per task
                                   (where N = step count)
 ```
 
-Side-by-side:
+Side by side, with both fitted lines. Move `N` and the start rate to apply the
+models to your own workload.
 
-```txt
-  SQL statements per N-activity work unit
-  (T = Temporal, A = Absurd)
-
-  400 ─┐                                        T╸385
-       │
-  350 ─┤
-       │
-  300 ─┤
-       │
-  250 ─┤
-       │                              T╸214
-  200 ─┤
-       │
-  150 ─┤              T╸145
-       │
-  100 ─┤
-       │  T╸76
-   75 ─┤                                        A╸81
-       │                              A╸46
-   50 ─┤              A╸32
-       │  A╸18
-    0 ─┴──────────────┴───────────────┴──────────┴──
-       N=1           N=3             N=5         N=10
-
-  Temporal:  75.7 → 144.8 → 214.0 → 385.2   slope ≈ 35 per activity
-  Absurd:    17.7 →  32.0 →  46.1 →  81.2   slope ≈  7 per step
-```
+{{< viz kind="tuth-cost" frame="none" fig="6" title="SQL statements per unit of work" fallback="cost.svg" alt="Measured SQL statements per workflow or task for 1, 3, 5, and 10 activities or steps, with the fitted lines 40 + 35N for Temporal and 11 + 7N for Absurd" caption="Brown points are the measured runs, 200 workflows or tasks each. Lines are the fitted models. Past `N = 10` the lines are extrapolated." >}}
 
 **A Temporal activity costs about 5× as many SQL statements as an Absurd
-step.** That ratio stays constant as you add more units of work.
+step.** The slope ratio, 35 / 7, stays at 5 as you add units of work. The
+ratio of totals rises from about 4.2× at `N = 1` toward 5×.
 
 Each Absurd step is:
 - 1 checkpoint read (returns empty on first run, cached value on replay)
@@ -928,30 +833,7 @@ task was **20.2 ms** — tail essentially matches the median.
 
 Architecturally, here's what you deploy for each:
 
-```txt
-         TEMPORAL                              ABSURD
-  (5 processes + database)                (workers + database)
-
- ┌───────────────┐                        ┌───────────────┐
- │ Your worker   │                        │ Your worker   │
- │   (1 or N)    │                        │   (1 or N)    │
- └───────┬───────┘                        └───────┬───────┘
-         │ gRPC                                   │ SQL
-         ▼                                        │
- ┌───────────────┐                                │
- │   Frontend    │                                │
- └───┬───┬───┬───┘                                │
-     ▼   ▼   ▼                                    │
- ┌───┐ ┌───┐ ┌───┐                                │
- │Hst│ │Mtg│ │Wkr│                                │
- └─┬─┘ └─┬─┘ └─┬─┘                                │
-   └─────┼─────┘                                  │
-         ▼                                        ▼
- ╔═══════════════╗                        ╔═══════════════╗
- ║   Postgres    ║                        ║   Postgres    ║
- ║   37 tables   ║                        ║ 5 tables/queue║
- ╚═══════════════╝                        ╚═══════════════╝
-```
+{{< viz kind="tuth-deploy" frame="none" fig="7" title="What you deploy" fallback="deploy.svg" alt="Temporal: your worker, a frontend, history, matching, and worker services, and Postgres with 37 tables. Absurd: your workers and Postgres with 5 tables per queue." caption="The benchmark ran Temporal's `auto-setup` image, which runs the four services in one process." >}}
 
 Same workload (3-step order fulfillment), same hardware, same Postgres
 instance, same VM:
