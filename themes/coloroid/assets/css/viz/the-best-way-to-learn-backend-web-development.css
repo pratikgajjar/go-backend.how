@@ -1,0 +1,104 @@
+/* Figures for "The Best Way to Learn Backend Web Development". Prefix: v-bwl-
+ *
+ * Both figures use frame="none": no sheet, no legend. They sit in the
+ * essay's own type, and every label sits next to the thing it names.
+ * Colour meaning, the same in both figures:
+ *   brown  a month spent in one stack        red     a month lost to a restart
+ *   purple the one thing to look at          green   reached, a good sign
+ *   blue   what you choose or enter          orange  the post's advice
+ */
+
+.viz--one-stack,
+.viz--where-you-are {
+  --ink: var(--article-text);
+  --mute: color-mix(in oklch, var(--article-text) 72%, var(--article-bg));
+  --soft: color-mix(in oklch, var(--article-bg), white 45%);
+  --brown: oklch(40% 0.08 55);   --brown-l: oklch(82% 0.06 70);
+  --red: oklch(47% 0.19 27);     --red-l: oklch(93% 0.04 25);
+  --green: oklch(38% 0.12 150);  --green-l: oklch(86% 0.1 150);
+  --purple: oklch(42% 0.2 305);  --purple-l: oklch(91% 0.06 305);
+  --blue: oklch(40% 0.16 258);   --blue-l: oklch(95% 0.03 258);
+  --orange: oklch(47% 0.16 45);  --orange-l: oklch(93% 0.06 65);
+  margin: 2.4rem 0;
+  color: var(--ink);
+}
+html[data-force-dark] .viz--one-stack,
+html[data-force-dark] .viz--where-you-are {
+  --soft: color-mix(in oklch, var(--article-bg), white 7%);
+  --brown: oklch(78% 0.08 65);   --brown-l: oklch(40% 0.05 60);
+  --red: oklch(72% 0.17 27);     --red-l: oklch(30% 0.07 25);
+  --green: oklch(80% 0.14 152);  --green-l: oklch(38% 0.08 152);
+  --purple: oklch(80% 0.14 305); --purple-l: oklch(33% 0.1 305);
+  --blue: oklch(80% 0.12 255);   --blue-l: oklch(28% 0.05 258);
+  --orange: oklch(80% 0.14 60);  --orange-l: oklch(32% 0.07 55);
+}
+.viz--one-stack svg,
+.viz--where-you-are svg { display: block; width: 100%; height: auto; overflow: visible; }
+.viz--one-stack figcaption,
+.viz--where-you-are figcaption { margin-top: 0.9rem; font-size: 0.9em; }
+
+/* svg type */
+.v-bwl-t { font-family: var(--font-mono); font-size: 12px; fill: var(--ink); }
+.v-bwl-xs { font-size: 10.5px; }
+.v-bwl-b { font-weight: 700; }
+.v-bwl-mute { fill: var(--mute); }
+.v-bwl-red { fill: var(--red); }
+.v-bwl-purple { fill: var(--purple); }
+
+/* shared marks */
+.v-bwl-brick { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.2; transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.2, 1), fill 0.3s; }
+.v-bwl-brick.is-in { fill: var(--green-l); stroke: var(--green); }
+.v-bwl-brick.is-before { fill: var(--red-l); stroke: var(--red); stroke-dasharray: 3 2; }
+.v-bwl-axis { stroke: var(--ink); stroke-width: 1.2; }
+.v-bwl-thin { stroke-width: 0.8; }
+.v-bwl-here { stroke: var(--ink); stroke-width: 2; }
+
+/* the reader's choices */
+.v-bwl-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0 0.2rem; }
+.v-bwl-chip {
+  font: inherit;
+  font-size: 0.92em;
+  color: var(--blue);
+  background: transparent;
+  border: 1.5px solid var(--blue);
+  border-radius: 999px;
+  padding: 0.2rem 0.8rem;
+  cursor: pointer;
+}
+.v-bwl-chip[aria-pressed="true"] { background: var(--blue); color: var(--article-bg); font-weight: 700; }
+.v-bwl-chip:focus-visible, .v-bwl-slide:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.v-bwl-slide { width: 100%; max-width: 30rem; accent-color: var(--blue); margin: 0.2rem 0 0.4rem; display: block; }
+.v-bwl-val { color: var(--blue); font-variant-numeric: tabular-nums; }
+
+/* hero */
+.v-bwl-q { font-size: 1.12em; font-weight: 700; margin: 0; max-width: 34em; }
+.v-bwl-stage { margin: 1rem 0 0; }
+.viz--one-stack .v-bwl-stage svg { max-width: 680px; }
+.v-bwl-win { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.2; }
+.v-bwl-ctx { fill: none; stroke: var(--mute); stroke-width: 0.9; stroke-dasharray: 3 3; }
+.v-bwl-say { margin: 0.7rem 0 0; min-height: 3.2em; max-width: 40em; }
+.v-bwl-say.is-good { color: var(--green); font-weight: 700; }
+
+/* where you are: three short steps, then one next hour */
+.v-bwl-step { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 0 0.6rem; padding: 1rem 0; border-top: 1px solid color-mix(in oklch, var(--ink) 25%, transparent); }
+.v-bwl-step:first-child { border-top: 0; padding-top: 0.2rem; }
+.v-bwl-n { font-weight: 700; font-size: 1.3em; line-height: 1.5; color: var(--mute); }
+.v-bwl-ask { margin: 0; }
+.v-bwl-pic { margin: 0.5rem 0 0; }
+.v-bwl-next { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.6; }
+.v-bwl-good { color: var(--green); font-weight: 700; }
+.viz--where-you-are .v-bwl-say { min-height: 0; margin-top: 0.4rem; font-size: 0.95em; }
+
+.v-bwl-week { position: relative; display: flex; height: 1.8rem; margin: 1.6rem 0 0.2rem; border: 1.2px solid var(--ink); font-size: 0.85em; line-height: 1.7rem; max-width: 30rem; }
+.v-bwl-week span { overflow: hidden; white-space: nowrap; padding: 0 0.5rem; transition: width 0.3s; }
+.v-bwl-wk-build { background: var(--green-l); border-left: 1.2px solid var(--ink); text-align: right; }
+.v-bwl-wk-mark { position: absolute; top: -1.45rem; bottom: -4px; width: 0; border-left: 2.5px solid var(--orange); }
+.v-bwl-wk-mark em { position: absolute; top: -0.1rem; left: 5px; font-style: normal; font-size: 0.9em; line-height: 1; font-weight: 700; color: var(--orange); white-space: nowrap; }
+
+.v-bwl-hour { margin: 0.4rem 0 0; padding: 0.8rem 1rem; border-left: 4px solid var(--orange); background: var(--orange-l); }
+.v-bwl-hour-k { display: block; font-size: 0.8em; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--orange); margin-bottom: 0.2rem; }
+.v-bwl-hour.is-wait { background: transparent; border-left-style: dashed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .v-bwl-brick, .v-bwl-week span { transition: none; }
+}

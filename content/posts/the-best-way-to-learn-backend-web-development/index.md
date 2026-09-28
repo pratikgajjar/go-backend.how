@@ -10,7 +10,7 @@ images = ["og-dd7f375a.png"]
 theme = "pistachio"
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei committing to one backend stack for six months instead of hopping between languages" >}}
+{{< viz kind="one-stack" frame="none" fallback="one-stack.svg" alt="Twelve months drawn as twelve bricks. Switching stacks every three months makes four columns of three that stop below the months 4 to 6 window for feeling comfortable in a stack. Switching every six months reaches it twice; one stack reaches it and continues into the junior-roles window." caption="Each brick is one month in one stack. The windows come from the timeline later in this post, counted from the day you start a stack." >}}
 
 
 You've probably read ten articles just like this one.
@@ -19,9 +19,9 @@ You've probably read ten articles just like this one.
 
 **It seems like** you're looking for someone to just *tell you* what to do, to cut through the noise and give you a real path forward.
 
-Here's the uncomfortable truth: **Most backend learning advice is wrong.** Not because it's technically incorrect, but because it's optimized for comprehensiveness, not for *you actually becoming a backend developer.*
+**Most backend learning advice is built to be complete.** A complete list is a good reference and a poor plan: it does not say what to learn first or what to skip.
 
-Let me show you what actually works.
+This post is a plan for your first year: one stack, a few load-bearing fundamentals, and one project that grows with you.
 
 ---
 
@@ -87,7 +87,7 @@ Some fundamentals are load-bearing walls. Remove them, and everything collapses.
 
 Not "I know GET and POST."
 
-I mean: What happens when you type a URL and press Enter? Trace the entire journey. DNS resolution. TCP handshake. Request headers. Status codes. Response body. Connection close.
+I mean: what happens when you type a URL and press Enter? Trace the entire journey: DNS resolution, the TCP handshake, TLS, request headers, status codes, the response body, and whether the connection stays open for the next request.
 
 **How do you know you understand HTTP?** You can debug a failing API call using only `curl` and reading headers, without touching your code.
 
@@ -101,7 +101,7 @@ Pick PostgreSQL. Not because it's "the best" but because:
 Learn to:
 - Design schemas that don't require redesigns
 - Write queries that don't collapse under load
-- Understand indexes (most developers can't explain how a B-tree index works, can you?)
+- Understand indexes, including how a B-tree index finds a row
 - Read query plans
 
 **Don't touch NoSQL until you've built something real with SQL.** You need to understand what relational databases solve before you can evaluate when to abandon them.
@@ -239,6 +239,10 @@ Here's a realistic timeline for someone learning backend development seriously (
 
 **That last line isn't a joke.** Senior engineers with 15 years of experience feel like imposters regularly. The difference is they've learned to ship anyway.
 
+The first four rows count months in one stack. That is why the post asks you to commit for six months: a switch restarts the syntax, the framework idioms, and the debugging habits, and those rows start again. Three questions place you on this timeline.
+
+{{< viz kind="where-you-are" frame="none" fallback="where-you-are.svg" alt="Three questions about your months, your week, and what you have built. Your months appear on the post's timeline with the next milestone highlighted, followed by one suggested next step for the next hour" caption="The figure takes the post at its word and counts the timeline from the start of your current stack. Concepts do carry over, so a real switch costs less than a full restart; read the shift as an upper bound. The timeline assumes 2–3 hours a day." >}}
+
 ---
 
 # The Hard Truth About Staying Current
@@ -248,7 +252,7 @@ The field evolves constantly. New frameworks. New paradigms. New "best practices
 Here's the secret: **Most of it doesn't matter.**
 
 Fundamentals change slowly:
-- HTTP hasn't fundamentally changed since the 90s
+- HTTP methods, status codes, and headers have barely changed since the 90s (HTTP/2 and HTTP/3 changed how the bytes travel)
 - SQL is 50 years old
 - Good API design principles are decades old
 - Security basics are timeless
