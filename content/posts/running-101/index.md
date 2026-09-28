@@ -73,9 +73,9 @@ Output metrics are the effect.
 - Power Zones
 - Stride Length
 
-Garmin compares each input metric with other runners and puts it in a percentile band. Type the numbers from one of your runs to see where each one sits, and which one to work on first.
+Garmin compares each input metric with other runners and puts it in a percentile band. Start with my own first number, then type yours to see where each one sits and which one to work on first.
 
-{{< viz kind="form-check" wide="false" frame="none" title="Where your form sits" fallback="form-check.svg" alt="Four bars, one per input metric, each split into Garmin's five percentile bands, with a sample runner marked on each" caption="The runner moves at the cadence, contact time, and bounce you type. Bounce is drawn to scale. Step length comes from pace and cadence: `1000 / (pace × cadence)`. Band edges are from the tables below." >}}
+{{< viz kind="form-check" wide="false" frame="none" title="Where your form sits" fallback="form-check.svg" alt="Four bars, one per input metric, each split into Garmin's five percentile bands, with a sample runner marked on each" caption="Garmin Connect shows these numbers for each run under Running Dynamics. The starting cadence and pace are mine; the contact time and bounce are sample values. The runner moves at the cadence, contact time, and bounce in the rows. Step length comes from pace and cadence: `1000 / (pace × cadence)`. Band edges are from the tables below." >}}
 
 ### Cadence
 
@@ -152,7 +152,7 @@ pace (min/km) = 1000 / (cadence × stride length)
 
 Only two numbers set pace: how often your feet land and how far you travel on each step. Ground contact time and vertical ratio are not in the formula. They change what each step costs, not how far it goes.
 
-{{< viz kind="footprints" wide="false" frame="none" title="Step length at your goal pace" fallback="footprints.svg" alt="Five seconds of footprints at 165 spm and at 180 spm for a 25-minute 5K; both reach the same 16.7 m mark" caption="Both rows cover the same ground in five seconds. More steps per minute means shorter steps for the same pace." >}}
+{{< viz kind="footprints" wide="false" frame="none" title="Closing the gap to a goal" fallback="footprints.svg" alt="Five seconds of footprints for a 25:00 5K today and for a 20:00 goal, reached with 184 spm and 1.36 m steps" caption="Each row is five seconds of running. Step length is speed ÷ cadence. *A bit of both* splits the extra speed evenly between cadence and step length." >}}
 
 Try my next goal, a 5K in 20:00. At 180 spm it still needs 1.39 m per step, so cadence alone does not get there. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
 
