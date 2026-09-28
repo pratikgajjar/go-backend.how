@@ -312,7 +312,7 @@ function initFormCheck(fig, app) {
     } else if (mode === 'vo') {
       const top = Y(H0 + G.rise); const bot = Y(H0 - G.dip);
       o += `<line x1="${X(-0.7)}" x2="${X(0.6)}" y1="${top}" y2="${top}" class="v-r101-guide"/><line x1="${X(-0.7)}" x2="${X(0.6)}" y1="${bot}" y2="${bot}" class="v-r101-guide"/>`;
-      o += `<text x="${X(0.64)}" y="${(top + bot) / 2 + 4}" class="v-r101-t s b">${P.vo.toFixed(1)} cm up and down</text>`;
+      o += `<text x="${X(-0.74)}" y="${(top + bot) / 2 + 4}" text-anchor="end" class="v-r101-t s b">${P.vo.toFixed(1)} cm</text>`;
     } else if (mode === 'vr') {
       const y = gy + 16; const x0 = X(-G.L / 2); const x1 = X(G.L / 2);
       o += `<path d="M${x0},${y - 5} V${y + 5} M${x0},${y} H${x1} M${x1},${y - 5} V${y + 5}" class="v-r101-brk"/>`;
