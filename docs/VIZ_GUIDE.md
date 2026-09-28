@@ -13,9 +13,12 @@ the same kit with different labels.
 
 Replace the post's current images with visuals you design for it:
 
-- The `xiaohei-hero.png` at the top of the post: replace it with a hero
-  visual that shows the post's core idea (static SVG or interactive).
-  Remove the old file with `git rm` once nothing references it.
+- The `xiaohei-hero.png` at the top of the post: remove it. A figure at
+  the very top is optional, not required. Most readers need the opening
+  promise and some context before a diagram means anything, so a figure
+  usually belongs where the question it answers comes up. Put one at the
+  top only if it works with no context (for example a thing the reader can
+  try right away). `git rm` the old file once nothing references it.
 - Diagram images (sequence-diagram PNGs, explanatory drawings, metric
   charts drawn by hand) and ASCII diagrams: replace each with a figure that
   shows the same thing better. Delete the old file when replaced.
@@ -180,8 +183,17 @@ sit in between: model the body or the eyes, but keep it human and simple.
 - Name the component that actually owns a guarantee.
 - Titles are humble and grounded.
 - Keep a table only if it adds value.
-- Keep Pratik's voice. Fix slop you find near your figures, but do not
-  rewrite the post wholesale.
+- Keep Pratik's voice and the post's facts and conclusions.
+
+## Structure
+
+You may restructure the post so the figures and the story work together:
+reorder sections, merge or split them, move or cut paragraphs a figure now
+covers, change headings, and choose where each figure goes. Follow the
+story order Pratik asked for where it applies: why the existing ways fall
+short, then why this one makes sense, then how it works. Open with the
+promise from `docs/WRITING_GUIDE.md`. Do not change `draft`, `date`,
+`theme`, or `featured`. Explain structural changes in the commit message.
 
 ## How to build one
 
