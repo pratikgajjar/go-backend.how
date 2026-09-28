@@ -87,26 +87,32 @@ float sdEll(vec2 p, vec2 r){ float k0=length(p/r), k1=length(p/(r*r)); return k0
 float cov(float d){ return clamp(.5-d*uDpr, 0., 1.); }
 vec4 over(vec4 dst, vec3 c, float a){ return vec4(c*a, a) + dst*(1.-a); }
 float sdTaper(vec2 p, vec2 a, vec2 b, float r0, float r1){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/max(dot(ba,ba),1e-4),0.,1.); return length(pa-ba*h)-mix(r0,r1,h); }
-/* gear 5 mane: big white flame-tongues streaming up and back, a soft crown mass, curly cloud swirls */
-float spiral(vec2 v, float R){ float r=length(v); float th=atan(v.y,v.x)/6.2832+.5; float s=R*.45; float u=r/s-th; float d=(.5-abs(fract(u)-.5))*s; return max(d-.34, r-R); }
-vec2 hairL(vec2 q, float amt, float t, float face){
-  float d=1e5, sw=1e5, back=-face;
-  for (int i=0;i<9;i++){
-    float fi=float(i)/8.;
-    vec2 b=vec2(mix(-11.,11.,fi), -10.-(1.-abs(fi-.5)*2.)*5.);
-    float ang=(fi-.5)*1.25 + back*.3 + sin(t*2.4+fi*6.3)*.14;                  /* mostly upward, leaning back */
-    float len=(32.+18.*fract(sin(fi*91.7)*43.1))*amt*(.9+.1*sin(t*5.+fi*11.));
-    float ang2=ang*1.25 + back*.45 + sin(t*3.2+fi*4.7)*.42;
-    float ang3=ang2 + back*.55 + sin(t*4.4+fi*3.3)*.6;                           /* tips whip like fire */
-    vec2 p1=b+vec2(sin(ang),-cos(ang))*len*.38;
-    vec2 p2=p1+vec2(sin(ang2),-cos(ang2))*len*.34;
-    vec2 p3=p2+vec2(sin(ang3),-cos(ang3))*len*.32;
-    d=smin(d, min(min(sdTaper(q,b,p1,4.6*amt,3.7*amt), sdTaper(q,p1,p2,3.7*amt,2.3*amt)), sdTaper(q,p2,p3,2.3*amt,.35*amt)), 1.6);
-    if (mod(float(i),2.)>.5) sw=min(sw, spiral(q-mix(p1,p2,.5), 2.7*amt));
+/* gear 5 mane (super-saiyan volume): a big rounded dome on the head, flame spikes curling up around
+   its silhouette, jagged bangs, bold swirl curls inside, grey cel-shading underneath */
+float spiralLine(vec2 v, float R, float t){ float r=length(v); float th=fract(atan(v.y,v.x)/6.2832+.5+t); float s=R*.6; float u=r/s-th; float d=(.5-abs(fract(u)-.5))*s; return max(d-.42, r-R); }
+float spiralShade(vec2 v, float R, float t){ float r=length(v); float th=fract(atan(v.y,v.x)/6.2832+.5+t); float s=R*.6; float f=fract(r/s-th); return smoothstep(.05,.11,f)*smoothstep(.46,.4,f)*step(r,R); }
+float flame(vec2 q, vec2 b, float a, float len, float w, float bend){
+  vec2 dr=vec2(sin(a),-cos(a)), nr=vec2(-dr.y,dr.x);
+  vec2 m=b+dr*len*.5+nr*bend*len*.18, tp=b+dr*len+nr*bend*len*.45;
+  return min(sdTaper(q,b,m,w,w*.5), sdTaper(q,m,tp,w*.5,.12));
+}
+vec4 hairL(vec2 q, float amt, float t, float face){
+  vec2 c=vec2(-face*1.2,-22.);
+  float d=smin(sdEll(q-c, vec2(18.,13.)*amt), sdEll(q-c-vec2(face*3.,-4.)*amt, vec2(13.,11.)*amt), 4.);
+  for (int i=0;i<7;i++){
+    float fi=float(i)/6., a=mix(-1.45,1.45,fi)+sin(fi*23.)*.12;
+    vec2 b=c+vec2(sin(a)*14.,-cos(a)*10.)*amt;
+    float len=(12.+7.*fract(sin(fi*57.3)*91.1)+2.*sin(t*5.+fi*9.))*amt;
+    float bend=(a<0.?1.:-1.)*(.9+.35*sin(t*3.5+fi*7.));           /* big tongues curling upward like fire */
+    d=smin(d, flame(q,b,a*1.05,len,6.2*amt,bend), 2.);
   }
-  d=smin(d, length((q-vec2(back*2.,-15.))/vec2(1.35,1.))-8.*amt, 3.);        /* small crown so the tongues read */
-  sw=min(sw, spiral(q-vec2(back*4.,-19.), 3.*amt));
-  return vec2(d, sw);
+  d=smin(d, flame(q,c+vec2(-17.,6.)*amt,-2.1,9.*amt,4.*amt,.6), 1.4);    /* tufts flaring beside the face */
+  d=smin(d, flame(q,c+vec2(17.,6.)*amt,2.1,9.*amt,4.*amt,-.6), 1.4);
+  for (int i=0;i<3;i++){ float fi=float(i)/2.; vec2 b=vec2(mix(-12.,12.,fi)-face*1.2,-10.); d=min(d, sdTaper(q,b,b+vec2(mix(1.5,-1.5,fi),4.)*amt,2.8*amt,.2)); }
+  vec2 s0=c+vec2(-3.,-2.)*amt, s1=c+vec2(9.,3.)*amt, s2=c+vec2(-12.,5.)*amt;       /* one big curl, two smaller */
+  float sl=min(spiralLine(q-s0,7.*amt,t*.04), min(spiralLine(q-s1,4.6*amt,-t*.05), spiralLine(q-s2,3.8*amt,t*.06)));
+  float ss=max(spiralShade(q-s0,7.*amt,t*.04), max(spiralShade(q-s1,4.6*amt,-t*.05), spiralShade(q-s2,3.8*amt,t*.06)));
+  return vec4(d, sl, ss, 0.);
 }
 /* straw hat as a layer so it can sit on his head or hang on his back */
 vec4 hatLayer(vec2 p){
@@ -165,14 +171,6 @@ void main(){
   col=over(col,scC,cov(dS));
   col=over(col,LINE,cov(abs(dS)-.5*S)*g5);
   if (uMisc.y>.5 && uMisc.z>.5){ vec4 hc=hatLayer(p); col=hc+col*(1.-hc.a); }   /* gear 5: hat hangs on his back */
-  if (hairA>.01){
-    vec2 hr=hairL(q,hairA,gt,face); float dHr=hr.x*ms;
-    float dSh=hairL(q+vec2(-face*1.2,3.2),hairA,gt,face).x*ms;
-    col=over(col,WHITE,cov(dHr));
-    col=over(col,vec3(.8,.8,.84),cov(max(dHr,-dSh))*.9);                 /* grey cel-shade along the lower edge */
-    col=over(col,vec3(.5,.5,.56),cov(hr.y*ms)*step(dHr,0.)*.75);          /* curly swirls */
-    col=over(col,LINE,cov(abs(dHr)-.5*S)*min(1.,hairA*2.));
-  }
   col=over(col,mix(uInk,uTint.rgb,uTint.a),cov(dInk));
   col=over(col,LINE,cov(abs(dInk)-.55*S)*g5);
   vec3 eyeC=mix(uPaper,LINE,step(.5,g5));
@@ -185,6 +183,15 @@ void main(){
     for (int i=0;i<5;i++){ float fi=float(i)/4.; dC=smin(dC, length(q-vec2(mix(-15.,15.,fi), 7.2+sin(fi*9.+gt*2.)))-(3.8+.9*sin(fi*13.+gt*3.))*g5, 1.5); }
     dC=smin(dC, length(q-vec2(-14.5,12.5))-3.4*g5, 1.5); dC=smin(dC, length(q-vec2(14.5,12.5))-3.4*g5, 1.5);
     dC*=ms; col=over(col,WHITE,cov(dC)); col=over(col,LINE,cov(abs(dC)-.5*S)*g5);
+  }
+  if (hairA>.01){                                         /* the mane sits on top of the head */
+    vec4 hr=hairL(q,hairA,gt,face); float dHr=hr.x*ms;
+    float dUp=hairL(q+vec2(0.,3.6),hairA,gt,face).x*ms;
+    col=over(col,WHITE,cov(dHr));
+    col=over(col,vec3(.8,.81,.86),cov(max(dHr,-dUp))*.95);          /* grey underside */
+    col=over(col,vec3(.8,.81,.86),hr.z*step(dHr,0.)*.9);             /* shade inside each curl */
+    col=over(col,LINE,cov(hr.y*ms)*step(dHr,-.3*S));                 /* bold swirl lines */
+    col=over(col,LINE,cov(abs(dHr)-.65*S)*min(1.,hairA*2.));          /* ink outline */
   }
   /* face */
   vec2 ec=vec2(face*2.4+uEye.x, -3.6+uEye.y);
@@ -1335,7 +1342,7 @@ void main(){
       }
     }
     grow(hx, hy, 27 * S);
-    if (GV.hair > 0.01) { const c = l2w(0, -30); grow(c[0], c[1], 62 * S); }
+    if (GV.hair > 0.01) { const c = l2w(0, -26); grow(c[0], c[1], 48 * S); }
     if (auraA > 0.005) { const c = l2w(0, 2); grow(c[0], c[1], 60 * S); }
     const fy = floorY(), grounded = B.mode === 'ground' && !B.surf;
     const shH = Math.max(0, fy - (B.y + FOOT * S));
