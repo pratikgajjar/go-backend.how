@@ -11,7 +11,7 @@ featured = true
 theme = "mint"
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei running steadily on a track while a chart tracks average heart rate dropping over time" >}}
+{{< viz kind="progress" wide="false" frame="none" fallback="progress.svg" alt="My pace by goal: 4K at 9:30 per km before the plan, then 5K at 7:00, under 6:00, 4:57, a 10K under 60 minutes, and a sub-20 5K still ahead" caption="Times and dates are from the Result and Next Steps sections at the end of this post." >}}
 
 
 tldr;
@@ -57,8 +57,6 @@ Now, with my customized plan in hand, I have clear guidance on when and how much
 
 These are the top-line metrics I chase to become a more efficient runner.
 
-{{< figure src="running-101-dark.png" title="Metrics" alt="Running metrics optimize" width="auto" >}}
-
 ## Metrics
 
 Input metrics[^2] are the ones we improve through continuous training.
@@ -75,9 +73,9 @@ Output metrics are the effect.
 - Power Zones
 - Stride Length
 
-All four input metrics, and stride length, are measured on the same motion: one step. Fig. 1 follows one step of a sample runner and shows where each number comes from.
+Garmin compares each input metric with other runners and puts it in a percentile band. Type the numbers from one of your runs to see where each one sits, and which one to work on first.
 
-{{< viz kind="one-step" fig="1" title="One running step, measured" fallback="one-step.svg" alt="One running step: the torso sinks during 250 ms of ground contact, peaks during 103 ms of flight, and the next foot lands 1.18 m ahead" caption="A sample runner, not my data: 170 spm, 1.18 m stride, 250 ms contact, 8.6 cm bounce. Heights are drawn larger than scale. The flight rise is free fall, `g × t² / 8` for a 103 ms flight. Use ← and → to step." >}}
+{{< viz kind="form-check" wide="false" frame="none" title="Where your form sits" fallback="form-check.svg" alt="Four bars, one per input metric, each split into Garmin's five percentile bands, with a sample runner marked on each" caption="The runner moves at the cadence, contact time, and bounce you type. Bounce is drawn to scale. Step length comes from pace and cadence: `1000 / (pace × cadence)`. Band edges are from the tables below." >}}
 
 ### Cadence
 
@@ -154,9 +152,9 @@ pace (min/km) = 1000 / (cadence × stride length)
 
 Only two numbers set pace: how often your feet land and how far you travel on each step. Ground contact time and vertical ratio are not in the formula. They change what each step costs, not how far it goes.
 
-{{< viz kind="pace-map" fig="2" title="Cadence × stride length = pace" fallback="pace-map.svg" alt="Stride length against cadence with one curve per goal pace: 7:00, 6:00, 5:00, and 4:00 per km" caption="Every point on a curve gives the same pace. Green curves are goals from the end of this post that I reached; orange is the next one. Drag the dot or use the sliders. *My start* is the 4K in 38 minutes at about 120 spm from this post, which works out to 0.88 m per step. Percentile bands are Garmin's, from the tables above." >}}
+{{< viz kind="footprints" wide="false" frame="none" title="Step length at your goal pace" fallback="footprints.svg" alt="Five seconds of footprints at 165 spm and at 180 spm for a 25-minute 5K; both reach the same 16.7 m mark" caption="Both rows cover the same ground in five seconds. More steps per minute means shorter steps for the same pace." >}}
 
-Look at the orange curve. At 180 spm, a 4:00/km pace still needs 1.39 m per step, so cadence alone does not get there. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
+Try my next goal, a 5K in 20:00. At 180 spm it still needs 1.39 m per step, so cadence alone does not get there. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
 
 ### Heart Rate Zones
 
@@ -190,7 +188,11 @@ Zone 5
 - Heart rate: 92-100% of max. (166-180 bpm for a max of 180)
 - Effort: 8-10 out of 10. High-intensity. Everything from very hard VO2 intervals to all-out sprints.
 
-For more checkout - <https://stories.strava.com/articles/understanding-heart-rate-zones-and-how-they-impact-your-training>
+The bpm ranges above are for a max of 180. Type yours to get your own. If you do not know your max, the age field uses `220 − age`, the default Strava uses.[^3] A measured max is better.
+
+{{< viz kind="hr-zones" wide="false" frame="none" title="Your heart-rate zones" fallback="hr-zones.svg" alt="Five heart-rate zones for a max of 180 bpm: 90–117, 118–144, 145–153, 154–165, and 166–180, with a 140 bpm run in zone 2" caption="Zones use the percentages above. Type a run's average heart rate to see its zone." >}}
+
+More on zones: <https://stories.strava.com/articles/understanding-heart-rate-zones-and-how-they-impact-your-training>
 
 ### Power
 
@@ -309,3 +311,5 @@ Thank you, Kush, Dhruv, and Sandeep, for your direct and indirect support throug
 [^1]: <https://www.nytimes.com/athletic/2935360/2021/11/15/what-age-do-players-in-different-positions-peak/>
 
 [^2]: The Garmin Connect app was used for definitions and estimated metrics about runners. The percentile bands are also in Garmin's watch manuals: <https://www8.garmin.com/manuals/webhelp/forerunner920/EN-US/GUID-2C73735B-C792-412D-AA92-706A8647DD77.html> (cadence, ground contact time) and <https://www8.garmin.com/manuals-apac/webhelp/forerunner965/EN-SG/GUID-70D4A5A7-9C6A-4C0D-8AA9-5B34BDF5A128-1030.html> (vertical oscillation and vertical ratio at the chest). Newer manuals shift the cadence and contact-time bands slightly, for example > 183 spm and < 218 ms for the top 5%.
+
+[^3]: <https://support.strava.com/en-us/articles/15401923-heart-rate-zones>
