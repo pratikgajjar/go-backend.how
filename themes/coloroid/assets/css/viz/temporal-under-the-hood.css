@@ -1,0 +1,344 @@
+/* ==========================================================================
+ * temporal-under-the-hood — the paper trail.
+ * Figures are strips of receipt paper: a double rule on top, a torn edge at
+ * the bottom, monospace print. Every SQL statement is a tally mark.
+ * Colour grammar (site default): brown data, purple this step, green durable
+ * or reused, red failure, blue controls; ink for structure.
+ * ========================================================================== */
+
+.viz[class*="viz--tuth-"] {
+  --t-paper: oklch(98.6% 0.01 95);
+  --t-paper2: oklch(95.6% 0.014 95);
+  --t-ink: oklch(21% 0.02 250);
+  --t-mute: oklch(41% 0.02 250);
+  --t-rule: oklch(80% 0.015 95);
+  --t-brown: oklch(43% 0.085 55);   --t-brown-l: oklch(92% 0.04 70);
+  --t-purple: oklch(45% 0.2 305);   --t-purple-l: oklch(91.5% 0.06 305);
+  --t-green: oklch(45% 0.13 152);   --t-green-l: oklch(91% 0.07 152);
+  --t-red: oklch(51% 0.2 27);       --t-red-l: oklch(92.5% 0.05 25);
+  --t-blue: oklch(46% 0.16 258);    --t-blue-l: oklch(93% 0.04 258);
+  --tear: 7px;
+  --t-w: min(960px, 100vw - 2rem);
+
+  position: relative;
+  margin: 2.6rem 0;
+  padding: 1rem 1.15rem calc(1.2rem + var(--tear));
+  background: var(--t-paper);
+  color: var(--t-ink);
+  border-top: 4px double var(--t-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tear)) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(2 * var(--tear)) var(--tear) repeat-x;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tear)) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(2 * var(--tear)) var(--tear) repeat-x;
+}
+html[data-force-dark] .viz[class*="viz--tuth-"] {
+  --t-paper: oklch(23% 0.008 250);
+  --t-paper2: oklch(28% 0.01 250);
+  --t-ink: oklch(94% 0.006 95);
+  --t-mute: oklch(76% 0.01 95);
+  --t-rule: oklch(42% 0.01 250);
+  --t-brown: oklch(80% 0.075 65);   --t-brown-l: oklch(33% 0.04 60);
+  --t-purple: oklch(79% 0.14 305);  --t-purple-l: oklch(35% 0.1 305);
+  --t-green: oklch(79% 0.14 152);   --t-green-l: oklch(33% 0.07 152);
+  --t-red: oklch(74% 0.16 27);      --t-red-l: oklch(34% 0.08 25);
+  --t-blue: oklch(77% 0.12 255);    --t-blue-l: oklch(33% 0.07 258);
+}
+@media (min-width: 900px) {
+  .viz[class*="viz--tuth-"].viz--wide { width: var(--t-w); margin-left: calc((100% - var(--t-w)) / 2); }
+}
+@media (max-width: 640px) {
+  .viz[class*="viz--tuth-"] { margin: 2rem -0.5rem; padding: 0.8rem 0.7rem calc(1rem + var(--tear)); font-size: 12.5px; }
+}
+
+/* theme resets: the site styles bare code, pre, and tables */
+body[class*="theme-"] .viz[class*="viz--tuth-"] code,
+.viz[class*="viz--tuth-"] code { background: var(--t-paper2); color: var(--t-ink); border-radius: 0; padding: 0 0.25em; font-size: 0.95em; }
+body[class*="theme-"] .viz[class*="viz--tuth-"] pre code,
+.viz[class*="viz--tuth-"] pre code { background: none; padding: 0; display: block; white-space: pre; font-size: inherit; color: inherit; }
+.viz[class*="viz--tuth-"] pre { margin: 0; border-radius: 0; box-shadow: none; }
+.viz[class*="viz--tuth-"] p { margin: 0; }
+.viz[class*="viz--tuth-"] table, .viz[class*="viz--tuth-"] th, .viz[class*="viz--tuth-"] td { border: 0; background: none; }
+body[class*="theme-"] .viz[class*="viz--tuth-"] table thead tr { background: none; color: inherit; }
+.viz[class*="viz--tuth-"] img.wv-fallback { margin: 0; border: 0; }
+
+/* header and caption: a receipt header, a dashed tear-off rule */
+.viz[class*="viz--tuth-"] .wv-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.8rem;
+  padding-bottom: 0.5rem; margin-bottom: 0.85rem; border-bottom: 1.5px dashed var(--t-ink);
+  font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.viz[class*="viz--tuth-"] .wv-fig { font-weight: 800; color: var(--t-brown); }
+.viz[class*="viz--tuth-"] figcaption {
+  margin-top: 0.9rem; padding-top: 0.55rem; border-top: 1.5px dashed var(--t-rule);
+  font-size: 12px; color: var(--t-mute); font-style: normal;
+}
+.viz[class*="viz--tuth-"] svg { display: block; width: 100%; height: auto; overflow: visible; }
+.viz[class*="viz--tuth-"] svg text { font-family: var(--font-mono); fill: var(--t-ink); }
+
+/* ---------- colour key ---------- */
+.v-tuth-key { display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; margin-top: 0.7rem; font-size: 11px; color: var(--t-mute); }
+.v-tuth-key span { white-space: nowrap; }
+.v-tuth-sw { display: inline-block; width: 1.4em; height: 0.85em; margin-right: 0.35em; vertical-align: -0.08em; border: 1.5px solid var(--t-ink); background: var(--t-paper); }
+.v-tuth-sw-table { border-style: dashed; }
+.v-tuth-sw-data { background: var(--t-brown-l); border-color: var(--t-brown); }
+.v-tuth-sw-look { background: var(--t-purple-l); border-color: var(--t-purple); }
+.v-tuth-sw-safe { background: var(--t-green-l); border-color: var(--t-green); }
+.v-tuth-sw-bad { background: var(--t-red-l); border-color: var(--t-red); }
+.v-tuth-sw-opt { background: var(--t-blue-l); border-color: var(--t-blue); }
+.v-tuth-sw-line, .v-tuth-sw-dash { height: 0; border: 0; border-top: 2px solid var(--t-ink); vertical-align: 0.25em; background: none; }
+.v-tuth-sw-dash { border-top-style: dashed; }
+
+/* ---------- controls (blue) ---------- */
+.v-tuth-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 0.8rem; }
+.v-tuth-nav { display: flex; align-items: center; gap: 0.5rem; }
+.v-tuth-btn, .v-tuth-opt {
+  font: inherit; font-size: 12px; line-height: 1; cursor: pointer; touch-action: manipulation;
+  color: var(--t-blue); background: var(--t-paper); border: 1.5px solid var(--t-blue); border-radius: 3px;
+  min-height: 34px; min-width: 38px; padding: 0.5rem 0.7rem;
+}
+.v-tuth-btn:disabled { opacity: 0.35; cursor: default; }
+.v-tuth-btn:hover:not(:disabled), .v-tuth-opt:hover { background: var(--t-blue-l); }
+.v-tuth-opt[aria-pressed="true"] { background: var(--t-blue); color: var(--t-paper); }
+.v-tuth-pos { font-size: 12px; min-width: 9.5em; }
+.v-tuth-pos b { color: var(--t-purple); }
+.v-tuth-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; font-size: 12px; }
+.v-tuth-opts > span { margin-right: 0.2rem; }
+.viz[class*="viz--tuth-"] button:focus-visible, .viz[class*="viz--tuth-"] [tabindex]:focus-visible, .viz[class*="viz--tuth-"] input:focus-visible {
+  outline: 2px solid var(--t-purple); outline-offset: 2px;
+}
+.v-tuth-ctl { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.3rem 1.4rem; margin-bottom: 0.7rem; }
+.v-tuth-slider { display: flex; align-items: center; gap: 0.6rem; font-size: 12px; }
+.v-tuth-slider > span { white-space: nowrap; }
+.v-tuth-slider output { min-width: 4.5em; font-weight: 800; color: var(--t-blue); font-variant-numeric: tabular-nums; }
+.v-tuth-slider input[type="range"] { -webkit-appearance: none; appearance: none; flex: 1 1 100px; min-width: 80px; height: 28px; background: transparent; margin: 0; cursor: pointer; }
+.v-tuth-slider input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: repeating-linear-gradient(90deg, var(--t-blue) 0 6px, transparent 6px 9px); }
+.v-tuth-slider input[type="range"]::-moz-range-track { height: 2px; background: var(--t-blue); }
+.v-tuth-slider input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -8px; border-radius: 50%; background: var(--t-paper); border: 2.5px solid var(--t-blue); }
+.v-tuth-slider input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--t-paper); border: 2.5px solid var(--t-blue); }
+
+/* ---------- diagram vocabulary ---------- */
+.viz[class*="viz--tuth-"] .v-tuth-proc { fill: var(--t-paper); stroke: var(--t-ink); stroke-width: 1.5; }
+.viz[class*="viz--tuth-"] .v-tuth-db { fill: var(--t-paper2); stroke: var(--t-ink); stroke-width: 1.5; stroke-dasharray: 5 3.5; }
+.viz[class*="viz--tuth-"] .v-tuth-edge { fill: none; stroke: var(--t-ink); stroke-width: 1.5; }
+.viz[class*="viz--tuth-"] .v-tuth-rule { fill: none; stroke: var(--t-rule); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.viz[class*="viz--tuth-"] .v-tuth-t-name { font-size: 13px; font-weight: 800; }
+.viz[class*="viz--tuth-"] .v-tuth-t-sub { font-size: 10.5px; fill: var(--t-mute); }
+.viz[class*="viz--tuth-"] .v-tuth-t-edge { font-size: 10.5px; fill: var(--t-mute); }
+.viz[class*="viz--tuth-"] .v-tuth-t-title { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }
+.viz[class*="viz--tuth-"] .v-tuth-t-safe { font-size: 11px; font-weight: 800; fill: var(--t-green); }
+.viz[class*="viz--tuth-"] .v-tuth-t-bad { font-size: 11px; font-weight: 800; fill: var(--t-red); }
+.viz[class*="viz--tuth-"] .v-tuth-mk { fill: var(--t-ink); }
+.viz[class*="viz--tuth-"] .v-tuth-mk-bad { fill: var(--t-red); }
+.viz[class*="viz--tuth-"] .v-tuth-t-mk { font-size: 10px; font-weight: 800; fill: var(--t-paper); }
+.viz[class*="viz--tuth-"] .halo { paint-order: stroke; stroke: var(--t-paper); stroke-width: 4px; stroke-linejoin: round; }
+.viz--tuth-request { max-width: 680px; }
+.viz[class*="viz--tuth-"] .v-tuth-proc.is-bad, .viz[class*="viz--tuth-"] .v-tuth-db.is-bad { stroke: var(--t-red); fill: var(--t-red-l); stroke-width: 2; }
+.viz[class*="viz--tuth-"] .v-tuth-proc.is-safe, .viz[class*="viz--tuth-"] .v-tuth-db.is-safe { stroke: var(--t-green); fill: var(--t-green-l); stroke-width: 2; }
+.viz[class*="viz--tuth-"] .v-tuth-hit { cursor: pointer; }
+.viz[class*="viz--tuth-"] .v-tuth-hit-area { fill: transparent; }
+.viz[class*="viz--tuth-"] .v-tuth-hit:hover .v-tuth-mk-bad { stroke: var(--t-ink); stroke-width: 1.5; }
+.viz[class*="viz--tuth-"] .v-tuth-hit.is-on .v-tuth-mk-bad { stroke: var(--t-purple); stroke-width: 3.5; }
+.viz[class*="viz--tuth-"] .v-tuth-hit:focus { outline: none; }
+.viz[class*="viz--tuth-"] .v-tuth-hit:focus-visible .v-tuth-hit-area { stroke: var(--t-purple); stroke-width: 2; }
+.viz--tuth-request .v-tuth-note { margin-top: 0.6rem; }
+
+/* ---------- hero: two receipts on the page, no sheet behind them ---------- */
+.viz.viz--tuth-receipts {
+  background: none; border: 0; padding: 0; -webkit-mask: none; mask: none;
+  margin: 0.5rem 0 2.2rem;
+}
+.viz.viz--tuth-receipts figcaption { border-top: 0; color: inherit; opacity: 0.85; text-align: center; margin-top: 0.8rem; }
+.v-tuth-pair { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(0.6rem, 3vw, 2.2rem); align-items: start; max-width: 720px; margin: 0 auto; }
+.v-tuth-rcpt {
+  background: var(--t-paper); color: var(--t-ink); padding: 0.9rem 0.9rem calc(0.9rem + var(--tear));
+  font-size: 11.5px; line-height: 1.45; min-width: 0;
+  box-shadow: 0 1px 0 var(--t-rule);
+  -webkit-mask:
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / calc(2 * var(--tear)) var(--tear) repeat-x,
+    linear-gradient(#000 0 0) center / 100% calc(100% - 2 * var(--tear)) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(2 * var(--tear)) var(--tear) repeat-x;
+  mask:
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / calc(2 * var(--tear)) var(--tear) repeat-x,
+    linear-gradient(#000 0 0) center / 100% calc(100% - 2 * var(--tear)) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(2 * var(--tear)) var(--tear) repeat-x;
+}
+.v-tuth-rcpt:nth-child(2) { margin-top: 1.4rem; transform: rotate(0.6deg); }
+.v-tuth-rcpt:nth-child(1) { transform: rotate(-0.4deg); }
+.v-tuth-rcpt .hd { display: grid; text-align: center; gap: 0.05rem; padding: var(--tear) 0 0.5rem; border-bottom: 1.5px dashed var(--t-ink); margin-bottom: 0.45rem; }
+.v-tuth-rcpt .hd b { font-size: 14px; letter-spacing: 0.18em; }
+.v-tuth-rcpt .hd span { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v-tuth-rcpt .ev { display: flex; gap: 0.5em; white-space: nowrap; }
+.v-tuth-rcpt .ev .id { flex: 0 0 1.9em; text-align: right; color: var(--t-brown); font-weight: 800; }
+.v-tuth-rcpt .ev .nm { overflow: hidden; text-overflow: ellipsis; }
+.v-tuth-rcpt .ft { border-top: 1.5px dashed var(--t-ink); margin-top: 0.45rem; padding-top: 0.45rem; }
+.v-tuth-rcpt .ln { display: flex; justify-content: space-between; gap: 0.5em; }
+.v-tuth-rcpt .ln span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v-tuth-rcpt .ln b { color: var(--t-brown); }
+.v-tuth-rcpt .ln.big { margin-top: 0.3rem; padding-top: 0.3rem; border-top: 1px solid var(--t-ink); font-weight: 800; font-size: 12.5px; }
+@media (max-width: 520px) {
+  .v-tuth-rcpt { font-size: 9.5px; padding-left: 0.55rem; padding-right: 0.55rem; }
+  .v-tuth-rcpt .hd b { font-size: 12px; }
+  .v-tuth-rcpt .ln.big { font-size: 10.5px; }
+}
+
+/* ---------- the event tape ---------- */
+.v-tuth-read { display: flex; flex-wrap: wrap; gap: 0.2rem 1.4rem; font-size: 12.5px; margin-bottom: 0.7rem; }
+.v-tuth-read b { color: var(--t-brown); font-size: 16px; }
+.v-tuth-read i { font-style: normal; color: var(--t-mute); }
+.v-tuth-tape { border-left: 1.5px dashed var(--t-ink); border-right: 1.5px dashed var(--t-ink); padding: 0.3rem 0.6rem; background: var(--t-paper); max-width: 640px; }
+.v-tuth-grp { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; margin: 0.45rem 0 0.15rem; padding-bottom: 0.1rem; border-bottom: 1px solid var(--t-rule); }
+.v-tuth-grp:first-child { margin-top: 0.1rem; }
+.v-tuth-ev { display: grid; grid-template-columns: 4.6em 2.1em minmax(0, 1fr); gap: 0 0.5em; font-size: 12px; padding: 0.05rem 0; }
+.v-tuth-ev .nd { color: var(--t-brown); font-size: 10.5px; border-left: 2.5px solid var(--t-brown); padding-left: 0.35em; }
+.v-tuth-ev.is-first { margin-top: 0.25rem; }
+.v-tuth-ev .id { text-align: right; color: var(--t-brown); font-weight: 800; }
+.v-tuth-ev .nm { overflow-wrap: anywhere; }
+.v-tuth-ev .nm em { display: block; font-style: normal; font-size: 10.5px; color: var(--t-ink); }
+.v-tuth-ev.is-look .nm { background: var(--t-purple-l); box-shadow: -0.35em 0 0 var(--t-purple-l), 0.35em 0 0 var(--t-purple-l); }
+.v-tuth-ev.is-look .id { color: var(--t-purple); }
+.v-tuth-skip { margin: 0.4rem 0; padding: 0.3rem 0.5rem; font-size: 11.5px; border: 1.5px dashed var(--t-rule); text-align: center; }
+
+/* ---------- one activity: sequence diagram with tallies ---------- */
+.v-tuth-meter { display: flex; align-items: center; gap: 0.6rem; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.v-tuth-meter .dg, .v-tuth-dial .dg { display: inline-flex; align-items: center; gap: 2px; }
+.v-tuth-meter .dg i, .v-tuth-dial .dg i {
+  font-style: normal; font-size: 17px; font-weight: 800; color: var(--t-brown); font-variant-numeric: tabular-nums;
+  background: var(--t-brown-l); border: 1.5px solid var(--t-brown); padding: 0.05rem 0.28rem; min-width: 1em; text-align: center;
+}
+.v-tuth-meter .dg em { font-style: normal; font-weight: 800; color: var(--t-brown); margin-right: 0.2rem; }
+.v-tuth-lanes-h { position: sticky; top: 0; z-index: 2; background: var(--t-paper); padding: 2px 0; }
+.viz[class*="viz--tuth-"] .v-tuth-t-lane { font-size: 11.5px; font-weight: 800; }
+.v-tuth-band { cursor: pointer; transition: background-color 0.2s, opacity 0.2s; border-top: 1px dashed var(--t-rule); }
+.v-tuth-band:hover { background: var(--t-paper2); }
+.v-tuth-band.is-on { background: var(--t-purple-l); }
+.v-tuth-band.is-future { opacity: 0.45; }
+.viz[class*="viz--tuth-"] .v-tuth-life { stroke: var(--t-rule); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.viz[class*="viz--tuth-"] .v-tuth-t-step { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; }
+.v-tuth-band.is-on .v-tuth-t-step { fill: var(--t-purple); }
+.viz[class*="viz--tuth-"] .v-tuth-msg { fill: none; stroke: var(--t-ink); stroke-width: 1.6; }
+.viz[class*="viz--tuth-"] .v-tuth-msg.is-reply { stroke-dasharray: 5 3; }
+.v-tuth-band.is-on .v-tuth-msg { stroke: var(--t-purple); stroke-width: 2.4; }
+.viz[class*="viz--tuth-"] .v-tuth-via { fill: var(--t-paper); stroke: var(--t-ink); stroke-width: 1.4; }
+.v-tuth-band.is-on .v-tuth-via { stroke: var(--t-purple); }
+.viz[class*="viz--tuth-"] .v-tuth-t-msg { font-size: 10.5px; }
+.v-tuth-band.is-on .v-tuth-t-msg { font-weight: 700; }
+.v-tuth-band.is-on .halo { stroke: var(--t-purple-l); }
+.viz[class*="viz--tuth-"] .v-tuth-tick { stroke: var(--t-brown); stroke-width: 1.8; }
+.viz[class*="viz--tuth-"] .v-tuth-tick.is-maybe { stroke-dasharray: 2 2; }
+.viz[class*="viz--tuth-"] .v-tuth-t-tick { font-size: 10px; font-weight: 800; fill: var(--t-brown); }
+
+.v-tuth-detail { border: 2px solid var(--t-purple); border-top: 0; padding: 0.7rem 0.8rem 0.8rem; display: grid; gap: 0.6rem; margin-bottom: 0.4rem; background: var(--t-paper); }
+.v-tuth-call { font-size: 13px; }
+.v-tuth-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.7rem; }
+@media (min-width: 820px) { .v-tuth-split { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+.v-tuth-ledger { font-size: 11.5px; }
+.v-tuth-ledger .hd { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1.5px solid var(--t-ink); padding-bottom: 0.15rem; margin-bottom: 0.2rem; }
+.v-tuth-lg { display: grid; grid-template-columns: minmax(0, 1fr) auto 2.6em; gap: 0.5rem; align-items: center; padding: 0.12rem 0; border-bottom: 1px dotted var(--t-rule); }
+.v-tuth-lg.has-m { grid-template-columns: minmax(0, 1fr) auto 2.6em 3.6em; }
+.v-tuth-lg .m { text-align: right; font-weight: 800; color: var(--t-brown); border-left: 1px dotted var(--t-rule); }
+.v-tuth-lg.is-tot { border-top: 1.5px solid var(--t-ink); border-bottom: 0; font-weight: 800; }
+.v-tuth-ledger .hd.has-m { display: grid; grid-template-columns: minmax(0, 1fr) 2.6em 3.6em; gap: 0.5rem; }
+.v-tuth-ledger .hd.has-m span + span { text-align: right; }
+.v-tuth-lg .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v-tuth-lg .n { text-align: right; font-weight: 800; color: var(--t-brown); }
+.v-tuth-lg.is-zero .nm, .v-tuth-lg.is-zero .n { opacity: 0.5; }
+.v-tuth-lg.is-on .nm { color: var(--t-purple); font-weight: 800; }
+.v-tuth-tally { display: inline-flex; align-items: center; gap: 2px; height: 13px; }
+.v-tuth-tally .st { width: 2px; height: 13px; background: var(--t-brown); }
+.v-tuth-tally .st.is-new { background: var(--t-purple); }
+.v-tuth-tally .st.is-ap { background: repeating-linear-gradient(var(--t-brown) 0 2px, transparent 2px 4px); }
+.v-tuth-tally .gap { width: 4px; }
+.v-tuth-tally .ap { color: var(--t-brown); font-size: 11px; margin-right: 2px; }
+.v-tuth-note { font-size: 12.5px; padding: 0.5rem 0.7rem; border-left: 3px solid var(--t-ink); background: var(--t-paper2); }
+.v-tuth-note.is-bad { border-left-color: var(--t-red); background: var(--t-red-l); }
+.v-tuth-note.is-good { border-left-color: var(--t-green); background: var(--t-green-l); }
+.v-tuth-note .bad, .v-tuth-note b.bad { color: var(--t-red); }
+.v-tuth-detail > p:last-child:not(.v-tuth-note), .v-tuth-split p { font-size: 12.5px; margin-top: 0.5rem; }
+
+/* code listings on receipt paper */
+.viz[class*="viz--tuth-"] pre.wv-code {
+  padding: 0.55rem 0.7rem; font-size: 11.5px; line-height: 1.6; background: var(--t-paper2);
+  border: 1px solid var(--t-rule); overflow-x: auto; white-space: pre; color: var(--t-ink); -webkit-overflow-scrolling: touch;
+}
+.viz[class*="viz--tuth-"] pre.wv-code .ln { display: block; padding: 0 0.45rem; margin: 0 -0.45rem; border-left: 3px solid transparent; }
+.viz[class*="viz--tuth-"] pre.wv-code .ln.is-hot { background: var(--t-purple-l); border-left-color: var(--t-purple); }
+.viz[class*="viz--tuth-"] pre.wv-code .cm { color: var(--t-mute); }
+.viz[class*="viz--tuth-"] pre.wv-code .ok { color: var(--t-green); font-weight: 800; }
+.viz[class*="viz--tuth-"] pre.wv-code .bad { color: var(--t-red); font-weight: 800; }
+.viz[class*="viz--tuth-"] pre.wv-code .dt { color: var(--t-brown); font-weight: 700; }
+
+/* guess first, then watch the meter climb */
+.v-tuth-guess { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; font-size: 12.5px; margin-bottom: 0.7rem; padding-bottom: 0.6rem; border-bottom: 1px dashed var(--t-rule); }
+.v-tuth-guess > span { margin-right: 0.3rem; }
+.v-tuth-yours { font-size: 11px; color: var(--t-blue); font-weight: 800; text-transform: none; letter-spacing: 0; }
+
+/* ---------- crash: timeline and two paper trails ---------- */
+.v-tuth-ruler { position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0.2rem 0 0.7rem; }
+.v-tuth-ruler::before { content: ""; position: absolute; left: 7%; right: 7%; top: 11px; border-top: 2px solid var(--t-ink); }
+.v-tuth-stop { position: relative; display: grid; justify-items: center; gap: 0.1rem; font: inherit; background: none; border: 0; padding: 0 0.1rem; cursor: pointer; color: var(--t-ink); touch-action: manipulation; }
+.v-tuth-stop .dot { width: 14px; height: 14px; margin-top: 4px; border-radius: 50%; background: var(--t-paper); border: 2px solid var(--t-ink); }
+.v-tuth-stop .lb { font-size: 11px; font-weight: 700; }
+.v-tuth-stop .tm { font-size: 10px; font-variant-numeric: tabular-nums; }
+.v-tuth-stop.is-past .dot { background: var(--t-ink); }
+.v-tuth-stop.is-bad .dot { border-color: var(--t-red); }
+.v-tuth-stop.is-bad .lb { color: var(--t-red); }
+.v-tuth-stop.is-on .dot { background: var(--t-purple); border-color: var(--t-purple); transform: scale(1.3); }
+.v-tuth-stop.is-on .lb { color: var(--t-purple); }
+@media (max-width: 480px) { .v-tuth-stop .tm { display: none; } .v-tuth-stop .lb { font-size: 10px; } }
+.v-tuth-banner { font-size: 12.5px; padding: 0.4rem 0.7rem; border: 1.5px dashed var(--t-ink); margin-bottom: 0.7rem; }
+.v-tuth-banner span { font-size: 11px; color: var(--t-mute); }
+.v-tuth-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+@media (min-width: 740px) { .v-tuth-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.v-tuth-col { display: grid; gap: 0.55rem; align-content: start; min-width: 0; padding-top: 0.2rem; border-top: 3px solid var(--t-ink); transition: background-color 0.25s; }
+.v-tuth-col.is-down { background: repeating-linear-gradient(-45deg, var(--t-red-l) 0 5px, transparent 5px 11px); }
+.v-tuth-col-h { display: flex; justify-content: space-between; align-items: center; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; }
+.v-tuth-stamp { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.1rem 0.45rem; border: 2px solid currentColor; transform: rotate(-3deg); color: var(--t-ink); }
+.v-tuth-stamp:empty { display: none; }
+.v-tuth-stamp.is-bad { color: var(--t-red); }
+.v-tuth-stamp.is-safe { color: var(--t-green); }
+.v-tuth-store { border-left: 1.5px dashed var(--t-ink); border-right: 1.5px dashed var(--t-ink); padding: 0.35rem 0.5rem; background: var(--t-paper); }
+.v-tuth-store-h { display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.25rem; }
+.v-tuth-rows { display: grid; gap: 2px; }
+.v-tuth-row { font-size: 11.5px; padding: 0.1rem 0.35rem; border-bottom: 1px dotted var(--t-rule); }
+.v-tuth-row .id { display: inline-block; min-width: 3.3em; font-weight: 800; color: var(--t-brown); }
+.v-tuth-r-new { background: var(--t-purple-l); }
+.v-tuth-r-new .id { color: var(--t-purple); }
+.v-tuth-r-task { border: 1.5px dashed var(--t-ink); }
+.v-tuth-r-task .id { color: var(--t-ink); }
+.v-tuth-r-bad { background: var(--t-red-l); }
+.v-tuth-r-bad .id { color: var(--t-red); }
+
+/* ---------- cost: two meters over the chart ---------- */
+.v-tuth-meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.6rem 1.2rem; margin: 0.2rem 0 0.8rem; }
+.v-tuth-dial { border-top: 1.5px dashed var(--t-ink); padding-top: 0.35rem; }
+.v-tuth-dial .nm { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 800; }
+.v-tuth-dial .f { font-size: 11.5px; margin: 0.1rem 0 0.3rem; }
+.v-tuth-dial .f b { color: var(--t-brown); }
+.v-tuth-dial .dg .cm { font-weight: 800; color: var(--t-brown); }
+.v-tuth-dial .dg .u { margin-left: 0.4rem; font-size: 11px; }
+.v-tuth-dial .dg i { font-size: 15px; padding: 0.05rem 0.2rem; }
+.viz[class*="viz--tuth-"] .v-tuth-extra { fill: var(--t-paper2); }
+.viz[class*="viz--tuth-"] .v-tuth-grid { stroke: var(--t-rule); stroke-width: 1; stroke-dasharray: 2 3; }
+.viz[class*="viz--tuth-"] .v-tuth-axis { fill: none; stroke: var(--t-ink); stroke-width: 1.3; }
+.viz[class*="viz--tuth-"] .v-tuth-fit { fill: none; stroke: var(--t-ink); stroke-width: 2; }
+.viz[class*="viz--tuth-"] .v-tuth-fit.is-dash { stroke-dasharray: 7 4; }
+.viz[class*="viz--tuth-"] .v-tuth-pt { fill: var(--t-brown-l); stroke: var(--t-brown); stroke-width: 1.8; }
+.viz[class*="viz--tuth-"] .v-tuth-cursor { stroke: var(--t-purple); stroke-width: 1.6; }
+.viz[class*="viz--tuth-"] .v-tuth-cur-pt { fill: var(--t-purple); stroke: var(--t-paper); stroke-width: 2; }
+.v-tuth-chart + .v-tuth-note { margin-top: 0.6rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .viz[class*="viz--tuth-"] *, .viz[class*="viz--tuth-"] *::before { transition: none !important; animation: none !important; }
+}
+
+/* predict, then see */
+.v-tuth-note.v-tuth-ask { border-left-color: var(--t-blue); background: var(--t-blue-l); }
+.v-tuth-choices { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+.v-tuth-verdict { font-weight: 800; }
+.v-tuth-verdict.is-good { color: var(--t-green); }
+.v-tuth-verdict.is-bad { color: var(--t-red); }
