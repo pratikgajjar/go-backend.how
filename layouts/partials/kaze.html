@@ -15,9 +15,11 @@
       and hangs off the reading-progress bar while you read — swinging as
       the bar grows.
     - Mini gears (double-click to cycle): Gear 2 steam + jet dash, Gear 3
-      giant balloon fist then chibi, Gear 4 bulked-up bounce, Gear 5 white
-      cloud form + the rubber run: treats a line of text as the ground, plows
-      the words into a pile, gets launched by the snap-back, bonks the wall.
+      giant balloon fist then chibi, Gear 4 bulked-up bounce, Gear 5 (Nika):
+      drums-of-liberation heartbeat, white flame-hair, cloud collar, red
+      glowing eyes, huge grin, eyes popping, toon flips and the rubber run
+      (plows a line of text into a pile, launched by the snap-back) — then
+      shrivelled and exhausted.
     - Reading mode (inside an article): never touches the text, stays in the
       gutter, big tricks only every few minutes.
     - Scroll is wind: scarf streams, he squints, holds his hat — scroll hard
@@ -26,8 +28,8 @@
     - Click to say hi (hearts if you keep going). Halfway cheer, end-of-post
       finale (hat toss + banner), "tl;dr?" if you skipped to the end.
     - Stays out of your way while you're actively reading (attention budget).
-    - Meditates when you pause: lotus pose, levitates, chants ॐ with aura
-      ripples; the scroll wind can't touch him (pets get a "shh… ☮").
+    - Meditates when you pause (≥10 s): lotus pose, levitates inside a clear,
+      softly-lit sphere, chants ॐ with a faint dotted ripple; the scroll wind can't touch him (pets get a "shh… ☮").
   Hash triggers: #pluck #rocket #swing #gear2 #gear3 #gear4 #gear5 #rubber #hat #finale #love #hello #om
 
   Remove completely: delete this file + assets/js/kaze.js + the include in
@@ -52,10 +54,11 @@
   #kz-fx .kz-g.kz-z{ font-size:17px; animation-duration:2.6s; }
   #kz-fx .kz-g.kz-om{ font:400 26px/1 "Noto Sans Devanagari","Kohinoor Devanagari","Devanagari Sangam MN","Nirmala UI","Mangal",serif;
     animation:kz-float 3.4s ease-out forwards; }
-  #kz-fx .kz-aura{ position:absolute; border:1.5px solid var(--article-text,#222); border-radius:50%; opacity:0;
-    transform:translate(-50%,-50%) scale(.4); animation:kz-aura 2.8s cubic-bezier(.2,.6,.3,1) forwards; }
+  #kz-fx .kz-aura{ position:absolute; border:1.5px dotted var(--article-text,#222); border-radius:50%; opacity:0;
+    transform:translate(-50%,-50%) scale(1); animation:kz-aura 3.6s cubic-bezier(.2,.6,.3,1) forwards; }
   #kz-fx .kz-g.kz-heart{ color:#e8453c; font-size:16px; }
   #kz-fx .kz-g.kz-big{ font-size:16px; }
+  #kz-fx .kz-g.kz-drum{ font-size:15px; letter-spacing:.12em; animation-duration:1.1s; }
   #kz-fx .kz-dust{ position:absolute; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%;
     background:var(--article-text,#222); opacity:.35; animation:kz-puff .55s ease-out forwards; }
   #kz-fx .kz-steam{ position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%;
@@ -78,7 +81,8 @@
     100%{opacity:0; transform:translate(calc(-50% + var(--dx,0px)),-48px) scale(1.08) rotate(var(--rot,0deg))} }
   @keyframes kz-float{ 0%{opacity:0; transform:translate(-50%,8px) scale(.85)} 25%{opacity:.85}
     100%{opacity:0; transform:translate(calc(-50% + var(--dx,0px) * .4),-78px) scale(1.18)} }
-  @keyframes kz-aura{ 0%{opacity:.32; transform:translate(-50%,-50%) scale(.4)} 100%{opacity:0; transform:translate(-50%,-50%) scale(2.7)} }
+  @keyframes kz-aura{ 0%{opacity:0; transform:translate(-50%,-50%) scale(1) rotate(0)} 10%{opacity:.22}
+    100%{opacity:0; transform:translate(-50%,-50%) scale(1.8) rotate(var(--spin,40deg))} }
   @keyframes kz-steam{ 0%{opacity:.9; transform:scale(.5)} 100%{opacity:0; transform:translate(var(--dx,0px),-40px) scale(2.2)} }
   @keyframes kz-speed{ to{ opacity:0; transform:translateX(var(--dx,0px)) scaleX(.3) } }
   @keyframes kz-puff{ 0%{opacity:.45; transform:scale(.5)} 100%{opacity:0; transform:translate(var(--dx,0px),-4px) scale(1.7)} }

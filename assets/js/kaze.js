@@ -25,11 +25,12 @@
   const MOBILE = () => W <= 768;
   let S0 = MOBILE() ? 0.8 : 1.15, S = S0;   // character scale (S = S0 × gear scale)
   /* gear visuals: current (GV) eased toward target (GT) every frame */
-  const GV = { tint: 0, tr: 1, tg: 1, tb: 1, cloud: 0, outl: 0, bulk: 0, gs: 1, a0: 2.1, h0: 3.1, a1: 2.1, h1: 3.1 };
+  const GV = { tint: 0, tr: 1, tg: 1, tb: 1, hair: 0, g5: 0, pop: 0, bulk: 0, gs: 1, a0: 2.1, h0: 3.1, a1: 2.1, h1: 3.1 };
   const GT = Object.assign({}, GV);
-  function gearReset() { Object.assign(GT, { tint: 0, cloud: 0, outl: 0, bulk: 0, gs: 1, a0: 2.1, h0: 3.1, a1: 2.1, h1: 3.1 }); }
+  function gearReset() { Object.assign(GT, { tint: 0, hair: 0, g5: 0, pop: 0, bulk: 0, gs: 1, a0: 2.1, h0: 3.1, a1: 2.1, h1: 3.1 }); }
   function gearTint(r, g, b, a) { GT.tr = GV.tr = r; GT.tg = GV.tg = g; GT.tb = GV.tb = b; GT.tint = a; }
   const queue = [];
+  let auraT = 0, auraA = 0, auraP = 0;             // meditation sphere: target, amount, pulse
   const G = 2300;                          // gravity px/s²
   const FOOT = 25.5, SEAT = 19.5;              // local: feet / bottom below body centre
 
@@ -63,7 +64,7 @@
   const FS = `precision ${PREC} float;
 uniform vec2 uRes; uniform float uDpr, uS, uSeed;
 uniform vec3 uInk, uPaper, uRed;
-uniform vec4 uBody, uSq, uEye, uMouth, uHat, uShadow, uMisc, uTint, uGear, uArmR;
+uniform vec4 uBody, uSq, uEye, uMouth, uHat, uShadow, uMisc, uTint, uGear, uArmR, uAura;
 uniform vec2 uA0[7]; uniform vec2 uA1[7]; uniform vec2 uSc[8];
 uniform vec4 uLeg[2];
 float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
@@ -85,6 +86,21 @@ float sdTri(vec2 p, vec2 p0, vec2 p1, vec2 p2){
 float sdEll(vec2 p, vec2 r){ float k0=length(p/r), k1=length(p/(r*r)); return k0*(k0-1.)/max(k1,1e-4); }
 float cov(float d){ return clamp(.5-d*uDpr, 0., 1.); }
 vec4 over(vec4 dst, vec3 c, float a){ return vec4(c*a, a) + dst*(1.-a); }
+float sdTaper(vec2 p, vec2 a, vec2 b, float r0, float r1){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/max(dot(ba,ba),1e-4),0.,1.); return length(pa-ba*h)-mix(r0,r1,h); }
+/* gear 5 hair: white flame-tongues billowing up and out from under the hat */
+float hairL(vec2 q, float amt, float t, float face){
+  float d=1e5;
+  for (int i=0;i<8;i++){
+    float fi=float(i)/7.;
+    vec2 b=vec2(mix(-14.,14.,fi), -9.+abs(fi-.5)*6.);
+    float ang=(fi-.5)*1.5 - face*.22 + sin(t*2.7+fi*7.3)*.2;
+    float len=(13.+8.*fract(sin(fi*91.7)*43.1))*amt*(.9+.1*sin(t*6.+fi*13.));
+    float ang2=ang*1.4 - face*.3 + sin(t*3.6+fi*5.1)*.45;
+    vec2 p1=b+vec2(sin(ang),-cos(ang))*len*.5, p2=p1+vec2(sin(ang2),-cos(ang2))*len*.62;
+    d=smin(d, min(sdTaper(q,b,p1,4.7*amt,3.5*amt), sdTaper(q,p1,p2,3.5*amt,1.1*amt)), 3.);
+  }
+  return d;
+}
 float bodyL(vec2 q){ return smin(length(q-vec2(0.,-4.5))-12., length(q-vec2(0.,5.))-14.5, 8.); }
 void main(){
   vec2 p = vec2(gl_FragCoord.x, uRes.y-gl_FragCoord.y)/uDpr;
@@ -92,31 +108,46 @@ void main(){
   p += nz*1.25*uMisc.x;                                   /* hand-drawn line boil */
   float S=uS, face=uBody.w, sx=uSq.x, sy=uSq.y, ms=S*min(sx,sy);
   vec2 q = rotv(p-uBody.xy, -uBody.z)/S; q.x/=sx; q.y=(q.y-19.5)/sy+19.5;
-  float dB0 = bodyL(q);
-  if (uGear.y>.01){ for (int i=0;i<9;i++){ float a=mix(-3.35,.21,float(i)/8.); vec2 c=vec2(0.,-9.)+vec2(cos(a),sin(a))*vec2(19.,17.);
-    dB0=smin(dB0, length(q-c)-(5.+1.3*sin(float(i)*2.3+1.))*uGear.y, 1.2); } }   /* gear-5 cloud hair */
-  float dB = dB0*ms;
+  float dB = bodyL(q)*ms;
+  float hairA=uGear.x, g5=uGear.y, gt=uGear.z;
+  vec3 WHITE=vec3(.98,.97,.95), LINE=vec3(.12);
   float dL = 1e5;
   for (int i=0;i<6;i++){ dL=min(dL, sdSeg(p,uA0[i],uA0[i+1])-uArmR.x*S); dL=min(dL, sdSeg(p,uA1[i],uA1[i+1])-uArmR.z*S); }
   dL=min(dL, length(p-uA0[6])-uArmR.y*S); dL=min(dL, length(p-uA1[6])-uArmR.w*S);
   for (int i=0;i<2;i++){ dL=min(dL, sdSeg(p,uLeg[i].xy,uLeg[i].zw)-2.4*S); dL=min(dL, length((p-uLeg[i].zw+vec2(0.,.4*S))/vec2(1.3,1.))-2.6*S); }
   float dInk = smin(dB, dL, 2.4*S);
   float dS = 1e5;
-  for (int i=0;i<7;i++){ dS=min(dS, sdSeg(p,uSc[i],uSc[i+1])-mix(3.,1.4,float(i)/7.)*S); }
+  for (int i=0;i<7;i++){ float fi=float(i)/7.; dS=min(dS, sdSeg(p,uSc[i],uSc[i+1])-mix(3.,1.4,fi)*(1.+g5*(.7+.45*sin(fi*17.+gt*3.)))*S); }
   vec2 sp=(p-uShadow.xy)/vec2(uShadow.z, uShadow.z*.2);
   float sh=(1.-smoothstep(.45,1.,length(sp)))*uShadow.w;
   vec4 col=vec4(0.);
+  if (uAura.w>.005){                                      /* meditation: a clear, softly-lit sphere */
+    float dA=length(p-uAura.xy), rN=dA/uAura.z, inA=cov(dA-uAura.z);
+    vec3 glow=vec3(1.,.87,.58);
+    col=over(col,glow,(.03+.13*pow(clamp(rN,0.,1.),4.))*inA*uAura.w);         /* nearly clear, brighter toward the rim */
+    col=over(col,glow,cov(abs(dA-uAura.z)-.55)*.32*uAura.w);                   /* hairline rim */
+    vec2 hp=(p-uAura.xy)/uAura.z-vec2(-.4,-.45);
+    col=over(col,vec3(1.),(1.-smoothstep(0.,.2,length(hp*vec2(1.,1.7))))*.2*inA*uAura.w);   /* one small highlight */
+  }
   col=over(col,uInk,sh);
   /* sticker halo in the page colour: invisible on the page, separates him from images/code */
   col=over(col,uPaper,cov(min(dInk,dS)-1.3*S)*.9);
-  col=over(col,uRed,cov(dS));
+  vec3 scC=mix(uRed,WHITE,g5);                           /* gear 5: the scarf becomes cloud */
+  col=over(col,scC,cov(dS));
+  col=over(col,LINE,cov(abs(dS)-.5*S)*g5);
+  if (hairA>.01){ float dHr=hairL(q,hairA,gt,face)*ms; col=over(col,WHITE,cov(dHr)); col=over(col,LINE,cov(abs(dHr)-.5*S)*min(1.,hairA*2.)); }
   col=over(col,mix(uInk,uTint.rgb,uTint.a),cov(dInk));
-  col=over(col,vec3(.08),cov(abs(dInk)-.55*S)*uGear.x);
-  vec3 eyeC=mix(uPaper,vec3(.08),uGear.x);
+  vec3 eyeC=uPaper;
   /* scarf wrap + knot, clipped to the body */
   float band=max(sdSeg(q,vec2(-15.,7.8),vec2(15.,7.8))-2.5, bodyL(q)-.6);
   float knot=length(q-vec2(face*8.,8.6))-2.8;
-  col=over(col,uRed,cov(min(band,knot)*ms));
+  col=over(col,scC,cov(min(band,knot)*ms));
+  if (g5>.01){                                            /* cloud collar around the neck + under the arms */
+    float dC=1e5;
+    for (int i=0;i<5;i++){ float fi=float(i)/4.; dC=smin(dC, length(q-vec2(mix(-15.,15.,fi), 7.2+sin(fi*9.+gt*2.)))-(3.8+.9*sin(fi*13.+gt*3.))*g5, 1.5); }
+    dC=smin(dC, length(q-vec2(-14.5,12.5))-3.4*g5, 1.5); dC=smin(dC, length(q-vec2(14.5,12.5))-3.4*g5, 1.5);
+    dC*=ms; col=over(col,WHITE,cov(dC)); col=over(col,LINE,cov(abs(dC)-.5*S)*g5);
+  }
   /* face */
   vec2 ec=vec2(face*2.4+uEye.x, -3.6+uEye.y);
   vec2 e1=q-(ec+vec2(-5.1,0.)), e2=q-(ec+vec2(5.1,0.));
@@ -129,14 +160,26 @@ void main(){
   else { dE=min(max(abs(length(e1-vec2(0.,-1.6))-2.4)-.68, -1.6-e1.y), max(abs(length(e2-vec2(0.,-1.6))-2.4)-.68, -1.6-e2.y)); }
   float dBl=min(length((q-(ec+vec2(-8.4,3.)))/vec2(1.9,1.))-1.25, length((q-(ec+vec2(8.4,3.)))/vec2(1.9,1.))-1.25);
   col=over(col, mix(uRed,vec3(1.,.62,.72),.55), cov(dBl*ms)*uSq.z*.85);
-  col=over(col,eyeC,cov(dE*ms));
+  if (g5>.5 && md<.5){                                   /* gear 5 eyes: white, glowing red pupils with a ring; they can pop */
+    float pop=1.+uGear.w; vec2 r=vec2(3.1,3.1*bl)*pop, lk=vec2(uEye.x,uEye.y)*.5; float on=step(.4,bl);
+    float dSc=min((length(e1/r)-1.)*min(r.x,r.y), (length(e2/r)-1.)*min(r.x,r.y));
+    col=over(col,WHITE,cov(dSc*ms)); col=over(col,LINE,cov((abs(dSc)-.3)*ms));
+    col=over(col,vec3(.93,.13,.2),cov((min(length(e1-lk),length(e2-lk))-1.75*pop)*ms)*on);
+    col=over(col,vec3(1.,.78,.42),cov((min(abs(length(e1-lk)-1.05*pop),abs(length(e2-lk)-1.05*pop))-.26*pop)*ms)*on*.9);
+    col=over(col,WHITE,cov((min(length(e1-lk-vec2(-.5,-.6)*pop),length(e2-lk-vec2(-.5,-.6)*pop))-.45*pop)*ms)*on);
+  } else col=over(col,eyeC,cov(dE*ms));
   vec2 m=q-(ec+vec2(0.,5.4)); float mm=uMouth.x, mo=uMouth.y;
   if (mm>.5){
     float dM;
     if (mm<1.5) dM=max(abs(length(m-vec2(0.,-1.4))-2.1)-.62, -1.4-m.y);
     else if (mm<2.5){ float rr=1.3+2.4*mo; dM=max(length(m-vec2(0.,-.8))-rr, -.8-m.y); }
-    else { vec2 rr=vec2(1.1+.9*mo, 1.3+1.5*mo); dM=(length(m/rr)-1.)*min(rr.x,rr.y); }
+    else if (mm<3.5){ vec2 rr=vec2(1.1+.9*mo, 1.3+1.5*mo); dM=(length(m/rr)-1.)*min(rr.x,rr.y); }
+    else { vec2 gm=m-vec2(0.,-1.2); dM=max(sdEll(gm,vec2(6.4,4.9)*(.8+.2*mo)), -gm.y); }   /* huge toothy grin */
     col=over(col,eyeC,cov(dM*ms));
+    if (mm>3.5){ vec2 gm=m-vec2(0.,-1.2); float inside=step(dM,0.);
+      float tl=min(abs(gm.y-1.6)-.28, max(min(min(abs(gm.x+2.8),abs(gm.x)),abs(gm.x-2.8))-.24, gm.y-1.6));
+      col=over(col,LINE,cov(tl*ms)*inside);
+      col=over(col,uRed,cov(max(length(gm-vec2(0.,4.3))-2.,dM)*ms)); }
     if (mm>1.5 && mm<2.5 && mo>.25){ float rr=1.3+2.4*mo; float dT=max(length(m-vec2(0.,1.2+1.9*mo))-1.4*mo, max(length(m-vec2(0.,-.8))-rr+.75, -.8-m.y)); col=over(col,uRed,cov(dT*ms)); }
   }
   /* straw hat — wide brim, dome crown, red band, woven straw, ink outline */
@@ -180,7 +223,7 @@ void main(){
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   const aLoc = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(aLoc); gl.vertexAttribPointer(aLoc, 2, gl.FLOAT, false, 0, 0);
   const U = {};
-  ['uRes', 'uDpr', 'uS', 'uSeed', 'uInk', 'uPaper', 'uRed', 'uBody', 'uSq', 'uEye', 'uMouth', 'uHat', 'uShadow', 'uMisc', 'uTint', 'uGear', 'uArmR', 'uA0', 'uA1', 'uSc', 'uLeg']
+  ['uRes', 'uDpr', 'uS', 'uSeed', 'uInk', 'uPaper', 'uRed', 'uBody', 'uSq', 'uEye', 'uMouth', 'uHat', 'uShadow', 'uMisc', 'uTint', 'uGear', 'uArmR', 'uAura', 'uA0', 'uA1', 'uSc', 'uLeg']
     .forEach((n) => { U[n] = gl.getUniformLocation(prog, n) || gl.getUniformLocation(prog, n + '[0]'); });
   const fA0 = new Float32Array(14), fA1 = new Float32Array(14), fSc = new Float32Array(16), fLeg = new Float32Array(8);
 
@@ -720,19 +763,20 @@ void main(){
   });
 
   /* meditation: lotus, levitate, ॐ — the wind can't touch him */
-  function om() {
-    say('ॐ', 'kz-om');
-    const c = l2w(0, 4);
-    for (let i = 0; i < 2; i++) {
+  function aura(n, gap) {                          // dotted rings that drift outward, turn slowly and fade
+    const c = l2w(0, 2);
+    for (let i = 0; i < n; i++) {
       const a = document.createElement('span'); a.className = 'kz-aura';
-      a.style.left = c[0] + 'px'; a.style.top = c[1] + 'px'; a.style.width = a.style.height = (74 * S) + 'px';
-      a.style.animationDelay = (i * 0.55) + 's';
+      a.style.left = c[0] + 'px'; a.style.top = c[1] + 'px'; a.style.width = a.style.height = (92 * S) + 'px';
+      a.style.animationDelay = (i * (gap || 0.6)).toFixed(2) + 's';
+      a.style.setProperty('--spin', (Math.random() < 0.5 ? -1 : 1) * rnd(25, 60) + 'deg');
       fx.appendChild(a); a.addEventListener('animationend', () => a.remove());
     }
   }
+  function om() { say('ॐ', 'kz-om'); auraP = 1; aura(1); }
   const meditate = (dur) => ({
     name: 'meditate',
-    start() { neutral(); B.sit = 1; B.pose = 'lotus'; this.om = now() + 1700; this.mo = 0; },
+    start() { neutral(); B.sit = 1; B.pose = 'lotus'; this.om = now() + 1700; this.mo = 0; dur = Math.max(dur, 10000); auraT = 1; },
     update(t) {
       if (B.mode !== 'ground') return true;
       const e = t - this.t0;
@@ -744,14 +788,14 @@ void main(){
         if (t > this.om) { this.om = t + rnd(2700, 3500); this.mo = t; om(); }
         const m = this.mo ? (t - this.mo) / 1500 : 1;
         if (m < 1) { B.mouth = 3; B.mouthO = Math.sin(m * Math.PI) * 0.75; } else B.mouth = 1;
-        if (e > dur || this.wake) { this.out = t; this.l0 = B.lev; say(pick(['ahh…', 'peace ☮', 'zen.'])); }
+        if (e > dur || (this.wake && e > 10000)) { this.out = t; auraT = 0; this.l0 = B.lev; say(pick(['ahh…', 'peace ☮', 'zen.'])); }
       } else {
         const k = Math.min(1, (t - this.out) / 750);
         B.lev = this.l0 * (1 - k * k); B.lotus = 1 - k; B.eye = k > 0.55 ? 1 : 4; B.mouth = 1;
         if (k >= 1) { kick(-2.5); return true; }
       }
     },
-    end() { B.lev = 0; B.lotus = 0; B.sit = 0; B.pose = 'rest'; B.eye = 0; B.mouth = 0; B.blush = 0; lookLock = 0; },
+    end() { auraT = 0; B.lev = 0; B.lotus = 0; B.sit = 0; B.pose = 'rest'; B.eye = 0; B.mouth = 0; B.blush = 0; lookLock = 0; },
   });
 
   /* rubber pluck: stretch an arm to a word, yank it, read or eat it, put it back */
@@ -978,12 +1022,13 @@ void main(){
   /* gear 2: pump, flush red, steam, jet dash + jet pistol */
   const gear2 = () => ({
     name: 'gear2',
-    start() { neutral(); this.ph = 'pump'; this.k = now(); this.p = 0; say('gear 2', 'kz-big'); gearTint(0.96, 0.36, 0.42, 0.55); },
+    start() { neutral(); this.ph = 'pump'; this.k = now(); this.p = 0; },
     update(t) {
       const e = t - this.k;
-      if (Math.random() < 0.35) steam(1);
+      if (this.on && Math.random() < 0.35) steam(1);
       if (this.ph === 'pump') {
         B.eye = 3; B.walkPh += 0.5;
+        if (e > 420 && !this.on) { this.on = true; gearTint(0.96, 0.36, 0.42, 0.55); steam(5); say('gear 2', 'kz-big'); }
         if (t > this.p) { this.p = t + 160; kick(-4.5); }
         if (e > 800) {
           const z = myGutter(), lo = z ? z[0] : Math.max(24, B.x - 90), hi = z ? z[1] : Math.min(W - 80, B.x + 90);
@@ -1005,10 +1050,10 @@ void main(){
   /* gear 3: bite thumb, blow up a giant fist, punch, then shrink to chibi */
   const gear3 = () => ({
     name: 'gear3',
-    start() { neutral(); this.ph = 'bite'; this.k = now(); B.pose = 'bite'; B.mouth = 2; B.mouthO = 0.5; say('gear 3', 'kz-big'); this.ai = frontSide() < 0 ? 0 : 1; },
+    start() { neutral(); this.ph = 'bite'; this.k = now(); B.pose = 'bite'; B.mouth = 2; B.mouthO = 0.5; this.ai = frontSide() < 0 ? 0 : 1; },
     update(t) {
       const e = t - this.k, A = this.ai ? 'a1' : 'a0', Hd = this.ai ? 'h1' : 'h0';
-      if (this.ph === 'bite') { if (e > 450) { this.ph = 'blow'; this.k = t; B.pose = 'giant'; B.mouth = 3; B.mouthO = 1; } }
+      if (this.ph === 'bite') { if (e > 450) { this.ph = 'blow'; this.k = t; B.pose = 'giant'; B.mouth = 3; B.mouthO = 1; say('gear 3', 'kz-big'); } }
       else if (this.ph === 'blow') {
         GT[A] = 5; GT[Hd] = 13.5; if (Math.random() < 0.25) steam(1);
         if (e > 750) {
@@ -1028,11 +1073,11 @@ void main(){
   /* gear 4: bulk up (boundman), steam, bounce bounce, then deflate exhausted */
   const gear4 = () => ({
     name: 'gear4',
-    start() { neutral(); this.ph = 'bite'; this.k = now(); B.pose = 'bite'; say('gear 4', 'kz-big'); },
+    start() { neutral(); this.ph = 'bite'; this.k = now(); B.pose = 'bite'; },
     update(t) {
       const e = t - this.k;
       if (this.ph === 'bite') {
-        if (e > 400) { this.ph = 'pump'; this.k = t; Object.assign(GT, { bulk: 1, a0: 3.4, h0: 5.4, a1: 3.4, h1: 5.4 }); gearTint(0.5, 0.08, 0.1, 0.28); B.pose = 'boundman'; B.eye = 3; steam(6); }
+        if (e > 400) { this.ph = 'pump'; this.k = t; Object.assign(GT, { bulk: 1, a0: 3.4, h0: 5.4, a1: 3.4, h1: 5.4 }); gearTint(0.5, 0.08, 0.1, 0.28); B.pose = 'boundman'; B.eye = 3; steam(6); say('gear 4', 'kz-big'); }
       } else if (this.ph === 'pump') { if (Math.random() < 0.5) steam(1); if (e > 600) { this.ph = 'bounce'; this.k = t; this.n = 0; B.eye = 0; B.mouth = 1; } }
       else if (this.ph === 'bounce') {
         if (Math.random() < 0.3) steam(1);
@@ -1045,25 +1090,52 @@ void main(){
     },
     end() { gearReset(); B.pose = 'rest'; B.eye = 0; B.mouth = 0; B.sit = 0; },
   });
-  /* gear 5: drums of liberation → white, cloud hair, laughing; then the rubber run (or a toon bounce) */
+  /* gear 5 (Nika): the drums of liberation, white flame-hair, cloud collar, red glowing eyes, a huge grin,
+     toon physics (eyes pop, flips), the rubber world — and afterwards he's shrivelled and exhausted */
   const toon = () => ({
     name: 'toon',
-    start() { this.n = 0; say('ha ha ha!'); B.eye = 1; B.mouth = 2; B.pose = 'wide'; },
+    start() { this.n = 0; say('ha ha ha!'); B.eye = 0; B.mouth = 2; B.pose = 'wide'; },
     update(t) {
       B.mouthO = 0.6 + Math.sin(t / 60) * 0.4;
-      if (B.mode === 'ground' && t > (this.nx || 0)) { if (this.n >= 3) return true; this.n++; this.nx = t + 220; B.vy = -520; B.mode = 'air'; B.surf = null; B.rv = (Math.random() < 0.5 ? -1 : 1) * Math.PI * 2 / 0.45; kick(9); }
+      if (B.mode === 'ground' && t > (this.nx || 0)) { if (this.n >= 3) return true; this.n++; this.nx = t + 220; B.vy = -560; B.mode = 'air'; B.surf = null; B.rv = (Math.random() < 0.5 ? -1 : 1) * Math.PI * 2 / 0.45; kick(10); }
     },
     end() { B.pose = 'rest'; B.mouth = 0; B.eye = 0; },
   });
-  const g5revert = () => ({ name: 'g5revert', start() { gearReset(); steam(5); B.eye = 1; B.mouth = 1; }, update(t) { return t - this.t0 > 900; }, end() { B.eye = 0; B.mouth = 0; } });
+  const g5laugh = () => ({                         // laughing so hard his eyes pop out of his head
+    name: 'g5laugh',
+    start() { B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; B.eye = 0; say('ha ha ha ha!', 'kz-big'); this.k = 0; },
+    update(t) {
+      const e = t - this.t0; B.mouthO = 0.75 + Math.sin(t / 55) * 0.25;
+      if (t > this.k) { this.k = t + 90; kick(Math.random() < 0.5 ? 2.6 : -2.6); }
+      GT.pop = e > 380 && e < 1250 ? 1.3 : 0; if (e > 380 && !this.p) { this.p = 1; kick(5); }
+      return e > 1650;
+    },
+    end() { GT.pop = 0; },
+  });
+  const g5revert = () => ({                        // the price of Nika: shrivelled, tiny, exhausted
+    name: 'g5revert',
+    start() { gearReset(); GT.gs = 0.8; steam(8); say('pshhh…'); B.eye = 2; B.pose = 'sleep'; B.sit = 1; B.mouth = 3; B.mouthO = 0.3; this.old = true; },
+    update(t) {
+      const e = t - this.t0;
+      if (e > 900 && !this.z) { this.z = 1; say('…so hungry'); }
+      if (e > 2300 && this.old) { this.old = false; GT.gs = 1; kick(-5); B.eye = 1; B.sit = 0; B.pose = 'rest'; B.mouth = 1; }
+      return e > 2800;
+    },
+    end() { GT.gs = 1; B.eye = 0; B.mouth = 0; B.sit = 0; B.pose = 'rest'; },
+  });
   const gear5x = (rubberRun) => ({
     name: 'gear5x',
-    start() { neutral(); this.d = 0; say('♪ don-don ♪'); Object.assign(GT, { outl: 1, cloud: 1 }); gearTint(1, 1, 1, 1); B.eye = 1; B.mouth = 2; },
+    start() { neutral(); this.bi = 0; this.beats = [0, 260, 820, 1080, 1640, 1900]; B.mouth = 1; },
     update(t) {
-      const e = t - this.t0; B.mouthO = 0.6 + Math.sin(t / 50) * 0.35;
-      if (t > this.d) { this.d = t + 260; kick(Math.random() < 0.5 ? 3 : -3); }
-      if (e > 550 && !this.s) { this.s = 1; say('gear 5!', 'kz-big'); steam(6); }
-      if (e > 1500) { this.pushed = true; queue.push(rubberRun && pickLine() ? gear5() : toon(), g5revert()); return true; }
+      const e = t - this.t0;
+      if (this.bi < this.beats.length && e > this.beats[this.bi]) {        // ba-dum … ba-dum … — his heartbeat is a drum
+        this.bi++; kick(-5.5); hatKick(3); say(this.bi % 2 ? 'don' : 'don!', 'kz-drum');
+        GT.hair = Math.min(0.35, this.bi * 0.07); if (!readingMode() && this.bi % 2 === 0) quake(B.x, B.y, 0.2);
+      }
+      if (e > 2150 && !this.aw) {
+        this.aw = 1; Object.assign(GT, { hair: 1, g5: 1 }); say('gear 5!', 'kz-big'); B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; kick(9); steam(6);
+      }
+      if (e > 2700) { this.pushed = true; const seq = [g5laugh(), toon()]; if (rubberRun && pickLine()) seq.push(gear5()); seq.push(g5revert()); queue.push(...seq); return true; }
     },
     end() { if (!this.pushed) gearReset(); },
   });
@@ -1137,7 +1209,7 @@ void main(){
     if (!IS_ARTICLE) return;
     const p = articleProgress(); if (p < 0) return;
     const a = document.querySelector('.article-content'); if (a.getBoundingClientRect().height < H * 2) return;
-    const free = !act || ['idle', 'walk', 'sit', 'wave', 'laugh', 'sleep', 'meditate'].includes(act.name);
+    const free = !act || ['idle', 'walk', 'sit', 'wave', 'laugh', 'sleep'].includes(act.name) || (act.name === 'meditate' && now() - act.t0 > 10000);
     if (!ms.half && p > 0.5 && free && B.mode === 'ground') { ms.half = true; run(cheer('halfway! ⛵')); }
     if (!ms.end && p > 0.985 && free && B.mode === 'ground') {
       ms.end = true;
@@ -1243,6 +1315,7 @@ void main(){
       }
     }
     grow(hx, hy, 27 * S);
+    if (auraA > 0.005) { const c = l2w(0, 2); grow(c[0], c[1], 60 * S); }
     const fy = floorY(), grounded = B.mode === 'ground' && !B.surf;
     const shH = Math.max(0, fy - (B.y + FOOT * S));
     const shA = B.mode === 'hang' || B.mode === 'held' ? 0.07 * clamp(1 - shH / 600, 0, 1) : (grounded ? 0.13 : 0.13 * clamp(1 - shH / 260, 0, 1));
@@ -1257,12 +1330,14 @@ void main(){
     gl.uniform3fv(U.uInk, INK); gl.uniform3fv(U.uPaper, PAPER); gl.uniform3fv(U.uRed, RED);
     gl.uniform4f(U.uBody, B.x, B.y, B.rot, B.faceS);
     gl.uniform4f(U.uSq, sx, sy, B.blush, 0);
-    gl.uniform4f(U.uEye, eyeLX, eyeLY, B.blink, B.eye);
-    gl.uniform4f(U.uMouth, B.mouth, B.mouthO, 0, 0);
+    const g5on = GV.g5 > 0.5;
+    gl.uniform4f(U.uEye, eyeLX, eyeLY, B.blink, g5on && (B.eye === 1 || B.eye === 3) ? 0 : B.eye);
+    gl.uniform4f(U.uMouth, g5on && (B.mouth === 2 || B.mouth === 1) ? 4 : B.mouth, g5on ? Math.max(B.mouthO, 0.7) : B.mouthO, 0, 0);
     gl.uniform4f(U.uHat, hx, hy, hr, hs);
     gl.uniform4f(U.uShadow, shX, shY, shW, shA);
     gl.uniform4f(U.uMisc, REDUCE ? 0 : 1, hatOn, 0, 0);
-    gl.uniform4f(U.uTint, GV.tr, GV.tg, GV.tb, GV.tint); gl.uniform4f(U.uGear, GV.outl, GV.cloud, 0, 0); gl.uniform4f(U.uArmR, GV.a0, GV.h0, GV.a1, GV.h1);
+    { const c = l2w(0, 2), R = (46 + 5 * auraP + Math.sin(T * 1.3) * 1.5) * S; gl.uniform4f(U.uAura, c[0], c[1], R, auraA * (0.85 + 0.15 * auraP)); }
+    gl.uniform4f(U.uTint, GV.tr, GV.tg, GV.tb, GV.tint); gl.uniform4f(U.uGear, GV.hair, GV.g5, T, GV.pop); gl.uniform4f(U.uArmR, GV.a0, GV.h0, GV.a1, GV.h1);
     gl.uniform2fv(U.uA0, fA0); gl.uniform2fv(U.uA1, fA1); gl.uniform2fv(U.uSc, fSc); gl.uniform4fv(U.uLeg, fLeg);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
@@ -1310,7 +1385,9 @@ void main(){
     if (blinkT >= 0) { const e = (tn - blinkT) / 140; B.blink = e >= 1 ? 1 : Math.abs(1 - 2 * e); if (e >= 1) blinkT = -1; } else B.blink = 1;
 
     // brain
-    for (const k of ['tint', 'cloud', 'outl', 'bulk', 'a0', 'h0', 'a1', 'h1']) GV[k] += (GT[k] - GV[k]) * Math.min(1, dt * 7);
+    for (const k of ['tint', 'hair', 'g5', 'bulk', 'a0', 'h0', 'a1', 'h1']) GV[k] += (GT[k] - GV[k]) * Math.min(1, dt * 7);
+    GV.pop += (GT.pop - GV.pop) * Math.min(1, dt * 18);
+    auraA += (auraT - auraA) * Math.min(1, dt * 2.2); auraP *= Math.exp(-dt * 1.6);
     GV.gs += (GT.gs - GV.gs) * Math.min(1, dt * 10); S = S0 * GV.gs;
     if (B.mode !== 'held') { if (!act || act.update(tn)) { if (act && act.end) act.end(); act = null; if (queue.length) run(queue.shift()); else think(); } }
     if (tn > msAt) { msAt = tn + 300; milestones(); }
