@@ -31,7 +31,7 @@ Cross your eyes instead, so the lines of sight meet in front of the page. Now th
 
 Try it on the pair below. Hold a fingertip between you and the screen, look at it, and answer the question under the cats.
 
-{{< viz kind="try" frame="none" fallback="try.svg" alt="Two white line cats on black, with what you see at each stage: four cats with the tails side by side, four with the tails one cat apart, and three when fused" caption="Fingertip distances assume eyes 63 mm apart and a typical screen: 35 cm away on a phone, 55 cm on a computer. Yours will differ a little." >}}
+{{< viz kind="try" fig="1" title="Cross your eyes with a fingertip" fallback="try.svg" alt="Two white line cats on black, with what you see at each stage: four cats with the tails side by side, four with the tails one cat apart, and three when fused" caption="Fingertip distances assume eyes 63 mm apart and a typical screen: 35 cm away on a phone, 55 cm on a computer. Yours will differ a little. Eyes have no colour in the site palette, so orange stands for the left eye and blue for the right." >}}
 
 With the printed card, the steps are the same:
 
@@ -45,7 +45,7 @@ With the printed card, the steps are the same:
 
 The fingertip marks the point where the lines of sight cross. For eyes `e` apart, looking at cats `s` apart from a distance `D`, that point is `D × e / (e + s)` from your eyes. Answer each question under the drawing before it moves.
 
-{{< viz kind="aim" frame="none" fallback="aim.svg" alt="Seen from above: the left eye's line of sight goes to the right cat and the right eye's to the left cat, and they cross at the fingertip" caption="Side-to-side distances are drawn 1.5 times wider than depth so the lines stay apart." >}}
+{{< viz kind="aim" fig="2" title="Where the lines of sight cross" fallback="aim.svg" alt="Seen from above: the left eye's line of sight goes to the right cat and the right eye's to the left cat, and they cross at the fingertip" caption="Side-to-side distances are drawn 1.5 times wider than depth so the lines stay apart. Orange stands for the left eye and blue for the right." >}}
 
 So start with the cats close together: the fingertip sits further from your face, and the eyes cross less. If you cannot cross far enough, move back. The extra inward turn, beyond what the page itself needs, is the cat spacing divided by the viewing distance. For the print at 40 cm that is 10.6 / 40, or 26.5 prism dioptres (1 prism dioptre moves the aim 1 cm at 1 m). Doubling the distance halves it.
 
@@ -53,7 +53,7 @@ So start with the cats close together: the fingertip sits further from your face
 
 The pair is flat because its two outlines line up exactly. A stereogram gets depth from small side-to-side differences between its two images. The pair below has its heads moved a few pixels. Guess first, then fuse it.
 
-{{< viz kind="depth" frame="none" fallback="depth.svg" alt="The cat pair with the heads moved 12 px further apart than the bodies; with crossed eyes the head sits in front of the body" >}}
+{{< viz kind="depth" fig="3" title="Move the heads, then fuse" fallback="depth.svg" alt="The cat pair with the heads moved 12 px further apart than the bodies; with crossed eyes the head sits in front of the body" >}}
 
 A stereogram made for crossing shows its depth inside out when you look through it, and the other way round.
 

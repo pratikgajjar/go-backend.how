@@ -1,149 +1,44 @@
-/* cat-stereogram-dark-mode figures (frame="none"). Classes are prefixed v-cs-.
- *
- * try    the printed card (white on black) with a coach that talks in turns
- * aim    a pencil sketch on the page itself, two questions then free play
- * depth  the card again, with prediction cards drawn as side views
- *
- * Colour: red = left eye, cyan = right eye, white = the printed cats and
- * what both eyes see. The page's link colour marks the one thing to look at.
- */
+/* cat-stereogram-dark-mode: layout and drawing only. Classes are prefixed v-cs-.
+ * Colours are the shared tokens. The two eyes are mapped onto the palette:
+ * orange = left eye, blue = right eye (each figure's key says so). */
 
-.viz--try, .viz--aim, .viz--depth {
-  --cs-black: #000;
-  --cs-white: #fff;
-  --cs-soft: oklch(78% 0 0);
-  --cs-l: rgb(255 72 72);
-  --cs-r: rgb(64 224 255);
-  --cs-l-ink: oklch(52% 0.2 25);   /* the same eyes, dark enough for text on the light page */
-  --cs-r-ink: oklch(50% 0.11 220);
-  --cs-edge: transparent;
-  --cs-hi: var(--color-link);
-  --cs-hi-card: oklch(80% 0.13 305); /* the same 'look here', light enough for the black card */
-  margin: 1.75rem 0 2.25rem;
-  font-family: var(--font-mono);
-}
-html[data-force-dark] .viz--try, html[data-force-dark] .viz--aim, html[data-force-dark] .viz--depth {
-  --cs-edge: oklch(38% 0 0);
-  --cs-l-ink: var(--cs-l);
-  --cs-r-ink: var(--cs-r);
-  --cs-hi-card: var(--color-link);
-}
-.viz--try img.wv-fallback, .viz--aim img.wv-fallback, .viz--depth img.wv-fallback { margin: 0; border: 0; }
-.viz--try figcaption, .viz--aim figcaption, .viz--depth figcaption { font-size: 12.5px; margin-top: 0.8rem; }
+/* cats */
+.wv .v-cs-cat { fill: none; stroke-linecap: butt; }
+.wv .v-cs-cat.is-ink { stroke: var(--ink); }
+.wv .v-cs-cat.is-ink .v-cs-solid { fill: var(--ink); }
+.wv .v-cs-cat.is-l { stroke: var(--orange); }
+.wv .v-cs-cat.is-l .v-cs-solid { fill: var(--orange); }
+.wv .v-cs-cat.is-r { stroke: var(--blue); }
+.wv .v-cs-cat.is-r .v-cs-solid { fill: var(--blue); }
+.wv .v-cs-cat .v-cs-solid { stroke: none; }
+.wv .v-cs-t-r { fill: var(--blue); }
+.wv .v-cs-look { stroke: var(--purple); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ---------- shared: cats and the black card ---------- */
-.v-cs-stage { background: var(--cs-black); outline: 1px solid var(--cs-edge); padding: 0.25rem 0 0.4rem; }
-.v-cs-stage svg { display: block; width: 100%; }
-.v-cs-cat { fill: none; stroke: currentColor; stroke-linecap: butt; }
-.v-cs-cat .v-cs-solid { fill: currentColor; stroke: none; }
-.v-cs-cat.is-print { color: var(--cs-white); }
-.v-cs-black { fill: var(--cs-black); }
-.v-cs-eyeimg { mix-blend-mode: screen; }
-.v-cs-eyeimg.is-l { color: var(--cs-l); }
-.v-cs-eyeimg.is-r { color: var(--cs-r); }
-.v-cs-t { font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
-.v-cs-t.is-l { fill: var(--cs-l); }
-.v-cs-t.is-r { fill: var(--cs-r); }
-.v-cs-t.is-w { fill: var(--cs-white); }
-.v-cs-t.is-hi { fill: var(--cs-hi-card); }
-.v-cs-hi-line { stroke: var(--cs-hi-card); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+/* try */
+.v-cs-pair { margin: 0.2rem 0 0.6rem; }
+.v-cs-coach { min-height: 12rem; }
+.v-cs-mini { max-width: 320px; margin: 0 0 0.6rem; }
+.v-cs-picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); max-width: 560px; }
+.v-cs-pick { display: flex; flex-direction: column; gap: 0.35rem; }
+.v-cs-pick .v-cs-mini { margin: 0; }
+.v-cs-back { margin: 0.6rem 0 0; }
 
-/* ---------- try: the coach ---------- */
-.v-cs-ease { display: flex; align-items: center; gap: 0.6rem; margin: 0.55rem 0 0; font-size: 12px; }
-.v-cs-ease input { flex: 1 1 auto; min-width: 0; margin: 0; accent-color: var(--cs-hi); height: 26px; }
-.v-cs-coach {
-  margin-top: 1rem;
-  padding-left: 1rem;
-  border-left: 3px solid var(--cs-hi);
-  min-height: 9.5rem;
-}
-.v-cs-q { font-family: var(--font-heading); font-size: 1.05rem; line-height: 1.45; margin: 0 0 0.75rem; }
-.v-cs-say { font-size: 14px; line-height: 1.6; margin: 0.6rem 0 0.75rem; max-width: 60ch; }
-.v-cs-choices { display: flex; flex-wrap: wrap; gap: 0.55rem; }
-.v-cs-chip {
-  font: inherit; font-family: var(--font-heading); font-size: 1.2rem;
-  min-width: 3.1rem; height: 3.1rem; padding: 0 0.9rem;
-  border-radius: 999px; border: 1.5px solid var(--cs-hi);
-  color: var(--cs-hi); background: none; cursor: pointer;
-}
-.v-cs-chip:hover { background: color-mix(in oklch, var(--cs-hi) 12%, transparent); }
-.v-cs-mini { display: block; width: 100%; max-width: 320px; height: auto; }
-.v-cs-picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.7rem; max-width: 560px; }
-.v-cs-pick {
-  font: inherit; font-size: 13px; color: inherit; text-align: left;
-  display: flex; flex-direction: column; gap: 0.35rem;
-  padding: 0; border: 0; background: none; cursor: pointer;
-}
-.v-cs-pick .v-cs-mini { outline: 1.5px solid transparent; outline-offset: 2px; }
-.v-cs-pick:hover .v-cs-mini, .v-cs-pick:focus-visible .v-cs-mini { outline-color: var(--cs-hi); }
-.v-cs-pick span { text-decoration: underline; text-decoration-color: var(--cs-hi); text-underline-offset: 3px; }
+/* aim: seen from above */
+.wv .v-cs-scr { stroke: var(--ink); stroke-width: 2.5; }
+.wv .v-cs-ray { stroke-width: 2; stroke-linecap: round; }
+.wv .v-cs-ray.is-l { stroke: var(--orange); }
+.wv .v-cs-ray.is-r { stroke: var(--blue); }
+.wv .v-cs-catdot { fill: var(--brown); }
+.wv .v-cs-eye { fill: var(--board); stroke-width: 2.5; }
+.wv .v-cs-eye.is-l { stroke: var(--orange); }
+.wv .v-cs-eye.is-r { stroke: var(--blue); }
+.wv .v-cs-finger { fill: var(--purple); }
+.wv .v-cs-meet { fill: var(--board); stroke: var(--purple); stroke-width: 2.5; }
+.v-cs-qs { margin-top: 0.6rem; min-height: 6rem; }
 
-.v-cs-btn {
-  font: inherit; font-size: 13px;
-  color: var(--cs-hi); background: none;
-  border: 1px solid currentColor; padding: 0.45rem 0.85rem; min-height: 34px; cursor: pointer;
-}
-.v-cs-btn:focus-visible, .v-cs-chip:focus-visible, .v-cs-pick:focus-visible, .v-cs-ans:focus-visible,
-.v-cs-tab:focus-visible, .v-cs-card:focus-visible, .viz--aim input:focus-visible, .v-cs-ease input:focus-visible {
-  outline: 2px solid var(--cs-hi); outline-offset: 2px;
-}
-
-/* ---------- aim: a sketch on the page, question first ---------- */
-.viz--aim { border-top: 1px solid currentColor; border-bottom: 1px solid currentColor; padding: 0.9rem 0 1rem; }
-.v-cs-qa { min-height: 7.5rem; margin-top: 0.6rem; }
-.v-cs-qn { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; margin: 0; }
-.v-cs-q2 { font-size: 15px; font-weight: 700; line-height: 1.45; margin: 0.25rem 0 0.6rem; }
-.v-cs-answers { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.v-cs-ans {
-  font: inherit; font-size: 13.5px; color: inherit; background: none; cursor: pointer;
-  border: 0; border-bottom: 2px solid var(--cs-hi); padding: 0.35rem 0.2rem; margin-right: 0.9rem;
-}
-.v-cs-said { font-size: 14px; line-height: 1.6; margin: 0 0 0.6rem; max-width: 62ch; }
-.v-cs-soft { font-size: 13px; margin: 0.4rem 0; }
-.v-cs-top { display: block; width: 100%; overflow: visible; }
-.v-cs-scr { stroke: currentColor; stroke-width: 2.5; }
-.v-cs-ray { stroke-width: 2; stroke-linecap: round; }
-.v-cs-ray.is-l { stroke: var(--cs-l-ink); }
-.v-cs-ray.is-r { stroke: var(--cs-r-ink); }
-.v-cs-ray.is-behind { stroke-dasharray: 5 5; }
-.v-cs-catdot { fill: currentColor; }
-.v-cs-eye2 { fill: none; stroke-width: 2.5; }
-.v-cs-eye2.is-l { stroke: var(--cs-l-ink); }
-.v-cs-eye2.is-r { stroke: var(--cs-r-ink); }
-.v-cs-finger { fill: var(--cs-hi); }
-.v-cs-meet { fill: none; stroke: var(--cs-hi); stroke-width: 2.5; }
-.v-cs-t2 { font-family: var(--font-mono); font-size: 12px; fill: currentColor; }
-.v-cs-t2.is-l { fill: var(--cs-l-ink); font-weight: 700; }
-.v-cs-t2.is-r { fill: var(--cs-r-ink); font-weight: 700; }
-.v-cs-t2.is-hi { fill: var(--cs-hi); font-weight: 800; }
-.v-cs-t2.is-bad { font-weight: 800; }
-.v-cs-play { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.2rem; margin-top: 0.6rem; font-size: 13px; }
-.v-cs-play[hidden] { display: none; }
-.v-cs-play label { display: flex; align-items: center; gap: 0.6rem; flex: 1 1 220px; }
-.v-cs-play input { flex: 1 1 auto; min-width: 0; margin: 0; accent-color: var(--cs-hi); height: 26px; }
-.v-cs-tabs { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
-.v-cs-tab {
-  font: inherit; font-size: 13px; color: inherit; background: none; cursor: pointer;
-  border: 1px solid currentColor; padding: 0.4rem 0.75rem; min-height: 34px;
-}
-.v-cs-tab[aria-pressed="true"] { background: var(--cs-hi); border-color: var(--cs-hi); color: var(--article-bg, #fff); }
-
-/* ---------- depth: prediction cards with side views ---------- */
-.v-cs-depth { margin-top: 1rem; min-height: 11rem; }
-.v-cs-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; max-width: 460px; }
-.v-cs-card {
-  font: inherit; font-size: 13.5px; color: inherit; background: none; cursor: pointer; text-align: center;
-  border: 1.5px dashed currentColor; padding: 0.6rem 0.5rem 0.7rem;
-  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
-}
-.v-cs-card:hover { border-style: solid; border-color: var(--cs-hi); }
-.v-cs-side { width: 100%; max-width: 150px; height: auto; display: block; }
-.v-cs-side-eye { fill: none; stroke: currentColor; stroke-width: 2; }
-.v-cs-side-scr { stroke: currentColor; stroke-width: 1.5; stroke-dasharray: 3 3; }
-.v-cs-side-body { fill: none; stroke: currentColor; stroke-width: 2; }
-.v-cs-side-head { fill: var(--cs-hi); }
-.v-cs-t3 { font-family: var(--font-mono); font-size: 10.5px; fill: currentColor; }
-.v-cs-t3.is-hi { fill: var(--cs-hi); font-weight: 800; }
-.v-cs-answer { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
-.v-cs-answer .v-cs-side { width: 150px; flex: 0 0 auto; }
-.v-cs-answer p { flex: 1 1 240px; font-size: 14px; line-height: 1.6; margin: 0; }
+/* depth */
+.v-cs-choice { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+.wv .v-cs-side { width: 130px; }
+.wv .v-cs-side-line { fill: none; stroke: currentColor; stroke-width: 2; }
+.wv .v-cs-side-head { fill: var(--purple); }
+.v-cs-then { margin: 0.8rem 0 0.4rem; }
