@@ -6,7 +6,7 @@
  * meter ticks. Figures sit on receipt paper (frame="none"), not on the
  * shared whiteboard sheet.
  *
- *   tuth-receipts  hero: one order, two receipts (events vs checkpoints)
+ *   tuth-receipts  one order, two receipts (events vs checkpoints)
  *   tuth-request   a plain request and its failure points
  *   tuth-services  Temporal's services and the one database they share
  *   tuth-tape      the event history of one workflow; N activities
@@ -397,7 +397,7 @@ function initTape(fig, app) {
   draw();
 }
 
-/* ============================================================ the hero */
+/* ======================================================== the receipts */
 
 function initReceipts(fig, app) {
   const { ev } = historyOf(3);

@@ -147,12 +147,14 @@ body[class*="theme-"] .viz[class*="viz--tuth-"] table thead tr { background: non
 .viz[class*="viz--tuth-"] .v-tuth-hit:focus-visible .v-tuth-hit-area { stroke: var(--t-purple); stroke-width: 2; }
 .viz--tuth-request .v-tuth-note { margin-top: 0.6rem; }
 
-/* ---------- hero: two receipts on the page, no sheet behind them ---------- */
+/* ---------- receipts: two receipts on the page, no sheet behind them ---------- */
 .viz.viz--tuth-receipts {
   background: none; border: 0; padding: 0; -webkit-mask: none; mask: none;
   margin: 0.5rem 0 2.2rem;
 }
 .viz.viz--tuth-receipts figcaption { border-top: 0; color: inherit; opacity: 0.85; text-align: center; margin-top: 0.8rem; }
+.viz.viz--tuth-receipts .wv-head { border-bottom-color: currentColor; color: inherit; max-width: 720px; margin-left: auto; margin-right: auto; }
+.viz.viz--tuth-receipts .wv-fig { color: inherit; }
 .v-tuth-pair { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(0.6rem, 3vw, 2.2rem); align-items: start; max-width: 720px; margin: 0 auto; }
 .v-tuth-rcpt {
   background: var(--t-paper); color: var(--t-ink); padding: 0.9rem 0.9rem calc(0.9rem + var(--tear));
