@@ -13,8 +13,7 @@ hnItemId = 41282624
 theme = "coral"
 +++
 
-{{< figure src="xiaohei-hero.png" alt="Xiaohei pulling a listing card from a fast cache shelf while the database stays idle behind a curtain" >}}
-
+{{< viz kind="hero" frame="none" fallback="hero.svg" alt="A listing request's four filters drawn as rows of car ids; the cars filled in every row are the page, served from Valkey while the SQL database stays off the read path" caption="Sample data: 12 cars. Each filter you switch on is one sorted set in Valkey, one row here. A car is on the page when its column is full in every row." >}}
 
 In [Part 1](/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1) of our series, we explored the foundational aspects of our platform's performance optimization. We began by defining our business model, which combines a marketplace and inventory system to facilitate car sales. We detailed the user flow, including how users view ads, generate leads, and book test drives. Our primary focus was on enhancing the performance of _individual car pages_, where we discussed various strategies to reduce latency and improve load times. We examined the impact of client-side versus server-side rendering and outlined initial approaches to optimizing both frontend and backend components.
 
@@ -84,51 +83,6 @@ CarFeatures
 | --- | ------ | ---------- |
 | 1   | 1      | 20         |
 
-```mermaid
-erDiagram
-    Car {
-        int Id PK
-        int Price
-        int VarientId FK
-        int ColorId
-        datetime DateCreated
-    }
-    Varient {
-        int Id PK
-        int ModelId FK
-        string Name
-        datetime DateCreated
-    }
-    Model {
-        int Id PK
-        int MakeId FK
-        string Name
-        datetime DateCreated
-    }
-    Make {
-        int Id PK
-        string Name
-        datetime DateCreated
-    }
-    Features {
-        int Id PK
-        string Name
-        datetime DateCreated
-    }
-    CarFeatures {
-        int Id PK
-        int CarId FK
-        int FeatureId FK
-    }
-
-    Car ||--o| Varient : has
-    Varient ||--o| Model : belongs_to
-    Model ||--o| Make : made_by
-    Car ||--o| CarFeatures : has
-    CarFeatures ||--o| Features : includes
-
-```
-
 To simplify and address sufficient edge cases, we've explored a partial schema.
 
 ### Backend
@@ -138,16 +92,19 @@ In the backend, we are using [Django](https://www.djangoproject.com/) and [Djang
 ```py
 from django_filters import rest_framework as filters
 
+class NumberInFilter(filters.BaseInFilter, filters.NumberFilter):
+    """Accepts a comma-separated list, e.g. make=10,12"""
+
 class CarFilterSet(filters.FilterSet):
     """Custom filter class for filtering cars"""
-    city_id = filter.NumberFilter(name="locality__city__id", field_name="city_id", lookup_expr="in")
-    price_min = django_filters.NumberFilter(name='price', lookup_expr='gte')
-    price_max = django_filters.NumberFilter(name='price', lookup_expr='lte')
-    make = django_filters.NumberFilter(name="varient__model__make__id", lookup_expr="in")
-    model = django_filters.NumberFilter(name="varient__model__id", lookup_expr="in")
-    color = django_filter.NumberFilter(name="color__id", lookup_expr="in")
-    features = filter.NumberFilter(name='features__id', lookup_expr='in')
-    slug = filter.SlugFilter()
+    city_id = NumberInFilter(field_name="locality__city__id", lookup_expr="in")
+    price_min = filters.NumberFilter(field_name="price", lookup_expr="gte")
+    price_max = filters.NumberFilter(field_name="price", lookup_expr="lte")
+    make = NumberInFilter(field_name="varient__model__make__id", lookup_expr="in")
+    model = NumberInFilter(field_name="varient__model__id", lookup_expr="in")
+    color = NumberInFilter(field_name="color__id", lookup_expr="in")
+    features = NumberInFilter(field_name="features__id", lookup_expr="in")
+    slug = SlugFilter()  # our own filter, described below
 
     class Meta:
         model = Car
@@ -161,7 +118,7 @@ class CarFilterSet(filters.FilterSet):
         ]
 ```
 
-When we're handling requests in Django using ViewSets (as part of Django Rest Framework), each incoming request triggers the execution of that specific ViewSet. Here's what happens under the hood with each request:
+With Django REST Framework ViewSets, each request runs three steps:
 
 1. **Filtering**: We define filters in our serializers or viewsets, which Django Rest Framework applies to our queryset. This means only the relevant objects that match the filtering criteria are considered for further processing.
 
@@ -194,23 +151,23 @@ class CarViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
 ### Request
 
 ```sql
-GET https://api.car.com/listing/?city_id=1&price_min=200000&price_max=400000&make_id=121,120&
+GET https://api.car.com/listing/?city_id=1&price_min=200000&price_max=400000&make=120,121&ordering=price&page=2
 
-SELECT ... FROM car
-    LEFT JOIN locality on car.locality_id = locality.id
-    LEFT JOIN city on locality.city_id = city.id
-    LEFT JOIN varient on car.varient_id = varien t.id
-    LEFT JOIN model on varient.model_id = model.id
-    LEFT JOIN make on model.make_id = make.id
-  WHERE
-    city.id in (1,)
-    AND car.price > 200000
-    AND car.price < 400000
-    AND make.id in (121, 120)
-LIMIT 10 -- = page_size
-OFFSET 0 -- = page_no * (page_size - 1) ; 1 <= page_no <= max_page
--- max_page = Math.ceil(count / page_size)
+SELECT car.id, car.price, car.varient_id, car.color_id, car.locality_id
+  FROM car
+ INNER JOIN locality ON (car.locality_id = locality.id)
+ INNER JOIN varient ON (car.varient_id = varient.id)
+ INNER JOIN model ON (varient.model_id = model.id)
+ WHERE (locality.city_id IN (1) AND car.price >= 200000 AND car.price <= 400000
+        AND model.make_id IN (120, 121))
+ ORDER BY car.price ASC
+ LIMIT 10   -- page_size
+OFFSET 10   -- (page - 1) * page_size; max_page = ceil(count / page_size)
 ```
+
+This is the SQL Django generates for the filter set above. It joins only the tables a filter needs: `city_id` is already a column on `locality`, and `make_id` a column on `model`, so `city` and `make` are never joined. Pagination runs a second query, `COUNT(*)` with the same joins, and the serializer then reads `model_name`, `varient_name` and `city_name`, which costs more joins with `select_related`, or one query per car without it. All of this runs on every request.
+
+{{< viz kind="sql-joins" fig="1" title="What each filter joins" frame="none" fallback="sql-joins.svg" alt="The car schema as a graph of tables; switching filters on shows which tables Django joins and the SQL it generates" caption="SQL from Django 6.1 and django-filter 26.1 with this post's filter set (SQLite backend, quotes removed). `features` joins the through table, so a car with two of the requested features comes back twice until you add `.distinct()`." >}}
 
 ### Response
 
@@ -252,7 +209,7 @@ GET https://api.car.com/listing/?slug=used-nexon-cars-in-mumbai
 In this case, the `SlugFilter` will parse the tokens from the URL and use a database table to return the appropriate query string. For any given `SlugFilter`, a valid query string combination will always exist as it is a subset of the overall filters.
 
 ```md
-user-nexon-cars-in-mumbai => model=121&city=1
+used-nexon-cars-in-mumbai => model=121&city=1
 ```
 
 | id  | value  | type      | filter |
@@ -267,30 +224,23 @@ user-nexon-cars-in-mumbai => model=121&city=1
 
 We'll discuss how to efficiently store and retrieve car data in-memory, aiming to minimize round trips to ValKey[^1] while optimizing space usage.
 
-### Why Use a Hash Set?
+### Why Use a Hash?
 
-To swiftly serve car details displayed in list responses, we'll use a hash set. This approach offers several benefits.
+To serve the car details shown in list responses, we keep one hash, `car:`, with the car id as the field and the listing JSON as the value.
 
-**Efficient retrieval:** We can fetch data for multiple cars using `HMGET car: 101 102 103`, reducing the number of requests needed to retrieve JSON data based on page size.
+**One round trip per page:** `HMGET car: 101 102 103` returns the JSON for every car on a page in one call. With a maximum page size of 35, that is at most 35 values per `HMGET`. (`MGET` over one string key per car would also be one call.)
 
-**Automatic compression:** hash set provides automatic compression for data up to `hash-zipmap-max-entries`, saving memory compared to storing data in individual keys with prefixes.
-
-**Ideal for paginated responses:** With a maximum page size of 35, we can fetch up to 35 car JSON objects via a single `HMGET` operation, optimizing data retrieval for our use case.
+**Memory:** A hash uses the compact listpack encoding only while it has at most 512 fields (`hash-max-listpack-entries`) and every value is at most 64 bytes (`hash-max-listpack-value`)[^5]. Our `car:` hash holds every live car, and each value is a JSON document longer than 64 bytes, so Valkey stores it as a regular hash table. In a test on Valkey 9.1 with 10,000 sample cars, the hash used about 5% less memory than one string key per car. The large savings Instagram describes come from many small hashes with short values:
 
 > the Redis setting ‘hash-zipmap-max-entries’ configures the maximum number of entries a hash can have while still being encoded efficiently. - [Instagram Blog](https://instagram-engineering.com/storing-hundreds-of-millions-of-simple-key-value-pairs-in-redis-1091ae80f74c)
 
+That setting is now called `hash-max-listpack-entries`.
+
+{{< viz kind="keys" key="hash" title="The car: hash" frame="none" wide="false" fallback="keys.svg" alt="The car: hash maps car ids to listing JSON; HMGET returns one value per id and nil for a missing id" caption="Sample values. Encodings and replies from Valkey 9.1." >}}
+
 #### Data Consistency and Invalidation
 
-To maintain data consistency, we're listening to the database change log. Whenever any details affecting the response payload change, we update the relevant keys in the hash set accordingly. Additionally, when a car's status changes to a terminal state (e.g., sold or removed), we remove its key from the hash set.
-
-```mermaid
-graph TD
-    C[Hash Set]
-    C -->|car:| D[Hash Map]
-    D -->|101| E(String)
-    D -->|102| G(String)
-    D -->|103| H(String)
-```
+To maintain data consistency, we listen to the database change log. Whenever a detail in the response payload changes, we update that car's field in the `car:` hash. When a car reaches a terminal state (e.g., sold or removed), we delete its field from the hash and its id from the index sets. Cached results (below) still hold that id until their TTL ends, so `HMGET` returns nil for it and the view must skip it.
 
 ### Why Use a Sorted Set?
 
@@ -307,13 +257,13 @@ Sorted sets allow us to efficiently filter and retrieve data based on attributes
 
 - Retrieve cars with prices between 100K INR and 500K INR:
 
-  ```
+  ```txt
   ZRANGEBYSCORE car:price 100000 500000
   ```
 
 - Fetch cars with color_id = 5:
 
-  ```
+  ```txt
   ZRANGEBYSCORE car:color 5 5
   ```
 
@@ -321,57 +271,27 @@ These operations have a time complexity of O(log(N)+M), making them more efficie
 
 #### Optimized Pagination with Caching
 
-When sorting order depends on attributes like price or date_added, we can optimize subsequent requests by storing the filtered sorted list in a sorted set and using it for pagination. Here's how:
+When the sort order depends on attributes like price or date_added, we store the filtered, sorted result and use it for every page of that query:
 
-1. Store the result page in a sorted set with a key like `page:price:{queryhash}` (where `{queryhash}` is a unique identifier for the query) and an appropriate Time-To-Live (TTL).
-2. Retrieve cars for the requested page using:
-   - `ZRANGE` or `ZREVRANGE` to fetch elements based on their score and rank
-   - `HMGET` to retrieve specific car details from a hash set like `car:`
-3. Use `ZCARD` to determine the total count of cars in the result page.
+1. Store the result in a sorted set with a key like `page:price:{queryhash}` (where `{queryhash}` identifies the filters) and a TTL.
+2. Read one page with `ZRANGE key start stop` (`ZREVRANGE` for descending order), then fetch those cars with `HMGET` from the `car:` hash.
+3. Use `ZCARD` for the total number of cars in the result.
 
-This approach reduces redundant data retrieval operations, improving overall performance. Since sort order depends solely on car information, it remains consistent for any given query.
+Later pages of the same query skip the filters. The order depends only on car data, so it is the same for every user who sends that query.
 
-```mermaid
-
-graph TD
-    L[Sorted Set - ZSet]
-    L -->|car:color| M[Sorted Set]
-    M -->|101| N(1)
-    M -->|102| O(4)
-    M -->|103| P(6)
-
-    K[Sorted Set - ZSet]
-    K -->|page:price:2834c5ac15373be27f| X[Sorted Set]
-    X -->|101| U(100000)
-    X -->|102| I(400000)
-    X -->|103| G(600000)
-```
+{{< viz kind="keys" key="zset" title="The car:price index" frame="none" wide="false" fallback="keys.svg" alt="The car:price sorted set maps car ids to prices; ZRANGEBYSCORE returns the cars in a price range" caption="Sample values. Encodings and replies from Valkey 9.1." >}}
 
 ### Why Use Unordered Sets ?
 
-When the sort order of cars depends on personalized recommendations, the order changes according to the buyer's persona every 45 minutes when we retrain our recommendation model. To optimize this dynamic ordering process:
+When the order comes from personalised recommendations, it depends on the buyer, and it changes every 45 minutes when we retrain our recommendation model. So we do not store the order:
 
-**Calculate query hash**: We compute a unique query hash using only car-related filters as function inputs. This approach is particularly useful for popular base pages, such as cars available in Mumbai city.
+**Query hash from car filters only**: we hash only the car-related filters. This pays off most on popular base pages, such as all cars in Mumbai.
 
-**Store car IDs in an unordered set**: By using an unordered set, we disregard the order of cars at storage time. Instead, we rely on our LightFM model to calculate and apply personalized ordering in real-time from the pre-loaded model residing in the web server's memory.
+**Unordered set of car ids**: we store only the ids that match, with `SADD`. The web server ranks them on each request with the LightFM model it keeps in memory.
 
-This method offers several advantages:
+A stored order would have to exist once per buyer (or buyer group) and be rewritten after every retrain. The set is one key per query, and a retrain writes nothing to Valkey. The cost moves to the web server, which scores every id in the set on each request.
 
-- It **avoids storing** N possible combinations of car orders for broad queries by **merely storing** relevant car IDs.
-- It **reduces storage requirements** and simplifies data management in our internal system, Valkey.
-- It **enables real-time personalization** without the need to pre-compute and store multiple ordered lists, allowing for scalable and responsive serving of car listings.
-
-This approach efficiently handles personalized recommendations while minimizing storage overhead, especially for popular, broad queries that many users might access simultaneously. By storing only the relevant car IDs in an unordered set, we rely on the web server to handle personalized ordering dynamically, creating a scalable and responsive system.
-
-```mermaid
-graph TD
-    G[Set]
-    G -->|page:reco:2834c5ac15373be27f| H[Set of Values]
-    H --> I(1)
-    H --> J(5)
-    H --> K(11)
-
-```
+{{< viz kind="reco-order" fig="2" frame="none" title="One set, ranked per buyer" fallback="reco-order.svg" alt="One unordered set of nine car ids in Valkey, ranked differently for two buyers and two model versions by LightFM in the web server" caption="Sample scores. The set in Valkey is the same for both buyers and both model versions; only the order in the web server changes. At one retrain every 45 minutes, a day has 32 retrains." >}}
 
 ### Cache-Hit
 
@@ -384,33 +304,34 @@ graph TD
 
 If the filtered car set is not cached in ValKey following query string hash calculation, perform the following steps:
 
-1. Calculate query string hash
-   - Ensure hashes are consistent regardless of filter order (e.g., `F('city_id=1&color=3,4') eq F('color=4,3&city_id=1')`).
-2. Cache-Miss: Proceed to build the target car set with filters.
-3. Build target car IDs using set operations:
+1. Calculate the query string hash.
+   - The hash must not depend on filter order (e.g., `F('city_id=1&color=3,4') eq F('color=4,3&city_id=1')`).
+2. Build the target car set with set operations:
 
-   - Intersect existing sets using `ZINTERSTORE` to efficiently create new sets based on given filter combinations:
+   - Intersect sets with `ZINTERSTORE` to combine filters:
 
+     ```txt
+     ZINTERSTORE filtered_cars 2 cars_set_1 cars_set_2 WEIGHTS 1 0
      ```
-     ZINTERSTORE filtered_cars 2 cars_set_1 cars_set_2
-     ```
 
-   - Alternatively, combine existing sets using `ZUNIONSTORE`:
+     By default, `ZINTERSTORE` adds up a car's scores from every input set. Give weight 1 only to the set whose score is the sort key, such as `car:price`, so the result keeps the price as its score.
 
-     ```
+   - Combine sets with `ZUNIONSTORE`, for example for `make=10,12`:
+
+     ```txt
      ZUNIONSTORE all_cars 3 cars_set_1 cars_set_2 cars_set_3 AGGREGATE MAX
      ```
 
-4. Fetch car IDs based on required order using `ZRANGEBYSCORE`.
+3. Fetch car IDs in the required order using `ZRANGE` or `ZRANGEBYSCORE`.
 
-In some cases, perform set operations at the application (web server) level to compute the resulting list of cars before fetching details with `HMGET`.
+In some cases, we perform set operations in the web server to compute the resulting list of cars before fetching details with `HMGET`.
 
 ```py
 def filter_by_price(redis_pipe, price_min='-inf', price_max='+inf'):
     return redis_pipe.zrangebyscore(
         name="car:price",
-        min=min_value,
-        max=max_value
+        min=price_min,
+        max=price_max
     )
 ```
 
@@ -424,23 +345,25 @@ Now we can use intersection and union on these sets to compute the filter.
 
 #### Reducing network round trips
 
-Valkey pipelining[^3] is a technique for improving performance by issuing multiple commands at once without waiting for the response to each individual command.
+Valkey pipelining[^3] sends several commands without waiting for each reply. It saves network round trips, and it saves server work too: Valkey reads many commands with one `read()` system call and writes many replies with one `write()`. The Valkey docs report up to 10 times more queries per second with long pipelines.
 
-Pipelining is not just a way to reduce the latency cost associated with the round trip time, it actually greatly improves the number of operations you can perform per second in a given Valkey server. This is because without using pipelining, serving each command is very cheap from the point of view of accessing the data structures and producing the reply, but it is very costly from the point of view of doing the socket I/O. This involves calling the read() and write() syscall, that means going from user land to kernel land. The context switch is a huge speed penalty.
+On a cache miss, we send the set operations in one pipeline.
 
-When pipelining is used, many commands are usually read with a single read() system call, and multiple replies are delivered with a single write() system call. Consequently, the number of total queries performed per second initially increases almost linearly with longer pipelines, and eventually reaches 10 times the baseline obtained without pipelining.
+### One request, end to end
 
-We utilised the pipelining method to reduce round trips on Cache-Miss.
+The figure follows one filtered listing request over 12 sample cars: a miss, a hit for page 2, and what a sale does to a stored result.
+
+{{< viz kind="listing-request" fig="3" frame="none" title="One listing request through Valkey" fallback="listing-request.svg" alt="A listing request is turned into a canonical key; on a miss, four index sets are intersected and stored with a TTL; page 2 is a hit; a sold car leaves a stale id in the stored result" caption="Sample data. The commands are one way to build the result on the server; every reply shown came from running them on Valkey 9.1 with this data. The key is `sha1` of the canonical query, first 18 hex digits. Use ← and → to step." >}}
 
 # Result
 
-🔍 Proof or it didn't happen!
+Production numbers from NewRelic, before and after the change.
 
 ## Before and after Optimization
 
 {{< figure src="listing-viewset-list.png" title="List API: 4x faster" alt="NewRelic stats" width="auto" caption="Listing page 4x faster" >}}
 {{< figure src="listing-viewset-retrieve.png" title="Retrieve API: 4.7x faster" alt="NewRelic stats" width="auto" caption="Dedicated page 4.7x faster" >}}
-{{< figure src="overall-stats.png" title="Bottlenect moved from database to Python" alt="NewRelic stats" width="auto" caption="Bottleneck moved from database to python" >}}
+{{< figure src="overall-stats.png" title="Bottleneck moved from database to Python" alt="NewRelic stats" width="auto" caption="Bottleneck moved from database to python" >}}
 
 ## Wrk Benchmark
 
@@ -455,7 +378,7 @@ Working on performance optimization often requires a deep dive into the executio
 | `SET`           | Sets the string value of a key, ignoring its type. The key is created if it doesn't exist.              |
 | `TTL`           | Returns the expiration time in seconds of a key.                                                        |
 | `HMSET`         | Sets the values of multiple fields.                                                                     |
-| `HMGET`         | Returns the values of all fields in a hash.                                                             |
+| `HMGET`         | Returns the values of the given fields in a hash.                                                       |
 | `HGETALL`       | Returns all fields and values in a hash.                                                                |
 | `SADD`          | Adds one or more members to a set. Creates the key if it doesn't exist.                                 |
 | `SCARD`         | Returns the number of members in a set.                                                                 |
@@ -487,3 +410,5 @@ Working on performance optimization often requires a deep dive into the executio
 [^3]: <https://valkey.io/topics/pipelining/>
 
 [^4]: <https://en.wikipedia.org/wiki/Set_theory>
+
+[^5]: <https://valkey.io/topics/memory-optimization/>

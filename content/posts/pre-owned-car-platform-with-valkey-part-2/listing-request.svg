@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" font-family="ui-monospace, 'JetBrains Mono', Menlo, monospace" font-size="13">
+  <title>One listing request through Valkey: a miss builds the result from filter sets, a hit reads the stored result</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 L9 5 L0 9 z" fill="#0a0d12"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 L9 5 L0 9 z" fill="#00682e"/></marker>
+  </defs>
+  <rect width="960" height="470" fill="#fbfaf7"/>
+
+  <!-- request -->
+  <rect x="20" y="20" width="330" height="96" fill="#fbfaf7" stroke="#0a0d12" stroke-width="1.4"/>
+  <text x="32" y="42" font-weight="800" font-size="11" letter-spacing="1.2">WEB SERVER · REQUEST</text>
+  <text x="32" y="64" font-size="12">GET /listing/?make=12,10&amp;city_id=1</text>
+  <text x="32" y="82" font-size="12">  &amp;price_min=400000&amp;price_max=800000</text>
+  <text x="32" y="100" font-size="12">  &amp;features=20&amp;ordering=price&amp;page=1</text>
+
+  <line x1="350" y1="68" x2="392" y2="68" stroke="#0a0d12" stroke-width="1.7" marker-end="url(#a)"/>
+  <rect x="396" y="20" width="544" height="96" fill="#ecdaff" stroke="#7024ab" stroke-width="1.6"/>
+  <text x="408" y="42" font-weight="800" font-size="11" letter-spacing="1.2" fill="#7024ab">CANONICAL QUERY → KEY</text>
+  <text x="408" y="64" font-size="12" font-weight="700">city_id=1&amp;features=20&amp;make=10,12&amp;price_max=800000</text>
+  <text x="408" y="82" font-size="12" font-weight="700">&amp;price_min=400000        (page, ordering dropped)</text>
+  <text x="408" y="104" font-size="12.5" font-weight="700" fill="#6c4122">page:price:6d53b067e30c6df93d</text>
+
+  <!-- miss path -->
+  <text x="20" y="150" font-weight="800" font-size="11" letter-spacing="1.2" fill="#be1219">MISS · 3 ROUND TRIPS · 12 COMMANDS</text>
+  <rect x="20" y="162" width="160" height="58" fill="#ffdad6" stroke="#be1219" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="32" y="186" font-size="12">ZCARD key → 0</text>
+  <text x="32" y="206" font-size="12" fill="#be1219" font-weight="700">not cached</text>
+  <line x1="180" y1="191" x2="214" y2="191" stroke="#0a0d12" stroke-width="1.7" marker-end="url(#a)"/>
+
+  <g font-size="12">
+    <rect x="218" y="162" width="250" height="118" fill="#fbfaf7" stroke="#babec4" stroke-width="1.2" stroke-dasharray="5 4"/>
+    <text x="230" y="182" font-weight="800" font-size="11" letter-spacing="1">INDEX SETS (zset)</text>
+    <text x="230" y="202" fill="#6c4122" font-weight="700">car:city     1..1</text><text x="440" y="202" text-anchor="end">9</text>
+    <text x="230" y="220" fill="#6c4122" font-weight="700">car:price    4–8 L</text><text x="440" y="220" text-anchor="end">10</text>
+    <text x="230" y="238" fill="#6c4122" font-weight="700">car:make     10 ∪ 12</text><text x="440" y="238" text-anchor="end">10</text>
+    <text x="230" y="256" fill="#6c4122" font-weight="700">car:feature:20</text><text x="440" y="256" text-anchor="end">10</text>
+    <text x="230" y="272" font-size="10.5" fill="#44484e">ZRANGESTORE … BYSCORE, ZUNIONSTORE</text>
+  </g>
+  <line x1="468" y1="221" x2="502" y2="221" stroke="#0a0d12" stroke-width="1.7" marker-end="url(#a)"/>
+
+  <rect x="506" y="162" width="200" height="118" fill="#fbfaf7" stroke="#0a0d12" stroke-width="1.4"/>
+  <text x="518" y="184" font-size="12" font-weight="700">ZINTERSTORE key</text>
+  <text x="518" y="202" font-size="12">  WEIGHTS 1 0 0 0</text>
+  <text x="518" y="222" font-size="12">EXPIRE key 600</text>
+  <text x="518" y="242" font-size="12">ZRANGE key 0 2</text>
+  <text x="518" y="266" font-size="10.5" fill="#44484e">one pipeline, 9 commands</text>
+  <line x1="706" y1="221" x2="740" y2="221" stroke="#0a0d12" stroke-width="1.7" marker-end="url(#a)"/>
+
+  <rect x="744" y="162" width="196" height="118" fill="#fbfaf7" stroke="#6c4122" stroke-width="1.3" stroke-dasharray="5 4"/>
+  <text x="756" y="182" font-size="11.5" font-weight="700" fill="#6c4122">page:price:6d53…</text>
+  <text x="756" y="200" font-size="11" fill="#44484e">zset · 5 · TTL 600 s</text>
+  <g font-size="11.5" font-weight="700" fill="#6c4122">
+    <rect x="756" y="210" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="761" y="223">109</text>
+    <rect x="794" y="210" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="799" y="223">102</text>
+    <rect x="832" y="210" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="837" y="223">111</text>
+    <rect x="870" y="210" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="875" y="223">104</text>
+    <rect x="756" y="232" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="761" y="245">101</text>
+  </g>
+  <text x="756" y="270" font-size="10.5" fill="#44484e">score = price, ascending</text>
+
+  <!-- page 1 -->
+  <line x1="842" y1="280" x2="842" y2="318" stroke="#0a0d12" stroke-width="1.7" marker-end="url(#a)"/>
+  <rect x="506" y="322" width="434" height="46" fill="#fbfaf7" stroke="#0a0d12" stroke-width="1.4"/>
+  <text x="518" y="342" font-size="12" font-weight="700">HMGET car: 109 102 111</text>
+  <text x="518" y="360" font-size="11" fill="#44484e">page 1: Grand i10 4.30 L · Tiago 4.55 L · Nexon 6.90 L</text>
+
+  <!-- hit path -->
+  <text x="20" y="316" font-weight="800" font-size="11" letter-spacing="1.2" fill="#00682e">HIT · PAGE 2 · 2 ROUND TRIPS · 3 COMMANDS</text>
+  <rect x="20" y="326" width="448" height="42" fill="#bdf0c9" stroke="#00682e" stroke-width="1.5"/>
+  <text x="32" y="352" font-size="12">same filters, other order → same key → ZRANGE key 3 5</text>
+  <line x1="468" y1="347" x2="502" y2="347" stroke="#00682e" stroke-width="1.9" marker-end="url(#g)"/>
+
+  <!-- stale -->
+  <rect x="20" y="394" width="920" height="56" fill="#ffdad6" stroke="#be1219" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="32" y="416" font-size="12" font-weight="700" fill="#be1219">Car 111 sold: CDC runs HDEL car: 111 and ZREM on each index.</text>
+  <text x="32" y="436" font-size="12">The stored result still holds 111 until its TTL ends, so HMGET returns nil for it and page 1 shows 2 cars.</text>
+</svg>
