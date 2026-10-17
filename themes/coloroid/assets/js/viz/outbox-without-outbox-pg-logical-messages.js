@@ -66,7 +66,7 @@ const details = (summary, ...kids) => h('details', null, h('summary', null, summ
 
 const CANDS = [
   { n: 1, at: A_MSG_LSN + M_FRAME, name: 'WALStart + len(WALData)', who: 'what factlib computes today',
-    why: `<code>${lsn(A_MSG_LSN)}</code> + 253, the length of the pgoutput frame. <code>WALData</code> holds pgoutput bytes, not WAL bytes, so the sum is not a WAL position.` },
+    why: `<code>${lsn(A_MSG_LSN)}</code> + 253, the length of the pgoutput frame. <code>WALData</code> holds one pgoutput frame, so the sum is a WAL position plus a frame length.` },
   { n: 2, at: A_MSG_LSN, name: 'WALStart', who: 'the message LSN',
     why: 'the end of A’s message record. A’s COMMIT starts at or after it, so a restart sends A again once.' },
   { n: 3, at: COMMIT_OF.A + 48, name: 'COMMIT end_lsn', who: 'after every message of A is acked',
@@ -176,7 +176,7 @@ function initAckLsn(fig, app) {
     if (!moved) { verdict.textContent = ''; why.innerHTML = 'The marks 1–3 are LSNs OwlPost can compute. Try each, or anywhere else.'; return; }
     if (!againB) { verdict.className = 'wv-note'; verdict.textContent = 'B is lost. Its COMMIT is before the slot, so Postgres will not send B again, and Kafka never got it.'; }
     else if (againA) { verdict.className = 'wv-verdict is-good'; verdict.textContent = 'Safe. Postgres sends A again once (consumers drop the copy by event.Id) and sends B.'; }
-    else { verdict.className = 'wv-verdict is-good'; verdict.textContent = 'Safe and exact. A is not repeated; B’s COMMIT starts at or after the slot, so B is sent again.'; }
+    else { verdict.className = 'wv-verdict is-good'; verdict.textContent = 'Safe, with no repeats. A is not sent again; B’s COMMIT starts at or after the slot, so B is sent again.'; }
     why.innerHTML = c ? `<b>${c.n} · ${esc(c.name)}</b>, ${esc(c.who)}: ${c.why}` : 'Rule: after a restart, Postgres sends a transaction again only if its COMMIT record starts at or after <code>confirmed_flush_lsn</code>.';
   }
   function set(l) { ack = l; moved = true; paint(); }
@@ -187,7 +187,7 @@ function initAckLsn(fig, app) {
     `newXLogPos := xld.WALStart                                   // 2: «${lsn(A_MSG_LSN)}»`,
     `txEnd := commitMsg.TransactionEndLSN                         // 3: «${lsn(COMMIT_OF.A + 48)}»`,
   ], [1]) });
-  const stream = h('div', { class: 'wv-scroll', html: `<table class="wv-table"><thead><tr><th>#</th><th>frame</th><th>WALStart</th><th></th></tr></thead><tbody>${STREAM.map((r, j) => `<tr><td>${j + 1}</td><td><b>${r.tx}</b> ${r.f}</td><td>${lsn(r.at)}</td><td>${esc(r.note)}</td></tr>`).join('')}</tbody></table><p>B arrives second, but its message LSN is lower than A’s: message LSNs follow write order, the stream follows commit order.</p>` });
+  const stream = h('div', { class: 'wv-scroll', html: `<table class="wv-table"><thead><tr><th>#</th><th>frame</th><th>WALStart</th><th></th></tr></thead><tbody>${STREAM.map((r, j) => `<tr><td>${j + 1}</td><td><b>${r.tx}</b> ${r.f}</td><td>${lsn(r.at)}</td><td>${esc(r.note)}</td></tr>`).join('')}</tbody></table><p>B arrives second, but its message LSN is lower than A’s. Message LSNs follow write order, and the stream follows commit order.</p>` });
   app.append(q, stage, verdict, why, h('div', { class: 'wv-title v-oxb-gap' }, 'Jump to a mark'), jump.el,
     details('The code behind 1–3, and the frames in stream order', code, stream),
     colorKey([['k-safe', 'slot, safe'], ['k-gap', 'lost']]));
@@ -276,12 +276,12 @@ function initRace(fig, app) {
     kill.className = crashed ? 'wv-btn wv-btn--ghost' : 'wv-btn wv-btn--bad';
     const lostLatest = RACE.some((x, k) => !acked.includes(k) && x.lsn < latest);
     say.className = 'wv-note';
-    if (!acked.length && !crashed) say.innerHTML = 'You are Kafka. Each partition acks its own records in order; the partitions finish in any order. Click a partition to ack its next record, then press <b>kill -9</b>. Can you make an event disappear?';
-    else if (!crashed) say.innerHTML = latest > prefix ? '<b class="c-bad">The two slots disagree.</b> The latest-ack slot has passed an event that Kafka has not stored.' : 'Both slots agree so far. Try acking P1 or P2 before P0.';
+    if (!acked.length && !crashed) say.innerHTML = 'You act as Kafka. Each partition acks its own records in order; the partitions finish in any order. Click a partition to ack its next record, then press <b>kill -9</b>. Try to make the latest-ack slot lose an event.';
+    else if (!crashed) say.innerHTML = latest > prefix ? '<b class="c-bad">The two slots are at different LSNs.</b> The latest-ack slot has passed an event that Kafka has not stored.' : 'Both slots agree so far. Try acking P1 or P2 before P0.';
     else {
       say.className = `wv-note ${lostLatest ? 'is-bad' : 'is-good'}`;
       say.innerHTML = lostLatest
-        ? '<b>The latest-ack slot lost an event:</b> it moved past a record Kafka never stored, and Postgres will not send it again. The prefix slot resends it; a few events arrive twice instead.'
+        ? '<b>The latest-ack slot lost an event.</b> It moved past a record Kafka never stored, and Postgres will not send it again. The prefix slot sends it again, and a few events arrive twice.'
         : 'Nothing is lost this time, because the acks you gave left no gap behind the latest ack. Start over and ack P1 or P2 first.';
     }
   }
