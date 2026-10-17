@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .wait { fill: var(--orange-l); stroke: var(--orange); stroke-width: 2.5; }
+    .work { fill: var(--purple); }
+    .zoom { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2.5; }
+    .zl { stroke: var(--purple); stroke-width: 2; stroke-dasharray: 6 5; fill: none; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1104" height="526" class="ink"/>
+  <rect x="48" y="48" width="1104" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="58" font-weight="800" class="ink">etcd Raft in 200 µs</text>
+  <text x="96" y="244" font-size="34" font-weight="600" class="ink">One leader election, traced</text>
+
+  <!-- timeline: leader lost at 0 s, first follower times out at about 1.33 s -->
+  <g font-size="22" class="mute">
+    <text x="96" y="306">leader lost</text>
+    <text x="1044" y="306" text-anchor="end">new leader</text>
+  </g>
+  <rect x="96" y="320" width="934" height="64" class="wait"/>
+  <text x="120" y="361" font-size="26" class="ink">wait for random timeout ≈ 1.33 s</text>
+  <rect x="1032" y="320" width="12" height="64" class="work"/>
+
+  <!-- zoom into the thin slice of real work -->
+  <path d="M1032 384 L604 430 M1044 384 L1104 430" class="zl"/>
+  <rect x="604" y="430" width="500" height="90" class="zoom"/>
+  <text x="628" y="470" font-size="26" class="ink">vote + win ≈ 200 µs</text>
+  <text x="628" y="504" font-size="22" class="ink">of that, CPU work ≈ 1.8 µs</text>
+
+  <text x="96" y="470" font-size="26" class="ink">Almost all of an</text>
+  <text x="96" y="504" font-size="26" class="ink">election is waiting.</text>
+</svg>
