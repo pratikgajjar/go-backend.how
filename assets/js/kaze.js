@@ -1054,139 +1054,79 @@ void main(){
     end() { if (this.arm) { this.arm.carry = null; letGo(this.arm); } B.hatFree = null; B.eye = 0; B.mouth = 0; },
   });
 
-  /* ───────────────────────── mini gears (a tribute) ───────────────────────── */
+  /* ───────────────────────── mini gears (a tribute) ─────────────────────────
+     One engine for all four: build-up → transform (one label) → one signature move → cool-down, ~3 s.
+     Every move stays on a small "stage" where he already stands (his gutter on desktop, the bottom-left
+     corner on phones) so it never crosses the text. On phones he steps fully into view for the show. */
   function myGutter() { let best = null, bd = 1e9; for (const z of gutters()) { const d = B.x < z[0] ? z[0] - B.x : B.x > z[1] ? B.x - z[1] : 0; if (d < bd) { bd = d; best = z; } } return best; }
-  /* gear 2: pump, flush red, steam, jet dash + jet pistol */
-  const gear2 = () => ({
-    name: 'gear2',
-    start() { neutral(); this.ph = 'pump'; this.k = now(); this.p = 0; },
+  function stageX() {
+    if (MOBILE()) return [16 * S, 16 * S + 56];
+    const z = myGutter(); return z ? [Math.max(z[0], B.x - 90), Math.min(z[1], B.x + 90)] : [Math.max(20, B.x - 60), Math.min(W - 80, B.x + 60)];
+  }
+  const LOOK = {
+    2: () => gearTint(0.96, 0.36, 0.42, 0.55),                                                      // flushed red, steaming
+    3: () => {},                                                                                     // (the fist inflates in the move)
+    4: () => { Object.assign(GT, { bulk: 1, a0: 3.4, h0: 5.4, a1: 3.4, h1: 5.4 }); gearTint(0.5, 0.08, 0.1, 0.28); },
+    5: () => { Object.assign(GT, { hair: 1, g5: 1 }); gearTint(1, 1, 1, 1); },                       // white body + flame mane
+  };
+  const MOVE_MS = { 2: 1600, 3: 1300, 4: 1500, 5: 1900 };
+  const gear = (n, invited) => ({
+    name: 'gear', n,
+    start() {
+      neutral(); this.ph = 'wind'; this.k = now(); this.i = 0; this.ai = frontSide() < 0 ? 0 : 1;
+      g5World = n === 5 && !MOBILE() && (invited || !readingMode());      // the page turns to rubber only on desktop, never mid-read
+      B.pose = n === 3 || n === 4 ? 'bite' : 'rest'; B.eye = n === 5 ? 0 : 3; B.mouth = 1; B.mouthO = 0.5;
+    },
     update(t) {
-      const e = t - this.k;
-      if (this.on && Math.random() < 0.35) steam(1);
-      if (this.ph === 'pump') {
-        B.eye = 3; B.walkPh += 0.5;
-        if (e > 420 && !this.on) { this.on = true; gearTint(0.96, 0.36, 0.42, 0.55); steam(5); say('gear 2', 'kz-big'); }
-        if (t > this.p) { this.p = t + 160; kick(-4.5); }
-        if (e > 800) {
-          const z = myGutter(), lo = z ? z[0] : Math.max(24, B.x - 90), hi = z ? z[1] : Math.min(W - 80, B.x + 90);
-          this.tx = B.x - lo > hi - B.x ? lo : hi; this.ph = 'jet'; this.k = t; B.eye = 0; B.mouth = 1;
+      const e = t - this.k, mob = MOBILE(), A = this.ai ? 'a1' : 'a0', Hd = this.ai ? 'h1' : 'h0';
+      if (this.ph === 'wind') {                              // pump / bite the thumb / the drums of liberation
+        if (this.i < 2 && e > this.i * 300) {
+          this.i++; kick(-5); hatKick(3);
+          if (n === 5) { say(this.i === 1 ? 'don' : 'don!', 'kz-drum'); GT.hair = 0.2 * this.i; if (g5World) jelly(B.x, B.y, 0.4, 300); }
         }
-      } else if (this.ph === 'jet') {
-        const dx = this.tx - B.x; B.want = sgn(dx) * 950 * S; B.face = sgn(dx);
-        if (Math.random() < 0.8) speedLine(); if (Math.random() < 0.3) dust(B.x - B.face * 10, B.y + FOOT * S, 1, -B.face);
-        if (Math.abs(dx) < 12 || e > 1500) {
-          B.want = 0; B.vx = 0; kick(-5); this.ph = 'pistol'; this.k = t;
-          const a = armFor(frontSide()), up = [B.x + B.face * 30 * S, B.y - 170 * S]; this.arm = a;
-          reach(a, () => up, 5200, () => { say('jet pistol!'); dust(up[0], up[1], 4); letGo(a); });
+        if (n === 2) B.walkPh += 0.5;
+        if (e > 650) {
+          this.ph = 'on'; this.k = t; LOOK[n](); say(n === 5 ? 'gear 5!' : 'gear ' + n, 'kz-big'); steam(mob ? 2 : 5);
+          B.eye = 0; B.pose = n === 4 ? 'boundman' : n === 5 ? 'wide' : n === 3 ? 'giant' : 'rest'; B.mouth = n === 5 ? 2 : 1; B.mouthO = 1; kick(n === 5 ? 9 : -4);
+          if (n === 3) { GT[A] = 5; GT[Hd] = 13.5; }
+          if (n === 5 && g5World) jelly(B.x, B.y, 1.1, 480);
+          [this.lo, this.hi] = stageX(); this.home = clamp(B.x, this.lo, this.hi);
+          this.tx = B.x - this.lo > this.hi - B.x ? this.lo : this.hi;
         }
-      } else if (this.ph === 'pistol') { if (e > 700) { this.ph = 'cool'; this.k = t; GT.tint = 0; } }
-      else if (e > 900) return true;
-    },
-    end() { B.want = 0; gearReset(); if (this.arm) letGo(this.arm); B.eye = 0; B.mouth = 0; },
-  });
-  /* gear 3: bite thumb, blow up a giant fist, punch, then shrink to chibi */
-  const gear3 = () => ({
-    name: 'gear3',
-    start() { neutral(); this.ph = 'bite'; this.k = now(); B.pose = 'bite'; B.mouth = 2; B.mouthO = 0.5; this.ai = frontSide() < 0 ? 0 : 1; },
-    update(t) {
-      const e = t - this.k, A = this.ai ? 'a1' : 'a0', Hd = this.ai ? 'h1' : 'h0';
-      if (this.ph === 'bite') { if (e > 450) { this.ph = 'blow'; this.k = t; B.pose = 'giant'; B.mouth = 3; B.mouthO = 1; say('gear 3', 'kz-big'); } }
-      else if (this.ph === 'blow') {
-        GT[A] = 5; GT[Hd] = 13.5; if (Math.random() < 0.25) steam(1);
-        if (e > 750) {
-          this.ph = 'punch'; this.k = t; B.mouth = 2; B.mouthO = 0.8;
-          const z = myGutter(), room = B.face > 0 ? (z ? z[1] : W - 80) - B.x : B.x - (z ? z[0] : 20);
-          const tgt = room > 140 ? [B.x + B.face * Math.min(260, room), B.y - 30 * S] : [B.x + B.face * 10, B.y - 230 * S];
-          const quiet = readingMode(); this.arm = arms[this.ai];
-          reach(this.arm, () => tgt, 2600, () => { say('gigant pistol!'); kick(-4); dust(tgt[0], tgt[1], 6); if (!quiet) quake(tgt[0], tgt[1], 0.7); letGo(this.arm); });
-        }
-      } else if (this.ph === 'punch') { if (this.arm.mode === 'pose' && e > 300) { this.ph = 'deflate'; this.k = t; GT[A] = 2.1; GT[Hd] = 3.1; steam(3); } }
-      else if (this.ph === 'deflate') { if (e > 450) { this.ph = 'chibi'; this.k = t; GT.gs = 0.55; say('poof'); steam(4); B.eye = 1; B.mouth = 2; B.mouthO = 0.6; } }
-      else if (this.ph === 'chibi') { B.want = e < 1800 ? Math.sin(e / 260) * 40 : 0; if (e > 2400) { this.ph = 'back'; this.k = t; GT.gs = 1; kick(-6); } }
-      else if (e > 500) return true;
-    },
-    end() { B.want = 0; gearReset(); if (this.arm) letGo(this.arm); B.pose = 'rest'; B.eye = 0; B.mouth = 0; },
-  });
-  /* gear 4: bulk up (boundman), steam, bounce bounce, then deflate exhausted */
-  const gear4 = () => ({
-    name: 'gear4',
-    start() { neutral(); this.ph = 'bite'; this.k = now(); B.pose = 'bite'; },
-    update(t) {
-      const e = t - this.k;
-      if (this.ph === 'bite') {
-        if (e > 400) { this.ph = 'pump'; this.k = t; Object.assign(GT, { bulk: 1, a0: 3.4, h0: 5.4, a1: 3.4, h1: 5.4 }); gearTint(0.5, 0.08, 0.1, 0.28); B.pose = 'boundman'; B.eye = 3; steam(6); say('gear 4', 'kz-big'); }
-      } else if (this.ph === 'pump') { if (Math.random() < 0.5) steam(1); if (e > 600) { this.ph = 'bounce'; this.k = t; this.n = 0; B.eye = 0; B.mouth = 1; } }
-      else if (this.ph === 'bounce') {
-        if (Math.random() < 0.3) steam(1);
-        if (B.mode === 'ground' && t > (this.nx || 0)) {
-          if (this.n >= 4) { this.ph = 'deflate'; this.k = t; gearReset(); steam(8); say('pshhh…'); B.eye = 2; B.pose = 'sleep'; B.sit = 1; return false; }
-          this.n++; kick(-5); this.nx = t + 130; this.go = t + 110;
-        }
-        if (this.go && t > this.go && B.mode === 'ground') { this.go = 0; B.vy = -620; B.vx = rnd(-40, 40); B.mode = 'air'; B.surf = null; kick(8); if (this.n === 1) say('boing!'); }
-      } else if (this.ph === 'deflate') { if (e > 1600) return true; }
-    },
-    end() { gearReset(); B.pose = 'rest'; B.eye = 0; B.mouth = 0; B.sit = 0; },
-  });
-  /* gear 5 (Nika): the drums of liberation, white flame-hair, cloud collar, red glowing eyes, a huge grin,
-     toon physics (eyes pop, flips), the rubber world — and afterwards he's shrivelled and exhausted */
-  const toon = () => ({
-    name: 'toon',
-    start() { this.n = 0; say('ha ha ha!'); B.eye = 0; B.mouth = 2; B.pose = 'wide'; },
-    update(t) {
-      B.mouthO = 0.6 + Math.sin(t / 60) * 0.4;
-      if (B.mode === 'ground' && t > (this.nx || 0)) { if (this.n >= 3) return true; this.n++; this.nx = t + 220; B.vy = -560; B.mode = 'air'; B.surf = null; B.rv = (Math.random() < 0.5 ? -1 : 1) * Math.PI * 2 / 0.45; kick(10); }
-    },
-    end() { B.pose = 'rest'; B.mouth = 0; B.eye = 0; },
-  });
-  const g5laugh = () => ({                         // laughing so hard his eyes pop out of his head
-    name: 'g5laugh',
-    start() { B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; B.eye = 0; say('ha ha ha ha!', 'kz-big'); this.k = 0; },
-    update(t) {
-      const e = t - this.t0; B.mouthO = 0.75 + Math.sin(t / 55) * 0.25;
-      if (t > this.k) { this.k = t + 90; kick(Math.random() < 0.5 ? 2.6 : -2.6); if (g5World && Math.random() < 0.35) jelly(B.x, B.y, 0.45, 320); }
-      GT.pop = e > 380 && e < 1250 ? 1.3 : 0; if (e > 380 && !this.p) { this.p = 1; kick(5); }
-      return e > 1650;
-    },
-    end() { GT.pop = 0; },
-  });
-  const g5stretch = () => ({                       // rubber body: boing — stretch tall, squash flat, noodle arms
-    name: 'g5stretch',
-    start() { B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; this.i = 0; this.at = [0, 330, 640, 900]; say('boing!'); },
-    update(t) {
-      const e = t - this.t0;
-      if (this.i < this.at.length && e > this.at[this.i]) { kick(this.i % 2 ? -13 : 14); if (g5World) jelly(B.x, B.y, 0.7, 360); this.i++; }
-      return e > 1350;
-    },
-  });
-  const g5revert = () => ({                        // the price of Nika: shrivelled, tiny, exhausted
-    name: 'g5revert',
-    start() { gearReset(); g5World = false; GT.gs = 0.8; steam(8); say('pshhh…'); B.eye = 2; B.pose = 'sleep'; B.sit = 1; B.mouth = 3; B.mouthO = 0.3; this.old = true; },
-    update(t) {
-      const e = t - this.t0;
-      if (e > 900 && !this.z) { this.z = 1; say('…so hungry'); }
-      if (e > 2300 && this.old) { this.old = false; GT.gs = 1; kick(-5); B.eye = 1; B.sit = 0; B.pose = 'rest'; B.mouth = 1; }
-      return e > 2800;
-    },
-    end() { GT.gs = 1; B.eye = 0; B.mouth = 0; B.sit = 0; B.pose = 'rest'; },
-  });
-  const gear5x = (rubberRun) => ({
-    name: 'gear5x',
-    start() { neutral(); g5World = rubberRun; this.bi = 0; this.beats = [0, 260, 820, 1080, 1640, 1900]; B.mouth = 1; },
-    update(t) {
-      const e = t - this.t0;
-      if (this.bi < this.beats.length && e > this.beats[this.bi]) {        // ba-dum … ba-dum … — his heartbeat is a drum
-        this.bi++; kick(-5.5); hatKick(3); say(this.bi % 2 ? 'don' : 'don!', 'kz-drum');
-        GT.hair = Math.min(0.35, this.bi * 0.07); if (g5World) jelly(B.x, B.y, this.bi % 2 ? 0.35 : 0.6, 300);
+        return false;
       }
-      if (e > 2150 && !this.aw) {
-        this.aw = 1; Object.assign(GT, { hair: 1, g5: 1 }); gearTint(1, 1, 1, 1); say('gear 5!', 'kz-big'); B.pose = 'wide'; B.mouth = 2; B.mouthO = 1; kick(9); steam(6); if (g5World) jelly(B.x, B.y, 1.2, 520);
+      if (this.ph === 'on') {
+        if (!mob && Math.random() < 0.15) steam(1);
+        if (n === 2) {                                        // jet: zip across the stage and back, speed lines
+          const tx = e < 750 ? this.tx : this.home, dx = tx - B.x;
+          B.want = Math.abs(dx) > 6 ? sgn(dx) * 700 * S : 0; if (B.want) { B.face = sgn(dx); if (Math.random() < 0.7) speedLine(); }
+        } else if (n === 3) {                                 // gigant: hold up the balloon fist… and slam it down
+          if (e > 650 && !this.slam) { this.slam = 1; B.pose = 'rest'; kick(-9); dust(arms[this.ai].pts[6].x, B.y + FOOT * S, 6); if (!mob && !readingMode()) quake(B.x, B.y + FOOT * S, 0.6); }
+        } else if (n === 4) {                                 // boundman: two big bounces
+          if (B.mode === 'ground' && this.i < 4 && t > (this.nx || 0)) { this.i++; this.nx = t + 200; B.vy = mob ? -380 : -520; B.mode = 'air'; B.surf = null; kick(8); }
+        } else {                                              // nika: laughing so hard the eyes pop, then boing — all rubber
+          B.mouthO = 0.75 + Math.sin(t / 55) * 0.25;
+          if (t > (this.j || 0)) { this.j = t + 90; kick(Math.random() < 0.5 ? 2.6 : -2.6); }
+          GT.pop = e > 250 && e < 900 ? 1.3 : 0;
+          if (e > 1050 && !this.b1) { this.b1 = 1; kick(14); if (g5World) jelly(B.x, B.y, 0.7, 360); }
+          if (e > 1350 && !this.b2) { this.b2 = 1; kick(-13); if (g5World) jelly(B.x, B.y, 0.6, 360); }
+        }
+        if (e > MOVE_MS[n] && B.mode === 'ground') {          // cool down
+          this.ph = 'off'; this.k = t; B.want = 0; GT.pop = 0; gearReset(); g5World = false; steam(mob ? 2 : 5);
+          if (n === 3) { GT.gs = 0.55; B.eye = 1; B.mouth = 2; B.mouthO = 0.6; say('poof'); }
+          else if (n >= 4) { if (n === 5) GT.gs = 0.85; say('pshhh…'); B.eye = 2; B.pose = 'sleep'; B.sit = 1; B.mouth = 3; B.mouthO = 0.3; }
+          else { B.eye = 1; B.mouth = 1; }
+        }
+        return false;
       }
-      if (e > 2700) { this.pushed = true; const seq = [g5laugh(), g5stretch(), toon()]; if (rubberRun && pickLine()) seq.push(gear5()); seq.push(g5revert()); queue.push(...seq); return true; }
+      const back = n === 2 ? 350 : 950;                       // 'off': chibi / tired, then pop back to normal
+      if (e > back && !this.up) { this.up = 1; GT.gs = 1; kick(-5); B.sit = 0; B.pose = 'rest'; B.eye = 1; B.mouth = 1; }
+      return e > back + 300;
     },
-    end() { if (!this.pushed) { gearReset(); g5World = false; } },
+    end() { B.want = 0; GT.pop = 0; gearReset(); g5World = false; B.sit = 0; B.pose = 'rest'; B.eye = 0; B.mouth = 0; },
   });
-  function gearAct(n, invited) { return n === 2 ? gear2() : n === 3 ? gear3() : n === 4 ? gear4() : gear5x(invited || !readingMode()); }
-  function runGear(n, invited) { queue.length = 0; const a = gearAct(n, invited); if (B.mode === 'ground' && !drag) run(a); else queue.push(a); }
+  function gearAct(n, invited) { return gear(n, invited); }
+  function runGear(n, invited) { queue.length = 0; const a = gear(n, invited); if (B.mode === 'ground' && !drag) run(a); else queue.push(a); }
   function readingMode() { if (!IS_ARTICLE) return false; const p = articleProgress(); return p > 0.03 && p < 0.97; }
 
   /* ───────────────────────── brain ───────────────────────── */
@@ -1212,11 +1152,11 @@ void main(){
     if (t > bigReadyAt && !busy() && !sel && r < (reading ? 0.15 : 0.4) && (!reading || t - startedAt > 60000)) {
       bigReadyAt = t + (reading ? rnd(120000, 240000) : rnd(30000, 60000));
       const r2 = Math.random();
-      if (reading) return run(gearAct(r2 < 0.3 ? 2 : r2 < 0.6 ? 3 : r2 < 0.85 ? 4 : 5, false));   // gutter-only tricks, never the text
+      if (reading) return run(gear(pick([2, 3, 4, 5]), false));   // stage-only tricks, never the text
       if (r2 < 0.3) return run(pluck());
-      if (r2 < 0.5) return run(gear5x(true));
-      if (r2 < 0.65) return run(rocket());
-      return run(gearAct(pick([2, 3, 4])));
+      if (r2 < 0.45) return run(gear5());                         // the rubber run
+      if (r2 < 0.6) return run(rocket());
+      return run(gear(pick([2, 3, 4, 5]), false));
     }
     if (reading) {                                   // quiet companion: stay in the gutter, be still
       if (B.surf) { const z = myGutter(); return run(hopTo({ x: z ? rnd(z[0], z[1]) : (B.x < W / 2 ? 40 : W - 100), y: floorY() })); }
@@ -1396,7 +1336,7 @@ void main(){
     const dt = Math.min(1 / 30, Math.max(0.001, (tNow - lastT) / 1000)); lastT = tNow; T += dt;
     const sy = scrollY; scrollV += ((sy - lastSY) / dt - scrollV) * Math.min(1, dt * 9); lastSY = sy;
     const wind = clamp((Math.abs(scrollV) - 900) / 2600, 0, 1);
-    if (MOBILE()) sink += ((busy() ? 44 : 12) - sink) * Math.min(1, dt * 7);   // duck while you scroll, peek when you stop
+    if (MOBILE()) sink += ((busy() ? 44 : act && act.name === 'gear' ? -1 : 12) - sink) * Math.min(1, dt * 7);   // duck while you scroll, peek when you stop, stand up for a gear   // duck while you scroll, peek when you stop
 
     if (B.mode === 'ground') groundStep(dt); else if (B.mode === 'air') airStep(dt); else if (B.mode === 'hang') hangStep(dt); else if (B.mode === 'held') heldStep(dt);
 
@@ -1485,15 +1425,16 @@ void main(){
   });
 
   // hash triggers (for demos): #pluck #rocket #swing #gear2 #gear3 #gear4 #gear5 #rubber #hat #finale #love #hello #om
-  function fireHash() {
-    const h = location.hash.slice(1); const go = () => {
+  function trigger(h, delay) {
+    const go = () => {
       if (B.mode !== 'ground') return setTimeout(go, 300);
       ({ pluck: () => run(pluck()), play: () => run(pluck()), rocket: () => run(rocket()), swing: () => run(swing()), hang: () => run(swing()), gear2: () => runGear(2, true), gear3: () => runGear(3, true), gear4: () => runGear(4, true), gear5: () => runGear(5, true), rubber: () => run(gear5()),
         hat: () => { blowHat(B.x < W / 2 ? rnd(250, 450) : rnd(-450, -250), -1050); run(chaseHat()); }, finale: () => run(finale(false)), banner: () => run(finale(false)), love: () => run(love()), om: () => run(meditate(22000)), meditate: () => run(meditate(22000)), zen: () => run(meditate(22000)), hello: () => run(wave('hi! I’m Kaze', 2200)) }[h] || (() => {}))();
     };
-    if (h) setTimeout(go, 900);
+    if (h) setTimeout(go, delay);
   }
+  const fireHash = () => trigger(location.hash.slice(1), 900);
   fireHash(); addEventListener('hashchange', fireHash);
-  window.kaze = { run: (n) => { location.hash = ''; location.hash = n; }, state: () => ({ mode: B.mode, act: act && act.name, x: B.x, y: B.y }) };
+  window.kaze = { run: (n) => trigger(n, 0), state: () => ({ mode: B.mode, act: act && act.name, x: B.x, y: B.y }) };
   requestAnimationFrame((t) => { lastT = t; requestAnimationFrame(frame); });
 })();

@@ -47,6 +47,7 @@
   #kaze .kz-hit{ position:absolute; left:0; top:0; width:34px; height:48px; border-radius:45%;
     pointer-events:auto; cursor:grab; touch-action:none; -webkit-tap-highlight-color:transparent; will-change:transform; }
   #kaze.kz-held .kz-hit{ cursor:grabbing; }
+  @media (pointer:coarse){ #kaze .kz-hit{ box-sizing:content-box; padding:12px; margin:-12px; } }   /* bigger finger target */
   #kaze.kz-off .kz-hit{ pointer-events:none; }
 
   #kz-fx{ position:fixed; inset:0; z-index:61; pointer-events:none; overflow:hidden; }
