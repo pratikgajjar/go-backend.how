@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .msg { fill: var(--board); stroke: var(--ink); stroke-width: 2; stroke-dasharray: 7 5; }
+    .clue { stroke: var(--purple); stroke-width: 3.5; }
+    .arr { stroke: var(--ink); stroke-width: 2.5; fill: none; }
+    .head { fill: var(--ink); }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="180" font-size="52" font-weight="800" class="ink">The Psychology of Seeking Help</text>
+
+  <!-- two first messages about the same failing test (samples from Fig. 1);
+       purple underline = the phrase that shows the type. 24 px mono = 14.4 px per char -->
+  <g font-size="24">
+    <rect x="96" y="228" width="650" height="80" class="msg"/>
+    <text x="120" y="276" class="ink">tests are broken, can someone look?</text>
+    <line x1="379" y1="286" x2="624" y2="286" class="clue"/>
+
+    <rect x="96" y="336" width="650" height="124" class="msg"/>
+    <text x="120" y="384" class="ink">docker ps shows no db container.</text>
+    <line x1="120" y1="394" x2="581" y2="394" class="clue"/>
+    <text x="120" y="430" class="ink">make test stopped starting it after #412.</text>
+    <line x1="552" y1="440" x2="696" y2="440" class="clue"/>
+  </g>
+
+  <!-- message -> type -->
+  <line x1="758" y1="268" x2="800" y2="268" class="arr"/>
+  <path d="M814 268 l-16 -9 v18 z" class="head"/>
+  <line x1="758" y1="398" x2="800" y2="398" class="arr"/>
+  <path d="M814 398 l-16 -9 v18 z" class="head"/>
+
+  <text x="830" y="264" font-size="26" font-weight="800" class="ink">Direct Seeker</text>
+  <text x="830" y="294" font-size="22" class="mute">effort: low</text>
+
+  <text x="830" y="380" font-size="26" font-weight="800" class="ink">Persistent</text>
+  <text x="830" y="412" font-size="26" font-weight="800" class="ink">Problem Solver</text>
+  <text x="830" y="442" font-size="22" class="mute">effort: high</text>
+
+  <text x="96" y="516" font-size="26" class="ink">The first message shows how much they tried.</text>
+</svg>
