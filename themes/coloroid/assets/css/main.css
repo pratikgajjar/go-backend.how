@@ -1263,8 +1263,9 @@ body.theme-tiger hr {
         box-sizing: border-box !important;
     }
     
-    /* Tables — horizontal scroll instead of cramming */
-    table {
+    /* Tables — horizontal scroll instead of cramming. Figure tables
+       (.wv) size themselves to fit 390px, so they are left alone. */
+    table:not(.wv table) {
         font-size: 0.85rem !important;
         table-layout: auto !important;
         width: max-content !important;
@@ -1280,7 +1281,7 @@ body.theme-tiger hr {
         box-sizing: border-box !important;
     }
     
-    th, td {
+    th:not(.wv th), td:not(.wv td) {
         padding: 6px 10px !important;
         white-space: normal;
     }
