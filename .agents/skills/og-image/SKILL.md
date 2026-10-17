@@ -43,14 +43,14 @@ There is no generator: you design each card for its post.
 
 ## Layout
 
-- Top left, inside the sheet: `backend.how` in `--mute`, 24 px.
+- Top left, inside the sheet: `backend.how` in `--mute`, 28 px.
 - Title: the post's title without the emoji, 52–60 px, weight 800, at most
   two lines. A long title can split into a short title line and a 30–36 px
   second line, as in the WAL Cake card.
 - One diagram of the post's core idea, in the lower half or on the right.
   It must be the post's own idea (the thing a reader remembers), drawn with
   4–10 shapes. Not decoration, not generative art, not a logo.
-- Optional: one line of 24–28 px text that states the idea in plain words.
+- Optional: one line of 28–32 px text that states the idea in plain words.
 - Keep 48 px clear inside the sheet on every side. Nothing important within
   60 px of the canvas edge.
 
@@ -60,7 +60,8 @@ There is no generator: you design each card for its post.
   purple "look here", green durable or safe, red problem, blue options,
   orange the choice made. At most two accent colours.
 - Solid boxes are processes, dashed boxes are data.
-- Text readable as a 600 px thumbnail: nothing under 22 px.
+- Text readable as a 600 px thumbnail: nothing under 28 px. Check it at
+  `/og-preview/`, where X shows the card about 500 px wide.
 - Plain words. No Claudisms (see `docs/CLAUDISMS.md`), no hype, no tags list,
   no "deep dive", no emoji.
 - Numbers on the card must match the post.
