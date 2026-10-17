@@ -29,7 +29,7 @@
 
   <!-- Header -->
   <g transform="translate(32, 28)">
-    <text x="0" y="0" fill="#6ee7b7" font-size="11" font-weight="700" letter-spacing="1.5">RECONCILING OUT-OF-ORDER S3 COMPLETIONS</text>
+    <text x="0" y="0" fill="#6ee7b7" font-size="11" font-weight="700" letter-spacing="1.5">S3 UPLOADS THAT FINISH OUT OF ORDER</text>
     <text x="0" y="22" fill="#f1f5f9" font-size="15" font-weight="600">Contiguous Prefix Walker advances readIdx and confirmed_flush_lsn</text>
   </g>
 
@@ -91,8 +91,8 @@
   <!-- Step 3 -->
   <g transform="translate(32, 280)">
     <rect x="0" y="0" width="896" height="88" rx="8" fill="#131d17" stroke="#233529" stroke-width="1" />
-    <text x="16" y="24" fill="#34d399" font-size="12" font-weight="600">Step 3: S1 finishes → Walker crosses S1 &amp; S2</text>
-    <text x="16" y="44" fill="#64748b" font-size="11">readIdx advances to 2,000 · ACK emitted for S2's last LSN</text>
+    <text x="16" y="24" fill="#34d399" font-size="12" font-weight="600">Step 3: S1 finishes → Walker moves past S1 &amp; S2</text>
+    <text x="16" y="44" fill="#64748b" font-size="11">readIdx advances to 2,000 · ACK sent for S2's last LSN</text>
     
     <g transform="translate(380, 16)">
       <!-- S1 Reclaimed -->
@@ -120,7 +120,7 @@
   <!-- Step 4 -->
   <g transform="translate(32, 380)">
     <rect x="0" y="0" width="896" height="88" rx="8" fill="#131d17" stroke="#233529" stroke-width="1" />
-    <text x="16" y="24" fill="#38bdf8" font-size="12" font-weight="600">Step 4: S3 finishes → Walker crosses S3 &amp; S4</text>
+    <text x="16" y="24" fill="#38bdf8" font-size="12" font-weight="600">Step 4: S3 finishes → Walker moves past S3 &amp; S4</text>
     <text x="16" y="44" fill="#64748b" font-size="11">readIdx advances to 4,000 · All physical slots 0..4k reusable</text>
     
     <g transform="translate(380, 16)">
@@ -149,9 +149,9 @@
     <text x="16" y="10" fill="#94a3b8" font-size="11">Amortized O(1) walk per segment</text>
     
     <circle cx="270" cy="6" r="3.5" fill="#38bdf8" />
-    <text x="280" y="10" fill="#94a3b8" font-size="11">Zero gap reporting: PostgreSQL confirmed_flush_lsn never skips uncommitted data</text>
+    <text x="280" y="10" fill="#94a3b8" font-size="11">No gaps: confirmed_flush_lsn never moves past rows that are not in S3</text>
     
     <circle cx="760" cy="6" r="3.5" fill="#fbbf24" />
-    <text x="770" y="10" fill="#94a3b8" font-size="11">At-least-once safety</text>
+    <text x="770" y="10" fill="#94a3b8" font-size="11">At-least-once delivery</text>
   </g>
 </svg>

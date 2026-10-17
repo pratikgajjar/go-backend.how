@@ -60,7 +60,7 @@
   <!-- Header / Caption bar -->
   <g transform="translate(30, 24)">
     <text x="0" y="0" fill="#6ee7b7" font-size="11" font-weight="700" letter-spacing="1.5">DATA PIPELINE &amp; DURABILITY BOUNDARY</text>
-    <text x="0" y="20" fill="#e2e8f0" font-size="14" font-weight="500">Postgres WAL changes stream down to S3 · Permission to forget flows back</text>
+    <text x="0" y="20" fill="#e2e8f0" font-size="14" font-weight="500">Postgres WAL changes go to S3 · ACKs go back to Postgres</text>
   </g>
 
   <!-- ==================== LANE 1: DATA FORWARD (DOWNSTREAM) ==================== -->
@@ -97,7 +97,7 @@
     <g transform="translate(380, 0)" filter="url(#shadow)">
       <rect x="0" y="0" width="145" height="74" rx="8" fill="url(#ringHighlight)" stroke="#10b981" stroke-width="1.5" />
       <rect x="0" y="0" width="145" height="4" rx="2" fill="#34d399" />
-      <text x="12" y="24" fill="#34d399" font-size="9" font-weight="700" letter-spacing="0.8">OWNERSHIP / RING</text>
+      <text x="12" y="24" fill="#34d399" font-size="9" font-weight="700" letter-spacing="0.8">BUFFER</text>
       <text x="12" y="44" fill="#ffffff" font-size="13" font-weight="700">Ring Buffer</text>
       <text x="12" y="60" fill="#a7f3d0" font-size="10">[StartIdx, EndIdx) cut</text>
     </g>
@@ -209,6 +209,6 @@
     <text x="18" y="12" fill="#94a3b8" font-size="11">Data flow: decoded WAL rows into segmented batches</text>
 
     <circle cx="380" cy="8" r="4" fill="#38bdf8" />
-    <text x="390" y="12" fill="#94a3b8" font-size="11">ACK flow: out-of-order completions reconciled into highest contiguous LSN</text>
+    <text x="390" y="12" fill="#94a3b8" font-size="11">ACK flow: uploads that finish out of order become one contiguous LSN</text>
   </g>
 </svg>

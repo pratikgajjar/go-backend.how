@@ -15,8 +15,8 @@ hide_toc = true
 
 WAL Cake is a Go service that copies row changes from Postgres to Parquet
 files in S3, one folder per day, to build a data lake. Postgres sends those
-changes as one ordered stream, and expects one ordered answer: a single
-position that says "everything before this is safe". The slow work in between,
+changes as one ordered stream. The consumer confirms its progress with a single
+position, which means "everything before this is safe". The slow work in between,
 encoding Parquet and uploading to S3, can run in parallel. This post shows how
 WAL Cake does that while it still reads and acknowledges the WAL in order, how
 it is tested, and where it can still replay or stall.
@@ -86,7 +86,8 @@ position, and in how much control you get over the files.
 
 We chose direct pgoutput because we wanted day-split Parquet files from one Go
 binary, without a broker or a replication instance, and with control over batch
-size and the ACK. In exchange, we own reconnects, backpressure, and the ACK.
+size and the ACK. In exchange, we are responsible for reconnects,
+backpressure, and the ACK.
 This post is about the ACK.
 
 # Why one upload at a time is too slow
@@ -98,7 +99,7 @@ The simplest correct consumer does this in a loop:
 3. Send the batch's last LSN to Postgres.
 
 This follows the rule, because nothing is confirmed before it is in S3. But the
-worker is idle during step 2, so S3 latency sets the throughput.
+worker is idle during step 2, so S3 latency limits the throughput.
 
 An S3 PUT from inside the same region usually takes tens to a few hundred
 milliseconds. One public benchmark of 500 KB PUTs measured a median of 70 ms
@@ -124,7 +125,7 @@ four[^defaults]. Use the figure below to try other values.
 This is an upper bound: it assumes full batches and no retries. More workers do
 not make one upload faster. They let other uploads run while one waits.
 
-# Where the parallelism can go
+# Which steps can run in parallel {#where-the-parallelism-can-go}
 
 The WAL must be read in order, and the ACK must be sent in order. Each step of
 the pipeline, in order:
@@ -155,10 +156,10 @@ the work. In theory, the single reader becomes the limit only at around 200
 workers. In practice, other limits come first: memory per worker, and the
 walsender, the single Postgres process that decodes the slot. I have not
 measured the walsender's ceiling. The 0.5 µs is for a short five-column row;
-wider rows cost more.
+wider rows take longer.
 
-The hard part is the last arrow. Results that finish in any order must become
-one ordered ACK.
+The last arrow is the difficult step, because results that finish in any order
+must become one ordered ACK.
 
 # Parallel uploads break the ACK
 
@@ -171,7 +172,7 @@ consumer sends the end of `S4`, it also confirms `S1` and `S3`. If the process
 crashes at that moment, Postgres will not send `S1` and `S3` again, and S3
 does not have them. Those rows are lost.
 
-# The fix: ACK only a contiguous prefix
+# ACK only a contiguous prefix {#the-fix-ack-only-a-contiguous-prefix}
 
 Keep a cursor at the oldest batch that is not yet in S3. When a batch finishes,
 mark it done. If it is the batch at the cursor, move the cursor forward over it
@@ -196,10 +197,11 @@ To do this, the consumer needs three things:
    it, the consumer cannot tell a slow batch from a missing one.
 3. A cursor that only moves forward and never skips a batch that is not done.
 
-A Go channel cannot do (1), because it forgets an item once it is received.
+A Go channel cannot do (1), because it does not keep an item after it is
+received.
 WAL Cake uses a fixed-size ring of event pointers for (1), a small map of batch
-ranges for (2), and an atomic index for (3). A ring fits because its slots are
-freed in the same order that the cursor moves.
+ranges for (2), and an atomic index for (3). A ring works here because its
+slots are freed in the same order that the cursor moves.
 
 The figure below follows one `INSERT` through the whole system, from commit to
 the ACK that lets Postgres delete its WAL.
@@ -225,8 +227,8 @@ rb.Start(ctx, eventsCh) // until SIGTERM, then drains
 stopRepl()              // the replicator sends the final ACK
 ```
 
-This gives at-least-once delivery, not exactly-once. No transaction covers both
-Postgres and S3. If the process crashes after an upload and before the ACK,
+This gives at-least-once delivery. Exactly-once delivery is not possible here,
+because no transaction covers both Postgres and S3. If the process crashes after an upload and before the ACK,
 the file is in S3 but the slot has not moved, so Postgres sends those rows
 again. [Figure 6](#the-s3-upload-and-its-key) shows what that does to the
 bucket.
@@ -253,30 +255,31 @@ if err != nil {
 return r.proccessLogicalMsg(ctx, logicalMsg, xld.WALStart, ch)
 ```
 
-Every event carries an LSN, and the ring may later send any of them as the ACK.
+Every event has an LSN, and the ring may later send any of them as the ACK.
 So each one must be safe to confirm once the event and everything before it is
 in S3:
 
-- A **row event** carries `WALStart`, the LSN of its change record. If the ACK
-  lands there, in the middle of a transaction, Postgres resends that whole
+- A **row event** has `WALStart`, the LSN of its change record. If the ACK is
+  at that position, in the middle of a transaction, Postgres resends that whole
   transaction after a restart. Some rows arrive twice, and none are lost.
-- A **commit event** carries `TransactionEndLSN`, the end of the commit record.
+- A **commit event** has `TransactionEndLSN`, the end of the commit record.
   The next transaction's commit record starts at or after it, so confirming it
   never covers the next transaction.
 
-`WALStart + len(WALData)` is the right position in physical replication, where
+`WALStart + len(WALData)` is a correct ACK position in physical replication, where
 `WALData` is WAL bytes. In logical replication `WALData` holds pgoutput bytes,
 so the sum is not a WAL position. For a commit it points 26 bytes past the end
-of the record. When the next transaction commits right after, that lands inside
-its commit record, and Postgres would skip that transaction on restart.
+of the record. When the next transaction commits right after, that position is
+inside its commit record, and Postgres would skip that transaction on restart.
 
 Commit events go into the ring, so a finished run can end on a commit. The
 Parquet writer skips them.
 
 A few pgoutput details[^msgformats]:
 
-- A `BEGIN` message carries the transaction's commit timestamp. Every event in
-  the transaction gets it as `CommitTime`, which picks the day folder.
+- A `BEGIN` message has the transaction's commit timestamp. Every event in
+  the transaction gets it as `CommitTime`, and WAL Cake uses it to choose the
+  day folder.
 - A `RelationMessage` describes a table and its columns. Row messages refer to
   it by ID.
 - For updates and deletes, the old row depends on the table's replica
@@ -464,9 +467,9 @@ The next figure uses the defaults: 4 workers, 1,000 events per segment, and
 behind it. **S3 stall** stops all uploads, so the ring fills and the replicator
 blocks.
 
-{{< walviz kind="ring-sim" fig="5" title="The ring at production size" fallback="ring-buffer-walk.svg" alt="Ring buffer simulator with 8,000 slots and four workers" caption="A model, not a benchmark. PUT times are sampled from a lognormal with the chosen p50 and an assumed p99 of 2 × p50. Encode time is `1.2 ms`. The receiver and the walk follow the source." >}}
+{{< walviz kind="ring-sim" fig="5" title="The ring at production size" fallback="ring-buffer-walk.svg" alt="Ring buffer simulator with 8,000 slots and four workers" caption="The figure is a simulation. PUT times are sampled from a lognormal with the chosen p50 and an assumed p99 of 2 × p50. Encode time is `1.2 ms`. The receiver and walker logic match the source code." >}}
 
-`TestRingCapacity` runs the real ring with a stand-in uploader that sleeps for
+`TestRingCapacity` runs the WAL Cake ring with a stand-in uploader that sleeps for
 `7 ms` plus a PUT time from the same lognormal (p50 `100 ms`). With four
 workers it sustains about 35,500 events/s, against an ideal of about 36,000.
 A variant with three workers, a p50 of `200 ms`, and a `1.2 ms` encode kept up
@@ -478,8 +481,8 @@ with 14,000 events/s.
 fills slots, and only workers and the walker read them. The tracker takes a
 mutex a few times per segment, so a few times per 1,000 events. Go channels lock
 internally, and a full ring blocks the replicator. So the system is not
-lock-free, and it does not need to be. `Add` takes about 11 ns, and the ring's
-job is ordering.
+lock-free. This does not limit throughput, because `Add` takes about 11 ns.
+The purpose of the ring is to keep the ACK in order.
 
 # Parquet: small files
 
@@ -494,7 +497,7 @@ The test fixture has 1,000 events across 12 tables, a third each inserts,
 updates, and deletes. Its file is 13,465 bytes, and the two JSON columns are
 90% of that.
 
-Benchmarks of the real code, three to five runs each:
+Benchmarks of the WAL Cake code, three to five runs each:
 
 | Step | Time | Allocated |
 |---|---:|---:|
@@ -531,7 +534,7 @@ After a crash, Postgres sends the same rows again. They decode at a new time,
 so they get a new key, and S3 now has two files with the same rows. Step
 through it in the figure, then switch to an LSN-based key.
 
-{{< walviz kind="replay" fig="6" title="Crash after PUT, then replay" fallback="pipeline.svg" alt="A crash after a successful PUT replays the segment; compare decode-time keys with LSN-range keys" caption="Both schemes keep at-least-once delivery. The LSN-range key turns the second PUT into a no-op." >}}
+{{< walviz kind="replay" fig="6" title="Crash after PUT, then replay" fallback="pipeline.svg" alt="A crash after a successful PUT replays the segment; compare decode-time keys with LSN-range keys" caption="Both schemes keep at-least-once delivery. The LSN-range key makes the second PUT a no-op." >}}
 
 An LSN-range key with an `If-None-Match` conditional write[^conditional] would
 make a replayed segment a no-op, but only when the replay cuts exactly the same
@@ -565,7 +568,7 @@ The tests are in the repository. The ones that need Postgres run when
 `WALCAKE_TEST_PG` is set.
 
 - **Ring state machine.** `rapid` generates random sequences of events and
-  random completion orders against the real ring. After every step, the ACK
+  random completion orders against the ring code. After every step, the ACK
   must be the LSN of an event inside the finished prefix, and `readIdx` must
   equal the model's prefix. At the end, the drain must cover every admitted
   event.
@@ -578,13 +581,13 @@ The tests are in the repository. The ones that need Postgres run when
 - **Replicator integration.** Back-to-back commits followed by a restart; a
   killed walsender; a failing slot query; and the final status update on
   shutdown.
-- **Whole pipeline state machine.** The real replicator, ring, processor, and
+- **Whole pipeline state machine.** The production replicator, ring, processor, and
   Parquet writer, with an S3 fake that fails each file once at random and adds
   delays. `rapid` generates histories of single-row and multi-row
   transactions, `COPY`, back-to-back commits, updates, deletes, rollbacks,
   killed walsenders, crashes, and graceful restarts. After recovery, every
   committed change must be in S3 with its exact values, no rolled-back row may
-  be, every row must sit under its commit date, and the slot must never have
+  be, every row must be in the folder for its commit date, and the slot must never have
   moved backwards.
 
 To check that the pipeline test can fail, I pointed commit events 26 bytes past
@@ -593,7 +596,7 @@ current code passes 25 random histories, and 5 more under the race detector.
 
 # What can still go wrong
 
-{{< walviz kind="map" fig="7" title="Where each fault lives" failures="true" fallback="pipeline.svg" alt="System map with eight numbered markers for replays, stalls, and changes WAL Cake does not capture" caption="Numbers match the list below." >}}
+{{< walviz kind="map" fig="7" title="Where each fault happens" failures="true" fallback="pipeline.svg" alt="System map with eight numbered markers for replays, stalls, and changes WAL Cake does not capture" caption="Numbers match the list below." >}}
 
 None of these lose a committed row.
 
@@ -622,7 +625,7 @@ Readers of the lake should expect duplicates, and deduplicate on `table`,
    Cake reconnects with backoff. The readiness check fails until it streams
    again.
 
-The buffers only absorb short delays. At 10,000 events/s with the defaults, the
+The buffers are large enough only for short delays. At 10,000 events/s with the defaults, the
 ring holds `0.8 s` of events and `eventsCh` another `0.4 s`. Part of the ring
 is always taken by in-flight segments, so a longer S3 outage pauses
 replication, and WAL builds up on the primary.
@@ -636,7 +639,8 @@ replication, and WAL builds up on the primary.
 # Takeaways
 
 - Advance the replication slot only past rows that are already in S3.
-- Only encode and upload can run in parallel, and that is where the time goes.
+- Only encode and upload can run in parallel, and those steps take most of the
+  time.
 - Record every segment before it starts, and move the cursor only over
   finished segments. Out-of-order uploads then give one ordered ACK.
 - Every LSN the consumer might send must be safe to confirm: the change LSN for

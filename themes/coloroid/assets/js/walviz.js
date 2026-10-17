@@ -219,11 +219,11 @@ const MAP_LAYOUT = {
 const FAILS = [
   ['s3', 'Crash after a successful PUT', 'The slot has not moved, so Postgres resends the rows and a second file holds them. Delivery is at-least-once.'],
   ['rep', 'Segment ends inside a transaction', 'The ACK is a change LSN, so after a restart Postgres resends that whole transaction, including rows already in S3.'],
-  ['wrk', 'Upload fails three times', 'log.Fatal. On restart the slot replays everything after the last ACK.'],
+  ['wrk', 'Upload fails three times', 'log.Fatal exits the process. On restart, the slot replays everything after the last ACK.'],
   ['ring', 'Ring is full', 'The receiver waits for free space and eventsCh fills. The replicator blocks; after a minute /ready fails.'],
   ['rep', 'Replicator blocked for 60 s', 'No status updates while blocked, so Postgres drops the connection after wal_sender_timeout. WAL Cake reconnects from the slot.'],
   ['pg', 'Walsender killed or failover', 'The session ends; WAL Cake reconnects with backoff from confirmed_flush_lsn. /ready fails until it streams again.'],
-  ['rep', 'TRUNCATE arrives', 'Logged only. The data lake never sees it.'],
+  ['rep', 'TRUNCATE arrives', 'WAL Cake logs it and does not write it to the data lake.'],
   ['rep', 'Unchanged TOAST value', 'pgoutput sends a marker, and the row image stores the string "<TOAST>" instead of the value.'],
 ];
 
@@ -307,7 +307,7 @@ const FOLLOW = [
       '        "status": «"captured"»,',
       '    },',
       '    Timestamp:  time.Now(),     // decode time',
-      '    CommitTime: r.commitTime,   // from BEGIN: picks the day folder',
+      '    CommitTime: r.commitTime,   // from BEGIN: selects the day folder',
       `    LSN:       «0x${ROW_LSN.toString(16).toUpperCase()}»,        // ${lsn(ROW_LSN)}`,
       '}',
       'ch <- ev                      // eventsCh: blocks when 4,000 are queued',
@@ -333,7 +333,7 @@ const FOLLOW = [
       'rb.lastSegIdx.Store(3000)',
       'rb.tracker.Set(2000, &segment)         // registered before dispatch',
       'rb.segments <- segment',
-    ], [2])}<p>Our row is event 2143 of <code>[2000, 3000)</code>. The tracker knows this range before any worker sees it. The segment copies no events.</p>`,
+    ], [2])}<p>Our row is event 2143 of <code>[2000, 3000)</code>. The tracker has this range before any worker gets it. The segment copies no events.</p>`,
   },
   {
     label: 'Encode', at: ['wrk', 'a'], via: ['d5'], token: 'row', chip: 'W2 · parquet',
@@ -360,7 +360,7 @@ const FOLLOW = [
   },
   {
     label: 'Walk', at: ['walk', 'a'], from: ['wrk', 'a'], via: ['a1', 'a2'], token: 'seg', chip: 'Segment{2000,3000}', obj: true,
-    title: 'The walker crosses the finished prefix', where: 'RingBuffer.handleSegmentAck',
+    title: 'The walker moves readIdx past the finished prefix', where: 'RingBuffer.handleSegmentAck',
     body: () => `${codeBlock([
       'rb.ackSeg <- segment                    // worker → walker',
       'findHighestContiguous(2000, 2000)',
@@ -370,7 +370,7 @@ const FOLLOW = [
       `lastEvent := rb.buffer[2999 % 8000]     // LSN «${lsn(ROW.prefixLsn)}»`,
       'rb.readIdx.Store(3000)                  // after the read',
       'rb.acked.Advance(lastEvent.LSN)',
-    ], [3, 5, 6, 7])}<p>Earlier segments were already done, so the cursor crosses this one. The ACK position becomes the LSN of event 2999, the last event in the prefix.</p>`,
+    ], [3, 5, 6, 7])}<p>Earlier segments were already done, so the cursor moves past this one. The ACK position becomes the LSN of event 2999, the last event in the prefix.</p>`,
   },
   {
     label: 'Status', at: ['rep', 'b'], via: ['a3', 'a4'], token: 'ack', chip: lsn(ROW.prefixLsn), obj: true,
@@ -383,11 +383,11 @@ const FOLLOW = [
       `    WALFlushPosition: ${lsn(ROW.prefixLsn)},`,
       `    WALApplyPosition: ${lsn(ROW.prefixLsn)},`,
       '}',
-    ], [4])}<p>The ACK names the end of the prefix, not our row. One number covers all 1,000 events.</p>`,
+    ], [4])}<p>The ACK is the LSN at the end of the prefix. Our row is inside the prefix, and one number confirms all 1,000 events.</p>`,
   },
   {
-    label: 'Forget', at: ['pg', 'b'], via: ['a5'], token: 'ack', chip: lsn(ROW.prefixLsn), obj: true, acked: true,
-    title: 'The slot advances: permission to forget', where: 'pg_replication_slots',
+    label: 'Advance', at: ['pg', 'b'], via: ['a5'], token: 'ack', chip: lsn(ROW.prefixLsn), obj: true, acked: true,
+    title: 'The slot advances, and Postgres can delete the WAL', where: 'pg_replication_slots',
     body: () => `${codeBlock([
       'SELECT confirmed_flush_lsn FROM pg_replication_slots;',
       ' confirmed_flush_lsn',
@@ -670,7 +670,7 @@ function ringWalkSteps() {
   const cross = (id) => { const x = seg(id); x.st = 'gone'; st.r = x.end; st.gone.push([x.start, x.end]); st.del.push(id); };
 
   snap('Empty', 'add', [],
-    'Eight slots keep the picture small. (The real ring has <b>2 × concurrency × batchSize</b> slots.) <code>writeIdx</code>, <code>lastSegIdx</code>, and <code>readIdx</code> start at 0 and only move forward.');
+    'This figure uses eight slots. (The ring in WAL Cake has <b>2 × concurrency × batchSize</b> slots.) <code>writeIdx</code>, <code>lastSegIdx</code>, and <code>readIdx</code> start at 0 and only move forward.');
   st.w = 8;
   snap('Admit', 'add', [1, 2, 5, 6],
     'The receiver calls <code>Add</code> for e1–e8. Each call writes <code>buffer[w % 8]</code>, then increments <code>writeIdx</code>. The single writer needs no lock.');
@@ -683,7 +683,7 @@ function ringWalkSteps() {
     'e9 arrives. <code>w − r = 8 − 0 = 8 ≥ size</code>, so <code>Add</code> returns false. The receiver waits until the walker signals free space. <b>No slot is overwritten.</b>', 'bad');
   seg('S2').st = 'held';
   snap('S2 done', 'walk', [1, 3, 4, 14],
-    'W2 finishes first. The walker marks S2 done. S2 starts at 2, but <code>readIdx</code> is 0. <b class="c-bad">S1 is a gap.</b> The cursor stays, and no ACK is sent.', 'bad');
+    'W2 finishes first. The walker marks S2 done. S2 starts at 2, but <code>readIdx</code> is 0. <b class="c-bad">S1 is a gap.</b> The cursor does not move, and no ACK is sent.', 'bad');
   seg('S4').st = 'held';
   snap('S4 done', 'walk', [1, 3, 4, 14],
     'W4 finishes. S4 is done too, still behind the gap at S1 and S3. Two segments are durable in S3, yet Postgres keeps all of their WAL.');
@@ -706,7 +706,7 @@ function ringWalkSteps() {
   cross('S3'); cross('S4');
   st.ack = 8;
   snap('S3 done', 'walk', [4, 6, 7, 8, 9, 11, 14],
-    'W3 finishes. One call crosses S3 <b>and</b> the waiting S4. <code>readIdx = 8</code>. S5 is still running, so the walk stops. <b class="c-safe">The ACK is LSN(e8).</b>', 'good');
+    'W3 finishes. One call moves <code>readIdx</code> past S3 <b>and</b> the waiting S4. <code>readIdx = 8</code>. S5 is still running, so the walk stops. <b class="c-safe">The ACK is LSN(e8).</b>', 'good');
   return out;
 }
 
@@ -1125,10 +1125,10 @@ function initRingSim(fig) {
     status.className = `wv-note${S.stall > S.t || blocked ? ' is-bad' : ''}`;
     const cap = (P.W * P.B) / ((E + P.p50) / 1000);
     let msg;
-    if (S.stall > S.t) msg = `<b>S3 stall.</b> PUTs cannot finish. Workers hold their segments, the ring fills, <code>Add</code> returns false, and the receiver waits for free space. Then <code>eventsCh</code> fills and pgoutput blocks. No event is lost; WAL piles up in Postgres.`;
+    if (S.stall > S.t) msg = `<b>S3 stall.</b> PUTs cannot finish. Workers hold their segments, the ring fills, <code>Add</code> returns false, and the receiver waits for free space. Then <code>eventsCh</code> fills and pgoutput blocks. No event is lost, and Postgres keeps more and more WAL.`;
     else if (blocked) msg = `<b>Backpressure.</b> The ring is full and <code>eventsCh</code> holds ${fmt(S.evc)} of ${fmt(S.cap)} pointers. The replicator goroutine blocks on <code>ch &lt;- ev</code>. The receiver waits for the walker to free space.`;
-    else if (held > 0) msg = `<b class="c-safe">${held} segment${held > 1 ? 's' : ''} in S3</b>, <b class="c-bad">behind a gap.</b> They finished before an earlier segment. <code>readIdx</code> waits at the gap, and the ACK names only the contiguous prefix.`;
-    else msg = `${P.W} PUT${P.W > 1 ? 's' : ''} overlap. The napkin upper bound at p50 is <code>${P.W} × ${fmt(P.B)} / (${E} + ${P.p50}) ms = ${fmt(cap)}/s</code> for an input of ${fmt(P.R)}/s. PUT times are sampled from a lognormal with this p50 and an assumed p99 of 2 × p50.`;
+    else if (held > 0) msg = `<b class="c-safe">${held} segment${held > 1 ? 's' : ''} in S3</b>, <b class="c-bad">behind a gap.</b> They finished before an earlier segment. <code>readIdx</code> waits at the gap, and the ACK covers only the contiguous prefix.`;
+    else msg = `${P.W} PUT${P.W > 1 ? 's' : ''} overlap. The estimated upper bound at p50 is <code>${P.W} × ${fmt(P.B)} / (${E} + ${P.p50}) ms = ${fmt(cap)}/s</code> for an input of ${fmt(P.R)}/s. PUT times are sampled from a lognormal with this p50 and an assumed p99 of 2 × p50.`;
     status.innerHTML = msg;
   }
 
@@ -1256,7 +1256,7 @@ function initSizing(fig) {
     const n = need(r, p);
     const ok = n <= P.W;
     read.className = `wv-read wv-note${ok ? '' : ' is-bad'}`;
-    read.innerHTML = `<span class="k">${hover ? 'cursor' : '200 ms'}</span>R = ${fmt(r)}/s, P = ${Math.round(p)} ms → <code>ceil(${fmt(r)} × (${(P.E / 1000).toFixed(3)} + ${(p / 1000).toFixed(3)}) / ${fmt(P.B)})</code> = <code>ceil(${((r * bt) / P.B).toFixed(2)})</code> = <b>${n} worker${n > 1 ? 's' : ''}</b>. ${ok ? `<span class="c-safe">${P.W} workers carry ${fmt((P.W * P.B) / bt)}/s here.</span>` : `<b class="c-bad">${P.W} workers fall short</b>; the backlog grows by ${fmt(r - (P.W * P.B) / bt)} events/s.`}`;
+    read.innerHTML = `<span class="k">${hover ? 'cursor' : '200 ms'}</span>R = ${fmt(r)}/s, P = ${Math.round(p)} ms → <code>ceil(${fmt(r)} × (${(P.E / 1000).toFixed(3)} + ${(p / 1000).toFixed(3)}) / ${fmt(P.B)})</code> = <code>ceil(${((r * bt) / P.B).toFixed(2)})</code> = <b>${n} worker${n > 1 ? 's' : ''}</b>. ${ok ? `<span class="c-safe">${P.W} workers handle ${fmt((P.W * P.B) / bt)}/s here.</span>` : `<b class="c-bad">${P.W} workers are not enough</b>; the backlog grows by ${fmt(r - (P.W * P.B) / bt)} events/s.`}`;
   }
   function tableOut() {
     table.innerHTML = `<div class="wv-scroll"><table class="wv-mini"><thead><tr><th>PUT</th><th>E + P</th><th>1 worker</th><th>${P.W} workers</th><th>need</th></tr></thead><tbody>${
@@ -1297,11 +1297,11 @@ function initReplay(fig) {
   const STEPS = [
     { label: 'Running', proc: 'W2 encodes segment [2000, 3000)', ring: 'readIdx 2000 · 1,000 events in memory', slot: ROW.prevAck, objs: ['old'], note: 'The segment covers WAL ' + range + '. The slot is at the end of the previous prefix.' },
     { label: 'PUT ok', proc: 'PutObject → 200 OK', ring: 'ackSeg not sent yet', slot: ROW.prevAck, objs: ['old', 'A'], newObj: 'A', note: 'S3 holds the rows. The worker has not reported the segment to the walker yet.' },
-    { label: 'Crash', proc: 'process exits', ring: 'ring, tracker, readIdx: gone', slot: ROW.prevAck, objs: ['old', 'A'], dead: true, note: 'An OOM kill, a lost node, or <code>log.Fatal</code> after three failed uploads ends the process. Everything in the ring was memory. The slot never heard about the PUT.' },
+    { label: 'Crash', proc: 'process exits', ring: 'ring, tracker, readIdx: lost', slot: ROW.prevAck, objs: ['old', 'A'], dead: true, note: 'An OOM kill, a lost node, or <code>log.Fatal</code> after three failed uploads ends the process. Everything in the ring was in memory. Postgres did not get an ACK for the PUT.' },
     { label: 'Restart', proc: 'getStartLSN → ' + lsn(ROW.prevAck), ring: 'new ring · indices restart at 0', slot: ROW.prevAck, objs: ['old', 'A'], note: '<code>getStartLSN</code> reads <code>confirmed_flush_lsn</code>. <code>StartReplication</code> resumes there, before the rows already in S3.' },
     { label: 'Replay', proc: 'decode the same 1,000 changes', ring: 'segment [0, 1000) · new Timestamp values', slot: ROW.prevAck, objs: ['old', 'A'], note: 'Postgres sends the same changes again. Each <code>CDCEvent</code> gets a new <code>time.Now()</code>.' },
     { label: 'PUT again', proc: 'PutObject', ring: 'segment [0, 1000)', slot: ROW.prevAck, objs: ['old', 'A', 'B'], newObj: 'B', second: true, note: '' },
-    { label: 'ACK', proc: 'walker → acked → status update', ring: 'readIdx 1000', slot: lastL, objs: ['old', 'A', 'B'], note: 'The slot moves to ' + lsn(lastL) + '. Only now can Postgres forget this WAL.' },
+    { label: 'ACK', proc: 'walker → acked → status update', ring: 'readIdx 1000', slot: lastL, objs: ['old', 'A', 'B'], note: 'The slot moves to ' + lsn(lastL) + '. Postgres can now delete this WAL.' },
   ];
 
   const lanes = h('div', { class: 'wv-lanes' });
@@ -1329,7 +1329,7 @@ function initReplay(fig) {
     }
     lanes.innerHTML = `
       <div class="wv-lane${st.dead ? ' is-dead' : ''}"><h5><span>wal-cake</span><span class="wv-tag ${st.dead ? 'c-bad' : 'c-safe'}">${st.dead ? 'down' : 'up'}</span></h5><div>${esc(st.proc)}</div><div class="sub">${esc(st.ring)}</div></div>
-      <div class="wv-lane"><h5><span>Postgres slot</span></h5><div class="sub" style="margin:0">confirmed_flush_lsn</div><div class="big">${lsn(st.slot)}</div><div class="sub">${st.slot === lastL ? '<span class="c-safe">WAL for the segment can go</span>' : 'WAL for the segment is kept'}</div></div>
+      <div class="wv-lane"><h5><span>Postgres slot</span></h5><div class="sub" style="margin:0">confirmed_flush_lsn</div><div class="big">${lsn(st.slot)}</div><div class="sub">${st.slot === lastL ? '<span class="c-safe">Postgres can delete the segment\'s WAL</span>' : 'WAL for the segment is kept'}</div></div>
       <div class="wv-lane"><h5><span>S3 bucket</span><span>${objs.length} object${objs.length > 1 ? 's' : ''}</span></h5>${objHtml}${put}</div>`;
     const showVerdict = i >= 5;
     verdict.style.display = showVerdict ? '' : 'none';
@@ -1356,12 +1356,12 @@ function initReplay(fig) {
 const OPTIONS = [
   {
     name: 'Debezium + Kafka Connect', how: 'pgoutput → Kafka topics → S3 sink connector',
-    pro: ['Snapshots, offsets, and connector lifecycle are built in', 'A strong fit when Kafka already runs'],
-    con: ['Kafka, Connect, and an S3 sink to operate', 'Rows land in Kafka first, then in S3'],
+    pro: ['Snapshots, offsets, and connector lifecycle are built in', 'A good fit if you already run Kafka'],
+    con: ['Kafka, Connect, and an S3 sink to operate', 'Rows are written to Kafka first, then to S3'],
   },
   {
     name: 'Debezium Server', how: 'pgoutput → a sink inside one JVM process',
-    pro: ['Debezium capture without Kafka', 'Recent releases ship an Apache Iceberg sink'],
+    pro: ['Debezium capture without Kafka', 'Recent releases include an Apache Iceberg sink'],
     con: ['No plain Parquet-on-S3 sink: you write batching, file layout, and retries'],
   },
   {
@@ -1371,8 +1371,8 @@ const OPTIONS = [
   },
   {
     name: 'Direct pgoutput', how: 'WAL Cake: pgoutput → ring → parallel PUTs', pick: true,
-    pro: ['One Go binary, no broker', 'Each file holds one day of rows, under a day prefix', 'We own batch size, file layout, and the LSN we ACK'],
-    con: ['We own reconnects, backpressure, and the checkpoint rule'],
+    pro: ['One Go binary, no broker', 'Each file holds one day of rows, under a day prefix', 'We control batch size, file layout, and the LSN we ACK'],
+    con: ['We are responsible for reconnects, backpressure, and the checkpoint rule'],
   },
 ];
 
@@ -1388,8 +1388,8 @@ function initOptions(fig) {
       h('ul', null, ...o.pro.map((x) => h('li', { class: 'pro' }, x)), ...o.con.map((x) => h('li', { class: 'con' }, x)))));
   }
   const call = h('div', { class: 'wv-callout' },
-    h('b', { class: 'c-look' }, 'The shared question. '),
-    'Every option must decide when the replication slot may advance. The first three decide it inside a system you run next to Postgres. WAL Cake decides it with one ring buffer and one rule.');
+    h('b', { class: 'c-look' }, 'Common to all options. '),
+    'Every option must decide when the replication slot may advance. The first three decide it inside a system you run next to Postgres. WAL Cake decides it in its own process, with a ring buffer.');
   app.append(q, grid, call,
     colorKey([['k-ink', 'the question'], ['k-opt', 'options'], ['k-data', 'how it works'], ['k-safe', 'benefit'], ['k-gap', 'cost'], ['k-pick', 'our choice'], ['k-look', 'the key point']]));
 }
