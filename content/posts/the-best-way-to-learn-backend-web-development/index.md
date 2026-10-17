@@ -1,5 +1,5 @@
 +++
-title = "The Best Way to Learn Backend Web Development"
+title = "📜 The Best Way to Learn Backend Web Development"
 description = "A plan for your first year of backend development: one stack for six months, three fundamentals learned deeply, one project that grows with you, and a realistic timeline."
 date = 2024-07-01T03:13:23+05:30
 lastmod = 2026-01-18T03:13:23+05:30
