@@ -231,13 +231,9 @@ function initRace(fig, app) {
     const idx = RACE.filter((_, k) => behind(k)).length;
     svg.append(T(x0, y - 13, 't-s t-b', title));
     svg.append(tapeBand(x0, x1, y, 66));
-    let x = x0 + 4;
+    let x = x0 + 4; let sx = null;
     RACE.forEach((ev, k) => {
-      if (k === idx) {
-        svg.append(s('line', { x1: x + 4, x2: x + 4, y1: y - 6, y2: y + 72, class: 'v-oxb-slot-line' }), s('path', { d: `M${x + 4},${y - 6} l${V ? 12 : 30},0 l-5,6 l5,6 l-${V ? 12 : 30},0 z`, class: 'v-oxb-slot-flag' }));
-        if (!V) svg.append(T(x + 7, y + 4, 't-xs t-b t-board', 'slot'));
-        x += gap;
-      }
+      if (k === idx) { sx = x + 4; x += gap; }
       const inK = acked.includes(k); const gapCell = behind(k) && !inK;
       const cell = s('rect', { x, y: y + 9, width: cw, height: 48, class: `v-oxb-cell${inK ? ' is-ok' : ''}${gapCell ? ' is-gap' : ''}` });
       svg.append(cell, T(x + cw / 2, y + 25, `t-s t-b${gapCell ? ' t-bad' : ''}`, ev.e, 'middle'), T(x + cw / 2, y + 38, 't-xs', `P${ev.p}`, 'middle'));
@@ -248,15 +244,20 @@ function initRace(fig, app) {
       }
       x += cw + 6;
     });
-    if (idx === RACE.length) svg.append(s('line', { x1: x + 2, x2: x + 2, y1: y - 6, y2: y + 72, class: 'v-oxb-slot-line' }));
+    if (sx === null) sx = Math.min(x + 2, x1 - 2);
+    // the slot goes on top, its flag below the band where no cell can cover it
+    const fw = 34; const left = sx + fw > x1; // flip the flag near the right edge
+    svg.append(s('line', { x1: sx, x2: sx, y1: y - 2, y2: y + 82, class: 'v-oxb-slot-line' }),
+      s('path', { d: left ? `M${sx},${y + 68} l-${fw},0 l5,7 l-5,7 l${fw},0 z` : `M${sx},${y + 68} l${fw},0 l-5,7 l5,7 l-${fw},0 z`, class: 'v-oxb-slot-flag' }),
+      T(left ? sx - 3 : sx + 3, y + 78.5, 't-xs t-b t-board', 'slot', left ? 'end' : 'start'));
   }
   function draw(vertical = V) {
     V = vertical;
-    const W = vertical ? 360 : 960; const H = 214;
+    const W = vertical ? 360 : 960; const H = 224;
     const { latest, prefix } = slots();
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Two slots over the same six events' });
     lane(svg, 26, W, vertical ? 'Latest ack (factlib main)' : 'Slot follows the latest ack · factlib main', latest);
-    lane(svg, 132, W, vertical ? 'Contiguous prefix (the fix)' : 'Slot follows the contiguous acked prefix · the fix', prefix);
+    lane(svg, 138, W, vertical ? 'Contiguous prefix (the fix)' : 'Slot follows the contiguous acked prefix · the fix', prefix);
     stage.replaceChildren(svg);
   }
   function render() {
