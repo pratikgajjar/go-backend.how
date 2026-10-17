@@ -5,7 +5,8 @@
 - Do not add generator or checker scripts to the repo. Write a one-off
   script in /tmp when a task needs one, and delete it after.
 - Kept on purpose: `scripts/viz-check.py` (figure check) and
-  `.agents/skills/og-image/` (social cards, hand-drawn per post).
+  `.agents/skills/og-image/` (social cards, hand-drawn per post). Preview
+  all cards on localhost at `/og-preview/` (hidden page).
 - Writing rules: `docs/WRITING_GUIDE.md` and `docs/CLAUDISMS.md`.
 - Sub-agents: run at most 10 at a time on this laptop.
 

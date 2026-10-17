@@ -22,7 +22,10 @@ There is no generator: you design each card for its post.
 4. Iterate until it passes the checklist below. Then render for real:
    `.agents/skills/og-image/render.py <slug>`. This writes the new
    `og-<hash>.png`, deletes the old `og-*.png`, and updates `images`.
-5. `hugo --quiet` must build. Commit only the post folder:
+5. Check the card as X, LinkedIn and Facebook show it: run `make serve`
+   and open http://localhost:1313/og-preview/ (hidden page, drafts
+   included). Text that is hard to read there is too small.
+6. `hugo --quiet` must build. Commit only the post folder:
    `git add content/posts/<slug>/og.svg content/posts/<slug>/og-*.png && git commit -m "posts(<slug>): new og image" -- content/posts/<slug>`.
 
 ## Canvas
