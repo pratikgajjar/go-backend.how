@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); } .brn { fill: var(--brown); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .miss { fill: var(--red-l); stroke: var(--ink); stroke-width: 2.5; }
+    .block { fill: var(--board); }
+    .grid { fill: none; stroke: var(--brown); stroke-width: 2; stroke-dasharray: 7 5; }
+    .home { fill: none; stroke: var(--brown); stroke-width: 4; }
+    .rad { stroke: var(--ink); stroke-width: 2.5; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1104" height="526" class="ink"/>
+  <rect x="48" y="48" width="1104" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="58" font-weight="800" class="ink">System Design</text>
+  <text x="96" y="254" font-size="58" font-weight="800" class="ink">Tinder</text>
+
+  <!-- 16 km search circle around a user in New York, 12.5 px per km -->
+  <circle cx="904" cy="311" r="200" class="miss"/>
+  <!-- 3x3 block of precision-5 cells, 3.7 x 4.9 km each -->
+  <rect x="835" y="219" width="138" height="184" class="block"/>
+  <path d="M835 219 h138 v184 h-138 z M881 219 v184 M927 219 v184 M835 280 h138 M835 342 h138" class="grid"/>
+  <rect x="881" y="280" width="46" height="62" class="home"/>
+  <!-- radius -->
+  <line x1="904" y1="311" x2="1104" y2="311" class="rad"/>
+  <circle cx="904" cy="311" r="8" class="ink"/>
+  <text x="1040" y="298" font-size="24" font-weight="700" text-anchor="middle" class="ink">16 km</text>
+
+  <!-- legend -->
+  <rect x="96" y="352" width="34" height="34" fill="var(--board)" stroke="var(--brown)" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="148" y="378" font-size="26" font-weight="600" class="brn">9 cells reach 3.7–5.6 km</text>
+  <circle cx="113" cy="436" r="17" class="miss"/>
+  <text x="148" y="445" font-size="26" font-weight="600" fill="var(--red)">outside the 9 cells: never read</text>
+  <text x="96" y="520" font-size="26" class="ink">Pick the cell size from the radius.</text>
+</svg>
