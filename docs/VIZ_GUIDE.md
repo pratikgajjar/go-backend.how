@@ -160,6 +160,29 @@ A figure that follows these beats one that looks impressive. Different
 posts will need different answers, so different posts should look and
 behave differently.
 
+## Restraint
+
+A busy figure costs the reader attention before it teaches anything.
+
+- Fewer figures, each one earned. Two strong figures beat five average ones.
+  Delete a figure whose idea the prose already lands.
+- At most two accent colours in any one view, plus ink. Most of the figure
+  is black on white; colour marks only the thing that matters right now.
+- Few marks: no decorative icons, gradients, shadows inside the figure,
+  repeated labels, or legends for things that are already labelled.
+- White space is part of the design. If a view feels crowded, split it into
+  steps or move detail behind `details`.
+- Few controls. If a figure needs more than three controls to make its
+  point, the point is probably two figures or one simpler one.
+
+## First principles before patterns
+
+Start from how attention and memory work, not from a widget you have seen.
+For each figure, write down in one line: the one thing the reader should
+remember, and what the reader does that makes them remember it. Then design
+the smallest figure that makes that happen. If two posts end up with the
+same mechanic, check that it is the best fit for both and not habit.
+
 ## Match the interaction to the kind of post
 
 Systems posts (Postgres, Temporal, TigerBeetle, Valkey) explain a
