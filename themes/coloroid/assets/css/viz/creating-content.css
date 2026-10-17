@@ -1,39 +1,49 @@
 /* creating-content — layout and drawing for who-gets-better. Colours are
-   the shared tokens; controls, notes and the table come from walviz.css.
+   the shared tokens; the table, question and notes come from walviz.css.
    Classes: v-cc-*. */
 
-/* the table stays still while the beats change beside it */
-.v-cc-grid th, .v-cc-grid td { vertical-align: middle; }
-.v-cc-grid .v-cc-col, .v-cc-grid .v-cc-cell { text-align: center; }
-.v-cc-grid .v-cc-rowh { font-weight: 400; }
-.v-cc-grid .is-look { background: var(--purple-l); }
-.v-cc-grid th.is-look .t-b { color: var(--purple); }
-.v-cc-grid .is-dim { opacity: 0.4; }
-.v-cc-grid td.is-gap { background: var(--red-l); }
-.v-cc-grid th, .v-cc-grid td { transition: opacity 0.3s, background-color 0.3s; }
-
-.v-cc-stage { min-height: 15rem; }
-.v-cc-stage > p { margin: 0 0 0.7rem; }
-.v-cc-bar { margin: 0.9rem 0 0; }
-
-/* pips: talent in ink, knowledge and practice in green */
-.v-cc-pips { position: relative; display: inline-flex; gap: 3px; }
-.v-cc-pips i { width: 9px; height: 13px; border: 1.25px solid var(--line); transition: background-color 0.3s; }
-.v-cc-r-t .v-cc-pips i.on { background: var(--ink); border-color: var(--ink); }
-.v-cc-r-k .v-cc-pips i.on, .v-cc-r-p .v-cc-pips i.on { background: var(--green); border-color: var(--green); }
-.v-cc-pips.is-unknown i, .v-cc-pips.is-hidden i { border-style: dashed; }
-.v-cc-pips.is-unknown::after {
-  content: "?"; position: absolute; inset: 0;
-  display: grid; place-items: center; font-weight: 800;
+/* phone: story, table, question. desktop: story and question on the left,
+   the table on the right, so the answer appears beside the bars it explains */
+.v-cc-who {
+  display: grid; gap: 0.4rem 2rem;
+  grid-template-areas: "story" "table" "ask";
 }
-.v-cc-grid td.is-gap .v-cc-pips i { border-color: var(--red); border-style: dashed; background: none; }
+.v-cc-story { grid-area: story; margin: 0; }
+.v-cc-table { grid-area: table; min-width: 0; }
+.v-cc-ask { grid-area: ask; }
+@media (min-width: 760px) {
+  .v-cc-who {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "story table" "ask table";
+    align-items: start;
+  }
+}
 
-/* phones: the You column must stay on screen, so pips and cells shrink */
+.v-cc-grid { width: 100%; }
+.v-cc-grid th, .v-cc-grid td { vertical-align: middle; }
+.v-cc-grid tbody th { font-weight: 400; white-space: nowrap; }
+.v-cc-grid td { width: 36%; }
+
+/* bars: a quiet track, filled in ink (talent) or green (knowledge, practice) */
+.v-cc-bar {
+  position: relative; display: block; height: 0.8rem;
+  border-bottom: 1.5px solid var(--line);
+}
+.v-cc-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; }
+.v-cc-bar-t i { background: var(--ink); }
+.v-cc-bar-k i, .v-cc-bar-p i { background: var(--green); }
+.v-cc-bar.is-hidden { border-bottom-style: dashed; }
+.v-cc-bar.is-unsaid { border-bottom-style: dashed; }
+.v-cc-bar.is-unsaid::after {
+  content: attr(data-label); position: absolute; left: 0; bottom: 0.1rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .v-cc-bar i { transition: width 0.5s ease-out; }
+}
+
+/* main.css sets table width: max-content and wide cell padding with
+   !important on phones; undo it for this table only. */
 @media (max-width: 480px) {
-  /* main.css sets table width: max-content and cell padding with
-     !important on phones; undo it for this table only. */
   .wv table.v-cc-grid { width: 100% !important; }
-  .wv .v-cc-grid th, .wv .v-cc-grid td { padding: 0.35rem 0.2rem !important; }
-  .v-cc-pips { gap: 2px; }
-  .v-cc-pips i { width: 6px; height: 11px; }
+  .wv .v-cc-grid th, .wv .v-cc-grid td { padding: 0.35rem 0.3rem !important; }
 }

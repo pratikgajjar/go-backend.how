@@ -42,7 +42,7 @@ The quality of what you create depends on three things: knowledge (K), practice 
 
 He tells a story about it. Guess before you read his answer.
 
-{{< viz kind="who-gets-better" fig="1" title="Talent, knowledge, practice" fallback="who-gets-better.svg" alt="A grid of talent, knowledge and practice for Mary Lou Retton on skis, Patrick Winston on skis, and you. Retton has the talent; Winston has the knowledge and practice." caption="The story and quotes are from Winston's *How to Speak* lecture. Pips show more or less, not measurements." >}}
+{{< viz kind="who-gets-better" fig="1" title="Talent, knowledge, practice" fallback="who-gets-better.svg" alt="Talent, knowledge and practice at skiing for Mary Lou Retton and Patrick Winston. Retton has a long talent bar and short knowledge and practice bars. Winston does not state his talent; his knowledge and practice bars are long. Winston skis better." caption="Story and quote from Winston's *How to Speak* lecture. Bar lengths show more or less, not measurements." >}}
 
 ## Knowledge
 
@@ -56,7 +56,7 @@ Practice is the bridge between talent and knowledge. Given your talent, practice
 
 ## Talent
 
-Consider this as gift. No?
+Consider it a gift.
 
 "I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right; he's doing very well now.
 
@@ -132,13 +132,9 @@ As long as necessary to cover your content. Have someone pre-read or consume it 
 **Thank you** Vaibhav for reading drafts and suggestions.
 
 [^1]:
-    Writing is about more than just putting words on paper—it's about capturing ideas, sharing knowledge, and making connections. But one of the most compelling reasons to write is to observe and reflect on the world around you.
+    Everyday moments hold stories. Say you chat with an Uber driver who owns an iPhone 13. Why would someone in a gig economy job have such an expensive phone? Perhaps they bought it through a financing scheme without understanding the interest rate. Now they pay double the phone's price and work 10-hour shifts to keep up.
 
-    Consider this: you chat with an Uber driver who owns an iPhone 13. At first, it seems like a normal interaction. But then you realize there's a story there, one that touches on financial literacy. Why would someone in a gig economy job have such an expensive phone? Perhaps they got it through a financing scheme without understanding the high-interest rates. Now, they're paying double the phone's price, which forces them to work 10-hour shifts just to keep up.
-
-    These everyday encounters hold stories that can educate and resonate with others. Writing about them can highlight important issues like financial literacy and the impact of debt, making your content not just interesting, but also valuable.
-
-    The world is full of oddities and nuances. By writing about them, you can turn everyday moments into powerful narratives. So don't wait for the perfect topic or the perfect time. Start now, observe the world, and write about what you find.
+    That is a post about financial literacy and debt, and it started with a ride. Don't wait for the perfect topic or the perfect time. Observe the world, and write about what you find.
 
 [^2]: [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/), MIT OpenCourseWare, 2018.
 [^3]: [Commit d82539a](https://github.com/pratikgajjar/go-backend.how/commit/d82539a), 11 June 2024, 02:15 IST.
