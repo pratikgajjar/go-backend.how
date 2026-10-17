@@ -1,9 +1,0 @@
-[
-  ["hook",            ["hook"]],
-  ["problem",         ["problem"]],
-  ["architecture",    ["architecture"]],
-  ["walk-through",    ["byte-by-byte", "line-by-line", "walk", "source dive"]],
-  ["real-numbers",    ["real numbers", "numbers"]],
-  ["tradeoffs",       ["tradeoffs", "tradeoff"]],
-  ["what-different",  ["build differently", "what i'd build"]]
-]
