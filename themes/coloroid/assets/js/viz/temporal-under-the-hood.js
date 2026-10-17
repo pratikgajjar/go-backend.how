@@ -356,6 +356,11 @@ const NMAX = 30; const YMAX = 1100;
 
 /* ================================================================ shared */
 
+/* The stepper handles ← →; keep them from reaching the page's post navigation. */
+function keepArrows(fig) {
+  fig.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.stopPropagation(); });
+}
+
 /** Tally marks in groups of five; the last `mine` are this step's. */
 function tallyHTML(n, mine = 0, approx = false) {
   let out = approx ? '<span class="c-data">≈</span>' : '';
@@ -463,6 +468,7 @@ function initTrip(fig, app) {
     return b;
   });
   const nav = stepper(fig, TRIP, (i) => { cur = i; paint(); }, { interval: 4200 });
+  keepArrows(fig);
   app.append(q.el, nav.el, stat, h('div', { style: 'height:.6rem' }), lanesHead, seq,
     colorKey([['k-look', 'this step'], ['k-data', 'SQL statements, one tally mark each']]));
 
@@ -516,7 +522,7 @@ function initTrip(fig, app) {
           svg.append(s('line', { x1: x, x2: x, y1: y + 4, y2: y + 14, style: 'stroke:var(--brown);stroke-width:1.8', class: m.maybe ? 'dash' : null }));
           x += sp;
         }
-        svg.append(s('text', { x: x2 - 2, y: y + 14, class: 't-xs t-b t-data' }, `${m.maybe ? '≈' : ''}${n}`));
+        svg.append(s('text', { x: x2 - width - 10, y: y + 14, class: 't-xs t-b t-data', 'text-anchor': 'end' }, `${m.maybe ? '≈' : ''}${n} SQL`));
       }
     });
     return svg;
@@ -601,6 +607,7 @@ function initCrash(fig, app) {
   const CT = card('Temporal · history_node, timer_tasks'); const CA = card('Absurd · c_default, r_default');
   const cols = h('div', { class: `wv-cards ${P}cols` }, CT.el, CA.el);
   const nav = stepper(fig, CR_STOPS, (k) => { i = k; show(); }, { interval: 5200 });
+  keepArrows(fig);
   app.append(h('div', { class: 'wv-field' }, h('label', null, 'Code between steps'), opt.el), nav.el, banner, h('div', { style: 'height:.6rem' }), cols,
     colorKey([['k-look', 'this moment: code that runs, rows written'], ['k-gap', 'failure, or work done twice']]));
 
@@ -681,6 +688,7 @@ function initCost(fig, app) {
     const tn = Wd < 500 ? 13 : 17;
     o += `<text x="${x(tn) + 8}" y="${y(MODEL.T(tn)) + 18}" class="t-s t-b halo">Temporal 40 + 35·N</text>`;
     o += `<text x="${x(NMAX) - 6}" y="${y(MODEL.A(NMAX - 2)) - 12}" class="t-s t-b halo" text-anchor="end">Absurd 11 + 7·N</text>`;
+    o += `<text x="${x(10) - 9}" y="${y(385.2) - 6}" class="t-xs t-b t-data halo" text-anchor="end">measured</text>`;
     for (const [n, q] of [...MEASURED.T, ...MEASURED.A]) o += `<circle cx="${x(n)}" cy="${y(q)}" r="4.5" style="fill:var(--brown-l);stroke:var(--brown);stroke-width:1.8"/>`;
     const cx = x(S.n);
     o += `<line x1="${cx}" x2="${cx}" y1="${m.t}" y2="${Ht - m.b}" style="stroke:var(--purple);stroke-width:1.5"/>`;
