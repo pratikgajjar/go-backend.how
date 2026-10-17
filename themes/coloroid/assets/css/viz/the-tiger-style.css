@@ -1,57 +1,13 @@
 /* viz/the-tiger-style — layout and drawing only (prefix v-ts-).
    Chrome, controls, notes and colours come from walviz.css tokens. */
 
-/* ---------- tripwire: the lifeline drawing ---------- */
-.v-ts-life { stroke: var(--line); stroke-width: 2; }
-.v-ts-life.is-done { stroke: var(--ink); stroke-width: 2.5; }
-.v-ts-tick { stroke: var(--ink); stroke-width: 2; }
-.v-ts-tick.is-bad { stroke: var(--red); stroke-width: 3; }
-.v-ts-disk { fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-dasharray: 5 4; }
-.v-ts-disk.is-bad { fill: var(--red-l); stroke: var(--red); }
-.v-ts-ret { fill: none; stroke: var(--green); stroke-width: 1.6; }
-.v-ts-wire { stroke: var(--mute); stroke-width: 1.4; stroke-dasharray: 2 4; }
-.v-ts-wire.is-armed { stroke: var(--green); stroke-width: 3; stroke-dasharray: none; }
-.v-ts-wire.is-fired { stroke-width: 5; }
-.v-ts-wire.is-mini { stroke-width: 1.2; }
-.v-ts-wire.is-mini.is-armed { stroke-width: 2.5; }
-.v-ts-handle, .v-ts-fault, .v-ts-guess, .v-ts-cell { cursor: pointer; }
-.v-ts-handle circle { fill: var(--board); stroke: var(--blue); stroke-width: 2; }
-.wv .v-ts-handle text { fill: var(--blue); }
-.v-ts-handle.is-armed circle { fill: var(--blue); }
-.wv .v-ts-handle.is-armed text { fill: var(--board); }
-.v-ts-handle:hover circle, .v-ts-handle:focus circle { stroke-width: 3.5; }
-.v-ts-fault rect { fill: var(--board); stroke: var(--red); stroke-width: 2; }
-.v-ts-fault.is-sel rect { fill: var(--red); }
-.v-ts-fault:hover rect, .v-ts-fault:focus rect { stroke-width: 3; }
-.v-ts-guess circle { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2; }
-.wv .v-ts-guess text { fill: var(--purple); }
-.v-ts-guess:hover circle, .v-ts-guess:focus circle { fill: var(--purple); }
-.wv .v-ts-guess:hover text, .wv .v-ts-guess:focus text { fill: var(--board); }
-.v-ts-tok rect { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.5; }
-.v-ts-tok.is-bad rect { fill: var(--red-l); stroke: var(--red); }
-.v-ts-handle:focus, .v-ts-fault:focus, .v-ts-guess:focus, .v-ts-cell:focus { outline: none; }
-
-/* tripwire: the 12-case grid */
-.v-ts-spacewrap { margin-top: 0.9rem; max-width: 520px; }
-.v-ts-cell circle { stroke-width: 2; }
-.v-ts-cell.is-ok circle { fill: var(--green-l); stroke: var(--green); }
-.v-ts-cell.is-bad circle { fill: var(--red); stroke: var(--red); }
-.v-ts-cell.is-late circle { fill: var(--red-l); stroke: var(--red); stroke-dasharray: 3 2; }
-.v-ts-cell.is-unknown circle { fill: none; stroke: var(--mute); stroke-dasharray: 2 2; }
-.v-ts-cell.is-cur circle { stroke: var(--purple); stroke-width: 4; stroke-dasharray: none; }
-.v-ts-cell:hover circle, .v-ts-cell:focus circle { stroke-width: 3.5; }
-.v-ts-pickbox { fill: none; stroke: var(--orange); stroke-width: 2; }
-
-/* ---------- struct: the byte map drawing ---------- */
-.v-ts-bytes { display: grid; grid-template-columns: 2.2rem repeat(16, minmax(0, 1fr)); grid-auto-rows: 2.1rem; gap: 2px; margin-bottom: 0.8rem; transition: opacity 0.3s; }
-.v-ts-bytes.is-stale { opacity: 0.35; }
+/* ---------- struct: the byte map, 16 bytes per row ---------- */
+.v-ts-bytes { display: grid; grid-template-columns: 2.2rem repeat(16, minmax(0, 1fr)); grid-auto-rows: 2rem; gap: 2px; margin-bottom: 0.8rem; }
+.v-ts-bytes > span { font-size: 10px; }
 .v-ts-off { grid-column: 1; align-self: center; justify-self: end; padding-right: 0.3rem; }
-.v-ts-off.is-over { color: var(--red); font-weight: 800; }
 .v-ts-fld, .v-ts-pad { min-width: 0; overflow: hidden; white-space: nowrap; line-height: 2rem; padding: 0 0.2rem; }
 .v-ts-fld { color: var(--brown); background: var(--brown-l); outline: 1px solid var(--brown); outline-offset: -1px; font-weight: 700; }
-.v-ts-fld.is-over { outline-style: dashed; }
-.v-ts-pad { text-align: center; color: var(--red); font-weight: 800; outline: 1.5px dashed var(--red); outline-offset: -1.5px; background: repeating-linear-gradient(-45deg, var(--red-l) 0 4px, var(--board) 4px 8px); }
-.v-ts-bytes > span { font-size: 10px; }
+.v-ts-pad { text-align: center; color: var(--red); font-weight: 800; outline: 1.5px dashed var(--red); outline-offset: -1.5px; background: var(--red-l); }
 @media (max-width: 480px) {
   .v-ts-bytes { grid-template-columns: 1.8rem repeat(16, minmax(0, 1fr)); gap: 1px; }
   .v-ts-fld, .v-ts-pad { padding: 0 0.1rem; }
@@ -65,15 +21,5 @@
 .v-ts-dot { fill: var(--ink); stroke: var(--board); stroke-width: 1.5; }
 .v-ts-dot.is-hot { fill: var(--purple); }
 
-/* ---------- queue: goal meter and tappable lines ---------- */
-.v-ts-meter { display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; margin: 0 0 0.2rem; }
-.v-ts-meter span { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
-.v-ts-meter i { display: inline-block; width: 0.75em; height: 0.75em; outline: 1.5px solid var(--ink); outline-offset: -1.5px; }
-.v-ts-meter i.is-on { background: var(--green); outline-color: var(--green); }
-.v-ts-code { margin: 0.7rem 0; }
-.v-ts-code .ln[role="button"] { cursor: pointer; }
-.v-ts-code .ln[role="button"]:hover { background: var(--tint2); }
-.v-ts-code .ln.is-miss { background: var(--red-l); border-left-color: var(--red); }
-
-/* Code must read as typed: no ligatures (<= must not become ≤). */
+/* Code must read as typed: no ligatures (== must not merge). */
 .wv[data-viz^="ts-"] pre.wv-code { font-variant-ligatures: none; }

@@ -16,10 +16,9 @@ code by. It ranks three goals, safety, then performance, then developer experien
 into concrete rules: assert what every function expects, put a limit on every loop and queue,
 allocate all memory at startup, batch the work, and get the names right.
 
-This post reposts the guide under its Apache 2.0 license, with four figures where a rule is easier
-to try than to read. By the end you will know why TigerBeetle asserts the same property in two
-places, what its compile-time assertions catch in a 128-byte struct, and why batching changes which
-cost you should cut first. The guide keeps evolving; the latest version is in the [TigerBeetle
+This post reposts the guide under its Apache 2.0 license, with two figures where a rule is easier
+to try than to read. By the end you will know what TigerBeetle's compile-time assertions catch in
+its 128-byte `Transfer` struct, and why batching changes which cost you should cut first. The guide keeps evolving; the latest version is in the [TigerBeetle
 repository](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md).
 
 # The Essence Of Style
@@ -143,8 +142,6 @@ force multiplier for discovering bugs by fuzzing.**
   assertion can be added. For example, assert validity of data right before writing it to disk,
   and also immediately after reading from disk.
 
-{{< viz kind="ts-tripwire" fig="1" title="One transfer, three faults, two assertions" fallback="ts-tripwire.svg" alt="The lifeline of one transfer from request to use, with an assertion before the write and one after the read, and which faults each one catches" caption="A model of the pair above: assert right before the write, and again right after the read. Tap a red fault, or switch an assertion on or off, then predict where the transfer stops. Transfer values are samples. TigerBeetle checksums all data and repairs a corrupt block from another replica ([safety](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/concepts/safety.md))." >}}
-
 - On occasion, you may use a blatantly true assertion instead of a comment as stronger
   documentation where the assertion condition is critical and surprising.
 
@@ -156,7 +153,7 @@ force multiplier for discovering bugs by fuzzing.**
   Compile-time assertions are extremely powerful because they are able to check a program's design
   integrity _before_ the program even executes.
 
-{{< viz kind="ts-struct" fig="2" title="Edit the 128-byte Transfer" fallback="ts-struct.svg" alt="Byte map of TigerBeetle's 128-byte Transfer, 16 bytes per row, and the three compile-time assertions that guard it" caption="Fields and assertions from [`src/tigerbeetle.zig`](https://github.com/tigerbeetle/tigerbeetle/blob/47aeb2212a255273dda508288412e537d11e4b7c/src/tigerbeetle.zig#L85-L116), abridged. Pick one or more edits, predict which assertion stops the build, then see the build. Each of the 16 possible edits was compiled with Zig 0.16 to check its offsets; the `zig build` output is from Zig 0.16 with paths shortened." >}}
+{{< viz kind="ts-struct" fig="1" title="Edit the 128-byte Transfer" fallback="ts-struct.svg" alt="Byte map of TigerBeetle's 128-byte Transfer, 16 bytes per row, and the three compile-time assertions that guard it; with amount as u64, 8 bytes of padding follow it and only no_padding fails" caption="Fields and assertions from [`src/tigerbeetle.zig`](https://github.com/tigerbeetle/tigerbeetle/blob/47aeb2212a255273dda508288412e537d11e4b7c/src/tigerbeetle.zig#L85-L116), abridged. Predict which assertion stops the build, then switch `amount` between `u128` and `u64` to compare the bytes. Offsets and the `zig build` output are from Zig 0.16 compiling a copy of the struct, with paths shortened." >}}
 
 - **The golden rule of assertions is to assert the _positive space_ that you do expect AND to
   assert the _negative space_ that you do not expect** because where data moves across the
@@ -251,7 +248,7 @@ force multiplier for discovering bugs by fuzzing.**
   compensating for the frequency of usage, because faster resources may be used many times more. For
   example, a memory cache miss may be as expensive as a disk fsync, if it happens many times more.
 
-{{< viz kind="ts-napkin" fig="3" title="A napkin sketch: which cost wins as the batch grows" fallback="ts-napkin.svg" alt="Per-transfer cost of network, disk, memory, and CPU as the batch grows from 1 to 8,189 transfers" caption="A sketch, not a benchmark: one batch at a time, no overlap. Sample costs: a 500 µs round trip and 100 ns per cache miss ([latency numbers](https://gist.github.com/jboner/2841832)), 10 Gbit/s network, 2 GB/s disk and 20 GB/s memory bandwidth, and 100 ns of CPU per transfer. 8,189 is the default `create_transfers` batch limit ([requests](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/coding/requests.md#batching-events))." >}}
+{{< viz kind="ts-napkin" fig="2" title="A napkin sketch: which cost wins as the batch grows" fallback="ts-napkin.svg" alt="Per-transfer cost of network, disk, memory, and CPU as the batch grows from 1 to 8,189 transfers" caption="A sketch, not a benchmark: one batch at a time, no overlap. Sample costs: a 500 µs round trip and 100 ns per cache miss ([latency numbers](https://gist.github.com/jboner/2841832)), 10 Gbit/s network, 2 GB/s disk and 20 GB/s memory bandwidth, and 100 ns of CPU per transfer. 8,189 is the default `create_transfers` batch limit ([requests](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/coding/requests.md#batching-events))." >}}
 
 - Distinguish between the control plane and data plane. A clear delineation between control plane
   and data plane through the use of batching enables a high level of assertion safety without losing
@@ -373,7 +370,7 @@ force multiplier for discovering bugs by fuzzing.**
   buffer underflow, the opposite of a buffer overflow, where a buffer is not fully utilized, with
   padding not zeroed correctly. This may not only leak sensitive information, but may cause
   deterministic guarantees as required by TigerBeetle to be violated. The `amount: u64` edit in
-  Figure 2 makes one: 8 bytes of padding that no field sets.
+  Figure 1 makes one: 8 bytes of padding that no field sets.
 
 - Use newlines to **group resource allocation and deallocation**, i.e. before the resource
   allocation and after the corresponding `defer` statement, to make leaks easier to spot.
@@ -433,12 +430,6 @@ hitting a Bash/Shell/OS-specific issue.
 Standardizing on Zig for tooling is important to ensure that we reduce dimensionality, as the team,
 and therefore the range of personal tastes, grows. This may be slower for you in the short term, but
 makes for more velocity for the team in the long term.
-
-# The Rules On One Queue
-
-Here are nine of the rules above, applied one at a time to ordinary code for a small queue.
-
-{{< viz kind="ts-queue" fig="4" title="Nine rules, one small queue" fallback="ts-queue.svg" alt="Ordinary Zig code for a small queue, changed into Tiger Style one rule at a time: five rules for safety, one for performance, three for developer experience" caption="Written for this post: every step compiles with Zig 0.16 and passes `zig fmt --check`." >}}
 
 # The Last Stage
 

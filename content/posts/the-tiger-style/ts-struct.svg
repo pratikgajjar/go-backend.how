@@ -1,71 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" width="900" height="400" role="img" aria-label="The 128-byte TigerBeetle Transfer, 16 bytes per row, with no padding, and the three compile-time assertions that hold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-<rect width="900" height="400" fill="#fbfbf8"/>
-<text x="20.0" y="28.0" font-size="10.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">bytes, 16 per row</text>
-<text x="52.0" y="63.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">0</text>
-<text x="52.0" y="101.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">16</text>
-<text x="52.0" y="139.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">32</text>
-<text x="52.0" y="177.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">48</text>
-<text x="52.0" y="215.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">64</text>
-<text x="52.0" y="253.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">80</text>
-<text x="52.0" y="291.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">96</text>
-<text x="52.0" y="329.0" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400" xml:space="preserve">112</text>
-<rect x="61" y="41" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="66.0" y="55.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">id</text>
-<text x="66.0" y="69.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@0</text>
-<rect x="61" y="79" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="66.0" y="93.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">debit_account_id</text>
-<text x="66.0" y="107.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@16</text>
-<rect x="61" y="117" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="66.0" y="131.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">credit_account_id</text>
-<text x="66.0" y="145.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@32</text>
-<rect x="61" y="155" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="66.0" y="169.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">amount</text>
-<text x="66.0" y="183.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@48</text>
-<rect x="61" y="193" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="66.0" y="207.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">pending_id</text>
-<text x="66.0" y="221.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@64</text>
-<rect x="61" y="231" width="510" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="66.0" y="245.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">user_data_128</text>
-<text x="66.0" y="259.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@80</text>
-<rect x="61" y="269" width="254" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="66.0" y="283.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">user_data_64</text>
-<text x="66.0" y="297.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@96</text>
-<rect x="317" y="269" width="126" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="322.0" y="283.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">user_data_32</text>
-<text x="322.0" y="297.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@104</text>
-<rect x="445" y="269" width="126" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="450.0" y="283.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">timeout</text>
-<text x="450.0" y="297.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@108</text>
-<rect x="61" y="307" width="126" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="66.0" y="321.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">ledger</text>
-<text x="66.0" y="335.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@112</text>
-<rect x="189" y="307" width="62" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="194.0" y="321.0" font-size="10" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">code</text>
-<text x="194.0" y="335.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@116</text>
-<rect x="253" y="307" width="62" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="258.0" y="321.0" font-size="10" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">flags</text>
-<text x="258.0" y="335.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@118</text>
-<rect x="317" y="307" width="254" height="34" fill="#f3e6d6" stroke="#7a5530"/>
-<text x="322.0" y="321.0" font-size="11" fill="#7a5530" text-anchor="start" font-weight="700" xml:space="preserve">timestamp</text>
-<text x="322.0" y="335.0" font-size="9.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">@120</text>
-<text x="602.0" y="28.0" font-size="10.5" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">comptime</text>
-<line x1="596" x2="596" y1="41" y2="60" stroke="#1c7042" stroke-width="2"/>
-<text x="602.0" y="54.0" font-size="11" fill="#1c7042" text-anchor="start" font-weight="700" xml:space="preserve">assert</text>
-<text x="641.6" y="54.0" font-size="11" fill="#15181d" text-anchor="start" font-weight="400" xml:space="preserve">(stdx.no_padding(Transfer));</text>
-<text x="890.0" y="54.0" font-size="10.5" fill="#1c7042" text-anchor="end" font-weight="700" xml:space="preserve">holds</text>
-<line x1="596" x2="596" y1="67" y2="86" stroke="#1c7042" stroke-width="2"/>
-<text x="602.0" y="80.0" font-size="11" fill="#1c7042" text-anchor="start" font-weight="700" xml:space="preserve">assert</text>
-<text x="641.6" y="80.0" font-size="11" fill="#15181d" text-anchor="start" font-weight="400" xml:space="preserve">(@sizeOf(Transfer) == 128);</text>
-<text x="890.0" y="80.0" font-size="10.5" fill="#1c7042" text-anchor="end" font-weight="700" xml:space="preserve">holds</text>
-<line x1="596" x2="596" y1="93" y2="112" stroke="#1c7042" stroke-width="2"/>
-<text x="602.0" y="106.0" font-size="11" fill="#1c7042" text-anchor="start" font-weight="700" xml:space="preserve">assert</text>
-<text x="641.6" y="106.0" font-size="11" fill="#15181d" text-anchor="start" font-weight="400" xml:space="preserve">(@alignOf(Transfer) == 16);</text>
-<text x="890.0" y="106.0" font-size="10.5" fill="#1c7042" text-anchor="end" font-weight="700" xml:space="preserve">holds</text>
-<text x="602.0" y="150.0" font-size="11" fill="#565b64" text-anchor="start" font-weight="400" xml:space="preserve">$ zig build</text>
-<text x="602.0" y="168.0" font-size="11" fill="#1c7042" text-anchor="start" font-weight="400" xml:space="preserve">(no output: all three hold)</text>
-<text x="602.0" y="210.0" font-size="11" fill="#15181d" text-anchor="start" font-weight="700" xml:space="preserve">Change a field, and a check fails:</text>
-<text x="602.0" y="232.0" font-size="11" fill="#b83026" text-anchor="start" font-weight="400" xml:space="preserve">amount: u64       128 B, 8 B padding</text>
-<text x="602.0" y="251.0" font-size="11" fill="#b83026" text-anchor="start" font-weight="400" xml:space="preserve">timeout: u64      144 B, 12 B padding</text>
-<text x="602.0" y="270.0" font-size="11" fill="#b83026" text-anchor="start" font-weight="400" xml:space="preserve">timestamp moved   144 B, 16 B padding</text>
-<text x="602.0" y="289.0" font-size="11" fill="#b83026" text-anchor="start" font-weight="400" xml:space="preserve">+ user_data_8: u8 144 B, 15 B padding</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 330" width="900" height="330" role="img" aria-label="TigerBeetle's 128-byte Transfer with amount changed to u64: 8 bytes of padding follow amount, the size stays 128, and only the no_padding assertion fails" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+<rect width="900" height="330" fill="#fbfbf8"/>
+<text x="20" y="28" font-size="11" fill="#15181d" font-weight="700">Transfer with amount: u64 · bytes, 16 per row</text>
+<text x="48" y="65" font-size="10" fill="#565b64" text-anchor="end">0</text>
+<text x="48" y="99" font-size="10" fill="#565b64" text-anchor="end">16</text>
+<text x="48" y="133" font-size="10" fill="#565b64" text-anchor="end">32</text>
+<text x="48" y="167" font-size="10" fill="#565b64" text-anchor="end">48</text>
+<text x="48" y="201" font-size="10" fill="#565b64" text-anchor="end">64</text>
+<text x="48" y="235" font-size="10" fill="#565b64" text-anchor="end">80</text>
+<text x="48" y="269" font-size="10" fill="#565b64" text-anchor="end">96</text>
+<text x="48" y="303" font-size="10" fill="#565b64" text-anchor="end">112</text>
+<rect x="57.0" y="45" width="482.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="62.0" y="65" font-size="10" font-weight="700" fill="#7a5530">id</text>
+<rect x="57.0" y="79" width="482.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="62.0" y="99" font-size="10" font-weight="700" fill="#7a5530">debit_account_id</text>
+<rect x="57.0" y="113" width="482.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="62.0" y="133" font-size="10" font-weight="700" fill="#7a5530">credit_account_id</text>
+<rect x="57.0" y="147" width="240.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="62.0" y="167" font-size="10" font-weight="700" fill="#7a5530">amount: u64</text>
+<rect x="299.0" y="147" width="240.0" height="32" fill="#f8e0dc" stroke="#b83026" stroke-width="1.5" stroke-dasharray="4 3"/><text x="419.0" y="167" font-size="10" font-weight="800" fill="#b83026" text-anchor="middle">pad · 8 B</text>
+<rect x="57.0" y="181" width="482.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="62.0" y="201" font-size="10" font-weight="700" fill="#7a5530">pending_id</text>
+<rect x="57.0" y="215" width="482.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="62.0" y="235" font-size="10" font-weight="700" fill="#7a5530">user_data_128</text>
+<rect x="57.0" y="249" width="240.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="62.0" y="269" font-size="10" font-weight="700" fill="#7a5530">user_data_64</text>
+<rect x="299.0" y="249" width="119.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="304.0" y="269" font-size="10" font-weight="700" fill="#7a5530">user_data_32</text>
+<rect x="420.0" y="249" width="119.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="425.0" y="269" font-size="10" font-weight="700" fill="#7a5530">timeout</text>
+<rect x="57.0" y="283" width="119.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="62.0" y="303" font-size="10" font-weight="700" fill="#7a5530">ledger</text>
+<rect x="178.0" y="283" width="58.5" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="183.0" y="303" font-size="10" font-weight="700" fill="#7a5530">code</text>
+<rect x="238.5" y="283" width="58.5" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="243.5" y="303" font-size="10" font-weight="700" fill="#7a5530">flags</text>
+<rect x="299.0" y="283" width="240.0" height="32" fill="#f3e6d6" stroke="#7a5530"/><text x="304.0" y="303" font-size="10" font-weight="700" fill="#7a5530">timestamp</text>
+<text x="572" y="28" font-size="11" fill="#15181d" font-weight="700">comptime</text>
+<text x="572" y="60" font-size="11" fill="#15181d">assert(stdx.no_padding(Transfer));</text><text x="584" y="76" font-size="11" fill="#b83026" font-weight="800">// fails: 8 B of padding</text>
+<text x="572" y="100" font-size="11" fill="#15181d">assert(@sizeOf(Transfer) == 128);</text><text x="584" y="116" font-size="11" fill="#565b64" font-weight="400">// size is 128</text>
+<text x="572" y="140" font-size="11" fill="#15181d">assert(@alignOf(Transfer) == 16);</text><text x="584" y="156" font-size="11" fill="#565b64" font-weight="400">// align is 16</text>
+<text x="572" y="196" font-size="11" fill="#15181d">pending_id must start at a multiple</text>
+<text x="572" y="214" font-size="11" fill="#15181d">of 16, so 8 bytes of padding follow</text>
+<text x="572" y="232" font-size="11" fill="#15181d">amount. The size is still 128, so</text>
+<text x="572" y="250" font-size="11" fill="#15181d">only no_padding stops the build.</text>
 </svg>
