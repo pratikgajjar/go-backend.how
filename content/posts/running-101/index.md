@@ -1,5 +1,5 @@
 +++
-title = "Running 101"
+title = "🏃 Running 101"
 description = "How I went from a 38-minute 4K to a 24:45 5K with one goal at a time and one running metric at a time, measured with a Garmin watch. Compare your cadence, ground contact time, and vertical oscillation with Garmin's percentile bands, and get your heart-rate zones in bpm."
 date = 2024-10-12T23:45:31+05:30
 lastmod = 2024-10-12T23:45:31+05:30
