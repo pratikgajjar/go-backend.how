@@ -4,7 +4,7 @@ date: 2025-03-01
 lastmod: 2026-09-28
 description: "Napkin math and reproducible benchmarks for a ledger at a billion payments a day: TigerBeetle vs PostgreSQL, traced with eBPF down to the io_uring and fsync calls."
 tags: ["golang", "tigerbeetle", "payments", "system-design", "ebpf"]
-images : ["og-25f65765.png"]
+images: ["og-25f65765.png"]
 draft: false
 theme: "honey"
 featured: true

@@ -12,8 +12,7 @@ Rule: say the literal thing. If a word is a metaphor for a plain verb, use the
 plain verb. A technical term used in its technical sense is fine. For example,
 `land` is wrong for "a commit lands", but a runner's foot does land.
 
-Run `uv run scripts/slop-check.py <slug>` to list candidates. The script finds
-words, not frames, so read every sentence too.
+Read every sentence. A word search finds words, not frames.
 
 ## Figurative verbs and nouns
 

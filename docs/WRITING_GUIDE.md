@@ -511,7 +511,7 @@ guidance:
 - `feedback_blog_audit_floor_then_factcheck.md` — review process.
 - `AGENTS.md` — theme assignment, code-block tags.
 - `scripts/viz-check.py` — figure check (mount, overflow, JS errors).
-- `scripts/slop-check.py` — Claudism candidates (see `docs/CLAUDISMS.md`).
+- `docs/CLAUDISMS.md` — words and sentence frames to avoid.
 
 ---
 

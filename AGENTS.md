@@ -1,5 +1,14 @@
 # AI Agent Guidelines
 
+## Keep tooling minimal
+
+- Do not add generator or checker scripts to the repo. Write a one-off
+  script in /tmp when a task needs one, and delete it after.
+- Kept on purpose: `scripts/viz-check.py` (figure check) and
+  `.agents/skills/og-image/` (social cards, hand-drawn per post).
+- Writing rules: `docs/WRITING_GUIDE.md` and `docs/CLAUDISMS.md`.
+- Sub-agents: run at most 10 at a time on this laptop.
+
 ## Theme System
 
 Each page should have a unique color theme to give it a distinct visual identity. Themes are defined in `themes/coloroid/assets/css/main.css` and applied via frontmatter.

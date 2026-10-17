@@ -95,8 +95,7 @@ svg {{ display: block; font-family: var(--font-mono); }}
     for old in post.glob("og-*.png"):
         old.unlink()
     (post / name).write_bytes(png)
-    sep = "=" if delim == "+++" else ":"
-    line = f'images {sep} ["{name}"]'
+    line = f'images = ["{name}"]' if delim == "+++" else f'images: ["{name}"]'
     new_fm = re.sub(r"^images\s*[=:].*$", line, fm, flags=re.M) if re.search(r"^images\s*[=:]", fm, re.M) else fm + "\n" + line
     md.write_text(text.replace(fm, new_fm, 1))
     print(post / name)
