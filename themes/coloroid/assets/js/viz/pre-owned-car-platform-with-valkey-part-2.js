@@ -287,8 +287,8 @@ function initListing(fig, app) {
 
   function renderStrip(st) {
     const { read, res, ttl, sold } = st.strip;
-    const rows = [...ROWS, { id: 'res', key: 'page:price:6d53…', f: res === 'new' || res === 'ttl' ? `zset · TTL ${ttl || 600} s` : 'not stored' }];
-    stripBox.replaceChildren(label('Valkey: the four indexes and the stored result'),
+    const rows = [...ROWS, { id: 'res', key: 'page:price:6d53…', f: res === 'new' || res === 'ttl' ? `zset · TTL ${ttl || 600} s${sold ? ' · still holds 111' : ''}` : 'not stored' }];
+    stripBox.replaceChildren(label(sold ? 'Valkey: 111 is gone from the four indexes, not from the stored result' : 'Valkey: the four indexes and the stored result'),
       strip({
         rows, cols: CARS,
         rowCls: (r) => (r.id === 'res' ? `is-res${res === 'nil' ? ' is-miss' : ''}` : ''),
