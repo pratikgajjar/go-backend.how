@@ -17,23 +17,21 @@ By the end of this post you will know how to size that system from a few busines
 
 # The Hard Parts
 
-Beyond the basics of profiles and matching, here are the harder problems worth solving:
+Four problems are harder than profiles and matching:
 
-1. **The Proximity Paradox**: You need to find people near the user, but "near" changes every time they move. Their location updates every few minutes. Multiply this by 75M daily active users.
+1. **Proximity**: you need people near the user, and "near" changes when they move. Locations update every few minutes, for 75M daily active users.
 
-2. **The Cold Start Death Spiral**: New users have no swipe history. Bad recommendations = they leave in 48 hours. You get one shot.
+2. **Cold start**: new users have no swipe history. If their first recommendations are bad, they leave within 48 hours.
 
-3. **The Mutual Interest Problem**: Unlike Instagram where you follow someone and you're done, here both people must swipe right. Your recommendation engine needs to predict *bilateral* attraction.
+3. **Mutual interest**: on Instagram, one person follows and it is done. Here both people must swipe right, so the model must predict attraction in both directions.
 
-4. **The Chat Delivery Guarantee**: When someone finally matches, that first message must not be lost. "Eventually" is not good enough here: lose the first message and you can lose the user for good.
+4. **Chat delivery**: after a match, the first message must not be lost. Lose it and you can lose the user.
 
 ---
 
 # Requirements
 
 ## What the App Does
-
-Ranked by engineering complexity, not feature importance:
 
 | Feature | User Sees | Engineering Complexity |
 |---------|-----------|----------------------|
@@ -44,13 +42,13 @@ Ranked by engineering complexity, not feature importance:
 | **Profile CRUD** | Edit bio, photos | Low |
 | **Notifications** | Push alerts | Low |
 
-The **recommendations engine is 80% of your system's complexity**. Everything else is table stakes.
+The recommendations engine is about 80% of the system's complexity.
 
 ## The Load
 
-Derive real numbers from business metrics instead of guessing.
+Derive the load from business numbers.
 
-**Starting assumptions:**
+**Assumptions:**
 - 75M DAU (an upper bound: Tinder has reported about 75M *monthly* active users)
 - Average session: 7 minutes
 - Average swipes per session: 50
@@ -67,13 +65,7 @@ Peak QPS for swipes = (2B × 0.4) / (3 hours × 3600)
                     ≈ 74,000 swipes/second at peak
 ```
 
-Each swipe triggers:
-- 1 write to record the swipe
-- 1 read to check for mutual match
-- 1 recommendation fetch if queue is low
-- 1 potential match notification
-
-So your **effective QPS is up to 4× your swipe rate**: ~300,000 operations/second at peak.
+Each swipe can cause up to four operations: a write to record it, a read to check for a match, a deck fetch if the queue is low, and a match notification. So the effective load is up to 4× the swipe rate, about 300,000 operations/second at peak.
 
 **Location updates:**
 
@@ -94,23 +86,21 @@ Peak: 150M × 0.4 / 10,800 ≈ 5,500 messages/second
 
 | Metric | Target | Why |
 |--------|--------|-----|
-| Recommendation latency P99 | < 100ms | User is swiping; can't wait |
-| Match notification latency P99 | < 500ms | Dopamine hit must be instant |
+| Recommendation latency P99 | < 100ms | User is swiping |
+| Match notification latency P99 | < 500ms | A match should feel instant |
 | Message delivery latency P99 | < 200ms | Chat feels broken otherwise |
 | Photo load time P50 | < 300ms | First impression is visual |
-| Location update lag | < 5 min | Accuracy vs. cost tradeoff |
-
-**Now you have real numbers to design against.**
+| Location update lag | < 5 min | Accuracy vs. cost |
 
 ---
 
 # The System at a Glance
 
-Each user action takes its own path through the system. Pick one and step through it: the services it touches, the command at each hop, its peak load, and its latency target.
+Each user action takes its own path through the system. Pick one to step through the services it touches, the command at each hop, its peak load, and its latency target.
 
 {{< viz kind="arch-paths" fig="1" title="Four paths through the system" fallback="arch-paths.svg" alt="Architecture of the design: mobile app, API gateway, profile, recommendation and swipe services, WebSocket gateways, Redis, Postgres, ScyllaDB, Kafka, the location processor and the offline pipeline, with the swipe path highlighted" caption="The design in this post, not Tinder's production system. Rates and targets come from the requirements above." >}}
 
-The rest of the post follows these paths one at a time, starting with the hardest: what to show when someone opens the app.
+The rest of the post takes these paths one at a time. It starts with the hardest one: what to show when someone opens the app.
 
 ---
 
@@ -118,7 +108,7 @@ The rest of the post follows these paths one at a time, starting with the hardes
 
 ## Why Not Query per Request
 
-A straightforward SQL approach might look like this:
+The direct approach is one SQL query per request:
 
 ```sql
 SELECT * FROM users 
@@ -129,19 +119,17 @@ AND last_active > NOW() - INTERVAL '7 days'
 LIMIT 200;
 ```
 
-It fails twice. On the read side, at 74,000 swipes per second, a geo query plus a ranking model per request will not fit in a 100 ms P99 budget. On the write side, at 75K location updates per second, each update writes a new row version and a new GiST index entry, and vacuum has to clean up the old ones. One Postgres primary struggles with that write rate.
+It fails on both sides. On the read side, at 74,000 swipes per second, a geo query plus a ranking model per request will not fit in a 100 ms P99 budget. On the write side, at 75K location updates per second, each update writes a new row version and a new GiST index entry, and vacuum has to clean up the old ones. One Postgres primary struggles with that write rate.
 
 ## Rank Ahead of Time, Serve the Top
 
-**Solution: pre-computation plus a queue.** Every 15 minutes, an offline pipeline generates candidates from nearby geohash cells, ranks them, and writes each user's top 200 into a Redis sorted set: their deck. When the user opens the app, the service pops the top 10 (`ZPOPMAX deck:u42 10`), drops anyone swiped since the deck was built, and returns the cards well inside the 100 ms P99 target. A swipe never touches the deck: it is one small write, and the phone pops 10 more after its last card. At 74,000 swipes per second, that is about 7,400 pops per second.
+Every 15 minutes, an offline pipeline finds candidates in nearby geohash cells, ranks them, and writes each user's top 200 into a Redis sorted set: their deck. When the user opens the app, the service pops the top 10 (`ZPOPMAX deck:u42 10`), drops anyone swiped since the deck was built, and returns the cards well inside the 100 ms P99 target. A swipe does not touch the deck. It is one small write, and the phone pops 10 more after its last card. At 74,000 swipes per second, that is about 7,400 pops per second.
 
-The expensive work, finding people nearby and scoring them, happens in the offline pipeline, away from the request. The next sections cover those two steps.
+The expensive work, finding nearby people and scoring them, runs offline. The next sections cover both steps.
 
 ## Candidate Generation: Geohash Cells
 
-The offline pipeline still needs "people near this user", without a geo index in Postgres.
-
-**The solution: Geohashing with temporal sharding**
+The offline pipeline still needs "people near this user", without a geo index in Postgres. It keeps one Redis set per geohash cell and time bucket:
 
 ```python
 # Divide the world into geohash cells (precision 5 is 4.9 km × 4.9 km at the
@@ -162,7 +150,7 @@ def get_candidates(user):
     return candidates[:500]  # Cap for ranking phase
 ```
 
-**Why this works:**
+Why this works:
 1. One `SMEMBERS` per cell, so 9 reads per request. `SMEMBERS` is O(N) in the size of the set, so in a dense cell read a sample with `SRANDMEMBER key count` instead.
 2. Time bucketing drops stale users, as long as each bucket key has a TTL.
 3. The write path is pipelined `SADD`s, and one Redis node handles well over 100K of those per second.
@@ -175,9 +163,9 @@ In the worst case, when the user stands in a corner of their cell, the block rea
 
 ## Keeping the Cells Fresh
 
-The location pipeline is the write side of those cells, and your most write-heavy path: 75,000 updates/second. Pick *Location update* in [Figure 1](#the-system-at-a-glance) to follow it: phone, Kafka as a buffer, the location processor, the geohash sets, and the offline pipeline that rebuilds decks from them.
+The location pipeline writes those cells. At 75,000 updates/second, it is the most write-heavy path. Pick *Location update* in [Figure 1](#the-system-at-a-glance) to follow it: phone, Kafka as a buffer, the location processor, the geohash sets, and the offline pipeline that rebuilds decks from them.
 
-You don't need real-time location accuracy. A 5-minute delay is fine. This lets you batch writes and reduce pressure on downstream systems.
+Location does not need to be real time. A 5-minute lag is fine, so the processor batches its writes:
 
 ```python
 # Kafka consumer processing location updates
@@ -217,7 +205,7 @@ async def process_location_batch(messages):
 
 ## Ranking: The Bilateral Problem
 
-Here's what makes dating apps different from Instagram or TikTok:
+A dating app ranks differently from TikTok:
 
 **TikTok:** P(user likes video)  
 **Tinder:** P(user A likes user B) × P(user B likes user A)
@@ -242,17 +230,13 @@ def calculate_match_score(user_a, user_b):
     return mutual_probability * fairness_boost
 ```
 
-If you only optimize for "will this user swipe right," you'll show everyone the same top 1% of attractive users. Those users get overwhelmed, everyone else gets no matches, and your app dies.
+If you rank only on "will this user swipe right", everyone sees the same top 1% of profiles. Those users get overwhelmed, everyone else gets no matches, and people leave.
 
 ---
 
 # Matching: Two Swipes at Once
 
-When both users swipe right, you need to:
-1. Detect the match instantly
-2. Notify both users
-3. Create a conversation thread
-4. Do this without race conditions at 74K swipes/second
+When both users swipe right, the system must detect the match, notify both users, and create a conversation, with no race conditions at 74K swipes/second.
 
 A and B swipe right on each other within the same few milliseconds. Each request must save its own swipe and check for the other one. Whether the match is found depends on how those two steps are written, and on the order in which the calls reach Redis.
 
@@ -294,18 +278,13 @@ def record_swipe(swiper_id, target_id, direction):
     return None
 ```
 
-`added == 1` keeps a repeated swipe from creating the match again. The cost is one small key for every pair with at least one like. The per-user sets `left:{user}` and `right:{user}` stay, because the deck filter reads them to drop people already swiped.
+`added == 1` keeps a repeated swipe from creating the match again. The cost is one small key for every pair with at least one like. The per-user sets `left:{user}` and `right:{user}` stay for the deck filter.
 
 ---
 
 # Chat: The First Message
 
-Chat has to handle all of this:
-- Users switch between WiFi and cellular
-- WebSocket connections drop silently
-- A message must never be lost, and must never show twice
-- Read receipts need real-time sync
-- Users might be offline for days
+Phones switch between WiFi and cellular, WebSocket connections drop silently, and users go offline for days. Through all of that, a message must never be lost or shown twice, and read receipts must sync in real time.
 
 Each phone holds a WebSocket to one gateway pod. Gateways pass messages to each other through Redis Pub/Sub, and every message is stored in ScyllaDB. Pub/Sub delivers at most once and keeps no copy[^pubsub], so the live path alone cannot keep the first promise above. Pick a fault and follow the first message:
 
@@ -365,7 +344,7 @@ CREATE TABLE messages (
 ) WITH CLUSTERING ORDER BY (message_id DESC);
 ```
 
-**Why ScyllaDB?**
+**Why ScyllaDB:**
 - Time-series write pattern (append-only messages)
 - High write throughput (100K+ writes/sec per node)
 - Natural time-ordering with `timeuuid`, a version-1 UUID that carries its creation time[^timeuuid]
@@ -394,31 +373,31 @@ CREATE TABLE messages (
 
 ---
 
-# What Could Go Wrong (And Will)
+# What Could Go Wrong {#what-could-go-wrong-and-will}
 
-**1. The "Hot User" Problem**
+**1. Hot users**
 
-A celebrity joins your app. 500,000 swipes in an hour. Their Redis sorted set for "who liked me" explodes. Solutions:
+A celebrity joins and gets 500,000 swipes in an hour. Their "who liked me" sorted set grows without limit. Fixes:
 - Cap the "likes received" list at 10,000
 - Sample/aggregate for display
 - Rate limit visibility of hot profiles
 
-**2. The Ghost Match**
+**2. Ghost matches**
 
-User A and B match. User A immediately unmatches. User B sees "It's a Match!" notification but can't find the match. Solutions:
+A and B match, and A unmatches at once. B gets the "It's a Match!" notification but cannot find the match. Fixes:
 - Add `matched_at` timestamp, grace period before display
 - Notification includes match_id, client verifies before showing
 
-**3. The Location Spoofer**
+**3. Location spoofing**
 
-Users fake GPS to access profiles in other cities. Solutions:
+Users fake GPS to see profiles in other cities. Fixes:
 - IP geolocation cross-reference
 - Impossible travel detection (NYC to Tokyo in 1 hour)
 - Cellular tower triangulation on mobile
 
-**4. The Recommendation Starvation**
+**4. Running out of profiles**
 
-In small towns, users run out of profiles in 2 days. Solutions:
+In small towns, users run out of profiles in 2 days. Fixes:
 - Gradually expand radius
 - Show profiles from nearby cities with disclosure
 - "No more profiles nearby—expand your distance?"
@@ -433,13 +412,11 @@ In small towns, users run out of profiles in 2 days. Solutions:
 4. Save the swipe and check for the match in one transaction on one key. On Redis Cluster, that means one key per pair.
 5. Store the message first, count it delivered only when the phone ACKs, and let the phone sync from the store.
 
-The hardest questions sit where product and engineering meet:
+The open questions sit where product and engineering meet:
 
-- How do you balance showing users attractive profiles (engagement) vs. compatible profiles (retention)?
-- How do you prevent the platform from becoming a "top 10% get everything" economy?
+- How do you balance attractive profiles (engagement) against compatible ones (retention)?
+- How do you stop the top 10% of profiles from getting most of the matches?
 - How do you detect and handle bad actors at scale?
-
-Every architectural decision ties back to these questions.
 
 [^geosearch]: <https://github.com/redis/redis/blob/unstable/src/geohash_helper.c>, `geohashCalculateAreasByShapeWGS84`
 [^crossslot]: <https://redis.io/docs/latest/develop/using-commands/multi-key-operations/>
