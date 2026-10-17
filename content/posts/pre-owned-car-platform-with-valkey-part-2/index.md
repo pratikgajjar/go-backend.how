@@ -1,6 +1,6 @@
 +++
 title = "🏎️ Building pre-owned Car Platform With Valkey - Part 2"
-description = "How we moved the listing page of a used-car marketplace from Django filters on SQL to Valkey: each filter is a sorted set of car ids, a page is their intersection, and a personalised order is computed per request from one unordered set."
+description = "How we moved a used-car marketplace's listing page from Django filters on SQL to Valkey: each filter is a sorted set of car ids, a page is their intersection, and a personalised order is computed per request from one unordered set."
 date = 2024-07-17T19:54:52+05:30
 lastmod = 2024-07-17T19:54:52+05:30
 publishDate = "2024-07-17T19:54:52+05:30"
@@ -28,8 +28,7 @@ fast.
 
 # What the listing page needs
 
-The listing page shows a list of cars with basic information, and it has to
-load quickly because it is where most visits start. It needs three things:
+The listing page needs three things:
 
 - **Filters**: city, make, model, price range, colour, features, and so on.
 - **Pagination**: a page of cars at a time, with the total count.
@@ -147,9 +146,8 @@ HTTP 200 OK
 
 ## Slugs for search pages
 
-For SEO, a listing page can also have a readable URL. When someone searches
-Google for "used Nexon cars in Mumbai", the page they land on has that phrase
-in its path:
+For SEO, a listing page can also have a readable URL. A Google search for
+"used Nexon cars in Mumbai" lands on a page with that phrase in its path:
 
 ```sql
 🌐 https://car.com/used-nexon-cars-in-mumbai
@@ -217,10 +215,9 @@ number of cars returned. Sorting a list or set with `SORT`[^2] instead costs
 `O(N + M * log(M))`. Set operations[^4] (`ZINTERSTORE`, `ZUNIONSTORE`) combine
 the results.
 
-Features are many-to-many: one car has many features, and one feature belongs
-to many cars. A single `car:feature` sorted set cannot hold that, so we keep
-one set per feature, `car:feature:{id}`, with the car ids as members and a
-score of 1.
+Features are many-to-many, so one `car:feature` sorted set cannot hold them.
+We keep one set per feature, `car:feature:{id}`, with the car ids as members
+and a score of 1.
 
 # The keys
 
@@ -228,7 +225,7 @@ score of 1.
 
 To serve the cards, we keep one hash, `car:`, with the car id as the field and
 the listing JSON as the value. `HMGET car: 101 102 103` returns every card on
-a page in one call; with a maximum page size of 35, that is at most 35 values.
+a page in one call. The maximum page size is 35, so that is at most 35 values.
 (`MGET` over one string key per car would also be one call.)
 
 A hash uses the compact listpack encoding only while it has at most 512
@@ -243,9 +240,9 @@ come from many small hashes with short values; the setting it names,
 
 ## `car:<attribute>` holds the indexes
 
-One sorted set per filter attribute. The members are car ids, and the score is
-the attribute: `car:price` scores by price, `car:city` by city id, `car:make`
-by make id. Each set holds every live car, so it has thousands of members.
+These are the sorted sets from above: `car:price` scores by price, `car:city`
+by city id, `car:make` by make id. Each set holds every live car, so it has
+thousands of members.
 
 ## Keeping them fresh
 
@@ -287,8 +284,8 @@ result can be stored once and paged many times:
 The order depends only on car data, so a stored result is the same for every
 buyer who sends that query, and later pages skip the filters entirely.
 
-Some set operations we do in the web server instead, and fetch the cards with
-`HMGET` afterwards:
+We do some set operations in the web server instead, then fetch the cards
+with `HMGET`:
 
 ```py
 def filter_by_price(redis_pipe, price_min='-inf', price_max='+inf'):
@@ -299,12 +296,11 @@ def filter_by_price(redis_pipe, price_min='-inf', price_max='+inf'):
     )
 ```
 
-A miss sends several commands, 12 in the example below. Valkey pipelining[^3] sends several
-commands without waiting for each reply. It saves network round trips, and it
-saves server work too: Valkey reads many commands with one `read()` system
-call and writes many replies with one `write()`. The Valkey docs report up to
-10 times more queries per second with long pipelines. We send the set
-operations of a miss in one pipeline.
+A miss sends several commands, 12 in the example below. We send them in one
+pipeline[^3], so the client does not wait for each reply. This saves network
+round trips and server work: Valkey reads many commands with one `read()`
+system call and writes many replies with one `write()`. The Valkey docs report
+up to 10 times more queries per second with long pipelines.
 
 The figure follows one request over 12 sample cars: a miss, a hit for page 2,
 and what a sale does to a stored result.
@@ -315,11 +311,9 @@ and what a sale does to a stored result.
 
 When the order comes from the recommendation model, it depends on the buyer,
 and it changes every 45 minutes when we retrain the model. So we do not store
-the order:
-
-- **Key from car filters only.** We hash only the car-related filters. This
-  pays off most on popular base pages, such as all cars in Mumbai.
-- **Unordered set of car ids.** We store only the ids that match, with `SADD`.
+the order. The key hashes only the car-related filters, and the value is the
+unordered set of matching car ids, written with `SADD`. This pays off most on
+popular base pages, such as all cars in Mumbai.
 
 On each request, the web server reads the set, ranks the ids with the LightFM
 model it keeps in memory, slices out the requested page in Python, and fetches
@@ -327,8 +321,7 @@ those cards with `HMGET`.
 
 A stored order would have to exist once per buyer, or buyer group, and be
 rewritten after every retrain. The set is one key per query, and a retrain
-writes nothing to Valkey. The cost moves to the web server, which scores every
-id in the set on each request.
+writes nothing to Valkey. The cost moves to the web server CPU.
 
 {{< viz kind="reco-order" fig="3" title="One set, ranked per buyer" fallback="reco-order.svg" alt="One unordered set of nine car ids in Valkey, ranked differently for two buyers and two model versions by LightFM in the web server" caption="Sample scores. The set in Valkey is the same for both buyers and both model versions; only the order in the web server changes." >}}
 
@@ -362,15 +355,12 @@ A `wrk` benchmark of the list API:
 
 1. Django filters on SQL repeat the same joins and the same count for every
    buyer who asks for the same filters.
-2. A filter value is a set of car ids, and a page is the intersection of those
-   sets. Valkey sorted sets hold the sets, scored by the attribute.
-3. One `car:` hash serves a whole page of cards with one `HMGET`.
-4. A price-ordered result is stored once with a TTL and paged many times; a
-   miss is one pipeline.
-5. A personalised order is computed per request from one unordered set, so a
+2. A filter value is a set of car ids in a Valkey sorted set, scored by the
+   attribute. A page is the intersection of those sets.
+3. A price-ordered result is stored once with a TTL and paged many times. One
+   `HMGET` on the `car:` hash fills the page.
+4. A personalised order is computed per request from one unordered set, so a
    model retrain writes nothing to Valkey.
-6. The list API got 4x faster, and the bottleneck moved from the database to
-   Python.
 
 [^1]: {{< details "[Valkey](https://valkey.io/commands/) COMMAND Ref" >}}
 
