@@ -8,28 +8,28 @@
     text { font-family: var(--font-mono); }
   </style>
   <!-- sheet with hard shadow -->
-  <rect x="56" y="56" width="1096" height="526" class="ink"/>
-  <rect x="48" y="48" width="1096" height="526" class="box"/>
+  <rect x="56" y="56" width="1104" height="526" class="ink"/>
+  <rect x="48" y="48" width="1104" height="526" class="box"/>
 
-  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
-  <text x="96" y="186" font-size="58" font-weight="800" class="ink">Creating Content</text>
-  <text x="96" y="244" font-size="34" font-weight="600" class="ink">Talent is the small term</text>
+  <text x="96" y="110" font-size="28" class="mute">backend.how</text>
+  <text x="96" y="180" font-size="58" font-weight="800" class="ink">Creating Content</text>
+  <text x="96" y="234" font-size="34" font-weight="600" class="ink">Talent is the small term</text>
 
-  <!-- quality of what you create = knowledge + practice + talent -->
-  <text x="96" y="320" font-size="24" class="mute">quality of what you create =</text>
-  <rect x="96"  y="340" width="420" height="104" class="grow"/>
-  <text x="122" y="384" font-size="30" font-weight="800" class="ink">K  knowledge</text>
-  <text x="122" y="420" font-size="22" class="ink">you grow it</text>
-  <text x="542" y="403" font-size="34" font-weight="600" text-anchor="middle" class="mute">+</text>
-  <rect x="568" y="340" width="420" height="104" class="grow"/>
-  <text x="594" y="384" font-size="30" font-weight="800" class="ink">P  practice</text>
-  <text x="594" y="420" font-size="22" class="ink">you grow it</text>
-  <text x="1014" y="403" font-size="34" font-weight="600" text-anchor="middle" class="mute">+</text>
-  <rect x="1040" y="340" width="56" height="104" class="given"/>
-  <text x="1068" y="403" font-size="30" font-weight="800" text-anchor="middle" class="ink">T</text>
+  <!-- quality = knowledge + practice + talent -->
+  <text x="96" y="298" font-size="30" class="mute">quality =</text>
+  <rect x="96"  y="318" width="420" height="112" class="grow"/>
+  <text x="122" y="364" font-size="32" font-weight="800" class="ink">K knowledge</text>
+  <text x="122" y="408" font-size="28" class="ink">you grow it</text>
+  <text x="542" y="386" font-size="36" font-weight="600" text-anchor="middle" class="mute">+</text>
+  <rect x="568" y="318" width="420" height="112" class="grow"/>
+  <text x="594" y="364" font-size="32" font-weight="800" class="ink">P practice</text>
+  <text x="594" y="408" font-size="28" class="ink">you grow it</text>
+  <text x="1014" y="386" font-size="36" font-weight="600" text-anchor="middle" class="mute">+</text>
+  <rect x="1040" y="318" width="56" height="112" class="given"/>
+  <text x="1068" y="386" font-size="32" font-weight="800" text-anchor="middle" class="ink">T</text>
 
   <!-- pointer to the small T -->
-  <path d="M1068 506 V468" class="lookl"/>
-  <path d="M1068 458 l-12 18 h24 z" class="look"/>
-  <text x="1044" y="514" font-size="26" text-anchor="end" class="ink">talent is given, and “the T is very small”</text>
+  <path d="M1068 508 V462" class="lookl"/>
+  <path d="M1068 446 l-12 18 h24 z" class="look"/>
+  <text x="1040" y="508" font-size="30" text-anchor="end" class="ink">talent is given, and “the T is very small”</text>
 </svg>
