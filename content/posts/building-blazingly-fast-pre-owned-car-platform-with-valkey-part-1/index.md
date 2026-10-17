@@ -223,13 +223,15 @@ CACHES = {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": os.getenv("CACHE_LOCATION"),
         "OPTIONS": {
-            "PARSER_CLASS": "redis.connection.HiredisParser",
+            "PARSER_CLASS": "redis.connection._HiredisParser",
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "COMPRESSOR": "django_redis.compressors.gzip.GzipCompressor",
         }
     }
 }
 ```
+
+`GzipCompressor` needs django-redis 6.0 or later. The `_HiredisParser` path is for redis-py 5 or later; on redis-py 4 it is `redis.connection.HiredisParser`.
 
 Logged in users
 

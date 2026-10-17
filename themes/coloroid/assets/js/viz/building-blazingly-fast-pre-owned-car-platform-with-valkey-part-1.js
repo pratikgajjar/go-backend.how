@@ -341,6 +341,7 @@ const BAND_CARD = {
   gone: () => ({ price: null, cls: 'is-gone', note: 'key expired (TTL 12 h)' }),
 };
 const BAND_LABEL = { stale: 'serves the old price', down: 'down', gone: 'key expired' };
+const BAND_SHORT = { stale: 'old price', down: 'down', gone: 'expired' };
 
 /*
  * Swimlane engine shared by Fig. 2 and Fig. 3, so the reader's map of the
@@ -382,7 +383,7 @@ function timeline(fig, app, opts = {}) {
     const lab = wide ? 96 : 70;
     const top = wide ? 30 : 16;
     const lh = wide ? 38 : 32;
-    const vx = wide ? 16 : 0; // extra height on the Valkey lane for the band label
+    const vx = 16; // extra height on the Valkey lane for the band label
     const hOf = (ln) => lh + (ln === 'Valkey' ? vx + 8 : 0);
     const yOf = {}; let y = top;
     for (const ln of LANES) { yOf[ln] = y; y += hOf(ln); }
@@ -414,8 +415,8 @@ function timeline(fig, app, opts = {}) {
       const xa = X(clamp(a, 0, limit())); const xb = X(clamp(b, 0, limit()));
       if (xb - xa < 1) continue;
       svg.append(s('rect', { x: xa, y: by, width: xb - xa, height: 6, rx: 2, class: `${P}band ${P}band--${st}`, fill: st === 'down' ? `url(#${id}-hatch)` : null }));
-      const lbl = BAND_LABEL[st];
-      if (wide && xb - xa > lbl.length * 6.2 + 10) svg.append(s('text', { x: xa + 4, y: by + 17, class: `t-xs t-b ${st === 'gone' ? '' : 't-bad'}` }, lbl));
+      const lbl = (wide ? BAND_LABEL : BAND_SHORT)[st];
+      if (xb - xa > lbl.length * 6.2 + 10) svg.append(s('text', { x: xa + 4, y: by + 17, class: `t-xs t-b ${st === 'gone' ? '' : 't-bad'}` }, lbl));
     }
     const hidden = (x) => x > revealTo + 1e-6;
     // connectors
