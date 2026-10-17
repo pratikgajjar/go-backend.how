@@ -174,6 +174,8 @@ function initKeyboardNav() {
   }
 
   document.addEventListener('keydown', e => {
+    if (e.defaultPrevented) return; // a figure already handled the key
+    if (e.target.closest && e.target.closest('figure.wv, [data-viz]')) return;
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.target.isContentEditable) return;
     if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
