@@ -14,11 +14,11 @@
   <text x="32" y="100" font-size="12">  &amp;features=20&amp;ordering=price&amp;page=1</text>
 
   <line x1="350" y1="68" x2="392" y2="68" stroke="#0a0d12" stroke-width="1.7" marker-end="url(#a)"/>
-  <rect x="396" y="20" width="544" height="96" fill="#ecdaff" stroke="#7024ab" stroke-width="1.6"/>
-  <text x="408" y="42" font-weight="800" font-size="11" letter-spacing="1.2" fill="#7024ab">CANONICAL QUERY → KEY</text>
+  <rect x="396" y="20" width="544" height="96" fill="#fbfaf7" stroke="#0a0d12" stroke-width="1.4"/>
+  <text x="408" y="42" font-weight="800" font-size="11" letter-spacing="1.2">CANONICAL QUERY → KEY</text>
   <text x="408" y="64" font-size="12" font-weight="700">city_id=1&amp;features=20&amp;make=10,12&amp;price_max=800000</text>
   <text x="408" y="82" font-size="12" font-weight="700">&amp;price_min=400000        (page, ordering dropped)</text>
-  <text x="408" y="104" font-size="12.5" font-weight="700" fill="#6c4122">page:price:6d53b067e30c6df93d</text>
+  <text x="408" y="104" font-size="12.5" font-weight="700">page:price:6d53b067e30c6df93d</text>
 
   <!-- miss path -->
   <text x="20" y="150" font-weight="800" font-size="11" letter-spacing="1.2" fill="#be1219">MISS · 3 ROUND TRIPS · 12 COMMANDS</text>
@@ -30,10 +30,10 @@
   <g font-size="12">
     <rect x="218" y="162" width="250" height="118" fill="#fbfaf7" stroke="#babec4" stroke-width="1.2" stroke-dasharray="5 4"/>
     <text x="230" y="182" font-weight="800" font-size="11" letter-spacing="1">INDEX SETS (zset)</text>
-    <text x="230" y="202" fill="#6c4122" font-weight="700">car:city     1..1</text><text x="440" y="202" text-anchor="end">9</text>
-    <text x="230" y="220" fill="#6c4122" font-weight="700">car:price    4–8 L</text><text x="440" y="220" text-anchor="end">10</text>
-    <text x="230" y="238" fill="#6c4122" font-weight="700">car:make     10 ∪ 12</text><text x="440" y="238" text-anchor="end">10</text>
-    <text x="230" y="256" fill="#6c4122" font-weight="700">car:feature:20</text><text x="440" y="256" text-anchor="end">10</text>
+    <text x="230" y="202" font-weight="700">car:city     1..1</text><text x="440" y="202" text-anchor="end">9</text>
+    <text x="230" y="220" font-weight="700">car:price    4–8 L</text><text x="440" y="220" text-anchor="end">10</text>
+    <text x="230" y="238" font-weight="700">car:make     10 ∪ 12</text><text x="440" y="238" text-anchor="end">10</text>
+    <text x="230" y="256" font-weight="700">car:feature:20</text><text x="440" y="256" text-anchor="end">10</text>
     <text x="230" y="272" font-size="10.5" fill="#44484e">ZRANGESTORE … BYSCORE, ZUNIONSTORE</text>
   </g>
   <line x1="468" y1="221" x2="502" y2="221" stroke="#0a0d12" stroke-width="1.7" marker-end="url(#a)"/>
@@ -46,15 +46,15 @@
   <text x="518" y="266" font-size="10.5" fill="#44484e">one pipeline, 9 commands</text>
   <line x1="706" y1="221" x2="740" y2="221" stroke="#0a0d12" stroke-width="1.7" marker-end="url(#a)"/>
 
-  <rect x="744" y="162" width="196" height="118" fill="#fbfaf7" stroke="#6c4122" stroke-width="1.3" stroke-dasharray="5 4"/>
-  <text x="756" y="182" font-size="11.5" font-weight="700" fill="#6c4122">page:price:6d53…</text>
+  <rect x="744" y="162" width="196" height="118" fill="#fbfaf7" stroke="#7024ab" stroke-width="1.3" stroke-dasharray="5 4"/>
+  <text x="756" y="182" font-size="11.5" font-weight="700" fill="#7024ab">page:price:6d53…</text>
   <text x="756" y="200" font-size="11" fill="#44484e">zset · 5 · TTL 600 s</text>
-  <g font-size="11.5" font-weight="700" fill="#6c4122">
-    <rect x="756" y="210" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="761" y="223">109</text>
-    <rect x="794" y="210" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="799" y="223">102</text>
-    <rect x="832" y="210" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="837" y="223">111</text>
-    <rect x="870" y="210" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="875" y="223">104</text>
-    <rect x="756" y="232" width="34" height="18" fill="#f6e3ce" stroke="#6c4122"/><text x="761" y="245">101</text>
+  <g font-size="11.5" font-weight="700" fill="#7024ab">
+    <rect x="756" y="210" width="34" height="18" fill="#ecdaff" stroke="#7024ab"/><text x="761" y="223">109</text>
+    <rect x="794" y="210" width="34" height="18" fill="#ecdaff" stroke="#7024ab"/><text x="799" y="223">102</text>
+    <rect x="832" y="210" width="34" height="18" fill="#ecdaff" stroke="#7024ab"/><text x="837" y="223">111</text>
+    <rect x="870" y="210" width="34" height="18" fill="#ecdaff" stroke="#7024ab"/><text x="875" y="223">104</text>
+    <rect x="756" y="232" width="34" height="18" fill="#ecdaff" stroke="#7024ab"/><text x="761" y="245">101</text>
   </g>
   <text x="756" y="270" font-size="10.5" fill="#44484e">score = price, ascending</text>
 
