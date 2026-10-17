@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .proc { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .rec { fill: var(--tint); stroke: var(--ink); stroke-width: 2; stroke-dasharray: 7 5; }
+    .msg { fill: var(--brown-l); stroke: var(--brown); stroke-width: 3; stroke-dasharray: 7 5; }
+    .brown { fill: var(--brown); } .purple { fill: var(--purple); }
+    .pwire { stroke: var(--purple); stroke-width: 3; fill: none; }
+    .wire { stroke: var(--ink); stroke-width: 3; fill: none; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="58" font-weight="800" class="ink">The Outbox Without an Outbox</text>
+  <text x="96" y="244" font-size="32" font-weight="600" class="ink">Events in the Postgres WAL instead of a table</text>
+
+  <!-- one transaction's WAL records: the event is a record like the row -->
+  <text x="96" y="318" font-size="22" class="mute">Postgres WAL</text>
+  <g font-size="22" text-anchor="middle">
+    <rect x="96"  y="334" width="200" height="84" class="rec"/><text x="196" y="383" class="ink">INSERT users</text>
+    <rect x="296" y="334" width="170" height="84" class="msg"/><text x="381" y="383" font-weight="800" class="brown">MESSAGE</text>
+    <rect x="466" y="334" width="140" height="84" class="rec"/><text x="536" y="383" class="ink">COMMIT</text>
+  </g>
+
+  <!-- bracket: all three records belong to one transaction -->
+  <path d="M96 434 v10 h510 v-10" class="wire"/>
+  <text x="351" y="474" font-size="22" text-anchor="middle" class="mute">one transaction</text>
+
+  <!-- consumer reads the slot and produces to Kafka -->
+  <line x1="610" y1="376" x2="680" y2="376" class="pwire"/>
+  <path d="M692 376 l-16 -10 v20 z" class="purple"/>
+  <text x="651" y="360" font-size="22" font-weight="700" text-anchor="middle" class="purple">slot</text>
+  <rect x="696" y="334" width="160" height="84" class="proc"/>
+  <text x="776" y="383" font-size="22" text-anchor="middle" class="ink">OwlPost</text>
+  <line x1="856" y1="376" x2="920" y2="376" class="wire"/>
+  <path d="M932 376 l-16 -10 v20 z" class="ink"/>
+  <rect x="936" y="334" width="140" height="84" class="proc"/>
+  <text x="1006" y="383" font-size="22" text-anchor="middle" class="ink">Kafka</text>
+
+  <text x="96" y="524" font-size="26" class="ink">COMMIT sends the event. ROLLBACK drops it.</text>
+</svg>
