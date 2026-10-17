@@ -1,264 +1,214 @@
-{{- /* OG Preview Gallery — internal social-card review page.
-       Hidden via frontmatter (robots noindex, sitemap.disable, _build.list=never).
-       Accessible only by typing /og-preview/ directly. */ -}}
+{{- /* OG preview: internal page to review every post's social card.
+       Hidden (noindex, no sitemap, not listed). Open /og-preview/ on
+       `make serve`; drafts show with --buildDrafts. */ -}}
+{{- $posts := (where .Site.RegularPages "Section" "posts").ByDate.Reverse -}}
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>OG Preview · backend.how</title>
-  <meta name="robots" content="noindex, nofollow, noarchive">
-  <meta name="googlebot" content="noindex, nofollow">
-  <link rel="preload" href="/fonts/jetbrains/JetBrainsMono[wght].woff2" as="font" type="font/woff2" crossorigin>
-  <style>
-    @font-face {
-      font-family: "JetBrains Mono";
-      src: url("/fonts/jetbrains/JetBrainsMono[wght].woff2") format("woff2-variations");
-      font-weight: 400 700;
-      font-display: swap;
-    }
-    :root {
-      --bg: #0a0908;
-      --surface: #15110e;
-      --border: #2a241c;
-      --text: #f0e5c5;
-      --muted: #8a7e6a;
-      --accent: #e9c97e;
-      --x-blue: #1d9bf0;
-      --li-blue: #0a66c2;
-      --fb-blue: #1877f2;
-    }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: "JetBrains Mono", ui-monospace, monospace;
-      margin: 0;
-      padding: 2rem 1.5rem 4rem;
-      line-height: 1.5;
-    }
-    .wrap { max-width: 1100px; margin: 0 auto; }
-    header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--border); }
-    header h1 { margin: 0 0 .35em; font-size: 1.6rem; letter-spacing: -.02em; color: var(--accent); }
-    header p { margin: 0; color: var(--muted); font-size: .85rem; }
-    header code {
-      background: var(--surface);
-      color: var(--text);
-      padding: .15em .45em;
-      border-radius: 3px;
-      font-size: .85em;
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>OG cards · backend.how</title>
+<style>
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/jetbrains/JetBrainsMono[wght].woff2") format("woff2-variations"); font-weight: 100 800; font-display: swap; }
+:root {
+  --paper: oklch(98.6% 0.004 100); --ink: oklch(16% 0.012 260); --mute: oklch(45% 0.012 260);
+  --line: oklch(86% 0.01 260); --tint: oklch(95.6% 0.005 100);
+  --red: oklch(51% 0.2 27); --red-l: oklch(94% 0.04 25); --blue: oklch(46% 0.16 258);
+  --w: 380px;
+  --sys: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 13px/1.5 "JetBrains Mono", ui-monospace, monospace; }
+a { color: inherit; }
 
-    .meta-line {
-      display: flex; gap: 1.5rem; flex-wrap: wrap;
-      font-size: .78rem; color: var(--muted); margin-top: .6rem;
-    }
-    .meta-line span::before { content: "→ "; color: var(--accent); }
+/* toolbar */
+.bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem;
+  padding: .7rem 1.5rem; background: var(--paper); border-bottom: 1.5px solid var(--ink); }
+.bar h1 { margin: 0; font-size: 15px; font-weight: 800; }
+.bar .n { color: var(--mute); }
+.seg { display: inline-flex; border: 1.25px solid var(--ink); }
+.seg button { font: inherit; font-size: 12px; padding: .3rem .65rem; border: 0; background: var(--paper); color: var(--ink); cursor: pointer; }
+.seg button + button { border-left: 1.25px solid var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.seg-label { color: var(--mute); margin-right: .35rem; }
+.sp { flex: 1; }
+main { padding: 1.5rem; }
+@media (max-width: 600px) { main { padding: 1rem; } .bar { padding: .6rem 1rem; } .grid { grid-template-columns: 1fr; } }
 
-    .filter-bar {
-      display: flex; gap: .5rem; flex-wrap: wrap;
-      margin: 1.25rem 0 0;
-      font-size: .78rem;
-    }
-    .filter-bar button {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
-      padding: .35rem .8rem;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: inherit;
-      letter-spacing: .04em;
-    }
-    .filter-bar button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+/* grid view */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--w), 1fr)); gap: 2rem 1.5rem; }
+.tile { margin: 0; }
+.tile .img { display: block; aspect-ratio: 1200 / 630; border: 1.25px solid var(--ink); background: var(--tint); overflow: hidden; }
+.tile .img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tile .none { display: grid; place-items: center; height: 100%; color: var(--red); }
+.tile h2 { margin: .55rem 0 .15rem; font-size: 13px; font-weight: 700; line-height: 1.35; }
+.tile h2 a { text-decoration: none; }
+.tile h2 a:hover { text-decoration: underline; }
+.meta { color: var(--mute); font-size: 11.5px; display: flex; flex-wrap: wrap; gap: .1rem .75rem; }
+.flags { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+.flag { font-size: 11px; padding: 0 .4rem; border: 1px dashed var(--red); background: var(--red-l); color: var(--red); }
+.flag.draft { border-style: solid; border-color: var(--ink); background: var(--tint); color: var(--ink); }
+.tile .feeds-link { font-size: 11.5px; color: var(--blue); cursor: pointer; background: none; border: 0; padding: 0; font: inherit; font-size: 11.5px; }
 
-    .post-block {
-      margin-bottom: 4rem;
-      padding-bottom: 3rem;
-      border-bottom: 1px dashed var(--border);
-    }
-    .post-block:last-child { border-bottom: none; }
-    .post-meta {
-      display: flex; flex-wrap: wrap; gap: 1.25rem;
-      align-items: baseline;
-      margin-bottom: 1.5rem;
-      font-size: .82rem;
-      color: var(--muted);
-    }
-    .post-meta .slug {
-      color: var(--accent);
-      font-weight: 600;
-      font-size: 1rem;
-      letter-spacing: -.01em;
-    }
-    .post-meta a { color: inherit; text-decoration: underline dashed; text-underline-offset: .25em; }
-    .draft-badge {
-      display: inline-block;
-      background: var(--accent);
-      color: #000;
-      padding: 1px 8px;
-      border-radius: 2px;
-      font-size: .7rem;
-      letter-spacing: .08em;
-    }
+/* feeds view */
+.feeds { display: none; }
+body[data-view="feeds"] .grid { display: none; }
+body[data-view="feeds"] .feeds { display: block; }
+.post { padding: 0 0 2.25rem; margin: 0 0 2.25rem; border-bottom: 1px solid var(--line); }
+.post > h2 { margin: 0 0 1rem; font-size: 14px; }
+.post > h2 .meta { display: inline-flex; margin-left: .75rem; font-weight: 400; }
+.row { display: flex; flex-wrap: wrap; gap: 1.5rem 1.75rem; align-items: flex-start; }
+.mock { flex: none; }
+.mock > .lbl { font-size: 11px; color: var(--mute); margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .08em; }
+.feed { padding: 14px; font-family: var(--sys); max-width: calc(100vw - 3rem); }
+.mock { max-width: 100%; }
+.mock img { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; }
+.clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-    @media (max-width: 980px) { .cards { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+/* X, 2024+: image with title pill, "From domain" below; ~506 px wide */
+.x .feed { width: 534px; background: #fff; }
+.x .card { position: relative; border: 1px solid #cfd9de; border-radius: 16px; overflow: hidden; }
+.x .pill { position: absolute; left: 12px; bottom: 12px; max-width: calc(100% - 24px); background: rgba(0,0,0,.77); color: #fff; font-size: 13px; padding: 0 4px; border-radius: 4px; line-height: 20px; }
+.x .from { color: #536471; font-size: 13px; margin-top: 4px; }
+/* LinkedIn feed: ~552 px */
+.li .feed { width: 580px; background: #f4f2ee; }
+.li .card { background: #fff; border: 1px solid #e0dfdc; border-radius: 8px; overflow: hidden; }
+.li .body { padding: 8px 12px 10px; background: #edf3f8; }
+.li .t { font-size: 14px; font-weight: 600; color: rgba(0,0,0,.9); line-height: 20px; }
+.li .d { font-size: 12px; color: rgba(0,0,0,.6); margin-top: 2px; }
+/* Slack unfurl: image max 360 px */
+.sl .feed { width: 440px; background: #fff; }
+.sl .card { border-left: 4px solid #ddd; padding: 0 0 0 12px; color: #1d1c1d; font-size: 15px; line-height: 22px; }
+.sl .site { font-weight: 700; font-size: 15px; }
+.sl .t { color: #1264a3; font-weight: 700; }
+.sl .d { margin: 2px 0 6px; }
+.sl img { max-width: min(360px, 100%); border-radius: 8px; border: 1px solid #ddd; }
+/* iMessage: ~300 px bubble */
+.im .feed { width: 328px; background: #fff; }
+.im .card { border-radius: 18px; overflow: hidden; background: #e9e9eb; }
+.im .body { padding: 8px 12px 10px; }
+.im .t { font-size: 13px; font-weight: 600; color: #000; line-height: 17px; }
+.im .d { font-size: 12px; color: #8e8e93; }
 
-    .card-wrap { display: flex; flex-direction: column; gap: .55rem; }
-    .card-label {
-      font-size: .68rem;
-      text-transform: uppercase;
-      letter-spacing: .12em;
-      color: var(--muted);
-      padding-bottom: .25rem;
-      border-bottom: 1px dotted var(--border);
-    }
-    .card-label .platform { color: var(--accent); margin-right: .4em; }
+/* dark feeds */
+body[data-scheme="dark"] .x .feed { background: #000; }
+body[data-scheme="dark"] .x .card { border-color: #2f3336; }
+body[data-scheme="dark"] .x .from { color: #71767b; }
+body[data-scheme="dark"] .li .feed { background: #000; }
+body[data-scheme="dark"] .li .card { background: #1b1f23; border-color: #38434f; }
+body[data-scheme="dark"] .li .body { background: #1d2226; }
+body[data-scheme="dark"] .li .t { color: rgba(255,255,255,.9); }
+body[data-scheme="dark"] .li .d { color: rgba(255,255,255,.6); }
+body[data-scheme="dark"] .sl .feed { background: #1a1d21; }
+body[data-scheme="dark"] .sl .card { color: #d1d2d3; border-color: #35373b; }
+body[data-scheme="dark"] .sl .t { color: #1d9bd1; }
+body[data-scheme="dark"] .sl img { border-color: #35373b; }
+body[data-scheme="dark"] .im .feed { background: #000; }
+body[data-scheme="dark"] .im .card { background: #262628; }
+body[data-scheme="dark"] .im .t { color: #fff; }
 
-    /* --- Twitter / X card (summary_large_image) ----------------------- */
-    .card-x {
-      background: #000;
-      border: 1px solid #2f3336;
-      border-radius: 16px;
-      overflow: hidden;
-      cursor: pointer;
-      transition: background .15s;
-    }
-    .card-x:hover { background: #0a0a0a; }
-    .card-x img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #111; }
-    .card-x-body { padding: .85rem 1rem 1rem; font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; }
-    .card-x-domain { color: #71767b; font-size: 13px; margin-bottom: .15rem; }
-    .card-x-title {
-      color: #e7e9ea; font-size: 15px; font-weight: 400; line-height: 1.3;
-      display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
-    .card-x-desc {
-      color: #71767b; font-size: 13px; line-height: 1.3; margin-top: .2rem;
-      display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
-
-    /* --- LinkedIn card -------------------------------------------------- */
-    .card-li {
-      background: #1b1f23;
-      border: 1px solid rgba(255,255,255,.15);
-      border-radius: 8px;
-      overflow: hidden;
-      font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
-    }
-    .card-li img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #111; border-bottom: 1px solid rgba(255,255,255,.1); }
-    .card-li-body { padding: .8rem 1rem 1rem; }
-    .card-li-title { color: #fff; font-size: 15px; font-weight: 600; line-height: 1.3; }
-    .card-li-domain { color: rgba(255,255,255,.5); font-size: 12px; margin-top: .35rem; text-transform: lowercase; }
-
-    /* --- Facebook card ------------------------------------------------- */
-    .card-fb {
-      background: #242526;
-      border: 1px solid #3a3b3c;
-      border-radius: 8px;
-      overflow: hidden;
-      font-family: -apple-system, "SF Pro Text", "Segoe UI", Helvetica, sans-serif;
-    }
-    .card-fb img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #18191a; }
-    .card-fb-body { padding: .85rem 1rem 1rem; background: #18191a; }
-    .card-fb-domain {
-      color: #b0b3b8; font-size: 12px; text-transform: uppercase; letter-spacing: .025em;
-      margin-bottom: .25rem;
-    }
-    .card-fb-title { color: #e4e6eb; font-size: 17px; font-weight: 600; line-height: 1.25; }
-    .card-fb-desc { color: #b0b3b8; font-size: 14px; line-height: 1.3; margin-top: .35rem;
-      display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
-
-    .raw-img {
-      margin-top: .6rem; padding: .35rem; background: var(--surface);
-      border: 1px dashed var(--border); border-radius: 4px;
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: .7rem; color: var(--muted);
-    }
-    .raw-img a { color: var(--accent); text-decoration: none; }
-    .raw-img a:hover { text-decoration: underline; }
-  </style>
+body[data-show="published"] [data-draft="1"], body[data-show="drafts"] [data-draft="0"] { display: none; }
+</style>
 </head>
-<body>
-  <div class="wrap">
-    <header>
-      <h1>OG Preview</h1>
-      <p>How each post's social card looks on <strong>X</strong>, <strong>LinkedIn</strong>,
-      and <strong>Facebook</strong>. Hidden from search, sitemap, and all internal nav.
-      Direct URL only: <code>/og-preview/</code>.</p>
-      <div class="meta-line">
-        <span>Image dim: 1200&times;630 (1.91:1, summary_large_image)</span>
-        <span>Total posts: {{ len (where .Site.RegularPages "Section" "posts") }}</span>
-        <span>Includes drafts on dev server (<code>--buildDrafts</code>)</span>
-      </div>
-    </header>
+<body data-view="grid" data-scheme="light" data-show="all">
+<div class="bar">
+  <h1>OG cards</h1><span class="n">{{ len $posts }} posts · 1200×630</span>
+  <span class="sp"></span>
+  <span><span class="seg-label">view</span><span class="seg" data-key="view"><button value="grid">grid</button><button value="feeds">feeds</button></span></span>
+  <span><span class="seg-label">size</span><span class="seg" data-key="size"><button value="280px">S</button><button value="380px">M</button><button value="560px">L</button></span></span>
+  <span><span class="seg-label">feeds</span><span class="seg" data-key="scheme"><button value="light">light</button><button value="dark">dark</button></span></span>
+  <span><span class="seg" data-key="show"><button value="all">all</button><button value="published">published</button><button value="drafts">drafts</button></span></span>
+</div>
 
-    {{- /* Resolve OG image URL using RelPermalink so the preview renders
-           on dev server (http://localhost:1313) without trying to fetch
-           images from production https://backend.how. */ -}}
-    {{- range $page := where .Site.RegularPages "Section" "posts" }}
-      {{ $img := "" }}
-      {{ with $page.Params.images }}
-        {{ $first := index . 0 }}
-        {{ if or (hasPrefix $first "http://") (hasPrefix $first "https://") }}
-          {{ $img = $first }}
-        {{ else if hasPrefix $first "/" }}
-          {{ $img = $first | relURL }}
-        {{ else }}
-          {{ $img = printf "%s%s" $page.RelPermalink $first }}
-        {{ end }}
-      {{ else }}
-        {{ $img = "/og-image.png" | relURL }}
-      {{ end }}
-      {{ $title := $page.Title }}
-      {{ $desc := $page.Description }}
-      {{ $domain := "backend.how" }}
-      {{ $url := $page.Permalink }}
+<main>
+{{- define "partials/ogp-data" -}}
+  {{- $p := . -}}
+  {{- $src := "" -}}{{- $res := false -}}
+  {{- with $p.Params.images -}}
+    {{- $first := index . 0 -}}
+    {{- if or (hasPrefix $first "http") (hasPrefix $first "/") -}}{{- $src = $first -}}
+    {{- else -}}{{- $res = $p.Resources.GetMatch $first -}}{{- $src = printf "%s%s" $p.RelPermalink $first -}}{{- end -}}
+  {{- end -}}
+  {{- return dict "src" $src "res" $res -}}
+{{- end -}}
 
-      <section class="post-block" data-draft="{{ if $page.Draft }}1{{ else }}0{{ end }}">
-        <div class="post-meta">
-          <span class="slug">{{ $page.Title }}</span>
-          {{ if $page.Draft }}<span class="draft-badge">DRAFT</span>{{ end }}
-          <a href="{{ $page.RelPermalink }}">{{ $page.RelPermalink }}</a>
-          <a href="{{ $img }}" target="_blank">view raw og.png</a>
-        </div>
-        <div class="cards">
-          <div class="card-wrap">
-            <div class="card-label"><span class="platform">▌</span>X / Twitter</div>
-            <div class="card-x">
-              <img src="{{ $img }}" alt="" loading="lazy">
-              <div class="card-x-body">
-                <div class="card-x-domain">From {{ $domain }}</div>
-                <div class="card-x-title">{{ $title }}</div>
-                <div class="card-x-desc">{{ $desc }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="card-wrap">
-            <div class="card-label"><span class="platform">▌</span>LinkedIn</div>
-            <div class="card-li">
-              <img src="{{ $img }}" alt="" loading="lazy">
-              <div class="card-li-body">
-                <div class="card-li-title">{{ $title }}</div>
-                <div class="card-li-domain">{{ $domain }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="card-wrap">
-            <div class="card-label"><span class="platform">▌</span>Facebook</div>
-            <div class="card-fb">
-              <img src="{{ $img }}" alt="" loading="lazy">
-              <div class="card-fb-body">
-                <div class="card-fb-domain">{{ $domain }}</div>
-                <div class="card-fb-title">{{ $title }}</div>
-                <div class="card-fb-desc">{{ $desc }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    {{- end }}
-  </div>
+<div class="grid">
+{{- range $posts }}
+  {{- $d := partial "ogp-data" . -}}
+  {{- $title := .Title -}}{{- $desc := .Description -}}
+  {{- $tlen := len (split $title "") -}}{{- $dlen := len (split $desc "") -}}
+  <figure class="tile" data-draft="{{ if .Draft }}1{{ else }}0{{ end }}" id="g-{{ .File.ContentBaseName }}">
+    <a class="img" href="{{ $d.src }}" target="_blank">{{ with $d.src }}<img src="{{ . }}" alt="" loading="lazy">{{ else }}<span class="none">no og image</span>{{ end }}</a>
+    <h2><a href="{{ .RelPermalink }}">{{ $title }}</a></h2>
+    <div class="meta">
+      <span>{{ .Date.Format "2006-01-02" }}</span>
+      <span>{{ with .Params.theme }}{{ . }}{{ else }}no theme{{ end }}</span>
+      {{- with $d.res }}<span>{{ .Width }}×{{ .Height }}</span><span>{{ div (len .Content) 1024 }} KB</span>{{ end }}
+      <span title="Slack shows about 2 lines; Google about 155 chars">desc {{ $dlen }}</span>
+      <button class="feeds-link" data-go="{{ .File.ContentBaseName }}">feeds →</button>
+    </div>
+    <div class="flags">
+      {{- if .Draft }}<span class="flag draft">draft</span>{{ end }}
+      {{- if not $d.src }}<span class="flag">no image</span>{{ end }}
+      {{- with $d.res }}
+        {{- $r := div (float .Width) .Height -}}
+        {{- if or (lt $r 1.88) (gt $r 1.93) }}<span class="flag">ratio {{ printf "%.2f" $r }}, want 1.91</span>{{ end }}
+        {{- if lt .Width 1200 }}<span class="flag">width {{ .Width }} &lt; 1200</span>{{ end }}
+        {{- if gt (len .Content) 307200 }}<span class="flag">over 300 KB</span>{{ end }}
+      {{- end }}
+      {{- if gt $tlen 70 }}<span class="flag">title {{ $tlen }} chars</span>{{ end }}
+      {{- if not $desc }}<span class="flag">no description</span>{{ else if gt $dlen 300 }}<span class="flag">description {{ $dlen }} chars</span>{{ end }}
+    </div>
+  </figure>
+{{- end }}
+</div>
+
+<div class="feeds">
+{{- range $posts }}
+  {{- $d := partial "ogp-data" . -}}
+  {{- $title := .Title -}}{{- $desc := .Description -}}
+  <section class="post" data-draft="{{ if .Draft }}1{{ else }}0{{ end }}" id="f-{{ .File.ContentBaseName }}">
+    <h2>{{ $title }}<span class="meta">{{ if .Draft }}<span>draft</span>{{ end }}<a href="{{ .RelPermalink }}">{{ .RelPermalink }}</a></span></h2>
+    <div class="row">
+      <div class="mock x"><div class="lbl">X</div><div class="feed">
+        <div class="card">{{ with $d.src }}<img src="{{ . }}" alt="" loading="lazy">{{ end }}<span class="pill clamp1">{{ $title }}</span></div>
+        <div class="from">From backend.how</div></div></div>
+      <div class="mock li"><div class="lbl">LinkedIn</div><div class="feed">
+        <div class="card">{{ with $d.src }}<img src="{{ . }}" alt="" loading="lazy">{{ end }}
+          <div class="body"><div class="t clamp2">{{ $title }}</div><div class="d">backend.how</div></div></div></div></div>
+      <div class="mock sl"><div class="lbl">Slack</div><div class="feed">
+        <div class="card"><div class="site">backend.how</div><div class="t">{{ $title }}</div>
+          <div class="d clamp2">{{ $desc }}</div>{{ with $d.src }}<img src="{{ . }}" alt="" loading="lazy">{{ end }}</div></div></div>
+      <div class="mock im"><div class="lbl">iMessage</div><div class="feed">
+        <div class="card">{{ with $d.src }}<img src="{{ . }}" alt="" loading="lazy">{{ end }}
+          <div class="body"><div class="t clamp2">{{ $title }}</div><div class="d">backend.how</div></div></div></div></div>
+    </div>
+  </section>
+{{- end }}
+</div>
+</main>
+
+<script>
+(() => {
+  const b = document.body, root = document.documentElement;
+  const saved = JSON.parse(localStorage.getItem('ogp') || '{}');
+  const apply = (key, val) => {
+    if (key === 'size') root.style.setProperty('--w', val); else b.dataset[key] = val;
+    document.querySelectorAll(`.seg[data-key="${key}"] button`).forEach((x) => x.setAttribute('aria-pressed', String(x.value === val)));
+    saved[key] = val; localStorage.setItem('ogp', JSON.stringify(saved));
+  };
+  const defaults = { view: 'grid', size: '380px', scheme: 'light', show: 'all' };
+  for (const k in defaults) apply(k, saved[k] || defaults[k]);
+  document.querySelectorAll('.seg').forEach((s) => s.addEventListener('click', (e) => {
+    if (e.target.value) apply(s.dataset.key, e.target.value);
+  }));
+  document.querySelectorAll('[data-go]').forEach((x) => x.addEventListener('click', () => {
+    apply('view', 'feeds');
+    document.getElementById('f-' + x.dataset.go).scrollIntoView();
+  }));
+})();
+</script>
 </body>
 </html>
