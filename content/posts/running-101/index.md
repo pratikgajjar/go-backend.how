@@ -18,52 +18,36 @@ tldr;
 - Set a clear goal.
 - Track your performance, focus on one metric at a time.
 - Vary your runs, but maintain consistency.
-- Maintain a consistent pace throughout your target run(s).
+- Hold a steady pace through your target run.
 - Focus on nutrition and strength training.
 
 # Why running
 
-I am a 27-year-old software engineer writing in the year 2024. I spend most of my time sitting for work, and since grade 12, I've been aspiring to have a six-pack as it's often seen as 'cool.' As a football fan, I'm aware that players typically peak between their late twenties and early thirties, with an analysis by The Athletic[^1] suggesting that the optimal age for different positions ranges from 27 to 31 years old. Thus, I set myself the goal of reaching peak physical fitness by my late twenties.
+I am a 27-year-old software engineer, writing in 2024. I sit for most of my workday. Since grade 12 I have wanted a six-pack, because it is seen as 'cool.' As a football fan, I know players peak in their late twenties to early thirties. An analysis by The Athletic[^1] puts the peak age for different positions at 27 to 31. So I set a goal: peak physical fitness by my late twenties.
 
-However, I am more inclined towards outdoor activities than hitting the gym. I would much prefer playing sports outdoors for hours rather than working out indoors. Therefore, I've set a new goal: reducing my body fat percentage to around 8%. This is because everyone has abdominal muscles; they're just hidden beneath layers of fat.
+I prefer outdoor sports to the gym. I would rather play outside for hours than work out indoors. So my goal became a body fat percentage of about 8%. Everyone has abdominal muscles; fat hides them.
 
 > "The most successful people I know believe in themselves almost to the point of delusion." -- Sam Altman ([@sama](https://x.com/sama))
 
-Among the various options available for outdoor physical activity, I chose running due to its minimal effort requirement and ease of execution.
+Of the outdoor options, I chose running because it is easy to start and needs little setup.
 
 # Measure first
 
-I work in tech, where we measure systems all the time to keep them efficient and to spot anomalies. I wanted the same for my running, so I bought a Garmin watch that records many running metrics. "If you can measure it, you can improve it."
+I work in tech, where we measure systems to keep them efficient and to spot anomalies. I wanted the same for my running, so I bought a Garmin watch that records many running metrics. "If you can measure it, you can improve it."
 
-The rest of the kit is simple.
-
-_Footwear:_ I wear Skechers running shoes for all my runs.
-
-_Attire:_ I ensure I have comfortable, well-fitting clothing suitable for running.
-
-_Running Routes:_ In urban areas, I prefer peaceful roads and public parks in metropolitan cities.
+The rest of the kit is simple: Skechers running shoes for every run, comfortable well-fitting clothes, and quiet roads and public parks in the city.
 
 # Start slow
 
-To begin my running journey safely, I took things slow initially to minimize the risk of injuries. As a newcomer, it is common to make mistakes, and rushing into intense workouts could lead to strains or other issues. Having previously completed a 4K run in around 38 minutes with no prior preparation, I decided to set a more achievable goal for my initial plan.
+I started slow to lower the risk of injury. New runners make mistakes, and intense workouts too early can cause strains. I had run a 4K in about 38 minutes with no preparation, so I set a more achievable first goal.
 
-I utilized Garmin's AI coach feature to create a personalized running schedule aimed at completing a 5K in approximately 35 minutes – a challenging but manageable target. Fortunately, the AI coach did an excellent job generating a varied training program that included:
-
-- Different types of runs (e.g., steady-paced, interval, and hill training)
-- Strategic rest periods to allow for recovery
-
-Now, with my customized plan in hand, I have clear guidance on when and how much to run each day, based on the initial data gathered from my first few sessions. This structured approach has helped me maintain consistency while minimizing the risk of injury.
+Garmin's AI coach built me a plan for a 5K in about 35 minutes: hard, but manageable. The plan mixed steady, interval, and hill runs, with rest days for recovery. It set when and how far to run each day, based on data from my first few sessions. That structure kept me consistent and helped me avoid injury.
 
 > "No man has the right to be an amateur in the matter of physical training. It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable." -- Socrates
 
 # Form: the input metrics
 
-The watch reports many numbers. I split them in two. Input metrics[^2] describe your form, and you improve them through continuous training.
-
-- Cadence
-- Vertical Ratio
-- Vertical Oscillation
-- Ground Contact Time
+The watch reports many numbers. I split them in two. Input metrics[^2] describe your form: cadence, vertical ratio, vertical oscillation, and ground contact time. You improve them through steady training.
 
 Output metrics are the effect: pace, heart-rate zones, power zones, and stride length. They come later in this post.
 
@@ -73,11 +57,9 @@ Garmin compares each input metric with other runners and puts it in a percentile
 
 ## Cadence
 
-Cadence is the number of steps per minute (spm), both feet counted. Garmin has researched many runners of all different levels. In general, more experienced runners tend to have a higher cadence.
+Cadence is the number of steps per minute (spm), both feet counted. Garmin's data from runners of all levels shows that more experienced runners tend to have a higher cadence. An often-cited target is 180 spm. Higher cadence goes with lower vertical oscillation and shorter ground contact time. Taller runners tend to have a somewhat lower cadence.
 
-An often-cited target for running cadence is 180 spm. Higher cadences are associated with lower vertical oscillation and shorter ground contact time. Taller runners tend to have somewhat lower cadence.
-
-The zones in the table below show the percentile of runners that occupy each zone, as well as the cadence ranges for each zone.
+Each table in this section gives Garmin's five percentile bands and the range of the metric in each band.
 
 | Percentile in Zone | Cadence Range |
 | ------------------ | ------------- |
@@ -89,10 +71,7 @@ The zones in the table below show the percentile of runners that occupy each zon
 
 ## Vertical Ratio
 
-Vertical ratio is a way to measure running efficiency.
-It divides vertical oscillation by stride length and then shows your ratio as a percentage. Since stride length provides the benefit of running (horizontal movement) and vertical oscillation is an energy cost (vertical movement), a lower vertical ratio indicates a small cost for a large benefit.
-
-The zones in the table below show the percentile of runners that occupy each zone, as well as the vertical ratio ranges for each zone.
+Vertical ratio measures running efficiency. It is vertical oscillation divided by stride length, shown as a percentage. Stride length is the benefit (forward movement). Vertical oscillation is an energy cost (up-and-down movement). A lower ratio means a smaller cost for the same benefit.
 
 | Percentile in Zone | VR Range     |
 | ------------------ | ------------ |
@@ -104,11 +83,9 @@ The zones in the table below show the percentile of runners that occupy each zon
 
 ## Vertical Oscillation
 
-Vertical oscillation is the amount that the torso moves vertically with each step while running. It's measured in centimeters (cm).
+Vertical oscillation is how far your torso moves up and down on each step, in centimetres (cm).
 
-Many running coaches believe that lower vertical oscillation is more economical, because less energy is wasted going up and down. In general, more experienced runners tend to have lower vertical oscillation. However, faster paces often come at a cost of somewhat higher vertical oscillation. Vertical ratio takes this into account. Another advantage of lower vertical oscillation is that it typically means less stress on the lower body at impact.
-
-The zones in the table below show the percentile of runners that occupy each zone, as well as the vertical oscillation ranges for each zone.
+Many coaches believe lower oscillation is more economical, because less energy goes into moving up and down. It also usually means less stress on the lower body at impact. More experienced runners tend to have lower oscillation, but faster paces often raise it a little. Vertical ratio takes this into account.
 
 | Percentile in Zone | VO Range      |
 | ------------------ | ------------- |
@@ -120,12 +97,7 @@ The zones in the table below show the percentile of runners that occupy each zon
 
 ## Ground Contact Time (GCT)
 
-Ground contact time indicates the amount of time that your foot is in contact with the ground on each step, measured in milliseconds (ms). Ground contact time tends to be especially short for elite runners.
-Virtually all experienced runners have ground contact times under 300 ms, likely because they have learned to pick up their feet quickly and not to over-stride as they are landing.
-
-The zones in the table below show the percentile of runners that occupy each zone, as well as the ground contact time ranges for each zone.
-
-Adopting a forefoot strike can help to reduce Ground Contact Time (GCT).
+Ground contact time is how long your foot stays on the ground on each step, in milliseconds (ms). It is especially short for elite runners. Almost all experienced runners stay under 300 ms, likely because they have learned to pick up their feet quickly and not to over-stride at landing. A forefoot strike can help reduce GCT.
 
 | Percentile in Zone | GCT Range    |
 | ------------------ | ------------ |
@@ -135,37 +107,26 @@ Adopting a forefoot strike can help to reduce Ground Contact Time (GCT).
 | 5 - 29%            | 273 - 305 ms |
 | < 5%               | > 305 ms     |
 
-Two videos that helped my form:
+Two videos helped my form. The first covers foot placement training for more efficient running.
 
 {{< youtube id=_kGESn8ArrU start=155 loading=lazy title="Foot placement for running">}}
-
-The video above explains foot placement training for more efficient running.
 
 {{< youtube id=CCxi9gmuyGQ loading=lazy title="Running is vertical jump" >}}
 
 # Cadence first: running to music
 
-When I began, my average cadence was around 120 steps per minute (spm), in the bottom 5% of runners (below 151 spm). So cadence was the first metric I worked on. Music helps me hold a steady pace and cadence.
+When I began, my average cadence was about 120 spm, in the bottom 5% of runners (below 151 spm). So cadence was the first metric I worked on. Music helps me hold a steady pace and cadence. Playlists with a fixed beat act as a metronome:
 
-For Spotify users:
+- Spotify: <https://open.spotify.com/artist/2pvCOW7OAq8uJSnQlL8Yhq> has playlists at 140, 150, 160, 170, and 180 spm.
+- YouTube Music: <https://music.youtube.com/channel/UCM2RlbR4aNXSKVZfVajvCGQ> has similar playlists at a range of tempos.
 
-- Check out <https://open.spotify.com/artist/2pvCOW7OAq8uJSnQlL8Yhq> for curated playlists featuring tracks with beats running at 140, 150, 160, 170, and 180 spm. These playlists provide constant auditory feedback to help maintain your target cadence during runs.
-
-For YouTube users:
-
-- Visit <https://music.youtube.com/channel/UCM2RlbR4aNXSKVZfVajvCGQ> to explore similar playlists with varying beats per minute, designed to help you focus on and achieve your desired running cadence.
-
-By incorporating these music playlists into my runs, I've found that:
-
-- Time passes more quickly when engaged with captivating tracks that sync with my target cadence.
-- Maintaining a consistent pace and cadence is easier with rhythm-driven songs tailored to specific spm ranges.
-- Staying motivated and enjoying workouts becomes simpler as music helps create a steady internal metronome for efficient running.
+With these playlists, time passes faster, a steady pace and cadence is easier to hold, and I stay motivated.
 
 # Output metrics
 
 ## Pace = cadence × stride length
 
-Pace is the time it takes to run one kilometre (min/km) or one mile (min/mile). Stride length is the distance covered on each step, typically measured in meters.
+Pace is the time to run one kilometre (min/km) or one mile (min/mile). Stride length is the distance covered on each step, in metres.
 
 ```txt
 speed (m/min) = cadence (steps/min) × stride length (m)
@@ -174,15 +135,13 @@ pace (min/km) = 1000 / (cadence × stride length)
 
 Only two numbers set pace: how often your feet land and how far you travel on each step. Ground contact time and vertical ratio are not in the formula. They change what each step costs, not how far it goes.
 
-My next goal is a 5K in 20:00, which is 250 m every minute. At 180 spm that still needs 1.39 m per step, so cadence alone does not get there. Longer steps can increase speed without much more effort, but they need to be balanced with cadence to avoid overstriding, which can lead to injury. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
+My next goal is a 5K in 20:00, which is 250 m every minute. At 180 spm that still needs 1.39 m per step, so cadence alone does not get there. Longer steps add speed without much more effort. Balance them with cadence, or you over-stride, which can cause injury. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
 
 {{< youtube id=Jj9ZgQgQvBk start=207 loading=lazy title="Lift costs less energy">}}
 
 ## Heart rate zones
 
-Heart rate zones are ranges of heart rates that correspond to different levels of effort, usually divided into 5 zones, from easy (zone 1) to maximum effort (zone 5).
-
-Training in the appropriate heart rate zones can optimize your workout for different goals, such as fat burning, endurance, or speed. It helps prevent overtraining and ensures you're getting the right intensity in your runs.
+Heart rate zones are ranges of heart rate that match levels of effort. There are usually five, from easy (zone 1) to maximum effort (zone 5). Training in the right zone fits a run to its goal, such as fat burning, endurance, or speed, and helps prevent overtraining.
 
 | Zone | % of max | Effort |
 | ---- | -------- | ------ |
@@ -200,21 +159,17 @@ More on zones: <https://stories.strava.com/articles/understanding-heart-rate-zon
 
 ## Power
 
-Power (measured in watts) reflects the amount of effort or energy output during running.
-
-It allows you to gauge the actual energy you're using to run, independent of pace and terrain. Power-based training can help you improve efficiency, as it enables you to maintain a constant energy output, even if terrain or conditions change.
+Power, in watts, is your energy output while running, independent of pace and terrain. Training by power lets you hold a constant output when terrain or conditions change, which helps efficiency.
 
 ### Time in power zone
 
-Power zones are similar to heart rate zones, but based on your power output in watts. Time in power zone refers to how long you spend in each zone.
-
-This metric helps balance your power output during different phases of a run. Spending the right amount of time in different power zones can help with endurance, speed training, and efficient energy use.
+Power zones work like heart rate zones, but use watts. Time in power zone is how long you spend in each zone. The right mix across zones helps endurance, speed, and efficient energy use.
 
 # Recovery and fuel
 
 ## Stretching
 
-Proper stretching before and after runs plays a vital role in maintaining flexibility, preventing injuries, and enhancing recovery. Here's my approach to stretching before and after my runs.
+Stretching before and after runs keeps you flexible, helps prevent injuries, and aids recovery. These are the routines I use.
 
 ### Pre-run
 
@@ -228,46 +183,39 @@ Proper stretching before and after runs plays a vital role in maintaining flexib
 
 ### Carbohydrates
 
-Carbs are your body's primary source of energy during intense exercise like running. They're stored in your muscles as glycogen. To maintain optimal glycogen levels:
+Carbs are the main fuel for intense exercise like running. Muscles store them as glycogen. To keep glycogen up:
 
-**Time your carbs**: Consume a carbohydrate-rich meal 3-4 hours before your run to ensure proper digestion and energy availability.
+**Time your carbs**: eat a carb-rich meal 3-4 hours before your run, so it is digested in time.
 
-**Top up during runs**: For long runs or races, consider consuming easily digestible carbs (like gels or chews) every 45 minutes to maintain blood sugar levels.
+**Top up during runs**: on long runs or races, take easily digested carbs, such as gels or chews, every 45 minutes to hold blood sugar.
 
 ### Protein
 
-Protein is essential for muscle recovery and growth. After a run, your muscles need protein to repair micro-tears and build new tissues. Aim for:
-
-**20-30g of protein**: within the first hour after your run.
+After a run, muscles need protein to repair micro-tears and build new tissue. Aim for 20-30 g within the first hour.
 
 **Protein sources**: Tofu and paneer are complete proteins. Beans, lentils, and almonds are not complete on their own, so pair them with grains, like dal with rice.
 
 ### Healthy Fats
 
-Fats are another essential energy source and play a crucial role in absorbing fat-soluble vitamins.
+Fats are another energy source. They also help the body absorb fat-soluble vitamins.
 
 ### Hydration
 
-Water makes up about 60% of our body weight and plays a vital role in every bodily function, including running performance. Here's how to stay hydrated:
-
-**Before, during, and after**: Drink water consistently throughout the day, not just during or after your runs.
-
-**Hydration plan**: Establish a hydration strategy based on your sweat rate (weigh yourself before and after runs to estimate).
+Water is about 60% of body weight and matters for every body function, including running. Drink water through the day, not only around runs. Base your plan on your sweat rate: weigh yourself before and after runs to estimate it.
 
 ### Micronutrients
 
-Vitamins and minerals are crucial for overall health. Focus on eating a variety of colorful fruits and vegetables to ensure you're getting adequate micronutrients.
+Eat a variety of colourful fruits and vegetables to get enough vitamins and minerals.
 
 # What changed
 
 - Completed a **100km challenge** in 30 days (Oct 14, 2024).
 - Reduced BMI from **24.1 to 22.3**.
-- Medium effort pace in October 2024: **5K in approximately 35 minutes (7:00 min/km)**.
 - Resting heart rate (**RHR**) improved to less than **50 beats per minute**.
 
 ## One goal at a time
 
-1. 5K in about 35 minutes (7:00 min/km). Done, October 2024.
+1. 5K in about 35 minutes (7:00 min/km). Done at medium effort, October 2024.
 2. 5K under 30 minutes (6:00 min/km). Done, Nov 15, 2024.
 3. 5K under 25 minutes (5:00 min/km). Done, Dec 4, 2024.
 4. 10K under 60 minutes (6:00 min/km). Done, Feb 6, 2025.
