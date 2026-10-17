@@ -2,18 +2,16 @@
  * temporal-under-the-hood — figures for "Temporal — Under the Hood".
  *
  * House look (walviz.css); this file only decides what each figure does.
- * The recurring drawing: Temporal's history is a tape of events, and every
- * SQL statement is a tally mark on the way to Postgres.
+ * The recurring drawing: every SQL statement is a tally mark on the way to
+ * Postgres.
  *
- *   tuth-request   tap a failure point; each box shows what is left behind
- *   tuth-services  Temporal's services and the one database they share
- *   tuth-tape      the event history of one workflow; N activities
- *   tuth-trip      guess, then one activity as a sequence diagram with tallies
- *   tuth-crash     the worker dies during step 3: replay vs checkpoints,
- *                  with predict-then-see in the clock variant
- *   tuth-cost      SQL statements per workflow, measured and fitted
- *   tuth-receipts  one order: the events Temporal keeps vs Absurd's checkpoints
- *   tuth-deploy    what you deploy for each system
+ *   tuth-request  pick where a request with two writes fails; each box shows
+ *                 what is left behind
+ *   tuth-trip     guess, then one activity as a sequence diagram with tallies
+ *   tuth-crash    the worker dies during step 3: replay vs checkpoints,
+ *                 with predict-then-see in the clock variant
+ *   tuth-cost     SQL statements per unit of work, measured and fitted, at
+ *                 the reader's own N and rate
  *
  * Behaviour follows Temporal v1.28.2 (service/history, common/persistence/sql),
  * Go SDK v1.34.0, and absurd.sql as of April 2026. Measured numbers are the
@@ -85,129 +83,6 @@ const REQ_OUT = {
     text: 'The backend must remember to retry step 3, even if it restarts. That needs a durable record of what is owed, written with step 2: an outbox row, or a workflow engine\'s state.',
   },
 };
-
-
-const SERVICES = {
-  wide: {
-    vb: [900, 382],
-    nodes: [
-      { x: 340, y: 8, w: 220, h: 50, lines: ['your worker', 'your code · any number of replicas'] },
-      { x: 150, y: 98, w: 600, h: 50, lines: ['frontend', 'gRPC · auth · rate limits · routing'] },
-      { x: 150, y: 188, w: 180, h: 64, lines: ['history', 'workflow state', 'event history · timers'] },
-      { x: 360, y: 188, w: 180, h: 64, lines: ['matching', 'task queues', 'dispatch to workers'] },
-      { x: 570, y: 188, w: 180, h: 64, lines: ['worker service', "Temporal's own", 'system workflows'] },
-      { x: 250, y: 302, w: 400, h: 70, kind: 'db', lines: ['Postgres', '37 tables: executions, history_node,', 'shards, tasks, timer_tasks, …'] },
-    ],
-    edges: [
-      { pts: [[450, 58], [450, 96]], label: 'gRPC', lx: 458, ly: 82 },
-      { pts: [[240, 148], [240, 186]] }, { pts: [[450, 148], [450, 186]] }, { pts: [[660, 148], [660, 186]] },
-      { pts: [[240, 252], [330, 300]] }, { pts: [[450, 252], [450, 300]] }, { pts: [[660, 252], [570, 300]] },
-    ],
-    notes: [
-      { x: 762, y: 214, text: 'stateless:', cls: 't-xs t-mute', anchor: 'start' },
-      { x: 762, y: 228, text: 'add replicas', cls: 't-xs t-mute', anchor: 'start' },
-      { x: 662, y: 341, text: 'all durable state', cls: 't-s t-b t-safe' },
-    ],
-  },
-  tall: {
-    vb: [360, 520],
-    nodes: [
-      { x: 60, y: 8, w: 240, h: 50, lines: ['your worker', 'your code · many replicas'] },
-      { x: 8, y: 92, w: 344, h: 50, lines: ['frontend', 'gRPC · auth · routing'] },
-      { x: 40, y: 178, w: 280, h: 50, lines: ['history', 'workflow state · event history'] },
-      { x: 40, y: 242, w: 280, h: 50, lines: ['matching', 'task queues · dispatch'] },
-      { x: 40, y: 306, w: 280, h: 50, lines: ['worker service', "Temporal's own workflows"] },
-      { x: 40, y: 420, w: 280, h: 70, kind: 'db', lines: ['Postgres', '37 tables', 'executions · history_node · …'] },
-    ],
-    edges: [
-      { pts: [[180, 58], [180, 90]], label: 'gRPC', lx: 188, ly: 78 },
-      { pts: [[20, 142], [20, 203], [38, 203]] },
-      { pts: [[20, 142], [20, 267], [38, 267]] },
-      { pts: [[20, 142], [20, 331], [38, 331]] },
-      { pts: [[320, 203], [342, 203], [342, 455], [322, 455]], noArrow: true },
-      { pts: [[320, 267], [342, 267]], noArrow: true },
-      { pts: [[320, 331], [342, 331]], noArrow: true },
-      { pts: [[342, 440], [322, 440]] },
-    ],
-    notes: [
-      { x: 180, y: 384, text: 'stateless: add replicas to scale', cls: 't-xs t-mute', anchor: 'middle' },
-      { x: 180, y: 510, text: 'all durable state', cls: 't-s t-b t-safe', anchor: 'middle' },
-    ],
-  },
-};
-
-const DEPLOY = {
-  wide: {
-    vb: [900, 330],
-    titles: [{ x: 20, y: 20, text: 'TEMPORAL · your worker + 4 services' }, { x: 470, y: 20, text: 'ABSURD · your workers only' }],
-    rules: [[[450, 8], [450, 322]]],
-    nodes: [
-      { x: 120, y: 38, w: 200, h: 46, lines: ['your worker', '1 or N'] },
-      { x: 120, y: 112, w: 200, h: 40, lines: ['frontend'] },
-      { x: 40, y: 180, w: 110, h: 40, lines: ['history'] },
-      { x: 165, y: 180, w: 110, h: 40, lines: ['matching'] },
-      { x: 290, y: 180, w: 110, h: 40, lines: ['worker svc'] },
-      { x: 95, y: 254, w: 250, h: 58, kind: 'db', lines: ['Postgres', '37 tables'] },
-      { x: 560, y: 38, w: 220, h: 46, lines: ['your worker', '1 or N'] },
-      { x: 545, y: 254, w: 250, h: 58, kind: 'db', lines: ['Postgres', '5 tables per queue'] },
-    ],
-    edges: [
-      { pts: [[220, 84], [220, 110]], label: 'gRPC', lx: 228, ly: 101 },
-      { pts: [[170, 152], [95, 178]] }, { pts: [[220, 152], [220, 178]] }, { pts: [[270, 152], [345, 178]] },
-      { pts: [[95, 220], [160, 252]] }, { pts: [[220, 220], [220, 252]] }, { pts: [[345, 220], [280, 252]] },
-      { pts: [[670, 84], [670, 252]], label: 'SQL: stored procedures', lx: 680, ly: 172 },
-    ],
-  },
-  tall: {
-    vb: [360, 540],
-    titles: [{ x: 8, y: 16, text: 'TEMPORAL · worker + 4 services' }, { x: 8, y: 334, text: 'ABSURD · workers only' }],
-    rules: [[[8, 312], [352, 312]]],
-    nodes: [
-      { x: 80, y: 28, w: 200, h: 44, lines: ['your worker', '1 or N'] },
-      { x: 80, y: 100, w: 200, h: 38, lines: ['frontend'] },
-      { x: 8, y: 166, w: 108, h: 38, lines: ['history'] },
-      { x: 126, y: 166, w: 108, h: 38, lines: ['matching'] },
-      { x: 244, y: 166, w: 108, h: 38, lines: ['worker svc'] },
-      { x: 55, y: 236, w: 250, h: 54, kind: 'db', lines: ['Postgres', '37 tables'] },
-      { x: 80, y: 348, w: 200, h: 44, lines: ['your worker', '1 or N'] },
-      { x: 55, y: 474, w: 250, h: 54, kind: 'db', lines: ['Postgres', '5 tables per queue'] },
-    ],
-    edges: [
-      { pts: [[180, 72], [180, 98]], label: 'gRPC', lx: 188, ly: 90 },
-      { pts: [[130, 138], [62, 164]] }, { pts: [[180, 138], [180, 164]] }, { pts: [[230, 138], [298, 164]] },
-      { pts: [[62, 204], [120, 234]] }, { pts: [[180, 204], [180, 234]] }, { pts: [[298, 204], [240, 234]] },
-      { pts: [[180, 392], [180, 472]], label: 'SQL: stored procedures', lx: 190, ly: 437 },
-    ],
-  },
-};
-
-
-const ACT = ['ProcessPayment', 'ReserveInventory', 'SendNotification'];
-const actName = (k) => ACT[k - 1] || `Activity${k}`;
-
-/** Events of a workflow with n activities, and the history_node batch each lands in. */
-function historyOf(n) {
-  const ev = [
-    [1, 'WorkflowExecutionStarted'], [2, 'WorkflowTaskScheduled'], [3, 'WorkflowTaskStarted'], [4, 'WorkflowTaskCompleted'],
-  ];
-  for (let k = 1; k <= n; k++) {
-    const b = 4 + 6 * (k - 1);
-    ev.push([b + 1, `ActivityTaskScheduled · ${actName(k)}`], [b + 2, 'ActivityTaskStarted'], [b + 3, 'ActivityTaskCompleted'],
-      [b + 4, 'WorkflowTaskScheduled'], [b + 5, 'WorkflowTaskStarted'], [b + 6, 'WorkflowTaskCompleted']);
-  }
-  ev.push([5 + 6 * n, 'WorkflowExecutionCompleted']);
-  // batches: [1,2] [3], then per activity [b,b+1] [b+2..b+4] [b+5], then [4+6n, 5+6n]
-  const node = {};
-  const put = (ids) => ids.forEach((x) => { node[x] = ids[0]; });
-  put([1, 2]); put([3]);
-  for (let k = 1; k <= n; k++) { const b = 4 + 6 * (k - 1); put([b, b + 1]); put([b + 2, b + 3, b + 4]); put([b + 5]); }
-  put([4 + 6 * n, 5 + 6 * n]);
-  return { ev, node };
-}
-
-const WHY = ['workflow decided to run it', 'worker picked it up', 'worker returned the result', 'workflow wakes up again',
-  'worker runs the workflow code', 'workflow made its next decision'];
-const MEASURED_NODES = { 1: 6, 3: 12, 5: 18 };
 
 
 const LANES = [['worker', 'your worker'], ['fe', 'frontend'], ['hist', 'history'], ['match', 'matching'], ['pg', 'Postgres']];
@@ -363,7 +238,7 @@ const CR_STOPS = [
    ev (stored before), new (written now), task (pending timer or lease), bad. */
 function crState(i, v) {
   const clock = v === 'clock';
-  const first = clock ? { if: '⟪11:59 → true⟫' } : {};
+  const first = clock ? { if: '11:59 → true' } : {};
   const T = { code: T_CODE[v], ann: first, hot: [], rows: [...T_BASE], tone: '', status: '' };
   const A = { code: A_CODE[v], ann: first, hot: [], rows: [...A_BASE], tone: '', status: '' };
   const tRetry = [['ev', '17', 'ActivityTaskScheduled · SendNotification'], ['ev', '18', 'ActivityTaskStarted · attempt 2'], ['ev', '19', 'ActivityTaskCompleted'], ['ev', '20', 'WorkflowTaskScheduled · sticky queue of A']];
@@ -372,8 +247,8 @@ function crState(i, v) {
     ? [['ev', 'c_', 'send-email'], ['bad', 'r_', 'run 1 · attempt 1 · failed'], ['ev', 'r_', 'run 2 · attempt 2 · completed']]
     : [['ev', 'c_', 'send-notification'], ['bad', 'r_', 'run 1 · attempt 1 · failed'], ['ev', 'r_', 'run 2 · attempt 2 · completed']];
   const aAnn = clock
-    ? { p: '⟪checkpoint⟫', i: '⟪checkpoint⟫', if: '⟦12:00 → false⟧', e: '⟦runs⟧' }
-    : { p: '⟪checkpoint⟫', i: '⟪checkpoint⟫', n: '⟦runs again⟧' };
+    ? { p: 'checkpoint', i: 'checkpoint', if: '⟦12:00 → false⟧', e: '⟦runs⟧' }
+    : { p: 'checkpoint', i: 'checkpoint', n: 'runs again' };
   const aDoneNote = clock
     ? 'Done at 12:00:11. Attempt 1 may already have sent the notification, and attempt 2 sent an email.'
     : 'Done at 12:00:11.';
@@ -408,7 +283,7 @@ function crState(i, v) {
       T.status = 'worker B';
       T.rows = [T_BASE[0], ...tRetry.map((r, k) => (k ? ['new', r[1], r[2]] : r)), ['task', 'timer', 'sticky ScheduleToStart · due 12:00:16']];
       T.note = 'Worker B runs <code>SendNotification</code> again. Only the activity runs; no workflow code runs. When it completes, History writes events 18–20 and sends the workflow task to worker A\'s sticky queue.';
-      A.status = 'completed'; A.tone = clock ? 'bad' : 'good';
+      A.status = 'completed'; A.tone = clock ? 'bad' : '';
       A.ann = aAnn;
       A.hot = clock ? ['p', 'i', 'if', 'e'] : ['p', 'i', 'n'];
       A.rows.push(...aDone.map((r, k) => (k === 0 || k === 2 ? ['new', r[1], r[2]] : r)));
@@ -426,13 +301,13 @@ function crState(i, v) {
       T.rows = [T_BASE[0], ...tRetry, ...tSticky, ['new', '23', 'WorkflowTaskStarted · worker B']];
       if (clock) {
         T.status = 'blocked'; T.tone = 'bad';
-        T.ann = { p: '⟪events 5, 7⟫', i: '⟪events 11, 13⟫', if: '⟦12:00 → false⟧', e: '⟦event 17 differs⟧' };
+        T.ann = { p: 'events 5, 7', i: 'events 11, 13', if: '⟦12:00 → false⟧', e: '⟦event 17 differs⟧' };
         T.hot = ['p', 'i', 'if', 'e'];
         T.rows.push(['bad', '24', 'WorkflowTaskFailed · nondeterminism']);
         T.note = 'Worker B has no copy in memory, so it gets events 1–23 and runs <code>Order()</code> from the first line. At the <code>if</code>, the clock says 12:00, so the code asks for <code>SendEmail</code>. Event 17 says <code>SendNotification</code>. The SDK stops with <code>[TMPRL1100] nondeterministic workflow</code>. Temporal retries the workflow task, and the workflow stays open until you deploy a fix: <code>workflow.Now(ctx)</code> instead of <code>time.Now()</code>.';
       } else {
-        T.status = 'completed'; T.tone = 'good';
-        T.ann = { p: '⟪events 5, 7⟫', i: '⟪events 11, 13⟫', n: '⟪events 17, 19⟫' };
+        T.status = 'completed';
+        T.ann = { p: 'events 5, 7', i: 'events 11, 13', n: 'events 17, 19' };
         T.hot = ['p', 'i', 'n', 'ret'];
         T.rows.push(['new', '24', 'WorkflowTaskCompleted'], ['new', '25', 'WorkflowExecutionCompleted']);
         T.note = 'Worker B has no copy in memory, so it gets events 1–23 and runs <code>Order()</code> from the first line. Each <code>exec()</code> matches its recorded events and returns the stored result. No activity runs again. The code returns, and History writes events 24–25.';
@@ -448,10 +323,9 @@ function crState(i, v) {
         A.tone = 'bad';
         A.note = '<b>Ran both branches.</b> <code>notify</code> started once and may have finished, and <code>email</code> ran once. Nothing checked the code between steps.';
       } else {
-        T.status = 'completed'; T.tone = 'good';
+        T.status = 'completed';
         T.rows = [T_BASE[0], ...tRetry, ...tSticky, ['ev', '23–25', 'workflow task · ExecutionCompleted']];
         T.note = '<b>Started twice:</b> <code>SendNotification</code>, and the code in <code>Order()</code>. <b>Ran once:</b> <code>ProcessPayment</code>, <code>ReserveInventory</code>.';
-        A.tone = 'good';
         A.note = '<b>Started twice:</b> <code>notify</code>, and the code in <code>order()</code>. <b>Ran once:</b> <code>pay</code>, <code>reserve</code>.';
       }
   }
@@ -502,8 +376,6 @@ const TONE = {
   safe: 'fill:var(--green-l);stroke:var(--green);stroke-width:2',
 };
 
-/* ======================================================= static diagrams */
-
 /*
  * A diagram spec has a wide and a tall layout. nodes: {x,y,w,h,kind,lines,tone};
  * kind 'db' draws a dashed box (data at rest). marks with k are clickable.
@@ -513,8 +385,6 @@ function drawDiagram(L, label) {
   const id = uid('tuth');
   const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': label });
   svg.append(s('defs', null, marker(id, 'var(--ink)')));
-  for (const n of L.titles || []) svg.append(s('text', { x: n.x, y: n.y, class: 't-xs t-b t-up', 'text-anchor': n.anchor || 'start' }, n.text));
-  for (const r of L.rules || []) svg.append(s('path', { d: `M${r.map((q) => q.join(',')).join(' L')}`, class: 'rule dash' }));
   for (const e of L.edges) {
     svg.append(s('path', { d: `M${e.pts.map((q) => q.join(',')).join(' L')}`, class: 'edge', 'marker-end': e.noArrow ? null : `url(#${id})` }));
     if (e.label) svg.append(s('text', { x: e.lx, y: e.ly, class: 't-xs t-mute', 'text-anchor': e.anchor || 'start' }, e.label));
@@ -541,24 +411,7 @@ function drawDiagram(L, label) {
     svg.append(g);
     if (m.label) svg.append(s('text', { x: m.lx, y: m.ly, class: `t-s t-b halo ${m.bad ? 't-bad' : 't-mute'}`, 'text-anchor': m.anchor || 'start' }, m.label));
   }
-  for (const n of L.notes || []) svg.append(s('text', { x: n.x, y: n.y, class: n.cls, 'text-anchor': n.anchor || 'start' }, n.text));
   return svg;
-}
-
-function staticDiagram(spec, keyItems) {
-  return (fig, app) => {
-    const stage = h('div');
-    let cur = null;
-    const draw = () => {
-      const L = app.clientWidth < (spec.breakAt || 560) ? spec.tall : spec.wide;
-      if (L === cur) return;
-      cur = L;
-      stage.replaceChildren(drawDiagram(L, fig.getAttribute('aria-label') || ''));
-    };
-    app.append(stage, colorKey(keyItems));
-    new ResizeObserver(draw).observe(app);
-    draw();
-  };
 }
 
 function initRequest(fig, app) {
@@ -591,61 +444,6 @@ function initRequest(fig, app) {
   draw();
 }
 
-/* ======================================================== the event tape */
-
-function initTape(fig, app) {
-  let n = 3;
-  const read = h('dl', { class: 'wv-kv', 'aria-live': 'polite' });
-  const tape = h('div', { class: `${P}tape`, role: 'list' });
-  const sl = range('activities, N', { min: 1, max: 10, value: n, oninput: (v) => { n = v; draw(); } });
-  app.append(sl.el, h('div', { style: 'height:.5rem' }), read, h('div', { style: 'height:.6rem' }), tape,
-    colorKey([['k-data', 'event IDs, history_node rows'], ['k-look', 'the 6 events of one activity'], ['k-opt', 'control']]));
-
-  function row(id, name, nodeId, isFirst, why) {
-    return `<div class="${P}ev${why ? ' is-look' : ''}${isFirst ? ' is-first' : ''}" role="listitem">`
-      + `<span class="nd c-data t-xs">${isFirst ? `node ${nodeId}` : ''}</span><span class="id c-data">${id}</span>`
-      + `<span class="nm">${esc(name)}${why ? `<span class="why t-xs">${esc(why)}</span>` : ''}</span></div>`;
-  }
-  function draw() {
-    const { ev, node } = historyOf(n);
-    const E = 4 + 6 * n + 1; const R = 3 + 3 * n;
-    read.innerHTML = `<dt>events = 4 + 6 × ${n} + 1</dt><dd class="c-data">${E}</dd>`
-      + `<dt>history_node rows = 3 + 3 × ${n}</dt><dd class="c-data">${R}${MEASURED_NODES[n] ? ` <span class="t-xs">(measured ${MEASURED_NODES[n]})</span>` : ''}</dd>`;
-    const show = (id) => n <= 4 || id <= 16 || id >= 5 + 6 * (n - 1);
-    let html = ''; let hidden = false; let lastNode = -1;
-    const head = (t) => `<div class="${P}grp t-xs t-b t-up">${esc(t)}</div>`;
-    html += head('start and first workflow task · 4 events');
-    for (const [id, name] of ev) {
-      const k = Math.floor((id - 5) / 6) + 1;
-      if (id >= 5 && id <= 4 + 6 * n && (id - 5) % 6 === 0 && show(id)) html += head(`activity ${k}: ${actName(k)} · 6 events`);
-      if (id === 5 + 6 * n) html += head('close · 1 event');
-      if (!show(id)) {
-        if (!hidden) { html += `<div class="${P}skip">activities 3–${n - 1}: the same 6 events each, IDs 17–${4 + 6 * (n - 1)}</div>`; hidden = true; }
-        continue;
-      }
-      const first = node[id] !== lastNode;
-      lastNode = node[id];
-      html += row(id, name, node[id], first, id >= 5 && id <= 10 ? WHY[id - 5] : '');
-    }
-    tape.innerHTML = html;
-  }
-  draw();
-}
-
-/* ======================================================== the receipts */
-
-function initReceipts(fig, app) {
-  const { ev } = historyOf(3);
-  const list = (rows) => `<div class="${P}lines">${rows.map(([id, name]) => `<span class="c-data">${id}</span><span>${esc(name)}</span>`).join('')}</div>`;
-  const kv = (rows) => `<dl class="wv-kv">${rows.map(([a, b]) => `<dt>${a}</dt><dd class="c-data">${b}</dd>`).join('')}</dl>`;
-  app.innerHTML = `<div class="wv-cards ${P}pair">`
-    + `<div class="wv-card"><h5>Temporal</h5><p class="t-xs">OrderFulfillmentWorkflow</p>${list(ev.map(([id, name]) => [id, name.replace(' · ', ' ')]))}`
-    + `${kv([['history events', '23'], ['node rows', '12'], ['tables', '16 / 37'], ['SQL', '≈ 145']])}</div>`
-    + `<div class="wv-card"><h5>Absurd</h5><p class="t-xs">order-fulfillment</p>${list([['t_', 'task row'], ['r_', 'run row'], ['c_', 'process-payment'], ['c_', 'reserve-inventory'], ['c_', 'send-notification']])}`
-    + `${kv([['checkpoints', '3'], ['rows written', '5'], ['tables', '3 / 5'], ['SQL', '≈ 32']])}</div></div>`;
-  app.append(colorKey([['k-data', 'stored records and counts']]));
-}
-
 /* ===================================================== ONE ACTIVITY TRIP */
 
 function initTrip(fig, app) {
@@ -666,7 +464,7 @@ function initTrip(fig, app) {
   });
   const nav = stepper(fig, TRIP, (i) => { cur = i; paint(); }, { interval: 4200 });
   app.append(q.el, nav.el, stat, h('div', { style: 'height:.6rem' }), lanesHead, seq,
-    colorKey([['k-ink', 'solid box: process · dashed: database'], ['k-look', 'this step'], ['k-data', 'SQL statements (one tally mark each)'], ['k-opt', 'your guess']]));
+    colorKey([['k-look', 'this step'], ['k-data', 'SQL statements, one tally mark each']]));
 
   const totals = (upTo) => {
     const t = {};
@@ -738,9 +536,9 @@ function initTrip(fig, app) {
       : codeBlock([
         'workflow.ExecuteActivity(ctx, ProcessPayment, params).Get(ctx, &p)  // «result from event 7»',
         'workflow.ExecuteActivity(ctx, ReserveInventory, params).Get(ctx, &i) // step 1 again',
-      ], [0, 1]) + '<p class="wv-callout">The measured column is the per-activity delta between N = 1 and N = 5. The four transactions account for all of it.</p>';
+      ], [0, 1]);
     const guessLine = last && guess
-      ? `<div class="wv-note ${Math.abs(guess - 34) <= 5 ? 'is-good' : ''}">You guessed <b>≈ ${guess}</b>. One activity costs <b>≈ 34</b> statements: four transactions, and each starts with the same five fencing statements.</div>`
+      ? `<div class="wv-note">You guessed <b>≈ ${guess}</b>. One activity costs <b>≈ 34</b> statements: four transactions, and each starts with the same five fencing statements.</div>`
       : '';
     return `<p>${st.call}</p>${guessLine}<div class="${P}split"><div>${body}</div>${table}</div>${st.note ? `<div class="wv-note">${st.note}</div>` : ''}`;
   }
@@ -754,8 +552,7 @@ function initTrip(fig, app) {
     detail.innerHTML = detailHTML(cur);
     bands[cur].after(detail);
     const sum = Object.values(totals(cur)).reduce((a, b) => a + b, 0);
-    stat.innerHTML = `<div class="wv-stat"><span class="k">SQL this activity</span><span class="v c-data">${cur >= 1 ? '≈ ' : ''}${sum}</span></div>`
-      + `<div class="wv-stat"><span class="k">your guess</span><span class="v c-opt">${guess ? `≈ ${guess}` : '—'}</span></div>`;
+    stat.innerHTML = `<div class="wv-stat"><span class="k">SQL so far, this activity</span><span class="v c-data">${cur >= 1 ? '≈ ' : ''}${sum}</span></div>`;
   }
 
   function resize() {
@@ -805,15 +602,15 @@ function initCrash(fig, app) {
   const cols = h('div', { class: `wv-cards ${P}cols` }, CT.el, CA.el);
   const nav = stepper(fig, CR_STOPS, (k) => { i = k; show(); }, { interval: 5200 });
   app.append(h('div', { class: 'wv-field' }, h('label', null, 'Code between steps'), opt.el), nav.el, banner, h('div', { style: 'height:.6rem' }), cols,
-    colorKey([['k-look', 'this moment: code run, rows written'], ['k-data', 'stored rows'], ['k-held', 'result reused, completed'], ['k-gap', 'failure, runs again'], ['k-opt', 'option']]));
+    colorKey([['k-look', 'this moment: code that runs, rows written'], ['k-gap', 'failure, or work done twice']]));
 
   function paint(C, st) {
     C.tag.textContent = st.status;
-    C.tag.className = `wv-tag ${st.status === 'completed' ? 'c-safe' : st.status === 'down' || st.status === 'blocked' ? 'c-bad' : ''}`;
+    C.tag.className = `wv-tag${st.status === 'down' || st.status === 'blocked' ? ' c-bad' : ''}`;
     C.el.className = `wv-card${st.status === 'down' ? ' is-bad' : ''}`;
     C.codeEl.innerHTML = annotated(st.code, st.ann, st.hot, C.el.clientWidth < 440);
-    C.rows.innerHTML = `<table class="wv-table"><tbody>${st.rows.map(([k, id, t]) => `<tr${k === 'new' ? ' class="is-look"' : ''}><td class="${k === 'bad' ? 'c-bad' : k === 'task' ? '' : 'c-data'}">${esc(id)}</td><td${k === 'bad' ? ' class="c-bad"' : ''}>${k === 'task' ? 'pending · ' : ''}${esc(t)}</td></tr>`).join('')}</tbody></table>`;
-    C.note.className = `wv-note${st.tone === 'bad' ? ' is-bad' : st.tone === 'good' ? ' is-good' : ''}`;
+    C.rows.innerHTML = `<table class="wv-table"><tbody>${st.rows.map(([k, id, t]) => `<tr${k === 'new' ? ' class="is-look"' : ''}><td class="${k === 'bad' ? 'c-bad' : 't-b'}">${esc(id)}</td><td${k === 'bad' ? ' class="c-bad"' : ''}>${k === 'task' ? 'pending · ' : ''}${esc(t)}</td></tr>`).join('')}</tbody></table>`;
+    C.note.className = `wv-note${st.tone === 'bad' ? ' is-bad' : ''}`;
     C.note.innerHTML = st.note;
   }
   const gate = (sys) => v === 'clock' && i === PREDICT[sys].at && answer[sys] === null;
@@ -830,7 +627,7 @@ function initCrash(fig, app) {
     const T = gate('T') ? crState(PREDICT.T.from, v).T : st.T;
     const A = gate('A') ? crState(PREDICT.A.from, v).A : st.A;
     const cs = CR_STOPS[i];
-    banner.className = `wv-note${cs.t ? '' : ' is-good'}`;
+    banner.className = 'wv-note';
     banner.innerHTML = cs.t
       ? `<span class="k">${cs.t}</span>sample time`
       : '<span class="k">Result</span>Both systems start the interrupted step twice, so step bodies must be idempotent. They differ on the code between steps: Temporal runs it again and checks it against history; Absurd runs it again and trusts it.';
@@ -840,7 +637,7 @@ function initCrash(fig, app) {
       if (gate(sys)) askIn(C, sys);
       else {
         const k = answer[sys]; const ok = PREDICT[sys].choices[k][1];
-        C.note.insertAdjacentHTML('afterbegin', `<b class="${ok ? 'c-safe' : 'c-bad'}">You said: ${esc(PREDICT[sys].choices[k][0])}. ${ok ? 'Right.' : 'Not quite.'}</b> `);
+        C.note.insertAdjacentHTML('afterbegin', `<b>You said: ${esc(PREDICT[sys].choices[k][0])}. ${ok ? 'Right.' : 'Not quite.'}</b> `);
       }
     }
   }
@@ -857,9 +654,9 @@ function initCost(fig, app) {
   const stats = h('div', { class: 'wv-stats', 'aria-live': 'polite' });
   const note = h('div', { class: 'wv-note' });
   const rn = range('activities per workflow, N', { min: 1, max: NMAX, value: S.n, oninput: (x) => { S.n = x; draw(); } });
-  const rr = range('your workflows per second', { min: 0, max: RATES.length - 1, value: S.r, fmt: (x) => `${fmt(RATES[x])}/s`, oninput: (x) => { S.r = x; draw(); } });
+  const rr = range('your units per second', { min: 0, max: RATES.length - 1, value: S.r, fmt: (x) => `${fmt(RATES[x])}/s`, oninput: (x) => { S.r = x; draw(); } });
   app.append(h('div', { class: 'wv-grid-ctrl' }, rn.el, rr.el), stats, h('div', { style: 'height:.6rem' }), svg,
-    colorKey([['k-data', 'measured'], ['k-line-ink', 'fitted line (Absurd dashed)'], ['k-look', 'your N'], ['k-opt', 'controls']]),
+    colorKey([['k-data', 'measured runs'], ['k-line-ink', 'fitted line'], ['k-look', 'your N']]),
     h('div', { style: 'height:.6rem' }), note);
 
   function draw() {
@@ -887,29 +684,27 @@ function initCost(fig, app) {
     for (const [n, q] of [...MEASURED.T, ...MEASURED.A]) o += `<circle cx="${x(n)}" cy="${y(q)}" r="4.5" style="fill:var(--brown-l);stroke:var(--brown);stroke-width:1.8"/>`;
     const cx = x(S.n);
     o += `<line x1="${cx}" x2="${cx}" y1="${m.t}" y2="${Ht - m.b}" style="stroke:var(--purple);stroke-width:1.5"/>`;
-    for (const f of [MODEL.T, MODEL.A]) o += `<circle cx="${cx}" cy="${y(f(S.n))}" r="5" style="fill:var(--purple);stroke:var(--board);stroke-width:2"/>`;
+    const left = S.n > NMAX * 0.7;
+    for (const [f, dy] of [[MODEL.T, -7], [MODEL.A, 17]]) {
+      o += `<circle cx="${cx}" cy="${y(f(S.n))}" r="5" style="fill:var(--purple);stroke:var(--board);stroke-width:2"/>`;
+      o += `<text x="${cx + (left ? -9 : 9)}" y="${y(f(S.n)) + dy}" class="t-s t-b t-look halo" text-anchor="${left ? 'end' : 'start'}">${fmt(f(S.n))}</text>`;
+    }
     svg.innerHTML = o;
 
     const R = RATES[S.r]; const t = MODEL.T(S.n); const a = MODEL.A(S.n);
     const mt = MEASURED.T.find(([n]) => n === S.n); const ma = MEASURED.A.find(([n]) => n === S.n);
     const stat = (k, v, cls = 'c-data') => `<div class="wv-stat"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
-    stats.innerHTML = stat('Temporal, per workflow', `${fmt(t)}${mt ? ` <span class="t-xs">(measured ${mt[1]})</span>` : ''}`)
-      + stat('Temporal, your Postgres', `${fmt(t * R)}/s`)
-      + stat('Absurd, per task', `${fmt(a)}${ma ? ` <span class="t-xs">(measured ${ma[1]})</span>` : ''}`)
-      + stat('Absurd, your Postgres', `${fmt(a * R)}/s`);
-    note.innerHTML = `Temporal: 40 + 35 × ${S.n} = ${fmt(t)}. Absurd: 11 + 7 × ${S.n} = ${fmt(a)}. At ${fmt(R)} workflows/s, Temporal runs <b>${(t / a).toFixed(1)}×</b> as many statements; the ratio tends to 35 / 7 = 5 as N grows. This counts statements, not their cost.`;
+    stats.innerHTML = stat('Temporal, your Postgres', `${fmt(t * R)}/s`) + stat('Absurd, your Postgres', `${fmt(a * R)}/s`);
+    const meas = mt ? ` Measured at N = ${S.n}: ${mt[1]} and ${ma[1]}.` : '';
+    note.innerHTML = `40 + 35 × ${S.n} = ${fmt(t)} and 11 + 7 × ${S.n} = ${fmt(a)} statements per unit, so Temporal runs <b>${(t / a).toFixed(1)}×</b> as many.${meas} The ratio tends to 35 / 7 = 5 as N grows. This counts statements, not their cost.`;
   }
   new ResizeObserver(() => draw()).observe(app);
   draw();
 }
 
 register({
-  'tuth-receipts': initReceipts,
   'tuth-request': initRequest,
-  'tuth-services': staticDiagram(SERVICES, [['k-ink', 'solid box: process you run · dashed: database'], ['k-held', 'durable state']]),
-  'tuth-tape': initTape,
   'tuth-trip': initTrip,
   'tuth-crash': initCrash,
   'tuth-cost': initCost,
-  'tuth-deploy': staticDiagram(DEPLOY, [['k-ink', 'solid box: process you run · dashed: database']]),
 });

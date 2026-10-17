@@ -3,28 +3,6 @@
 /* failure picker: a larger invisible hit target around each mark */
 .wv .mark circle.v-tuth-hit { fill: none; stroke: none; pointer-events: all; }
 
-/* event tape: node batch | event ID | name */
-.v-tuth-tape { max-width: 640px; }
-.v-tuth-grp { margin: 0.5rem 0 0.15rem; padding-bottom: 0.1rem; border-bottom: 1px solid var(--line); }
-.v-tuth-grp:first-child { margin-top: 0; }
-.v-tuth-ev { display: grid; grid-template-columns: 4.8em 2.2em minmax(0, 1fr); gap: 0 0.5em; padding: 0.05rem 0; }
-.v-tuth-ev.is-first { margin-top: 0.2rem; }
-.v-tuth-ev .nd { border-left: 2.5px solid var(--brown); padding-left: 0.35em; }
-.v-tuth-ev .id { text-align: right; font-weight: 800; }
-.v-tuth-ev .nm { overflow-wrap: anywhere; }
-.v-tuth-ev .why { display: block; }
-.v-tuth-ev.is-look .nm { background: var(--purple-l); }
-.v-tuth-ev.is-look .id { color: var(--purple); }
-.v-tuth-skip { margin: 0.4rem 0; padding: 0.3rem 0.5rem; border: 1px dashed var(--line); text-align: center; }
-
-/* receipts: two cards side by side; the long one is the point */
-.wv-cards.v-tuth-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-.v-tuth-pair .wv-kv { grid-template-columns: minmax(0, 1fr) auto; }
-.v-tuth-pair .wv-kv dd { white-space: nowrap; text-align: right; }
-.v-tuth-lines { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 0 0.5em; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px dashed var(--ink); }
-.v-tuth-lines > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.v-tuth-lines > span:nth-child(odd) { text-align: right; font-weight: 800; }
-
 /* one activity: lanes header, clickable step bands, detail under the band */
 .v-tuth-lanes { position: sticky; top: 0; z-index: 2; background: var(--board); padding: 2px 0; }
 .v-tuth-band { cursor: pointer; border-top: 1px dashed var(--line); transition: background-color 0.2s, opacity 0.2s; }
@@ -33,7 +11,7 @@
 .v-tuth-band.is-future { opacity: 0.45; }
 .v-tuth-detail { display: grid; gap: 0.6rem; margin-bottom: 0.4rem; }
 .v-tuth-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.7rem; align-items: start; }
-@media (min-width: 820px) { .v-tuth-split { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); } }
+@media (min-width: 820px) { .v-tuth-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .v-tuth-tally { display: inline-flex; align-items: center; gap: 2px; height: 12px; }
 .v-tuth-tally .st { width: 2px; height: 12px; background: var(--brown); }
 .v-tuth-tally .st.is-new { background: var(--purple); }
@@ -43,11 +21,8 @@
 .v-tuth-cols .wv-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.55rem; align-content: start; min-width: 0; }
 .v-tuth-card-h { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
 
-/* main.css makes every table max-content on phones; these rows should wrap */
-.v-tuth-cols .wv-table, .v-tuth-detail .wv-table { width: 100% !important; }
-.v-tuth-cols .wv-table :is(td, th), .v-tuth-detail .wv-table :is(td, th) { padding: 0.25rem 0.4rem 0.25rem 0 !important; }
-.v-tuth-detail .wv-table td:first-child { overflow-wrap: anywhere; }
 .v-tuth-cols .wv-table td { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 819px) { .v-tuth-detail .wv-table td:first-child { overflow-wrap: anywhere; } }
 @media (min-width: 740px) { .v-tuth-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 
 /* keep SQL and code on one line per statement; the block scrolls instead */
