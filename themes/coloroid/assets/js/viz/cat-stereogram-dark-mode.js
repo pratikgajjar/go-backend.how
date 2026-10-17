@@ -153,7 +153,7 @@ function initTry(fig, app) {
 
   const S = {
     ask: () => ({
-      q: `Hold a fingertip about ${cm(fingerMM(sp * SCREEN.mmPerPx))} from your eyes, between you and the cats. Look at the fingertip, not the cats. How many cats are behind it?`,
+      q: `Hold a fingertip about ${cm(fingerMM(sp * SCREEN.mmPerPx))} from your eyes, between you and the cats. Look at the fingertip. Do not look at the cats. How many cats are behind it?`,
       chips: [['two', '2'], ['four', '4'], ['three', '3'], ['blur', 'a blur']],
     }),
     two: () => ({
@@ -170,12 +170,12 @@ function initTry(fig, app) {
     }),
     under: () => ({
       pic: view(0.25, { mark: 'meet', label: 'The middle two cats need to move together' }),
-      say: 'Not crossed enough yet. Move the fingertip a little closer to your eyes, keep looking at it, and the middle two slide together.',
+      say: 'Your eyes are not crossed enough yet. Move the fingertip a little closer to your eyes and keep looking at it. The middle two cats move toward each other.',
       back: 'Try again',
     }),
     over: () => ({
       pic: view(0.75, { mark: 'meet', label: 'The middle two cats have passed each other and need to slide back' }),
-      say: 'Crossed too far: the middle two have passed each other. Move the fingertip back toward the screen, and they slide back together.',
+      say: 'Your eyes are crossed too far. The middle two cats have passed each other. Move the fingertip back toward the screen, and they move back together.',
       back: 'Try again',
     }),
     three: () => ({
@@ -188,7 +188,7 @@ function initTry(fig, app) {
     }),
     fused: () => ({
       pic: view(0.5, { eyes: true, label: 'Three cats: the left eye gives the orange parts, the right eye the blue parts, and both eyes see the rings of the middle cat' }),
-      say: '<b>Fused.</b> Each eye gives the middle cat one ear and one set of whiskers, and the right eye gives the tail. Take the fingertip away and hold the cross. The cat sharpens when focus settles on the screen.',
+      say: '<b>The cats are fused.</b> Each eye gives the middle cat one ear and one set of whiskers, and the right eye gives the tail. Take the fingertip away and keep your eyes crossed. The cat comes into focus when your eyes focus on the screen again.',
       back: 'Start over', key: [['k-ink', 'both eyes'], ...EYE_KEY],
     }),
     blur: () => ({
@@ -317,7 +317,7 @@ function initAim(fig, app) {
     (v, right) => {
       animate(90, 1600);
       setTimeout(showQ2, 0);
-      return `${right ? 'Yes.' : 'The other way.'} Wider cats need the eyes to cross more, so the lines of sight cross nearer to your face: from ${cm(fingerMM(20, D))} to ${cm(fingerMM(90, D))} here.`;
+      return `${right ? 'Yes.' : 'The other way.'} Cats further apart need the eyes to cross more, so the lines of sight cross nearer to your face: from ${cm(fingerMM(20, D))} to ${cm(fingerMM(90, D))} here.`;
     });
   const q2 = ask('2 of 2 · Now look through the screen instead of crossing. Which pair can you fuse?',
     [['2', 'Cats 2 cm apart'], ['10', 'Cats 10 cm apart, like the print']], '2',
@@ -365,17 +365,17 @@ function initDepth(fig, app) {
   const say = h('div', { class: 'wv-note', 'aria-live': 'polite' });
   const heads = chips([[6, 'Heads apart'], [0, 'Flat'], [-6, 'Heads together']], (v) => { d = v; draw(); sync(); }, { value: 6, label: 'Move the heads' });
   function sync() {
-    say.innerHTML = d === 0 ? 'Flat: heads and bodies are the same distance apart.'
-      : d > 0 ? 'Heads 12 px further apart. Crossed: the head sits <b>in front</b>. Looking through: behind.'
-        : 'Heads 12 px closer together. Crossed: the head sits <b>behind</b>. Looking through: in front.';
+    say.innerHTML = d === 0 ? 'The pair is flat. Heads and bodies are the same distance apart.'
+      : d > 0 ? 'Heads 12 px further apart. With crossed eyes the head is <b>in front</b>. Looking through, it is behind.'
+        : 'Heads 12 px closer together. With crossed eyes the head is <b>behind</b>. Looking through, it is in front.';
   }
-  const q = ask('The heads are 12 px further apart than the bodies. Guess first, then fuse the pair with crossed eyes: where does the head sit?',
+  const q = ask('The heads are 12 px further apart than the bodies. Guess first, then fuse the pair with crossed eyes. Is the head in front of the body or behind it?',
     [['front', h('span', { class: 'v-cs-choice' }, sideView('front'), 'In front of the body')],
       ['behind', h('span', { class: 'v-cs-choice' }, sideView('behind'), 'Behind the body')]],
     'front',
     (v, right) => {
       after.hidden = false;
-      return `${right ? '<b>In front, as you guessed.</b>' : '<b>In front.</b>'} Parts that are further apart need the eyes to cross more, and more crossing reads as nearer. Looking through, the same pair puts the head behind the body.`;
+      return `${right ? '<b>In front, as you guessed.</b>' : '<b>In front.</b>'} Parts that are further apart need the eyes to cross more, and the brain sees more crossing as nearer. Looking through, the same pair puts the head behind the body.`;
     });
   after.append(h('p', { class: 'v-cs-then' }, 'Now try the other two, and fuse each one:'), heads.el, say);
   after.hidden = true;

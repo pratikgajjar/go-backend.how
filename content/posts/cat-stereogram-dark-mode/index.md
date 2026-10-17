@@ -11,11 +11,11 @@ images = ["og-eb3a0221.png"]
 theme = "lavender"
 +++
 
-The image below is two white cats on black. Look at it the right way and the two cats merge into one, with both ears, both sets of whiskers, and the tail. By the end you will have fused it on your own screen. You will know where your eyes aim, why a fingertip gets them there, and how a pair like this gets depth.
+The image below is two white cats on black. When each eye aims at a different cat, the two cats merge into one, with both ears, both sets of whiskers, and the tail. By the end you will have fused it on your own screen. You will know where your eyes aim, why a fingertip helps them aim there, and how a pair like this gets depth.
 
 {{< figure download="y" src="cat-stereogram.png" title="cat-stereogram" alt="Two white line cats on black. The left cat has an ear, whiskers, and a tail on its left side; the right cat has an ear and whiskers on its right side and no tail." width="auto" >}}
 
-A stereogram is a pair of images, one for each eye. When each eye aims at a different image, the brain merges the two into one. This is a side-by-side pair, not a single-image random-dot stereogram like the Magic Eye posters, so nothing is hidden in it. Each cat has parts the other lacks, and the merged cat has all of them. It is also flat: the two outlines line up to within 2 px on a 7,016 px sheet, so there is no depth to see yet. The last section adds some.
+A stereogram is a pair of images, one for each eye. When each eye aims at a different image, the brain merges the two into one. This is a side-by-side pair. The Magic Eye posters are a different kind, single-image random-dot stereograms. Nothing is hidden in this pair. Each cat has parts the other lacks, and the merged cat has all of them. The pair is also flat. The two outlines line up to within 2 px on a 7,016 px sheet, so there is no depth to see yet. The last section adds some.
 
 # Two ways to merge a pair
 
@@ -23,11 +23,11 @@ To merge the pair, each eye has to aim at a different cat. There are two ways to
 
 ## Looking through works only for narrow pairs
 
-The usual advice is to relax your eyes and look through the image, as if at a wall behind it. This aims both eyes behind the page, so the left eye lands on the left cat and the right eye on the right cat. It works only when the cats are closer together than your eyes, which for most adults are about 63 mm apart.[^ipd] Printed on A4, these cats are 106 mm apart. Looking through them would need the eyes to turn outward, which they barely can.
+The usual advice is to relax your eyes and look through the image, as if at a wall behind it. This aims both eyes behind the page, so the left eye points at the left cat and the right eye at the right cat. It works only when the cats are closer together than your eyes, which for most adults are about 63 mm apart.[^ipd] Printed on A4, these cats are 106 mm apart. Looking through them would need the eyes to turn outward, which they barely can.
 
 ## Crossing works at any spacing
 
-Cross your eyes instead, so the lines of sight meet in front of the page. Now the left eye lands on the right cat and the right eye on the left cat, and that works however far apart the cats are. The hard part is knowing how far to cross. A fingertip solves that: it gives both eyes one point to look at, and you move it until the cats line up.
+Cross your eyes instead, so the lines of sight meet in front of the page. Now the left eye points at the right cat and the right eye at the left cat. This works at any distance between the cats. The difficult part is knowing how far to cross. A fingertip gives both eyes one point to look at, and you move it until the cats line up.
 
 Try it on the pair below. Follow the questions under it.
 
@@ -36,8 +36,8 @@ Try it on the pair below. Follow the questions under it.
 With the printed card, the steps are the same:
 
 1. Hold your index finger or a pen tip close to the stereogram.
-2. Move it slowly toward your eyes. Keep your eyes on the fingertip, not on the cats.
-3. As the finger moves closer, the two cats behind it split into four. If the two tails are side by side, keep moving the finger toward your eyes. If they are one cat apart, you went too far; move it back. When the middle two land on each other, you see three cats. Look at a sharp corner of the middle one, like the neck of the cat.
+2. Move it slowly toward your eyes. Keep your eyes on the fingertip. Do not look at the cats.
+3. As the finger moves closer, the two cats behind it split into four. If the two tails are side by side, keep moving the finger toward your eyes. If they are one cat apart, you went too far; move it back. When the middle two overlap, you see three cats. Look at a sharp corner of the middle one, like the neck of the cat.
 4. Hold the merge while you look slowly around the cat's head and body.
 5. Remove the finger and keep the merged image. It sharpens once focus relaxes back to the page while your eyes stay crossed.
 
@@ -53,13 +53,13 @@ Cats closer together put the fingertip further from your face, so the eyes cross
 
 A stereogram gets depth from small side-to-side differences between its two images. The pair below has its heads moved a few pixels. Guess first, then fuse it.
 
-{{< viz kind="depth" title="Move the heads, then fuse" fallback="depth.svg" alt="The cat pair with the heads moved 12 px further apart than the bodies; with crossed eyes the head sits in front of the body" >}}
+{{< viz kind="depth" title="Move the heads, then fuse" fallback="depth.svg" alt="The cat pair with the heads moved 12 px further apart than the bodies; with crossed eyes the head is in front of the body" >}}
 
-A stereogram made for crossing shows its depth inside out when you look through it, and the other way round.
+A stereogram made for crossing shows reversed depth when you look through it. A stereogram made for looking through shows reversed depth when you cross your eyes.
 
 # What it does for your eyes
 
-Merging this pair makes both eyes turn inward together while focus stays on the page. Cards that work the same way, "Life Saver" cards and eccentric circles, are part of the office-based vision therapy in the Convergence Insufficiency Treatment Trial (CITT) group's trials.[^mop] In their 2008 trial, 12 weeks of supervised therapy helped children with convergence insufficiency more than home pencil push-ups, home computer therapy, or placebo therapy did.[^citt] The trial tested the full therapy programme, not stereograms on their own. I know of no study showing that viewing stereograms reduces eye strain from screens. For that, the AOA suggests the 20-20-20 rule: every 20 minutes, look at something 20 feet away for 20 seconds.[^aoa]
+Merging this pair makes both eyes turn inward together while focus stays on the page. Cards that work the same way, "Life Saver" cards and eccentric circles, are part of the office-based vision therapy in the Convergence Insufficiency Treatment Trial (CITT) group's trials.[^mop] In their 2008 trial, 12 weeks of supervised therapy helped children with convergence insufficiency more than home pencil push-ups, home computer therapy, or placebo therapy did.[^citt] The trial tested the full therapy programme. It did not test stereograms on their own. I know of no study showing that viewing stereograms reduces eye strain from screens. For that, the AOA suggests the 20-20-20 rule: every 20 minutes, look at something 20 feet away for 20 seconds.[^aoa]
 
 # Make your own {#what-to-remember}
 
