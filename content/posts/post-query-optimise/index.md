@@ -14,8 +14,7 @@ reads and caches data in 8 KB pages, so the page count is the
 number to watch. By the end of this post you will know why one lookup reads
 33,333 pages without an index and 4 with one, when the planner is right to
 ignore your index, how to read `EXPLAIN`, and what `SELECT *` and `LIMIT`
-save and do not save. Every number comes from one sample table on
-PostgreSQL 18.4, and each figure asks you to try something.
+save and do not save.
 
 # The sample table
 
@@ -25,21 +24,20 @@ PostgreSQL 18.4, and each figure asks you to try something.
 `created_at` has a B-tree index; Figure 1 also shows one lookup measured
 before the `email` index existed. About 30 rows fit on an 8 KB page, so the
 table is 33,333 pages. Every number in this post comes from this table on
-an Apple M3 Max with default settings, except that parallel workers and JIT
-are off to keep the plans simple. The SQL to build it is at the
+PostgreSQL 18.4 on an Apple M3 Max with default settings, except that
+parallel workers and JIT are off to keep the plans simple. The SQL to build it is at the
 [end of the post](#reproduce-these-numbers).
 
 # Why one row can cost 33,333 pages
 
-Take the simplest query: find one user by email. Without an index on
-`email`, Postgres has no way to know where that row is, so it reads every
-page of the table and tests every row. That is a sequential scan. It is
+Find one user by email. Without an index on `email`, Postgres cannot know
+where that row is, so it reads every page of the table and tests every row. That is a sequential scan. It is
 the right plan when you want most of the table, and the wrong one when you
 want one row.
 
 An index is a sorted copy of one or more columns, and each entry points to
-a row in the table. How many pages does the same lookup read with an index
-on `email`? Guess in the figure before it shows you.
+a row in the table. In Figure 1, guess how many pages the same lookup reads
+with an index on `email`, then check.
 
 {{< viz kind="pqo-pages" fig="1" title="One lookup, with and without an index" fallback="pages.svg" alt="The same lookup drawn as page maps: a sequential scan reads all 33,333 table pages; an index scan reads three index pages and one table page" caption="Guess, then see. `users` and its email index drawn to scale, one square per 8 KB page, each at its real block number." >}}
 
@@ -85,10 +83,8 @@ stays the cheapest plan up to 70% of the rows. Rows with a small `score` are
 spread across all 33,333 pages. For those the planner uses a bitmap scan,
 and between 30% and 50% of the rows it switches to reading the whole table.
 A lower `random_page_cost`, which is common on SSDs, moves that switch to
-the right.
-
-So when `EXPLAIN` shows a sequential scan on a column that has an index,
-the planner may be right.
+the right. A sequential scan on an indexed column in `EXPLAIN` can be the
+correct plan.
 
 # Reading EXPLAIN
 
@@ -123,8 +119,8 @@ Three places to read first:
 
 # What SELECT \* and LIMIT save
 
-Two common tips are "avoid `SELECT *`" and "use `LIMIT`". Both help, but
-not always by reading fewer pages.
+"Avoid `SELECT *`" and "use `LIMIT`" both help, but not always by reading
+fewer pages.
 
 Postgres stores each row as one piece on a table page, so naming two
 columns instead of `*` does not reduce the pages a sequential scan reads.
@@ -148,32 +144,31 @@ fixes that.
 
 # JOINs
 
-JOINs combine rows from several tables. Index the columns you join on.
-Postgres indexes a primary key automatically, but not a foreign key column
-that points to it, so a column such as `orders.user_id` needs its own index.
-You do not need to reorder the tables in your query: the planner chooses the
-join order itself, for up to eight tables by default (`join_collapse_limit`).
+Index the columns you join on. Postgres indexes a primary key
+automatically, but not a foreign key column that points to it, so a column
+such as `orders.user_id` needs its own index. The planner chooses the join
+order itself, for up to eight tables by default (`join_collapse_limit`), so
+the order of tables in your query does not matter.
 
 # Caching
 
 Postgres caches pages, not query results. Recently used pages stay in
 shared buffers (`shared_buffers`, 128 MB by default) and in the operating
 system's file cache; that is the difference between `hit` and `read` in
-`Buffers`. Postgres does not keep query results between queries, so a
-result you compute often has to be cached elsewhere: in the application, in
-a cache such as Redis, or in a materialized view that you refresh on a
-schedule.
+`Buffers`. To reuse a result you compute often, cache it in the
+application, in a cache such as Redis, or in a materialized view that you
+refresh on a schedule.
 
 # Takeaways
 
-1. Count pages, not rows. `EXPLAIN (ANALYZE, BUFFERS)` shows how many a
-   query reads; check every change with it on real data.
-2. An index turns 33,333 page reads into 4 for one row. It costs disk space
-   and write time.
-3. The planner chooses from statistics. A sequential scan is often the
-   right plan when a filter matches a large part of the table.
-4. `SELECT *` reads the same table pages as a narrow select. The saving is
-   in sort size, bytes sent, and index-only scans.
+1. Count pages, not rows. Check every change with
+   `EXPLAIN (ANALYZE, BUFFERS)` on real data.
+2. An index turns 33,333 page reads into 4 for one row, at a cost in disk
+   space and write time.
+3. When a filter matches a large part of the table, a sequential scan is
+   often the right plan.
+4. A narrow select reads the same table pages as `SELECT *`. It saves sort
+   size, bytes sent, and can allow an index-only scan.
 5. `LIMIT` saves reads only when an index gives rows in the requested order.
 
 # Reproduce these numbers
