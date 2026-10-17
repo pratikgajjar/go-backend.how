@@ -716,9 +716,9 @@ After ~hours, two things start to break:
 
   We scraped this with a Postgres metrics exporter running custom
   queries — slot lag alongside integer-PK headroom and vacuum and index
-  stats — and alerted at `> 1 GiB`, paged at `> 5 GiB`. If it fills
-  the disk, Postgres cannot write WAL: it panics and stays down until
-  you free space, halting *every* writer on that cluster. Postgres 13+ has
+  stats — and alerted at `> 1 GiB`, paged at `> 5 GiB`. If the disk
+  holding the WAL fills, the server may panic and shut down[^14],
+  halting *every* writer on that cluster. Postgres 13+ has
   `max_slot_wal_keep_size` (default `-1` / no limit) that
   invalidates a slot before disk fills; set it (e.g. `10GB`) so a
   stuck slot loses its WAL retention rather than wedging the cluster.
@@ -868,8 +868,10 @@ same property; the advice is the same:
 keep transactions short, hoist long-running work outside the
 transaction.
 
-Newer pgoutput protocols help: v2 (PG 14) can stream large
-in-progress transactions before COMMIT; v3 (PG 15) adds two-phase commit; v4 (PG 16) adds
+Newer pgoutput protocols help: v2 (PG 14) allows streaming of large
+in-progress transactions with the `streaming` option on. Once the decoded
+changes of all in-progress transactions exceed `logical_decoding_work_mem`,
+the largest transaction is streamed before its COMMIT[^15]. v3 (PG 15) adds two-phase commit; v4 (PG 16) adds
 parallel apply[^10]. Switching factlib past v1 is deferred because it
 needs care around rolled-back streamed messages on the consumer.
 
@@ -930,3 +932,5 @@ needs care around rolled-back streamed messages on the consumer.
 [^11]: [KIP-98 — Exactly Once Delivery and Transactional Messaging](https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging)
 [^12]: Measured on a local PostgreSQL 17 (`wal_level = logical`, `synchronous_commit = on`), 10,000 iterations of BEGIN → INSERT → `pg_logical_emit_message` → COMMIT timing the emit `SELECT`, over a unix socket and TCP loopback on an Apple M3 Max.
 [^13]: Throughput measured on a 16-core EC2 instance (EBS gp3, ~574 MB/sec sequential write, single-stream `fdatasync` ~1,100/sec) running PostgreSQL 15 with `wal_level = logical`, `synchronous_commit = on`, over a unix socket. Load from a concurrent Go emitter (pgx, one `pg_logical_emit_message` per commit unless batched), cross-checked against `pgbench` within ~2%.
+[^14]: [Disk Full Failure — Postgres 17 docs](https://www.postgresql.org/docs/17/diskusage.html#DISK-FULL): "If the disk holding the WAL files grows full, database server panic and consequent shutdown might occur."
+[^15]: [Streaming of Large Transactions for Logical Decoding — Postgres 17 docs](https://www.postgresql.org/docs/17/logicaldecoding-streaming.html); [`proto_version` and `streaming` options](https://www.postgresql.org/docs/17/protocol-logical-replication.html)

@@ -346,7 +346,7 @@ function initBacklog(fig, app) {
       verdict.textContent = `After ${human(at(cap))} the slot passes max_slot_wal_keep_size. At the next checkpoint Postgres invalidates it and removes the WAL; OwlPost can no longer stream, and those events need a backfill. Postgres keeps running.`;
     } else {
       verdict.className = 'wv-note';
-      verdict.textContent = `After ${human(at(P.disk))} pg_wal fills the disk. Postgres cannot write WAL and stops, and every writer on the cluster stops with it.`;
+      verdict.textContent = `After ${human(at(P.disk))} pg_wal fills the disk. The server may panic and shut down, and every writer on the cluster stops with it.`;
     }
   }
   app.append(h('div', { class: 'wv-grid-ctrl' }, ...sl.map((x) => x.el)),
