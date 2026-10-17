@@ -91,7 +91,7 @@ function initOneStack(fig, app) {
     if (k === 1) label(colX(0) + cw / 2, 'one stack, all year');
     else if (fits) HOPS.slice(0, k).forEach((n, c) => label(colX(c) + cw / 2, n));
     else label(gx + gw / 2, `${k} stacks`);
-    names.append(s('text', { x: g.c0, y: base + 32, class: 't-xs t-mute' }, 'one brick = one month in one stack'));
+    names.append(s('text', { x: g.c0, y: base + 32, class: 't-xs t-mute' }, k > 1 ? 'one brick = one month in one stack · ↺ switch' : 'one brick = one month in one stack'));
     const [bad, text] = SAY[every];
     note.className = `wv-note${bad ? ' is-bad' : ''}`;
     note.textContent = text;
