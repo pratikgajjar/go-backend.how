@@ -127,6 +127,7 @@ export function stepper(root, steps, onStep, { interval = 3200 } = {}) {
     back.disabled = i === 0;
     next.disabled = i === steps.length - 1;
     pos.textContent = `${i + 1} / ${steps.length}`;
+    if (!timer) play.textContent = i === steps.length - 1 ? '↻ Replay' : '▶ Play';
     onStep(i, prev);
     if (i === steps.length - 1) stop();
   }
