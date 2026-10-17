@@ -18,19 +18,23 @@ There is no generator: you design each card for its post.
    `content/posts/wal-cake-lock-free-cdc/og.svg`, then draw this post's idea.
 3. Render a preview: `.agents/skills/og-image/render.py <slug> --check`.
    Open the PNG it prints with the read tool. Look at it full size, then
-   judge it as a 600 px wide thumbnail in a feed.
+   judge it at 500 px wide (`sips -Z 500 <png> --out /tmp/x.png`).
 4. Iterate until it passes the checklist below. Then render for real:
    `.agents/skills/og-image/render.py <slug>`. This writes the new
    `og-<hash>.png`, deletes the old `og-*.png`, and updates `images`.
-5. Check the card as X, LinkedIn and Facebook show it: run `make serve`
-   and open http://localhost:1313/og-preview/ (hidden page, drafts
-   included). Text that is hard to read there is too small.
+5. Check the card as X, LinkedIn, Slack and iMessage show it: run
+   `make serve` and open http://localhost:1313/og-preview/ (feeds view;
+   drafts included). Text that is hard to read there is too small.
 6. `hugo --quiet` must build. Commit only the post folder:
    `git add content/posts/<slug>/og.svg content/posts/<slug>/og-*.png && git commit -m "posts(<slug>): new og image" -- content/posts/<slug>`.
 
 ## Canvas
 
-- 1200 × 630 SVG (`width="1200" height="630"`). It renders at 2x.
+- 1200 × 630 SVG (`width="1200" height="630"`), ratio 1.91:1, the size
+  Facebook, LinkedIn and X `summary_large_image` expect. It renders at 2x
+  to a 2400 × 1260 PNG, so it stays sharp on Retina screens.
+- Keep the PNG under 300 KB (WhatsApp skips large previews; X allows 5 MB).
+  Flat colours and few shapes keep it near 100 KB.
 - The page background is the post's theme colour (`--article-bg`), injected
   by `render.py`. On it sits one whiteboard sheet: `x=48 y=48 w=1104 h=526`,
   `fill: var(--board)`, 2.5 px `var(--ink)` stroke, and an 8 px hard shadow
@@ -53,6 +57,9 @@ There is no generator: you design each card for its post.
 - Optional: one line of 28–32 px text that states the idea in plain words.
 - Keep 48 px clear inside the sheet on every side. Nothing important within
   60 px of the canvas edge.
+- X draws the post title in a dark label over the bottom-left corner of the
+  image (about the lower 70 px, up to the full width for long titles). Keep
+  key text out of the bottom-left; a closing line there may be covered.
 
 ## Rules
 
@@ -60,7 +67,7 @@ There is no generator: you design each card for its post.
   purple "look here", green durable or safe, red problem, blue options,
   orange the choice made. At most two accent colours.
 - Solid boxes are processes, dashed boxes are data.
-- Text readable as a 600 px thumbnail: nothing under 28 px. Check it at
+- Text readable as a 500 px thumbnail: nothing under 28 px. Check it at
   `/og-preview/`, where X shows the card about 500 px wide.
 - Plain words. No Claudisms (see `docs/CLAUDISMS.md`), no hype, no tags list,
   no "deep dive", no emoji.
@@ -74,6 +81,17 @@ There is no generator: you design each card for its post.
 - [ ] The diagram shows the post's core idea; a reader of the post would
       recognise it.
 - [ ] Two accent colours or fewer; every colour means something.
-- [ ] Readable at 600 px wide.
+- [ ] Readable at 500 px wide.
+- [ ] PNG under 300 KB.
+
+## Meta tags (already done by the theme)
+
+`themes/coloroid/layouts/partials/head/{opengraph,twitter_cards}.html`
+emit `og:image` (absolute URL), `og:image:type/width/height/alt`,
+`twitter:card = summary_large_image`, `twitter:image` and
+`twitter:image:alt` from the `images` front matter. The hashed file name
+busts platform caches when a card changes. To refresh a card already
+shared, re-scrape it in the LinkedIn Post Inspector or Facebook Sharing
+Debugger.
 - [ ] No text overflows the sheet; nothing is clipped.
 - [ ] `images` in the front matter points to the new PNG; old PNG deleted.
