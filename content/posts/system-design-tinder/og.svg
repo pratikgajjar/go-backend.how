@@ -13,9 +13,9 @@
   <rect x="56" y="56" width="1104" height="526" class="ink"/>
   <rect x="48" y="48" width="1104" height="526" class="box"/>
 
-  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
-  <text x="96" y="186" font-size="58" font-weight="800" class="ink">System Design</text>
-  <text x="96" y="254" font-size="58" font-weight="800" class="ink">Tinder</text>
+  <text x="96" y="116" font-size="28" class="mute">backend.how</text>
+  <text x="96" y="190" font-size="58" font-weight="800" class="ink">System Design</text>
+  <text x="96" y="258" font-size="58" font-weight="800" class="ink">Tinder</text>
 
   <!-- 16 km search circle around a user in New York, 12.5 px per km -->
   <circle cx="904" cy="311" r="200" class="miss"/>
@@ -26,12 +26,12 @@
   <!-- radius -->
   <line x1="904" y1="311" x2="1104" y2="311" class="rad"/>
   <circle cx="904" cy="311" r="8" class="ink"/>
-  <text x="1040" y="298" font-size="24" font-weight="700" text-anchor="middle" class="ink">16 km</text>
+  <text x="1040" y="296" font-size="28" font-weight="700" text-anchor="middle" class="ink">16 km</text>
 
   <!-- legend -->
   <rect x="96" y="352" width="34" height="34" fill="var(--board)" stroke="var(--brown)" stroke-width="2" stroke-dasharray="7 5"/>
-  <text x="148" y="378" font-size="26" font-weight="600" class="brn">9 cells reach 3.7–5.6 km</text>
+  <text x="148" y="378" font-size="28" font-weight="600" class="brn">9 cells: 3.7–5.6 km</text>
   <circle cx="113" cy="436" r="17" class="miss"/>
-  <text x="148" y="445" font-size="26" font-weight="600" fill="var(--red)">outside the 9 cells: never read</text>
-  <text x="96" y="520" font-size="26" class="ink">Pick the cell size from the radius.</text>
+  <text x="148" y="445" font-size="28" font-weight="600" fill="var(--red)">outside: never read</text>
+  <text x="96" y="522" font-size="30" class="ink">Size cells from the radius.</text>
 </svg>

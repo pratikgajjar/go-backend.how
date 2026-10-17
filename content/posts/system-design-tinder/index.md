@@ -5,7 +5,7 @@ date = 2023-02-15T10:00:00-07:00
 lastmod = 2023-02-15T10:00:00-07:00
 draft = false
 tags = ['system-design', 'dating-app', 'geospatial', 'recommendations']
-images = ["og-831a7f2e.png"]
+images = ["og-c7eb3a23.png"]
 theme = "blush"
 +++
 
