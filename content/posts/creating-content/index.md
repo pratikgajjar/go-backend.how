@@ -5,7 +5,7 @@ date = 2024-06-11T00:01:52+05:30
 lastmod = 2024-06-11T00:01:52+05:30
 tags = ['gyan']
 draft = false
-images = ["og-04c02b41.png"]
+images = ["og-bf1054c3.png"]
 hnItemId = 40781712
 theme = "vanilla"
 +++

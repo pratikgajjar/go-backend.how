@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .grow { fill: var(--green-l); stroke: var(--green); stroke-width: 2.5; }
+    .given { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .look { fill: var(--purple); } .lookl { stroke: var(--purple); stroke-width: 4; fill: none; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="58" font-weight="800" class="ink">Creating Content</text>
+  <text x="96" y="244" font-size="34" font-weight="600" class="ink">Talent is the small term</text>
+
+  <!-- quality of what you create = knowledge + practice + talent -->
+  <text x="96" y="320" font-size="24" class="mute">quality of what you create =</text>
+  <rect x="96"  y="340" width="420" height="104" class="grow"/>
+  <text x="122" y="384" font-size="30" font-weight="800" class="ink">K  knowledge</text>
+  <text x="122" y="420" font-size="22" class="ink">you grow it</text>
+  <text x="542" y="403" font-size="34" font-weight="600" text-anchor="middle" class="mute">+</text>
+  <rect x="568" y="340" width="420" height="104" class="grow"/>
+  <text x="594" y="384" font-size="30" font-weight="800" class="ink">P  practice</text>
+  <text x="594" y="420" font-size="22" class="ink">you grow it</text>
+  <text x="1014" y="403" font-size="34" font-weight="600" text-anchor="middle" class="mute">+</text>
+  <rect x="1040" y="340" width="56" height="104" class="given"/>
+  <text x="1068" y="403" font-size="30" font-weight="800" text-anchor="middle" class="ink">T</text>
+
+  <!-- pointer to the small T -->
+  <path d="M1068 506 V468" class="lookl"/>
+  <path d="M1068 458 l-12 18 h24 z" class="look"/>
+  <text x="1044" y="514" font-size="26" text-anchor="end" class="ink">talent is given, and “the T is very small”</text>
+</svg>
