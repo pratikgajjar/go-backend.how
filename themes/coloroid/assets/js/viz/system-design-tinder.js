@@ -283,7 +283,7 @@ function initGeoReach(fig, app) {
   const precC = pickRow('Precision', [4, 5, 6].map((p) => [p, String(p)]), st.p, (p) => { st.p = p; draw(); });
   const rad = range('Search radius', { min: 1, max: 50, value: st.r, fmt: (v) => `${v} km${v === 16 ? ' ≈ 10 mi' : ''}`, oninput: (v) => { st.r = v; draw(); } });
   const ctl = h('div', null, precC.el, rad.el);
-  const hint = h('p', { class: `${P}small` }, 'Drag the dot (or focus the map and use the arrow keys). In a corner of its cell, the reach is shortest.');
+  const hint = h('p', { class: `${P}small` }, 'Drag the dot (or focus the map and use the arrow keys). When the user is in a corner of their cell, the 9 cells cover the shortest distance.');
 
   /* Predict first: most readers expect nine cells to cover a 10-mile circle. */
   const q = ask('Before you look: a user in New York searches within 10 miles (16 km). The code reads the 9 precision-5 cells around them. How much of that circle do the 9 cells cover?',
@@ -451,7 +451,7 @@ function raceText(kind, r, order) {
   }
   if (kind === 'wc') {
     return r.outcome === 'two'
-      ? 'Both writes landed before both checks, so both saw <code>1</code>. Both requests call <code>create_match</code>: two conversations and two notifications, unless <code>create_match</code> is idempotent.'
+      ? 'Both writes ran before both checks, so both saw <code>1</code>. Both requests call <code>create_match</code>: two conversations and two notifications, unless <code>create_match</code> is idempotent.'
       : `${order[0]} finished both calls before ${other(order[0])} wrote, so only ${other(order[0])} saw <code>1</code>. This order is safe by luck.`;
   }
   if (kind === 'tx') return 'Redis runs each <code>MULTI</code>/<code>EXEC</code> block with nothing in between. The second block always sees the first block\'s <code>SADD</code>, so exactly one request creates the match. In redis-py, <code>pipeline()</code> sends <code>MULTI</code>/<code>EXEC</code> by default.';
@@ -477,7 +477,7 @@ function initSwipeRace(fig, app) {
   function draw() {
     const atomic = RACE[st.kind].atomic;
     const list = atomic ? ['AB', 'BA'] : ORDERS;
-    const oc = pickRow(atomic ? 'Which EXEC lands first' : 'Order the calls land', list.map((o) => [o, atomic ? `${o[0]} first` : o.split('').join(' ')]), st.order, (o) => { st.order = o; st.open = false; draw(); });
+    const oc = pickRow(atomic ? 'Which EXEC runs first' : 'Order the calls reach Redis', list.map((o) => [o, atomic ? `${o[0]} first` : o.split('').join(' ')]), st.order, (o) => { st.order = o; st.open = false; draw(); });
     if (known[st.kind]) {
       oc.el.querySelectorAll('.wv-chip').forEach((b, i) => {
         const good = race(st.kind, list[i]).outcome === 'one';
@@ -555,21 +555,21 @@ function chatEvents(fault) {
   const E = [];
   const riyaNet = fault === 'restart' ? 'restart' : fault === 'offline' ? 'off' : 'ok';
   E.push({ t: '0 ms', who: 'Arjun’s phone', what: 'sends the message', short: '{"type":"msg", …}', code: `{"type": "msg", "conversation_id": "${MSG.conv}",\n "text": "${MSG.text}"}`,
-    say: 'Gateway A makes the <code>message_id</code>: a version-1 UUID, because a <code>timeuuid</code> column accepts no other version.',
+    say: 'Gateway A creates the <code>message_id</code> as a version-1 UUID, because a <code>timeuuid</code> column accepts no other version.',
     a: 'sending', rn: riyaNet, rv: 'empty' });
   E.push({ t: '3 ms', who: 'gateway A', what: 'stores the row first', tone: 'safe',
     short: "INSERT INTO messages … 'pending'",
     code: `INSERT INTO messages (conversation_id, message_id, sender_id, content, status)\nVALUES (${MSG.conv}, ${MSG.id},\n        arjun, '${MSG.text}', 'pending');`,
-    say: 'The message is <b class="c-safe">durable</b> in ScyllaDB. Only now does gateway A tell Arjun’s phone “sent”. Every later step may fail, because every later step can be redone from this row.',
+    say: 'The message is <b class="c-safe">durable</b> in ScyllaDB. Gateway A tells Arjun’s phone “sent” only after this write. Any later step can fail and be done again from this row.',
     a: 'sent', rn: riyaNet, rv: 'empty' });
   const dropped = fault === 'restart' || fault === 'offline';
-  E.push({ t: '4 ms', who: 'gateway A', what: dropped ? 'publishes; nobody is listening' : 'publishes to Riya’s channel', tone: dropped ? 'lost' : '',
+  E.push({ t: '4 ms', who: 'gateway A', what: dropped ? 'publishes; no subscriber' : 'publishes to Riya’s channel', tone: dropped ? 'lost' : '',
     code: `PUBLISH user:riya '{"id":"${SID}", …}'  →  (integer) ${dropped ? 0 : 1}`,
     say: !dropped
-      ? 'Redis hands the message to every subscriber connected <b>now</b> and keeps no copy.'
+      ? 'Redis sends the message to every subscriber connected <b>now</b> and keeps no copy.'
       : fault === 'restart'
-        ? '<b class="c-bad">Gateway B is restarting for a deploy.</b> Nobody subscribes to <code>user:riya</code>, so Redis drops the message: Pub/Sub delivers at most once. The count cannot prove delivery either, because in Redis Cluster it covers only clients on the same node.'
-        : '<b class="c-bad">Riya’s phone is off.</b> No gateway holds a socket for her, so nobody subscribes to <code>user:riya</code> and Redis drops the message.',
+        ? '<b class="c-bad">Gateway B is restarting for a deploy.</b> No client is subscribed to <code>user:riya</code>, so Redis drops the message. Pub/Sub delivers at most once. The count cannot prove delivery either, because in Redis Cluster it covers only clients on the same node.'
+        : '<b class="c-bad">Riya’s phone is off.</b> No gateway has a socket for her, so no client is subscribed to <code>user:riya</code> and Redis drops the message.',
     a: 'sent', rn: riyaNet, rv: 'empty' });
   if (!fault) {
     E.push({ t: '5 ms', who: 'gateway B', what: 'writes the frame to Riya’s socket', code: 'conn.write(frame)',
@@ -583,19 +583,19 @@ function chatEvents(fault) {
   if (fault === 'switch') {
     E.push({ t: '5 ms', who: 'gateway B', what: 'write() returns OK to a dead socket', tone: 'lost',
       code: 'conn.write(frame)   # OK: the bytes are in the kernel send buffer',
-      say: '<b class="c-bad">Riya walked out of the café and her phone moved to mobile data.</b> Gateway B does not know yet. A successful write means only that the kernel took the bytes; Linux retransmits for 13 to 30 minutes before it reports the connection dead. So a successful write never means “delivered”.',
+      say: '<b class="c-bad">Riya walked out of the café and her phone moved to mobile data.</b> Gateway B has not detected this yet. A successful write means only that the kernel accepted the bytes. Linux retransmits for 13 to 30 minutes before it reports the connection dead.',
       a: 'sent', rn: 'dead', rv: 'empty' });
   }
   const netWait = fault === 'switch' ? 'dead' : riyaNet;
   E.push({ t: '5 s', who: 'gateway A', what: 'no ACK in time: queues a push',
     short: 'push_queue.publish({"user_id": "riya", …})',
     code: `push_queue.publish({"user_id": "riya", "type": "new_message",\n                    "preview": "${MSG.text}"})`,
-    say: 'The row is still <code>pending</code>. Gateway A does not know why the ACK is missing, and it does not need to. It asks the phone to come and fetch. (5 s is a sample timeout.)',
+    say: 'The row is still <code>pending</code>. Gateway A does not need to know why the ACK is missing. It sends a push so that the phone fetches the message. (5 s is a sample timeout.)',
     a: 'sent', rn: netWait, rv: 'empty' });
   E.push({ t: fault === 'offline' ? '5 s' : '5.3 s', who: 'APNs / FCM', what: fault === 'offline' ? 'holds the push for an offline phone' : 'shows a notification',
     code: `"Arjun: ${MSG.text}"`,
     say: fault === 'offline'
-      ? 'The push service may hold the notification, deliver it late, or drop it. Nothing depends on it: the message is in ScyllaDB.'
+      ? 'The push service may hold the notification, deliver it late, or drop it. Delivery does not depend on the push, because the message is in ScyllaDB.'
       : 'A push is a hint to open the app. The message itself still comes from the store.',
     a: 'sent', rn: fault === 'offline' ? 'off' : 'back', rv: fault === 'offline' ? 'empty' : 'banner' });
   E.push({ t: fault === 'offline' ? '2 days' : '9 s', who: 'Riya’s phone', what: fault === 'offline' ? 'turns on, opens the app, syncs' : 'opens the app and syncs',
@@ -606,7 +606,7 @@ function chatEvents(fault) {
   E.push({ t: fault === 'offline' ? '2 days' : '9.1 s', who: 'Riya’s phone', what: 'ACKs; the row becomes delivered', tone: 'safe',
     short: "ACK → status = 'delivered'",
     code: `{"type": "ack", "id": "${SID}"}\nUPDATE messages SET status = 'delivered' WHERE …`,
-    say: 'Same ending as with no fault. The live path lost the message; <b class="c-safe">the stored row and the sync query brought it back.</b>',
+    say: 'The result is the same as with no fault. The live path lost the message, and <b class="c-safe">the sync query read it again from the stored row.</b>',
     a: 'delivered', rn: 'back', rv: 'msg' });
   return E;
 }
@@ -646,10 +646,10 @@ function initChatTimeline(fig, app) {
     now.innerHTML = `<p>${e.say}</p>${codeBlock(e.code.split('\n'))}`;
     askHost.replaceChildren();
     if (fault && i === ev.length - 1) {
-      askHost.append(ask('Check yourself: what brought the message back?',
+      askHost.append(ask('Check yourself: what recovered the message?',
         [['ps', 'Redis Pub/Sub'], ['push', 'The push notification'], ['row', 'The stored row and the sync query']], 'row',
         (v) => (v === 'row'
-          ? '<b>Right.</b> ScyllaDB owns the guarantee. Pub/Sub keeps no copy, and the push only wakes the app.'
+          ? '<b>Right.</b> The guarantee depends on the row in ScyllaDB. Pub/Sub keeps no copy, and the push only wakes the app.'
           : v === 'ps' ? '<b>Not Pub/Sub.</b> It delivers at most once and kept no copy; this is where the message was lost.'
             : '<b>Not the push.</b> It only wakes the app. The message came from the row, through the sync query.')).el);
     }

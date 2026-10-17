@@ -9,9 +9,9 @@ images = ["og-dabd1a53.png"]
 theme = "blush"
 +++
 
-A dating app at scale answers one question many times a second: **how do you show someone the right person, right now, within 10 miles, when 75 million people use the app every day?**
+A dating app at scale must **show each user good candidates within 10 miles, at the moment they open the app, while 75 million people use the app every day.**
 
-By the end of this post you will know how to size that system from a few business numbers, why the obvious designs break (a geo query per swipe, a match check that reads before it writes, a chat that trusts the live connection), and what to build instead: a deck of candidates ranked ahead of time, geohash cells sized to the search radius, one Redis key per pair for matches, and a message store the phone syncs from. Four figures let you try the parts that are easy to get wrong.
+By the end of this post you will know how to size that system from a few business numbers, why the obvious designs fail (a geo query per swipe, a match check that reads before it writes, a chat that depends on the live connection), and what to build instead: a deck of candidates ranked ahead of time, geohash cells sized to the search radius, one Redis key per pair for matches, and a message store the phone syncs from. Four figures let you try the parts that are easy to get wrong.
 
 ---
 
@@ -25,7 +25,7 @@ Four problems are harder than profiles and matching:
 
 3. **Mutual interest**: on Instagram, one person follows and it is done. Here both people must swipe right, so the model must predict attraction in both directions.
 
-4. **Chat delivery**: after a match, the first message must not be lost. Lose it and you can lose the user.
+4. **Chat delivery**: after a match, the first message must not be lost. If it is lost, the user can leave the app.
 
 ---
 
@@ -42,7 +42,7 @@ Four problems are harder than profiles and matching:
 | **Profile CRUD** | Edit bio, photos | Low |
 | **Notifications** | Push alerts | Low |
 
-The recommendations engine is about 80% of the system's complexity.
+Recommendations are about 80% of the system's complexity.
 
 ## The Load
 
@@ -100,7 +100,7 @@ Each user action takes its own path through the system. Pick one to step through
 
 {{< viz kind="arch-paths" fig="1" title="Four paths through the system" fallback="arch-paths.svg" alt="Architecture of the design: mobile app, API gateway, profile, recommendation and swipe services, WebSocket gateways, Redis, Postgres, ScyllaDB, Kafka, the location processor and the offline pipeline, with the swipe path highlighted" caption="The design in this post, not Tinder's production system. Rates and targets come from the requirements above." >}}
 
-The rest of the post takes these paths one at a time. It starts with the hardest one: what to show when someone opens the app.
+The rest of the post explains these paths one at a time. It starts with recommendations, the feature with the highest complexity in the table above. Recommendations decide what to show when someone opens the app.
 
 ---
 
@@ -119,7 +119,7 @@ AND last_active > NOW() - INTERVAL '7 days'
 LIMIT 200;
 ```
 
-It fails on both sides. On the read side, at 74,000 swipes per second, a geo query plus a ranking model per request will not fit in a 100 ms P99 budget. On the write side, at 75K location updates per second, each update writes a new row version and a new GiST index entry, and vacuum has to clean up the old ones. One Postgres primary struggles with that write rate.
+It fails on both sides. On the read side, at 74,000 swipes per second, a geo query plus a ranking model per request cannot meet the 100 ms P99 target. On the write side, at 75K location updates per second, each update writes a new row version and a new GiST index entry, and vacuum has to clean up the old ones. One Postgres primary has trouble keeping up with that write rate.
 
 ## Rank Ahead of Time, Serve the Top
 
@@ -155,11 +155,11 @@ Why this works:
 2. Time bucketing drops stale users, as long as each bucket key has a TTL.
 3. The write path is pipelined `SADD`s, and one Redis node handles well over 100K of those per second.
 
-The part that is easy to get wrong is the reach. Nine square cells are not a circle, and a cell's width depends on latitude. Guess first, then move the user, the radius, and the precision:
+The distance that the 9 cells cover is easy to get wrong. Nine square cells do not form a circle, and a cell's width depends on latitude. Guess first, then move the user, the radius, and the precision:
 
 {{< viz kind="geo-reach" fig="2" title="How far do 9 geohash cells reach?" fallback="geo-reach.svg" alt="A 3 by 3 block of precision-5 geohash cells around a user in New York, with a 16 km search circle; 80% of the circle falls outside the block" caption="Geohash strings are real for the chosen point. Distances assume a spherical Earth." >}}
 
-In the worst case, when the user stands in a corner of their cell, the block reaches only one cell side: 4.9 km at precision 5 on the equator, 3.7 km in New York. That is far short of the 10 miles (16 km) in the opening question. So choose the precision from the radius: use the smallest cells whose 3×3 block still holds the circle, then drop candidates by real distance. Redis `GEOSEARCH` works the same way. It estimates the cell size from the radius, reads the 3×3 block, and moves to bigger cells when the block does not cover the search area[^geosearch].
+In the worst case, when the user stands in a corner of their cell, the block reaches only one cell side: 4.9 km at precision 5 on the equator, 3.7 km in New York. That is much less than the 10 miles (16 km) in the first paragraph. So choose the precision from the radius: use the smallest cells whose 3×3 block still holds the circle, then drop candidates by real distance. Redis `GEOSEARCH` works the same way. It estimates the cell size from the radius, reads the 3×3 block, and moves to bigger cells when the block does not cover the search area[^geosearch].
 
 ## Keeping the Cells Fresh
 
@@ -230,7 +230,7 @@ def calculate_match_score(user_a, user_b):
     return mutual_probability * fairness_boost
 ```
 
-If you rank only on "will this user swipe right", everyone sees the same top 1% of profiles. Those users get overwhelmed, everyone else gets no matches, and people leave.
+If you rank only on "will this user swipe right", everyone sees the same top 1% of profiles. Those users get more likes than they can answer, everyone else gets no matches, and people leave.
 
 ---
 
@@ -286,11 +286,11 @@ def record_swipe(swiper_id, target_id, direction):
 
 Phones switch between WiFi and cellular, WebSocket connections drop silently, and users go offline for days. Through all of that, a message must never be lost or shown twice, and read receipts must sync in real time.
 
-Each phone holds a WebSocket to one gateway pod. Gateways pass messages to each other through Redis Pub/Sub, and every message is stored in ScyllaDB. Pub/Sub delivers at most once and keeps no copy[^pubsub], so the live path alone cannot keep the first promise above. Pick a fault and follow the first message:
+Each phone holds a WebSocket to one gateway pod. Gateways pass messages to each other through Redis Pub/Sub, and every message is stored in ScyllaDB. Pub/Sub delivers at most once and keeps no copy[^pubsub], so the live path alone cannot meet the first requirement above. Pick a fault and follow the first message:
 
 {{< viz kind="chat-timeline" fig="4" title="The first message, as both phones see it" fallback="chat-timeline.svg" alt="Arjun's phone, the backend event log, and Riya's phone: the message is stored, the live Pub/Sub path drops it, a push goes out, and Riya's phone syncs it from ScyllaDB" caption="Names, IDs, text, and the 5-second timeout are samples. The `message_id` is a real version-1 UUID for 2026-02-14 15:11:07 UTC." >}}
 
-Every fault ends the same way, because only two things carry the guarantee: the row in ScyllaDB and the phone's ACK. A successful socket write is not an ACK. The kernel accepts the bytes even when the phone is gone, and Linux keeps retransmitting for 13 to 30 minutes before it reports the connection dead[^tcp].
+Every fault has the same result, because the guarantee depends on two things only, the row in ScyllaDB and the phone's ACK. A successful socket write is not an ACK. The kernel accepts the bytes even when the phone is gone, and Linux keeps retransmitting for 13 to 30 minutes before it reports the connection dead[^tcp].
 
 ## The Delivery Guarantee
 
@@ -347,17 +347,17 @@ CREATE TABLE messages (
 **Why ScyllaDB:**
 - Time-series write pattern (append-only messages)
 - High write throughput (100K+ writes/sec per node)
-- Natural time-ordering with `timeuuid`, a version-1 UUID that carries its creation time[^timeuuid]
+- Natural time-ordering with `timeuuid`, a version-1 UUID that contains its creation time[^timeuuid]
 - Partition by conversation keeps related messages together
 
 ---
 
-# Where the Data Lives
+# Where the Data Is Stored {#where-the-data-lives}
 
 | Data Type | Storage | Why |
 |-----------|---------|-----|
 | User profiles | PostgreSQL + Read replicas | ACID for billing, strong consistency for auth |
-| User photos | S3 + CloudFront CDN | Cheap storage, global edge delivery |
+| User photos | S3 + CloudFront CDN | Low storage cost, global edge delivery |
 | Swipe history | Redis (hot) + DynamoDB (cold) | Recent swipes need sub-ms access |
 | Messages | ScyllaDB | Write-heavy, time-series, partition by convo |
 | Recommendation queues | Redis Sorted Sets | Pre-computed, fast pop operations |
@@ -408,15 +408,15 @@ In small towns, users run out of profiles in 2 days. Fixes:
 
 1. Size the system from business numbers first: 74,000 swipes/s, 75,000 location updates/s, and 5,500 messages/s at peak.
 2. Keep ranking off the request path. A per-user deck in a sorted set turns "open the app" into one pop.
-3. Size geohash cells from the search radius. Nine precision-5 cells around a New Yorker reach 3.7 to 5.6 km, not 10 miles.
+3. Size geohash cells from the search radius. Nine precision-5 cells around a New Yorker reach 3.7 to 5.6 km, much less than 10 miles (16 km).
 4. Save the swipe and check for the match in one transaction on one key. On Redis Cluster, that means one key per pair.
 5. Store the message first, count it delivered only when the phone ACKs, and let the phone sync from the store.
 
-The open questions sit where product and engineering meet:
+These questions are still open, and each one needs both product and engineering decisions:
 
-- How do you balance attractive profiles (engagement) against compatible ones (retention)?
-- How do you stop the top 10% of profiles from getting most of the matches?
-- How do you detect and handle bad actors at scale?
+- How to balance attractive profiles (engagement) against compatible ones (retention).
+- How to stop the top 10% of profiles from getting most of the matches.
+- How to detect and handle bad actors at scale.
 
 [^geosearch]: <https://github.com/redis/redis/blob/unstable/src/geohash_helper.c>, `geohashCalculateAreasByShapeWGS84`
 [^crossslot]: <https://redis.io/docs/latest/develop/using-commands/multi-key-operations/>

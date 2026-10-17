@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 324" font-family="ui-monospace, Menlo, Consolas, monospace">
 <rect width="640" height="324" fill="#fefcfc"/>
 <text x="16" y="28" font-size="14" font-weight="750" fill="#2a1c1e" text-anchor="start">A and B swipe right on each other at the same moment</text>
-<text x="16" y="46" font-size="11" font-weight="400" fill="#6b5a5c" text-anchor="start">Outcome for every order in which the Redis calls can land</text>
+<text x="16" y="46" font-size="11" font-weight="400" fill="#6b5a5c" text-anchor="start">Outcome for every order in which the calls can reach Redis</text>
 <text x="246" y="72" font-size="10.5" font-weight="400" fill="#6b5a5c" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace">A A B B</text>
 <text x="316" y="72" font-size="10.5" font-weight="400" fill="#6b5a5c" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace">A B A B</text>
 <text x="386" y="72" font-size="10.5" font-weight="400" fill="#6b5a5c" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace">A B B A</text>
