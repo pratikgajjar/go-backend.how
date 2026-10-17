@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); } .brown { fill: var(--brown); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .proc { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .base { fill: var(--tint2); stroke: var(--ink); stroke-width: 2; stroke-dasharray: 7 5; }
+    .step { fill: var(--brown-l); stroke: var(--brown); stroke-width: 2; stroke-dasharray: 7 5; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="58" font-weight="800" class="ink">Temporal — Under the Hood</text>
+  <text x="96" y="244" font-size="34" font-weight="600" class="ink">SQL statements for one 3-step workflow</text>
+
+  <!-- 4.4 px per SQL statement: fixed cost, then one block per step -->
+  <g font-size="22" text-anchor="middle">
+    <rect x="96" y="298" width="170" height="72" class="proc"/><text x="181" y="342" font-weight="700" class="ink">Temporal</text>
+    <rect x="290" y="298" width="176" height="72" class="base"/><text x="378" y="342" class="mute">40</text>
+    <rect x="466" y="298" width="154" height="72" class="step"/><text x="543" y="342" class="brown">35</text>
+    <rect x="620" y="298" width="154" height="72" class="step"/><text x="697" y="342" class="brown">35</text>
+    <rect x="774" y="298" width="154" height="72" class="step"/><text x="851" y="342" class="brown">35</text>
+
+    <rect x="96" y="390" width="170" height="72" class="proc"/><text x="181" y="434" font-weight="700" class="ink">Absurd</text>
+    <rect x="290" y="390" width="48.4" height="72" class="base"/><text x="314.2" y="434" class="mute">11</text>
+    <rect x="338.4" y="390" width="30.8" height="72" class="step"/><text x="353.8" y="434" class="brown">7</text>
+    <rect x="369.2" y="390" width="30.8" height="72" class="step"/><text x="384.6" y="434" class="brown">7</text>
+    <rect x="400" y="390" width="30.8" height="72" class="step"/><text x="415.4" y="434" class="brown">7</text>
+  </g>
+  <g font-size="30" font-weight="800" class="ink">
+    <text x="946" y="345">145 SQL</text>
+    <text x="448.8" y="437">32 SQL</text>
+  </g>
+
+  <text x="96" y="520" font-size="26" class="ink">Per workflow: ~40 + 35×N vs ~11 + 7×N (N = steps)</text>
+</svg>
