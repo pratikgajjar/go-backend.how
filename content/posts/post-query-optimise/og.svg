@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .red { fill: var(--red); } .pur { fill: var(--purple); }
+    .all { fill: var(--red-l); stroke: var(--red); stroke-width: 2.5; stroke-dasharray: 8 5; }
+    .allg { fill: none; stroke: var(--red); stroke-opacity: 0.3; stroke-width: 1.5; }
+    .tbl { fill: var(--board); stroke: var(--ink); stroke-width: 2; stroke-dasharray: 8 5; }
+    .tblg { fill: none; stroke: var(--line); stroke-width: 1.5; }
+    .hit { fill: var(--purple-l); stroke: var(--purple); stroke-width: 3; }
+    .cell { fill: var(--purple); }
+    .path { fill: none; stroke: var(--purple); stroke-width: 3.5; }
+    .lab { fill: var(--board); }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="58" font-weight="800" class="ink">Postgres - Optimising query</text>
+
+  <!-- left: no index, the sequential scan reads every page of users -->
+  <text x="96" y="262" font-size="26" font-weight="700" class="red">No index: 33,333 pages</text>
+  <rect x="96" y="286" width="432" height="168" class="all"/>
+  <path d="M120 286 V454 M144 286 V454 M168 286 V454 M192 286 V454 M216 286 V454 M240 286 V454 M264 286 V454 M288 286 V454 M312 286 V454 M336 286 V454 M360 286 V454 M384 286 V454 M408 286 V454 M432 286 V454 M456 286 V454 M480 286 V454 M504 286 V454 M96 310 H528 M96 334 H528 M96 358 H528 M96 382 H528 M96 406 H528 M96 430 H528" class="allg"/>
+  <rect x="194" y="350" width="236" height="40" class="lab"/>
+  <text x="312" y="378" font-size="22" text-anchor="middle" class="ink">every table page</text>
+
+  <!-- right: B-tree root, branch, leaf, then one table page -->
+  <text x="608" y="262" font-size="26" font-weight="700" class="pur">Index: 4 pages</text>
+  <g font-size="22">
+    <rect x="608" y="286" width="128" height="48" class="hit"/><text x="622" y="318" class="ink">1 root</text>
+    <rect x="608" y="346" width="128" height="48" class="hit"/><text x="622" y="378" class="ink">2 branch</text>
+    <rect x="608" y="406" width="128" height="48" class="hit"/><text x="622" y="438" class="ink">3 leaf</text>
+  </g>
+  <path d="M672 334 V346 M672 394 V406" class="path"/>
+  <rect x="768" y="286" width="336" height="168" class="tbl"/>
+  <path d="M792 286 V454 M816 286 V454 M840 286 V454 M864 286 V454 M888 286 V454 M912 286 V454 M936 286 V454 M960 286 V454 M984 286 V454 M1008 286 V454 M1032 286 V454 M1056 286 V454 M1080 286 V454 M768 310 H1104 M768 334 H1104 M768 358 H1104 M768 382 H1104 M768 406 H1104 M768 430 H1104" class="tblg"/>
+  <path d="M736 418 H960" class="path"/>
+  <rect x="960" y="406" width="24" height="24" class="cell"/>
+  <rect x="990" y="404" width="28" height="30" class="lab"/>
+  <text x="992" y="426" font-size="22" font-weight="700" class="pur">4</text>
+  <rect x="838" y="310" width="196" height="40" class="lab"/>
+  <text x="936" y="338" font-size="22" text-anchor="middle" class="ink">one table page</text>
+
+  <text x="96" y="516" font-size="24" class="ink">Postgres reads 8 KB pages. Measure the pages a query reads.</text>
+</svg>
