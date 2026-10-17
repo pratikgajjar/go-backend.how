@@ -29,8 +29,8 @@
   <rect x="56" y="56" width="1104" height="526" class="ink"/>
   <rect x="48" y="48" width="1104" height="526" class="box"/>
 
-  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
-  <text x="96" y="182" font-size="56" font-weight="800" class="ink">A Cat Stereogram - Dark Mode</text>
+  <text x="96" y="116" font-size="28" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="56" font-weight="800" class="ink">A Cat Stereogram - Dark Mode</text>
 
   <!-- the pair on screen -->
   <rect x="96" y="222" width="524" height="160" class="screen"/>
@@ -42,10 +42,10 @@
   <line x1="428" y1="504" x2="240" y2="382" class="sight"/>
   <circle cx="288" cy="504" r="13" class="eye"/>
   <circle cx="428" cy="504" r="13" class="eye"/>
-  <text x="262" y="512" font-size="24" text-anchor="end" class="ink">left eye</text>
-  <text x="454" y="512" font-size="24" class="ink">right eye</text>
+  <text x="262" y="513" font-size="28" text-anchor="end" class="ink">left eye</text>
+  <text x="454" y="513" font-size="28" class="ink">right eye</text>
   <circle cx="358" cy="458.6" r="10" class="tip"/>
-  <text x="400" y="466" font-size="24" font-weight="700" class="tip">fingertip</text>
+  <text x="398" y="466" font-size="28" font-weight="700" class="tip">fingertip</text>
 
   <!-- what you see: one cat with both ears, both whiskers and the tail -->
   <path d="M640 302 h48" class="sight"/>
@@ -54,7 +54,7 @@
   <g class="cat" transform="translate(912,312.4) scale(0.044)"><use href="#rings"/><use href="#headbits"/><use href="#tail"/></g>
   <g class="cat" transform="translate(912,312.4) scale(-0.044,0.044)"><use href="#headbits"/></g>
 
-  <text x="720" y="436" font-size="26" class="ink">Cross your eyes at a</text>
-  <text x="720" y="472" font-size="26" class="ink">fingertip, and the two</text>
-  <text x="720" y="508" font-size="26" class="ink">cats merge into one.</text>
+  <text x="720" y="440" font-size="30" class="ink">Cross your eyes,</text>
+  <text x="720" y="480" font-size="30" class="ink">and two cats</text>
+  <text x="720" y="520" font-size="30" class="ink">merge into one.</text>
 </svg>
