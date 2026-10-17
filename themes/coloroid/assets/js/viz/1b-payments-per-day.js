@@ -4,7 +4,7 @@
  *
  *   one-batch     predict, then see: how many WAL flushes Postgres needs for
  *                 8,190 single-row commits (measured 0.42 per row), against
- *                 TigerBeetle's one prepare for the same 8,190 transfers.
+ *                 TigerBeetle's one prepare for a request of 8,190.
  *   group-commit  Postgres backends and WAL flushes on a timeline: one flush
  *                 at a time, each covering every commit record inserted before
  *                 it started. A model fitted to the two measured runs.
@@ -28,10 +28,10 @@ const tokens = (el) => {
 
 const BATCH = 8190;
 const COLS = 91; const ROWS = 90;            // 91 × 90 = 8,190
-const TB_RATE = 48000;                       // transfers/s, measured sustained
+/* measured fdatasync calls per row (see the post) */
 const PG_RUNS = {
-  ins: { label: 'INSERTs · 8 backends', rate: 13053, perRow: 4177054 / 1e7, what: 'single-row INSERTs, 8 backends' },
-  xfer: { label: 'transfers · 10 backends', rate: 3356, perRow: 1517374 / 2e6, what: 'transfers, 10 backends' },
+  ins: { perRow: 4177054 / 1e7, what: 'single-row INSERTs, 8 backends' },
+  xfer: { perRow: 1517374 / 2e6, what: 'transfers, 10 backends' },
 };
 
 /* flush after row i when the running count of flushes steps up: exactly
@@ -44,33 +44,29 @@ function flushEnds(perRow) {
 }
 
 function initOneBatch(fig, app) {
-  let run = 'ins'; let revealAt = null; let raf = 0;
+  const run = 'ins'; let revealAt = null; let raf = 0;
   const panel = (name) => {
     const cv = h('canvas', { class: 'v-1b-cv', role: 'img' });
     const tag = h('span');
-    const sub = h('p', { class: 'v-1b-sub' });
-    return { el: h('div', { class: 'wv-card v-1b-sheet' }, h('h5', null, name, ' ', tag), h('div', { class: 'v-1b-cvwrap' }, cv), sub), cv, tag, sub };
+    return { el: h('div', { class: 'wv-card v-1b-sheet' }, h('h5', null, name, ' ', tag), h('div', { class: 'v-1b-cvwrap' }, cv)), cv, tag };
   };
   const tb = panel('TigerBeetle');
   const pg = panel('PostgreSQL');
-  const runPick = chips(Object.entries(PG_RUNS).map(([k, v]) => [k, v.label]), (v) => { run = v; revealAt = 1; draw(); }, { value: run, label: 'Postgres run' });
-  const runRow = h('div', { class: 'wv-bar' }, h('span', { class: 'c-opt' }, 'Postgres run'), runPick.el);
-  runRow.hidden = true;
 
   const question = ask('How many WAL flushes does Postgres need to make all 8,190 durable?',
     [[8190, '8,190 · one per commit'], [3400, 'about 3,400'], [100, 'about 100'], [1, '1 · like TigerBeetle']], 3400,
     (v, right) => {
       reveal();
       const n = flushEnds(PG_RUNS.ins.perRow).length;
-      return `${right ? '<b>Right.</b> ' : ''}Postgres flushed <b class="c-safe">${fmt(n)}</b> times for 8,190 single-row inserts, measured. ${v === 8190 ? 'Not one per commit: ' : ''}with 8 backends, about 2.4 commits share each flush (Figure 2 shows how). TigerBeetle made the whole request durable with <b class="c-safe">one prepare</b> before it ran any of it; the TigerBeetle section below shows how.`;
+      const x = flushEnds(PG_RUNS.xfer.perRow).length;
+      return `${right ? '<b>Right.</b> ' : ''}<b>${fmt(n)}</b> flushes for 8,190 single-row inserts, at the measured rate. ${v === 8190 ? 'Not one per commit: with' : 'With'} 8 backends, about 2.4 commits share each flush. In the transfer run, where each transaction does more work, it would be ${fmt(x)}. TigerBeetle makes the whole request durable with <b>one prepare</b> before it runs any of it.`;
     });
 
   app.append(
-    h('p', { class: 'v-1b-lede' }, 'Take ', h('b', { class: 'c-data' }, '8,190 transfers'), ': one full TigerBeetle request (8,190 × 128 B = 1 MiB), or 0.71 s of traffic at a billion payments a day. Each square is one transfer. Postgres commits each one in its own transaction, from 8 backends.'),
+    h('p', { class: 'v-1b-lede' }, 'Take ', h('b', { class: 'c-data' }, '8,190 rows'), ' of 128 B, one full TigerBeetle request (1 MiB). Each square is one row. Postgres commits each row in its own transaction from 8 backends, as in the INSERT run above.'),
     question.el,
     h('div', { class: 'v-1b-sheets' }, tb.el, pg.el),
-    runRow,
-    colorKey([['k-data', 'one transfer'], ['k-held', 'durable write (flush or prepare)'], ['k-opt', 'your choice']]),
+    colorKey([['k-data', 'one row'], ['k-held', 'durable write (flush or prepare)']]),
   );
 
   function grid(p, marks, frame) {
@@ -104,22 +100,17 @@ function initOneBatch(fig, app) {
     const shown = revealAt == null ? 0 : Math.min(ends.length, Math.floor(revealAt * ends.length));
     grid(tb, null, revealAt != null);
     grid(pg, ends.slice(0, shown), false);
-    const ms = (v) => `${fmt(v * 1000)} ms`;
     if (revealAt == null) {
-      tb.tag.innerHTML = ''; pg.tag.innerHTML = '<span class="wv-tag">?</span>';
-      tb.sub.textContent = ''; pg.sub.textContent = '';
+      tb.tag.innerHTML = ''; pg.tag.innerHTML = '<span class="wv-tag">? flushes</span>';
     } else {
       tb.tag.innerHTML = '<span class="wv-tag c-safe">1 prepare · 2 writes</span>';
       pg.tag.innerHTML = `<span class="wv-tag c-safe">${fmt(shown)} flushes</span>`;
-      tb.sub.textContent = `${ms(BATCH / TB_RATE)} per batch at ${fmt(TB_RATE)}/s, measured`;
-      pg.sub.textContent = `${ms(BATCH / R.rate)} at ${fmt(R.rate)}/s, measured (${R.what})${run === 'xfer' ? '. Each transaction runs longer, so only about 1.3 commits share a flush.' : ''}`;
     }
-    tb.cv.setAttribute('aria-label', 'TigerBeetle: 8,190 transfers made durable by one prepare, written in 2 writes');
-    pg.cv.setAttribute('aria-label', revealAt == null ? 'PostgreSQL: 8,190 transfers, flushes hidden until you guess' : `PostgreSQL ${R.what}: ${fmt(ends.length)} WAL flushes for 8,190 rows`);
+    tb.cv.setAttribute('aria-label', 'TigerBeetle: 8,190 rows made durable by one prepare, written in 2 writes');
+    pg.cv.setAttribute('aria-label', revealAt == null ? 'PostgreSQL: 8,190 rows, flushes hidden until you guess' : `PostgreSQL ${R.what}: ${fmt(ends.length)} WAL flushes for 8,190 rows`);
   }
 
   function reveal() {
-    runRow.hidden = false;
     cancelAnimationFrame(raf);
     if (REDUCED) { revealAt = 1; draw(); return; }
     const t0 = performance.now();
@@ -140,8 +131,6 @@ function initOneBatch(fig, app) {
 const PRESETS = [
   { id: 'ins', label: '10M INSERTs · 8 backends', W: 8, work: 370, flush: 163,
     measured: { rate: 13053, perFlush: 1e7 / 4177054, busy: 681 / 766 } },
-  { id: 'xfer', label: '2M transfers · 10 backends', W: 10, work: 2650, flush: 253,
-    measured: { rate: 3356, perFlush: 2e6 / 1517374, busy: 0.64 } },
 ];
 
 function lognormal(rnd, mean, cv = 0.5) {
@@ -190,33 +179,22 @@ function simulate(W, work, flush, commits = 12000, seed = 7) {
 }
 
 function initGroupCommit(fig, app) {
-  const P = { W: 8, work: 370, flush: 163 };
+  const M = PRESETS[0];                          // the measured INSERT run
+  const P = { W: M.W, work: M.work, flush: M.flush };
   let sim = null; let win = null; let sel = 0;
-  const base = simulate(8, 370, 163);            // the measured INSERT run
+  const base = simulate(M.W, M.work, M.flush);
   const stage = h('div', { class: 'v-1b-strip' });
   const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
-  const totals = h('div', { class: 'wv-scroll', 'aria-live': 'off' });
-
-  const workFromPos = (v) => Math.round(50 * 100 ** (v / 1000) / 10) * 10;
-  const workToPos = (w) => Math.round((1000 * Math.log(w / 50)) / Math.log(100));
-  const us = (v) => (v >= 1000 ? `${(v / 1000).toFixed(2)} ms` : `${Math.round(v)} µs`);
+  const fit = h('p', { class: 'v-1b-fit' });
 
   const rW = range('backends', { min: 1, max: 16, value: P.W, oninput: (v) => { P.W = v; update(); } });
-  const rWork = range('work per txn', { min: 0, max: 1000, value: workToPos(P.work), fmt: (v) => us(workFromPos(v)), oninput: (v) => { P.work = workFromPos(v); update(); } });
-  const rFlush = range('fdatasync', { min: 50, max: 1000, value: P.flush, fmt: us, oninput: (v) => { P.flush = v; update(); } });
-  const runPick = chips(PRESETS.map((p) => [p.id, p.label]), (id) => {
-    const p = PRESETS.find((q) => q.id === id);
-    rW.set(p.W); rWork.set(workToPos(p.work)); rFlush.set(p.flush);
-  }, { value: 'ins', label: 'Measured run' });
-  const more = h('details', null, h('summary', null, 'More inputs: work per transaction, fdatasync time, the transfer run'),
-    h('div', { class: 'wv-grid-ctrl' }, rWork.el, rFlush.el), runPick.el);
 
   /* predict first: what does doubling the backends do to a flush? */
   const question = ask('Below: 8 backends, each flush 163 µs. Double the backends to 16. Each flush then carries…',
     [['fewer', 'fewer commits'], ['same', 'the same number'], ['more', 'more commits']], 'more',
     () => {
       rW.set(16);
-      return `More: <b>${sim.perFlush.toFixed(1)}</b> commits per flush instead of <b>${base.perFlush.toFixed(1)}</b>, and ${fmt(sim.rate)} commits/s instead of ${fmt(base.rate)} in this model. A flush still takes 163 µs and still runs one at a time, so more backends are waiting when it starts. The model ignores CPU limits, and the benchmark VM had 4 vCPUs, so a real run would gain less.`;
+      return `<b>${sim.perFlush.toFixed(1)}</b> commits per flush instead of <b>${base.perFlush.toFixed(1)}</b>, and ${fmt(sim.rate)} commits/s instead of ${fmt(base.rate)} in this model. A flush still takes 163 µs and still runs one at a time, so more backends are waiting when it starts. The benchmark VM had 4 vCPUs and the model ignores CPU limits, so a real run would gain less.`;
     });
 
   const prevB = h('button', { type: 'button', class: 'wv-btn', 'aria-label': 'Previous flush', onclick: () => pick(sel - 1) }, '◀ flush');
@@ -229,32 +207,23 @@ function initGroupCommit(fig, app) {
     stage,
     h('div', { class: 'wv-bar' }, prevB, pos, nextB),
     note,
-    h('div', { style: 'height:.7rem' }),
-    totals,
-    more,
-    colorKey([['k-free', 'SQL + network'], ['k-gap', 'waiting for a flush'], ['k-held', 'WAL flush, durable'], ['k-look', 'the selected flush'], ['k-opt', 'inputs']]),
+    fit,
+    colorKey([['k-run', 'waiting for a flush'], ['k-look', 'made durable by the selected flush'], ['k-gap', 'just missed it']]),
   );
 
-  const preset = () => PRESETS.find((p) => p.W === P.W && p.flush === P.flush && p.work === P.work);
   const visible = () => sim.flushes.map((q, j) => j).filter((j) => j >= sim.warm && sim.flushes[j].e <= win.t1);
 
   function update() {
-    sim = P.W === 8 && P.work === 370 && P.flush === 163 ? base : simulate(P.W, P.work, P.flush);
+    sim = P.W === M.W ? base : simulate(P.W, P.work, P.flush);
     const span = clamp((18 * P.flush) / Math.max(sim.busy, 0.2), 1500, 30000);
     const t0 = sim.flushes[sim.warm].s;
     win = { t0, t1: t0 + span };
     const v = visible();
     sel = v.reduce((a, k) => (sim.flushes[k].m.length > sim.flushes[a].m.length ? k : a), v[0]);
-    const pr = preset();
-    runPick.set(pr ? pr.id : null);
     draw();
-    const m = pr?.measured;
-    const row = (k, val, meas) => `<tr><td>${k}</td><td class="v-1b-num"><b>${val}</b></td><td class="v-1b-num">${meas}</td></tr>`;
-    totals.innerHTML = `<table class="wv-table"><thead><tr><th></th><th class="v-1b-num">model</th><th class="v-1b-num">measured</th></tr></thead><tbody>${[
-      row('commits per flush', sim.perFlush.toFixed(2), m ? m.perFlush.toFixed(2) : '—'),
-      row('commits per second', fmt(sim.rate), m ? fmt(m.rate) : '—'),
-      row('WAL busy flushing', `${Math.round(sim.busy * 100)}%`, m ? `${Math.round(m.busy * 100)}%` : '—'),
-    ].join('')}</tbody></table>`;
+    fit.innerHTML = P.W === M.W
+      ? `Model: <b>${sim.perFlush.toFixed(2)}</b> commits per flush, <b>${fmt(sim.rate)}</b>/s. Measured with 8 backends: <b>${M.measured.perFlush.toFixed(2)}</b>, <b>${fmt(M.measured.rate)}</b>/s.`
+      : `Model: <b>${sim.perFlush.toFixed(2)}</b> commits per flush, <b>${fmt(sim.rate)}</b>/s, the WAL busy ${Math.round(sim.busy * 100)}% of the time. Measured only with 8 backends.`;
   }
 
   function pick(k) {
@@ -272,7 +241,7 @@ function initGroupCommit(fig, app) {
     const band = phone ? 250 : 300;
     const W = P.W;
     const pitch = (band / 16) * Math.min(16 / W, 1.6);
-    const laneH = Math.max(6, pitch * 0.76);
+    const laneH = Math.max(6, pitch * 0.72);
     const top = 30 + (band - W * pitch) / 2;
     const flushY = 30 + band + 8;
     const flushH = phone ? 22 : 26;
@@ -281,13 +250,12 @@ function initGroupCommit(fig, app) {
     const id = uid('gc');
     const svg = s('svg', { viewBox: `0 0 ${width} ${H}`, role: 'img', 'aria-label': `Timeline of ${W} Postgres backends and the WAL flushes they wait on` });
     svg.innerHTML = `<defs><clipPath id="${id}"><rect x="${L}" y="0" width="${width - L - R}" height="${H}"/></clipPath>
-      <pattern id="${id}h" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" class="f-gap"/><line x1="0" y1="0" x2="0" y2="5" class="v-1b-hatch"/></pattern></defs>`;
+      <pattern id="${id}h" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" class="v-1b-hatch"/></pattern></defs>`;
     const f = sim.flushes[sel];
     const span = win.t1 - win.t0;
     const stepUs = span <= 2500 ? 250 : span <= 6000 ? 500 : span <= 12000 ? 1000 : span <= 25000 ? 2000 : 5000;
     for (let t = 0; t <= span + 1; t += stepUs) {
       const xx = x(win.t0 + t);
-      svg.append(s('line', { x1: xx, x2: xx, y1: 24, y2: flushY + flushH, class: 'rule dash' }));
       if (!phone || (t / stepUs) % 2 === 0) svg.append(s('text', { x: xx, y: H - 6, class: 't-xs t-mute', 'text-anchor': 'middle' }, `${+(t / 1000).toFixed(2)} ms`));
     }
     const body = s('g', { 'clip-path': `url(#${id})` });
@@ -295,18 +263,17 @@ function initGroupCommit(fig, app) {
     const showAll = laneH >= 9;
     for (let b = 0; b < W; b++) {
       const y = top + b * pitch;
-      if (showAll || b % 2 === 0) svg.append(s('text', { x: L - 6, y: y + laneH / 2 + 3.5, class: 't-xs', 'text-anchor': 'end' }, phone || W > 8 ? `b${b + 1}` : `backend ${b + 1}`));
+      if (showAll || b % 2 === 0) svg.append(s('text', { x: L - 6, y: y + laneH / 2 + 3.5, class: 't-xs t-mute', 'text-anchor': 'end' }, phone || W > 8 ? `b${b + 1}` : `backend ${b + 1}`));
+      body.append(s('line', { x1: L, x2: width - R, y1: y + laneH / 2, y2: y + laneH / 2, class: 'v-1b-lane' }));
       for (const ev of sim.lanes[b]) {
         if (ev.fe < win.t0 || ev.ws > win.t1) continue;
         const mine = ev.f === sel;
         const missed = ev.f === sel + 1 && ev.rec > f.s && ev.rec < f.e;
         if (missed) late.add(b);
-        body.append(s('rect', { x: x(ev.ws), y, width: Math.max(0, x(ev.rec) - x(ev.ws)), height: laneH, class: 'v-1b-work' }));
         body.append(s('rect', {
           x: x(ev.rec), y, width: Math.max(0.8, x(ev.fe) - x(ev.rec)), height: laneH,
-          class: mine ? 'v-1b-wait is-sel' : missed ? 'v-1b-wait is-late' : 'v-1b-wait', fill: mine ? null : `url(#${id}h)`,
+          class: mine ? 'v-1b-wait is-sel' : missed ? 'v-1b-wait is-late' : 'v-1b-wait', fill: mine || missed ? null : `url(#${id}h)`,
         }));
-        body.append(s('line', { x1: x(ev.fe), x2: x(ev.fe), y1: y - 1, y2: y + laneH + 1, class: 'v-1b-tick' }));
       }
     }
     svg.append(s('text', { x: L - 6, y: flushY + flushH / 2 + 4, class: 't-xs t-b', 'text-anchor': 'end' }, phone ? 'WAL' : 'WAL flush'));
@@ -319,20 +286,20 @@ function initGroupCommit(fig, app) {
       g.addEventListener('click', () => pick(k));
       body.append(g);
     });
-    body.append(s('rect', { x: x(f.s), y: 22, width: Math.max(1, x(f.e) - x(f.s)), height: flushY + flushH - 20, class: 'v-1b-band' }));
     svg.append(body);
     /* the label sits on the selected flush */
     const cx = (x(f.s) + x(f.e)) / 2;
     const anchor = cx > width - 120 ? 'end' : cx < L + 120 ? 'start' : 'middle';
     svg.append(s('text', { x: anchor === 'end' ? x(f.e) : anchor === 'start' ? x(f.s) : cx, y: 16, class: 't-s t-b t-look', 'text-anchor': anchor },
       `one fdatasync → ${f.m.length} commit${f.m.length > 1 ? 's' : ''} durable`));
+    svg.append(s('line', { x1: cx, x2: cx, y1: 21, y2: flushY, class: 'v-1b-pin' }));
     stage.replaceChildren(svg);
 
     const v = visible(); const idx = v.indexOf(sel);
-    pos.textContent = `${idx + 1} / ${v.length} · tap a flush`;
+    pos.textContent = `${idx + 1} / ${v.length}`;
     prevB.disabled = idx <= 0; nextB.disabled = idx >= v.length - 1;
     const who = f.m.map((b) => `b${b + 1}`).join(', ');
-    note.innerHTML = `<span class="k">Flush ${idx + 1}</span>Makes <b class="c-safe">${f.m.length} commit${f.m.length > 1 ? 's' : ''}</b> durable (${who}).${late.size
+    note.innerHTML = `<span class="k">Flush ${idx + 1}</span>Makes <b class="c-look">${f.m.length} commit${f.m.length > 1 ? 's' : ''}</b> durable (${who}).${late.size
       ? ` <span class="c-bad">${[...late].map((b) => `b${b + 1}`).join(', ')} inserted ${late.size > 1 ? 'their commit records' : 'its commit record'} just after it started, so ${late.size > 1 ? 'they wait' : 'it waits'} for the next one.</span>` : ''}`;
   }
 
@@ -352,32 +319,8 @@ const OP = 1221;                                    // sample op number
 const SLOT = OP % 1024;                             // 197
 const SECTOR = Math.floor(SLOT / 16);               // 12
 
-/* One sample transfer as the Go benchmark builds it. */
-const TRANSFER = [
-  ['id', 16, 4000017n, 'sequential in the benchmark'],
-  ['debit_account_id', 16, 1337420n, 'one of the top 20% of accounts'],
-  ['credit_account_id', 16, 7654321n, 'any account'],
-  ['amount', 16, 1000n, ''],
-  ['pending_id', 16, 0n, 'zero: not a two-phase transfer'],
-  ['user_data_128', 16, 0n, ''],
-  ['user_data_64', 8, 0n, ''],
-  ['user_data_32', 4, 0n, ''],
-  ['timeout', 4, 0n, ''],
-  ['ledger', 4, 20n, ''],
-  ['code', 2, 1n, ''],
-  ['flags', 2, 0n, ''],
-  ['timestamp', 8, 0n, 'zero: the primary sets it'],
-];
-
-function leBytes(v, n) {
-  const out = [];
-  for (let i = 0; i < n; i++) { out.push(Number(v & 0xffn)); v >>= 8n; }
-  return out;
-}
-
 /* The 33 LSM trees and what one transfer writes into them.
  * write(opts) returns bytes for this tree, or 0. */
-const OPT = { ud: false, pending: false, history: false };
 const GROOVES = [
   ['Transfer', [
     ['object', () => 128, 'the transfer, keyed by timestamp'],
@@ -416,7 +359,7 @@ const JOURNAL = [
   {
     label: 'Batch', at: ['client'], edge: ['req'], disk: 0, mem: 0,
     title: 'The client sends 8,190 transfers in one request', where: 'cmd/tb/transfers/main.go',
-    body: () => `<p>8,190 × 128 B = <b class="c-data">1,048,320 B</b>. With the 256 B message header that is exactly 1 MiB, TigerBeetle's <code>message_size_max</code>. The benchmark sends full batches. (The Go client used here sends 8,190; current TigerBeetle docs list 8,189 per request.)</p>${byteGrid()}`,
+    body: () => `<p>8,190 × 128 B = <b>1,048,320 B</b>. With the 256 B message header that is exactly 1 MiB, TigerBeetle's <code>message_size_max</code>. The benchmark sends full batches. (The Go client used here sends 8,190; current TigerBeetle docs list 8,189 per request.)</p><p>Every field of the benchmark's transfers that the client does not set, such as <code>pending_id</code> and the three <code>user_data</code> fields, is zero. That matters in step 4.</p>`,
   },
   {
     label: 'Prepare', at: ['wp'], edge: ['wp'], disk: MiB, mem: 0,
@@ -447,7 +390,7 @@ const JOURNAL = [
   {
     label: 'Reply', at: ['client'], edge: ['rep'], durable: ['wp', 'wh'], disk: 0, mem: 0,
     title: 'One reply for the whole batch', where: 'src/vsr/replica.zig',
-    body: () => `<p><code>create_transfers</code> replies only with the transfers that failed, so a clean batch gets a short reply. The syscall trace above shows <b class="c-data">14 <code>sendto</code></b> calls for 100,000 transfers, which is 13 batches: about one per batch.</p>
+    body: () => `<p><code>create_transfers</code> replies only with the transfers that failed, so a clean batch gets a short reply. The syscall trace above shows <b>14 <code>sendto</code></b> calls for 100,000 transfers, which is 13 batches: about one per batch.</p>
     <p>The <b>client replies</b> zone keeps the latest reply for each of up to 64 clients, 1 MiB each, so a retried request gets the same answer.</p>`,
   },
   {
@@ -458,7 +401,7 @@ const JOURNAL = [
       'mutable   → immutable  // in memory, sorted',
       'immutable → level 0    // 512 KiB grid blocks',
       'level n   → level n+1  // 7 levels, ×8 each',
-    ], [2, 3])}<p>Compaction does a slice of this work after every commit, so the cost is spread evenly over the ops. Each merge reads tables and writes them again one level down, so each value is written several times over its life. That, on top of up to 824 B per transfer, is where the measured <b class="c-bad">8.2×</b> comes from.</p>`,
+    ], [2, 3])}<p>Compaction does a slice of this work after every commit, so the cost is spread evenly over the ops. Each merge reads tables and writes them again one level down, so each value is written several times over its life. That, on top of up to 824 B per transfer, is where the measured <b>8.2×</b> comes from.</p>`,
   },
   {
     label: 'Checkpoint', at: ['sb'], edge: ['ckpt'], durable: ['wp', 'wh', 'grid', 'sb'], disk: 4 * 24 * 1024, mem: 0,
@@ -497,16 +440,6 @@ const BP_LAYOUT = {
   },
 };
 
-function byteGrid() {
-  const cells = [];
-  TRANSFER.forEach(([name, n, v], fi) => {
-    leBytes(v, n).forEach((b) => {
-      cells.push(`<span class="v-1b-b${v ? ' is-val' : ''}${fi % 2 ? ' is-odd' : ''}" data-f="${fi}" title="${esc(name)}">${b.toString(16).padStart(2, '0')}</span>`);
-    });
-  });
-  return `<div class="v-1b-hex" role="img" aria-label="The 128 bytes of one Transfer, 16 per row, little-endian">${cells.join('')}</div>`;
-}
-
 function treeCards(o) {
   let hit = 0; let bytes = 0; let total = 0;
   const cards = GROOVES.map(([name, trees]) => {
@@ -514,7 +447,7 @@ function treeCards(o) {
     const on = []; const off = [];
     for (const [t, fn, why] of trees) {
       const b = fn(o);
-      if (b) { hit++; bytes += b; on.push(`<tr class="is-look"><td>${esc(t)}</td><td class="v-1b-num c-data">${b} B</td></tr>`); } else off.push(`<tr><td>${esc(t)}</td><td>${esc(why || '')}</td></tr>`);
+      if (b) { hit++; bytes += b; on.push(`<tr><td>${esc(t)}</td><td class="v-1b-num">${b} B</td></tr>`); } else off.push(`<tr><td>${esc(t)}</td><td>${esc(why || '')}</td></tr>`);
     }
     const rest = off.length ? `<details><summary>${off.length} not written</summary><table class="wv-table v-1b-trees"><tbody>${off.join('')}</tbody></table></details>` : '';
     return `<div class="wv-card"><h5>${name} · ${on.length} of ${trees.length}</h5><table class="wv-table v-1b-trees"><tbody>${on.join('') || '<tr><td>none</td></tr>'}</tbody></table>${rest}</div>`;
@@ -535,12 +468,13 @@ function initBatchPath(fig, app) {
   const board = h('div');
   const optPick = chips([['ud', 'user_data set'], ['pending', 'pending, with timeout'], ['history', 'accounts keep history']],
     (vals) => { for (const k of Object.keys(opt)) opt[k] = vals.includes(k); drawBoard(); }, { multi: true, value: [], label: 'Transfer options' });
+  const change = h('details', null, h('summary', null, 'Change the transfer'), optPick.el);
   let guessed = false;
   const treeAsk = ask('Guess first: how many of the 33 trees does one plain transfer write to?',
     [[33, '33'], [14, '14'], [11, '11'], [3, '3']], 11,
     (v, right) => {
       guessed = true; drawBoard();
-      return `${right ? '<b>Right: 11</b>' : `<b>It is 11</b>`} for the benchmark's transfer. Zero fields in optional indexes are skipped, and a transfer does not change an account's indexes. Now change the transfer:`;
+      return `${right ? '<b>Right: 11</b>' : `<b>It is 11</b>`} for the benchmark's transfer. Zero fields in optional indexes are skipped, and a transfer does not change an account's indexes. Open <b>Change the transfer</b> below to set more fields.`;
     });
   const treeView = h('div', null, treeAsk.el, board);
   function drawBoard() {
@@ -548,25 +482,17 @@ function initBatchPath(fig, app) {
     const tc = treeCards(opt);
     board.innerHTML = '';
     const sum = h('p', { class: 'v-1b-sum' });
-    sum.innerHTML = `<b class="c-look">${tc.hit} of ${tc.total} trees</b> get a value: up to <b class="c-data">${tc.bytes} B</b> for one <b class="c-data">128 B</b> transfer, <b class="c-data">≤ ${bytesTxt(tc.bytes * 8190)}</b> for the batch. Two updates to the same account in one bar keep only the last version, so this is an upper bound.`;
+    sum.innerHTML = `<b>${tc.hit} of ${tc.total} trees</b> get a value: up to <b>${tc.bytes} B</b> for one 128 B transfer, <b>≤ ${bytesTxt(tc.bytes * 8190)}</b> for the batch. Two updates to the same account in one bar keep only the last version, so this is an upper bound.`;
     const cards = h('div'); cards.innerHTML = tc.html;
-    board.append(optPick.el, cards, sum);
+    board.append(sum, cards, change);
     rows[3].lastChild.textContent = `≤ ${bytesTxt(tc.bytes * 8190)}`;
   }
-
-  /* one field at a time in the byte grid */
-  const fieldPick = chips(TRANSFER.map(([name, n, v], fi) => [fi, `${name} · ${n} B${v ? ` = ${v}` : ''}`]), (fi) => {
-    detail.querySelectorAll('.v-1b-b').forEach((b) => b.classList.toggle('is-hot', b.dataset.f === String(fi)));
-    const [name, n, v, why] = TRANSFER[fi];
-    const hint = detail.querySelector('.v-1b-hint');
-    if (hint) hint.innerHTML = `<b class="c-look">${esc(name)}</b>: ${n} bytes, value <b class="c-data">${v}</b>${why ? ` (${esc(why)})` : ''}.`;
-  }, { label: 'Transfer fields' });
 
   const rows = JOURNAL.map((st, i) => h('tr', { tabindex: 0, class: 'v-1b-row', 'aria-label': `Step ${i + 1}: ${st.label}`, onclick: () => go(i), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { go(i); e.preventDefault(); } } },
     h('td', null, String(i + 1).padStart(2, '0')),
     h('td', null, st.label),
-    h('td', { class: 'v-1b-num c-data' }, bytesTxt(st.disk)),
-    h('td', { class: 'v-1b-num c-data' }, st.mem ? `≤ ${bytesTxt(st.mem)}` : '—')));
+    h('td', { class: 'v-1b-num' }, bytesTxt(st.disk)),
+    h('td', { class: 'v-1b-num' }, st.mem ? `≤ ${bytesTxt(st.mem)}` : '—')));
   const journal = h('table', { class: 'wv-table' },
     h('thead', null, h('tr', null, h('th', null, '#'), h('th', null, 'step'), h('th', { class: 'v-1b-num' }, 'disk'), h('th', { class: 'v-1b-num' }, 'memory'))),
     h('tbody', null, ...rows));
@@ -576,10 +502,9 @@ function initBatchPath(fig, app) {
 
   app.append(
     stage,
-    colorKey([['k-data', 'bytes and sizes'], ['k-look', 'this step'], ['k-held', 'durable on disk'], ['k-opt', 'your choices']]),
+    colorKey([['k-look', 'this step'], ['k-held', 'durable on disk']]),
     h('div', { class: 'v-1b-bp' },
-      h('div', null, journal, h('div', { class: 'wv-bar v-1b-nav' }, backB, pos, h('span', { class: 'wv-sp' }), nextB),
-        h('div', { class: 'wv-note is-good' }, h('b', null, 'Durable before the reply: '), '2 writes, 1 MiB + 4 KiB.')),
+      h('div', null, journal, h('div', { class: 'wv-bar v-1b-nav' }, backB, pos, h('span', { class: 'wv-sp' }), nextB)),
       detail),
   );
 
@@ -619,12 +544,9 @@ function initBatchPath(fig, app) {
       svg.append(s('g', { class: `node${on(k) ? ' is-focus' : ''}` }, s('rect', { x, y, width: w, height: hh, class: `box dash${durable.includes(k) && !on(k) ? ' v-1b-dur' : ''}` })));
       const ny = L.vertical ? y + hh / 2 - 2 : y + hh / 2 - 10;
       svg.append(s('text', { x: x + w / 2, y: ny, class: 't-s t-b', 'text-anchor': 'middle' }, n));
-      svg.append(s('text', { x: x + w / 2, y: ny + 14, class: 't-xs t-data', 'text-anchor': 'middle' }, sz));
+      svg.append(s('text', { x: x + w / 2, y: ny + 14, class: 't-xs t-mute', 'text-anchor': 'middle' }, sz));
       if (durable.includes(k)) {
-        const cx = x + w - 38; const cy = L.vertical ? y + 13 : y + 1;
-        svg.append(s('g', { class: 'v-1b-stamp', transform: `rotate(-5 ${cx} ${cy})` },
-          s('rect', { x: cx - 30, y: cy - 8, width: 60, height: 14, rx: 2 }),
-          s('text', { x: cx, y: cy + 2.5, class: 't-xs t-b t-safe', 'text-anchor': 'middle' }, 'DURABLE')));
+        svg.append(s('text', L.vertical ? { x: x + w - 8, y: y + hh / 2 + 4, class: 't-xs t-b t-safe', 'text-anchor': 'end' } : { x: x + w / 2, y: ny + 30, class: 't-xs t-b t-safe', 'text-anchor': 'middle' }, 'durable'));
       }
     }
     svg.append(s('text', { x: L.fileX, y: L.fileY + L.fileH + (L.vertical ? 18 : 20), class: 't-xs t-b t-up' }, '0_0.tigerbeetle ',
@@ -666,12 +588,6 @@ function initBatchPath(fig, app) {
       return;
     }
     detail.innerHTML = head + st.body();
-    if (step === 0) {
-      detail.append(fieldPick.el);
-      const hint = h('p', { class: 'v-1b-hint' }, 'One Transfer, 16 bytes per row, little-endian. Pick a field. Values are samples.');
-      detail.append(hint);
-      if (fieldPick.value != null) fieldPick.set(fieldPick.value);
-    }
   }
 
   function go(i) {

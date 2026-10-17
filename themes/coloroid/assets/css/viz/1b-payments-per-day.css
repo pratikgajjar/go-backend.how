@@ -8,27 +8,24 @@
 .v-1b-sheet h5 { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.4rem; }
 .v-1b-cvwrap { width: 100%; }
 .v-1b-cv { display: block; }
-.v-1b-sub { margin: 0.4rem 0 0; min-height: 1.4em; }
 
 /* ---------- group-commit: backends and WAL flushes on a timeline ---------- */
 .v-1b-strip { margin: 0.4rem 0 0.2rem; }
-.wv .v-1b-work { fill: var(--board); stroke: var(--ink); stroke-width: 0.9; }
-.wv .v-1b-wait { stroke: var(--red); stroke-width: 0.9; }
-.wv .v-1b-wait.is-late { stroke-width: 2.2; }
+.wv .v-1b-lane { stroke: var(--line); stroke-width: 1; }
+.wv .v-1b-wait { stroke: var(--ink); stroke-width: 0.8; }
 .wv .v-1b-wait.is-sel { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.6; }
-.wv .v-1b-hatch { stroke: var(--red); stroke-width: 1.1; }
-.wv .v-1b-tick { stroke: var(--green); stroke-width: 2.4; }
+.wv .v-1b-wait.is-late { fill: var(--red-l); stroke: var(--red); stroke-width: 1.6; stroke-dasharray: 3 2; }
+.wv .v-1b-hatch { stroke: var(--mute); stroke-width: 1; }
 .wv .v-1b-flush { cursor: pointer; }
-.wv .v-1b-flush rect { fill: var(--green-l); stroke: var(--green); stroke-width: 1.6; }
-.wv .v-1b-flush text { fill: var(--green); }
+.wv .v-1b-flush rect { fill: var(--board); stroke: var(--ink); stroke-width: 1.2; }
 .wv .v-1b-flush.is-sel rect { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2.4; }
 .wv .v-1b-flush.is-sel text { fill: var(--purple); }
-.wv .v-1b-band { fill: none; stroke: var(--purple); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+.wv .v-1b-pin { stroke: var(--purple); stroke-width: 1; stroke-dasharray: 2 3; pointer-events: none; }
+.v-1b-fit { margin: 0.9rem 0 0; }
 .v-1b-num { text-align: right; white-space: nowrap; }
 
 /* ---------- batch-path: data file map, journal, detail ---------- */
 .wv .v-1b-dur { fill: var(--green-l); stroke: var(--green); }
-.wv .v-1b-stamp rect { fill: none; stroke: var(--green); stroke-width: 1.8; }
 .wv .v-1b-arrow { stroke: var(--purple); stroke-width: 2; fill: none; stroke-dasharray: 4 6; animation: wv-flow 1s linear infinite; }
 .wv .v-1b-head { fill: var(--purple); }
 .v-1b-bp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-top: 0.8rem; align-items: start; }
@@ -37,13 +34,7 @@
 .v-1b-row { cursor: pointer; }
 .v-1b-nav { margin: 0.6rem 0; }
 
-.v-1b-hex { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 2px; max-width: 34em; margin: 0.6rem 0; }
-.v-1b-b { text-align: center; color: var(--mute); background: var(--board); outline: 1px solid var(--line); outline-offset: -1px; cursor: default; }
-.v-1b-b.is-odd { background: var(--tint); }
-.v-1b-b.is-val { background: var(--brown-l); color: var(--ink); font-weight: 700; outline-color: var(--brown); }
-.v-1b-b.is-hot { outline: 2px solid var(--purple); outline-offset: -2px; }
-.v-1b-hint { margin: 0.2rem 0 0; }
-.v-1b-sum { margin: 0.7rem 0 0; }
+.v-1b-sum { margin: 0.7rem 0 0.5rem; }
 .wv-insp .wv-cards { margin: 0.2rem 0 0; }
 .v-1b-trees td:first-child { overflow-wrap: anywhere; }
 .v-1b-trees { table-layout: auto; }
