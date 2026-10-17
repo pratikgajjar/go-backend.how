@@ -108,6 +108,8 @@ Short form (Reels, TikTok), long form (YouTube, Coursera, educational sites), or
 
 Games, or comments with ideas on posts.
 
+May the force be with you 🧙
+
 # FAQ {#faq}
 
 {{< details "Making it perfect?" >}}
