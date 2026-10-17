@@ -81,7 +81,7 @@ function initFormCheck(fig, app) {
 
   /* predict, then see: the rows would give the answer away */
   const guess = ask(
-    'I started at 120 steps a minute. Where does that sit among the runners Garmin measured?',
+    'I started at 120 steps a minute. Which percentile band is that in, among the runners Garmin measured?',
     BAND.map((b) => [b.key, b.name]),
     'b0',
     (v, right) => {

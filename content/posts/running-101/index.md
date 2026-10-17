@@ -1,6 +1,6 @@
 +++
 title = "Running 101"
-description = "How I went from a 38-minute 4K to a 24:45 5K: one goal at a time, one running metric at a time, measured with a Garmin watch. Check where your own cadence, contact time, bounce, and heart-rate zones sit."
+description = "How I went from a 38-minute 4K to a 24:45 5K with one goal at a time and one running metric at a time, measured with a Garmin watch. Compare your cadence, ground contact time, and vertical oscillation with Garmin's percentile bands, and get your heart-rate zones in bpm."
 date = 2024-10-12T23:45:31+05:30
 lastmod = 2024-10-12T23:45:31+05:30
 publishDate = "2024-10-12T23:45:31+05:30"
@@ -11,7 +11,7 @@ featured = true
 theme = "mint"
 +++
 
-Before I started training, a 4K took me about 38 minutes. In December 2024 I ran a 5K in 24:45. This post is how: one clear goal at a time, one running metric at a time, measured on a Garmin watch. By the end you will know which form numbers matter, where yours sit among other runners, and which one to work on first.
+Before I started training, a 4K took me about 38 minutes. In December 2024 I ran a 5K in 24:45. This post explains how I did it. I set one clear goal at a time, worked on one running metric at a time, and measured each run on a Garmin watch. The post also shows which form numbers matter, how yours compare with other runners, and which one to work on first.
 
 tldr;
 
@@ -23,7 +23,7 @@ tldr;
 
 # Why running
 
-I am a 27-year-old software engineer, writing in 2024. I sit for most of my workday. Since grade 12 I have wanted a six-pack, because it is seen as 'cool.' As a football fan, I know players peak in their late twenties to early thirties. An analysis by The Athletic[^1] puts the peak age for different positions at 27 to 31. So I set a goal: peak physical fitness by my late twenties.
+I am a 27-year-old software engineer, writing in 2024. I sit for most of my workday. Since grade 12 I have wanted a six-pack, because it is seen as 'cool.' As a football fan, I know players peak in their late twenties to early thirties. An analysis by The Athletic[^1] puts the peak age for different positions at 27 to 31. So I set a goal to reach peak physical fitness by my late twenties.
 
 I prefer outdoor sports to the gym. I would rather play outside for hours than work out indoors. So my goal became a body fat percentage of about 8%. Everyone has abdominal muscles; fat hides them.
 
@@ -41,7 +41,7 @@ The rest of the kit is simple: Skechers running shoes for every run, comfortable
 
 I started slow to lower the risk of injury. New runners make mistakes, and intense workouts too early can cause strains. I had run a 4K in about 38 minutes with no preparation, so I set a more achievable first goal.
 
-Garmin's AI coach built me a plan for a 5K in about 35 minutes: hard, but manageable. The plan mixed steady, interval, and hill runs, with rest days for recovery. It set when and how far to run each day, based on data from my first few sessions. That structure kept me consistent and helped me avoid injury.
+Garmin's AI coach built me a plan for a 5K in about 35 minutes. The plan was hard, but manageable. The plan mixed steady, interval, and hill runs, with rest days for recovery. It set when and how far to run each day, based on data from my first few sessions. That structure kept me consistent and helped me avoid injury.
 
 > "No man has the right to be an amateur in the matter of physical training. It is a shame for a man to grow old without seeing the beauty and strength of which his body is capable." -- Socrates
 
@@ -51,9 +51,9 @@ The watch reports many numbers. I split them in two. Input metrics[^2] describe 
 
 Output metrics are the effect: pace, heart-rate zones, power zones, and stride length. They come later in this post.
 
-Garmin compares each input metric with other runners and puts it in a percentile band. Start with my own first number, then type yours to see where each one sits and which one to work on first.
+Garmin compares each input metric with other runners and puts it in a percentile band. Start with my own first number, then type yours to see which band each one is in and which one to work on first.
 
-{{< viz kind="form-check" fig="1" wide="false" title="Where your form sits" fallback="form-check.svg" alt="Four bars, one per input metric, each split into Garmin's five percentile bands. My starting cadence of 120 spm sits in the bottom 5%." caption="Garmin Connect shows these numbers for each run under Running Dynamics. The 120 spm cadence is mine from my first runs. The other three are sample values; the ratio is 9.0 cm of bounce over my 0.88 m step at 9:30 min/km. Band edges are from the tables below." >}}
+{{< viz kind="form-check" fig="1" wide="false" title="How your form ranks" fallback="form-check.svg" alt="Four bars, one per input metric, each split into Garmin's five percentile bands. My starting cadence of 120 spm is in the bottom 5%." caption="Garmin Connect shows these numbers for each run under Running Dynamics. The 120 spm cadence is mine from my first runs. The other three are sample values; the ratio is 9.0 cm of vertical oscillation over my 0.88 m step at 9:30 min/km. Band edges are from the tables below." >}}
 
 ## Cadence
 
@@ -133,7 +133,7 @@ speed (m/min) = cadence (steps/min) × stride length (m)
 pace (min/km) = 1000 / (cadence × stride length)
 ```
 
-Only two numbers set pace: how often your feet land and how far you travel on each step. Ground contact time and vertical ratio are not in the formula. They change what each step costs, not how far it goes.
+Pace depends on only two numbers: cadence (how often your feet land) and stride length (how far you travel on each step). Ground contact time and vertical ratio are not in the formula. They change how much energy each step takes.
 
 My next goal is a 5K in 20:00, which is 250 m every minute. At 180 spm that still needs 1.39 m per step, so cadence alone does not get there. Longer steps add speed without much more effort. Balance them with cadence, or you over-stride, which can cause injury. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
 
@@ -141,7 +141,7 @@ My next goal is a 5K in 20:00, which is 250 m every minute. At 180 spm that stil
 
 ## Heart rate zones
 
-Heart rate zones are ranges of heart rate that match levels of effort. There are usually five, from easy (zone 1) to maximum effort (zone 5). Training in the right zone fits a run to its goal, such as fat burning, endurance, or speed, and helps prevent overtraining.
+Heart rate zones are ranges of heart rate that match levels of effort. There are usually five, from easy (zone 1) to maximum effort (zone 5). Each type of run, such as fat burning, endurance, or speed, has a target zone. Training in the target zone helps prevent overtraining.
 
 | Zone | % of max | Effort |
 | ---- | -------- | ------ |
@@ -163,7 +163,7 @@ Power, in watts, is your energy output while running, independent of pace and te
 
 ### Time in power zone
 
-Power zones work like heart rate zones, but use watts. Time in power zone is how long you spend in each zone. The right mix across zones helps endurance, speed, and efficient energy use.
+Power zones work like heart rate zones, but use watts. Time in power zone is how long you spend in each zone. Time spread across several zones helps endurance, speed, and efficient energy use.
 
 # Recovery and fuel
 
@@ -201,7 +201,7 @@ Fats are another energy source. They also help the body absorb fat-soluble vitam
 
 ### Hydration
 
-Water is about 60% of body weight and matters for every body function, including running. Drink water through the day, not only around runs. Base your plan on your sweat rate: weigh yourself before and after runs to estimate it.
+Water is about 60% of body weight and matters for every body function, including running. Drink water through the whole day, as well as around runs. Base your plan on your sweat rate: weigh yourself before and after runs to estimate it.
 
 ### Micronutrients
 
@@ -223,7 +223,7 @@ Eat a variety of colourful fruits and vegetables to get enough vitamins and mine
 
 {{< figure src="aws-reinvent-2024-5k.jpg" title="AWS re:Invent 2024 5K" alt="AWS badge showing the 5K run achieved in 24 min 45 seconds" >}}
 
-Thank you, Kush, Dhruv, and Sandeep, for your direct and indirect support throughout this journey.
+Thank you, Kush, Dhruv, and Sandeep, for your direct and indirect support throughout this training.
 
 > "Delulu is the solulu" - Gen Z
 >
