@@ -6,12 +6,15 @@
 """Render a post's hand-written og.svg to its social card PNG.
 
   .agents/skills/og-image/render.py <slug> [--check]
+  .agents/skills/og-image/render.py site [--check]
 
 Reads content/posts/<slug>/og.svg (1200x630), injects the post's theme
 colours and the figure tokens as CSS variables, embeds JetBrains Mono, and
 screenshots it at 2x with Chromium. Writes og-<hash>.png next to the post,
 deletes the old og-*.png files, and points `images` in the front matter at
 the new file. --check renders to /tmp only and prints the path.
+`site` renders themes/coloroid/og-image.svg (the homepage theme) to
+themes/coloroid/static/og-image.png, the default card for non-post pages.
 """
 import base64
 import hashlib
@@ -63,9 +66,10 @@ def main() -> int:
         print(__doc__)
         return 2
     slug, check = sys.argv[1], "--check" in sys.argv
+    site = slug == "site"
     post = ROOT / "content/posts" / slug
-    md = post / "index.md"
-    svg = (post / "og.svg").read_text()
+    md = ROOT / "content/_index.md" if site else post / "index.md"
+    svg = (ROOT / "themes/coloroid/og-image.svg" if site else post / "og.svg").read_text()
     text = md.read_text()
     delim, fm = front_matter(text)
     font = base64.b64encode(FONT.read_bytes()).decode()
@@ -89,6 +93,11 @@ svg {{ display: block; font-family: var(--font-mono); }}
     name = f"og-{hashlib.sha256(png).hexdigest()[:8]}.png"
     if check:
         out = Path("/tmp") / f"{slug}-{name}"
+        out.write_bytes(png)
+        print(out)
+        return 0
+    if site:
+        out = ROOT / "themes/coloroid/static/og-image.png"
         out.write_bytes(png)
         print(out)
         return 0
