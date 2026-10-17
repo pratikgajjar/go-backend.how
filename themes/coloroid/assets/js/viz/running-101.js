@@ -75,7 +75,8 @@ function initFormCheck(fig, app) {
   const P = Object.fromEntries(ORDER.map((k) => [k, METRIC[k].v]));
   const rows = h('div', { class: 'v-r101-rows' });
   const key = colorKey([['v-r101-b0', 'below most runners'], ['v-r101-b4', 'above most runners'], ['k-ink', 'your number']]);
-  const after = h('div', null, rows, key);
+  const ends = h('div', { class: 'wv-key v-r101-ends' }, h('span', null, '← bottom 5% of runners'), h('span', null, 'top 5% →'));
+  const after = h('div', null, ends, rows, key);
   after.hidden = true;
 
   /* predict, then see: the rows would give the answer away */

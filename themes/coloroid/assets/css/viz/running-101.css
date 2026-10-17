@@ -3,7 +3,8 @@
    green, green; the reader's number is an ink mark. */
 
 /* form-check: one row per metric, fixed order, white space between */
-.v-r101-rows { display: grid; gap: 1.1rem; margin: 1.1rem 0 0.8rem; }
+.v-r101-ends { justify-content: space-between; margin: 1.1rem 0 0; }
+.v-r101-rows { display: grid; gap: 1.1rem; margin: 0.5rem 0 0.8rem; }
 .v-r101-rhd { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.3rem 0.6rem; }
 .v-r101-rhd .wv-field { margin: 0; }
 .v-r101-rhd input { width: 6.5em; }
