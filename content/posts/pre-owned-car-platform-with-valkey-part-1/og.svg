@@ -12,43 +12,44 @@
     text { font-family: var(--font-mono); }
   </style>
   <!-- sheet with hard shadow -->
-  <rect x="56" y="56" width="1096" height="526" class="ink"/>
-  <rect x="48" y="48" width="1096" height="526" class="box"/>
+  <rect x="56" y="56" width="1104" height="526" class="ink"/>
+  <rect x="48" y="48" width="1104" height="526" class="box"/>
 
-  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="112" font-size="28" class="mute">backend.how</text>
   <text x="96" y="182" font-size="58" font-weight="800" class="ink">Pre-owned car platform</text>
   <text x="96" y="234" font-size="34" font-weight="600" class="ink">with Valkey - Part 1</text>
 
-  <g font-size="22" text-anchor="middle">
+  <g font-size="28" text-anchor="middle">
     <!-- three apps write to MySQL directly -->
-    <rect x="96" y="290" width="184" height="46" class="proc"/><text x="188" y="320" class="ink">CakePHP</text>
-    <rect x="96" y="345" width="184" height="46" class="proc"/><text x="188" y="375" class="ink">Django</text>
-    <rect x="96" y="400" width="184" height="46" class="proc"/><text x="188" y="430" class="ink">price script</text>
-    <path d="M280 313 L309 346" class="arr"/><path d="M318 356 l-15.5 -4 l9 -8 z" class="head"/>
-    <path d="M280 368 L306 368" class="arr"/><path d="M318 368 l-14 -8 v16 z" class="head"/>
-    <path d="M280 423 L309 390" class="arr"/><path d="M318 380 l-6.5 14 l-9 -8 z" class="head"/>
+    <rect x="96" y="284" width="150" height="50" class="proc"/><text x="171" y="319" class="ink">CakePHP</text>
+    <rect x="96" y="344" width="150" height="50" class="proc"/><text x="171" y="379" class="ink">Django</text>
+    <rect x="96" y="404" width="150" height="50" class="proc"/><text x="171" y="439" class="ink">scripts</text>
+    <path d="M246 309 L280 350" class="arr"/><path d="M290 361 l-15.5 -4 l9 -8 z" class="head"/>
+    <path d="M246 369 L278 369" class="arr"/><path d="M290 369 l-14 -8 v16 z" class="head"/>
+    <path d="M246 429 L280 388" class="arr"/><path d="M290 377 l-6.5 14 l-9 -8 z" class="head"/>
 
-    <rect x="320" y="330" width="120" height="76" class="proc"/><text x="380" y="376" class="ink">MySQL</text>
+    <rect x="292" y="329" width="120" height="80" class="proc"/><text x="352" y="379" class="ink">MySQL</text>
 
     <!-- the choice: read the binlog -->
-    <line x1="440" y1="368" x2="522" y2="368" class="bin"/>
-    <path d="M538 368 l-18 -10 v20 z" class="org"/>
-    <text x="489" y="350" class="org" font-weight="700">binlog</text>
+    <line x1="412" y1="369" x2="520" y2="369" class="bin"/>
+    <path d="M536 369 l-18 -10 v20 z" class="org"/>
+    <text x="472" y="350" class="org" font-weight="700">binlog</text>
 
-    <rect x="540" y="330" width="112" height="76" class="proc"/><text x="596" y="376" class="ink">Kafka</text>
-    <line x1="652" y1="368" x2="676" y2="368" class="arr"/><path d="M688 368 l-14 -8 v16 z" class="head"/>
-    <rect x="690" y="330" width="150" height="76" class="proc"/><text x="765" y="376" class="ink">consumer</text>
-    <line x1="840" y1="368" x2="864" y2="368" class="arr"/><path d="M876 368 l-14 -8 v16 z" class="head"/>
+    <rect x="538" y="329" width="116" height="80" class="proc"/><text x="596" y="379" class="ink">Kafka</text>
+    <line x1="654" y1="369" x2="682" y2="369" class="arr"/><path d="M694 369 l-14 -8 v16 z" class="head"/>
 
     <!-- one pre-computed JSON per car, in Valkey -->
-    <text x="987" y="306" class="mute">Valkey</text>
-    <rect x="878" y="320" width="218" height="96" class="data"/>
-    <text x="987" y="360" class="ink" font-weight="700">dp:2323</text>
-    <text x="987" y="392" class="brn">car JSON</text>
+    <text x="796" y="302" class="mute">Valkey</text>
+    <rect x="696" y="314" width="200" height="110" class="data"/>
+    <text x="796" y="362" class="ink" font-weight="700">dp:2323</text>
+    <text x="796" y="400" class="brn">car JSON</text>
 
     <!-- buyer reads one key -->
-    <line x1="987" y1="416" x2="987" y2="474" class="arr"/><path d="M987 486 l-8 -14 h16 z" class="head"/>
-    <text x="987" y="518" class="ink">car page, 60 ms</text>
+    <line x1="896" y1="369" x2="924" y2="369" class="arr"/><path d="M936 369 l-14 -8 v16 z" class="head"/>
   </g>
-  <text x="96" y="518" font-size="24" class="ink">Every write from every app goes through the binlog.</text>
+  <g font-size="28" class="ink">
+    <text x="948" y="360">car page</text>
+    <text x="948" y="398" font-weight="700">60 ms</text>
+  </g>
+  <text x="96" y="520" font-size="28" class="ink">Every write from every app goes through the binlog.</text>
 </svg>
