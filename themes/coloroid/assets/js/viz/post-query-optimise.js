@@ -7,22 +7,22 @@
  * shared house style (walviz.css, viz/lib.js); only the maps are drawn here.
  *
  *   pqo-pages    predict: with an index, how many pages does one lookup read?
- *   pqo-lookup   walk the B-tree yourself: pick the child on each page.
  *   pqo-planner  move x; see where matching rows live for a disk-ordered
  *                and a random column, and what the planner picks for each.
- *   pqo-budget   build the query from its parts to meet four goals.
+ *   pqo-budget   build the query from its parts to meet three goals.
  *
- * Colours on the maps use the shared tokens: brown-l = page on disk, not
- * read; brown = page read or data sent (concrete data); red = read for
- * nothing, or temp files; purple = the page to look at.
+ * Colours on the maps use the shared tokens, two accents per view at most:
+ * brown-l = page on disk, not read; brown = page read or data sent
+ * (concrete data); red = read for nothing; purple = the pages one lookup
+ * reads (Fig. 1 only).
  *
  * Data: PostgreSQL 18.4, the sample table in the post (1,000,000 rows,
  * 33,333 pages), default settings, parallel workers and JIT off. Blocks,
- * keys and TIDs come from pageinspect; plans from EXPLAIN (ANALYZE,
+ * and TIDs come from pageinspect; plans from EXPLAIN (ANALYZE,
  * BUFFERS); times are medians of 5 runs with the table in memory.
  */
 
-import { h, register, clamp, fmt, esc, tween, onVisible, REDUCED, btn, chips, ask, range, colorKey, codeBlock } from './lib.js';
+import { h, register, clamp, fmt, tween, onVisible, REDUCED, btn, chips, ask, range, colorKey, codeBlock } from './lib.js';
 
 const ms = (v) => (v < 0.1 ? `${v.toFixed(3)} ms` : v < 10 ? `${v.toFixed(v < 1 ? 2 : 1)} ms` : `${fmt(v)} ms`);
 const mb = (b) => (b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : b >= 1e3 ? `${(b / 1e3).toFixed(1)} kB` : `${b} B`);
@@ -89,7 +89,7 @@ function pageMap(n, name) {
         const x = clamp(((m.page % cols) + 0.5) * cd, r + dpr, cv.width - r - dpr);
         const y = clamp((Math.floor(m.page / cols) + 0.5) * cd, r + dpr, cv.height - r - dpr);
         g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
-        g.fillStyle = T.look; g.fill();
+        g.fillStyle = m.color || T.look; g.fill();
         g.lineWidth = 2 * dpr; g.strokeStyle = T.board; g.stroke();
         if (!m.label) continue;
         g.font = font; g.textBaseline = 'middle';
@@ -127,9 +127,7 @@ function resized(el, fn) {
 }
 /** Swatches for the map colours, in colorKey form. */
 const K_IDLE = ['k-data', 'page on disk, not read'];
-const K_READ = ['v-pqo-k-read', 'page read'];
 const K_BAD = ['v-pqo-k-bad', 'page read for nothing'];
-const K_LOOK = ['k-look', 'the page to look at'];
 
 /* ================================================================ PAGES */
 
@@ -168,7 +166,7 @@ function initPages(fig, app) {
   app.append(
     html(h('div'), codeBlock(["SELECT * FROM users WHERE email = «'user777777@example.com'»;"])),
     h('div', { class: 'v-pqo-two' }, colA, colB),
-    colorKey([K_IDLE, K_BAD, K_LOOK]));
+    colorKey([K_IDLE, K_BAD]));
 
   function heads() {
     const n = Math.round(S.sweep * TABLE);
@@ -204,147 +202,6 @@ function initPages(fig, app) {
     let ran = false;
     onVisible(fig, (v) => { if (v && !ran) { ran = true; tween(1600, (t) => { S.sweep = t; paint(); }); } });
   }
-}
-
-/* =============================================================== LOOKUP */
-
-/*
- * users_email_idx descents for five keys (pageinspect). Per page:
- * [block, entries on page, four entries shown [item, key, child block or
- * TID], item to follow, more entries before, more after]. A null key is
- * the page's first downlink ("minus infinity"). Keys omit "@example.com".
- */
-const TREE = {
-  'user777777': { found: true, row: [777777, '51d87a4e5ecf…', '2024-09-27 01:28:30+00', 30], levels: [
-    [164, 32, [[22, 'user7061', 3344], [23, 'user735067', 3503], [24, 'user763934', 3662], [25, 'user792800', 3821]], 24, true, true],
-    [3662, 158, [[77, 'user777637', 3735], [78, 'user77781', 3736], [79, 'user778001', 3737], [80, 'user778185', 3738]], 77, true, true],
-    [3735, 203, [[156, 'user777776', '(25924,24)'], [157, 'user777777', '(25924,25)'], [158, 'user777778', '(25924,26)'], [159, 'user777779', '(25924,27)']], 157, true, true],
-  ] },
-  'user1': { found: true, row: [1, '13383e2323c6…', '2024-01-01 00:00:30+00', 31], levels: [
-    [164, 32, [[3, 'user157735', 323], [4, 'user186601', 482], [5, 'user215468', 641], [6, 'user244334', 800]], 4, true, true],
-    [482, 158, [[72, 'user199391', 550], [73, 'user199574', 551], [74, 'user199757', 552], [75, 'user19993', 553]], 75, true, true],
-    [553, 203, [[70, 'user199', '(6,13)'], [71, 'user19', '(0,19)'], [72, 'user1', '(0,1)'], [73, 'user200000', '(6665,18)']], 72, true, true],
-  ] },
-  'user500000': { found: true, row: [500000, '385681b84edb…', '2024-06-22 14:40:00+00', 30], levels: [
-    [164, 32, [[12, 'user417534', 1754], [13, 'user446400', 1913], [14, 'user475268', 2072], [15, 'user504133', 2231]], 14, true, true],
-    [2072, 158, [[135, 'user499568', 2203], [136, 'user499750', 2204], [137, 'user499933', 2205], [138, 'user500113', 2206]], 137, true, true],
-    [2205, 203, [[77, 'user499', '(16,3)'], [78, 'user49', '(1,18)'], [79, 'user4', '(0,4)'], [80, 'user500000', '(16665,18)']], 80, true, true],
-  ] },
-  'user999999': { found: true, row: [999999, 'ddcf1e8ffda1…', '2024-12-13 05:19:30+00', 8], levels: [
-    [164, 32, [[29, 'user908267', 4457], [30, 'user937133', 4616], [31, 'user965', 4775], [32, 'user994868', 4934]], 32, true, false],
-    [4934, 29, [[26, 'user999435', 4957], [27, 'user999618', 4958], [28, 'user999800', 4959], [29, 'user999984', 4960]], 29, true, false],
-    [4960, 22, [[15, 'user999997', '(33332,5)'], [16, 'user999998', '(33332,6)'], [17, 'user999999', '(33332,7)'], [18, 'user99999', '(3332,7)']], 17, true, true],
-  ] },
-  'user1000001': { found: false, levels: [
-    [164, 32, [[1, null, 3], [2, 'user128869', 163], [3, 'user157735', 323], [4, 'user186601', 482]], 1, false, true],
-    [3, 158, [[2, null, 1], [3, 'user100183', 2], [4, 'user100366', 4], [5, 'user100549', 5]], 2, false, true],
-    [1, 203, [[3, 'user100000', '(3332,8)'], [4, 'user100001', '(3332,9)'], [5, 'user100002', '(3332,10)'], [6, 'user100003', '(3332,11)']], 3, true, true],
-  ] },
-};
-const NAMES = ['root', 'branch', 'leaf', 'table'];
-const full = (k) => `${k}@example.com`;
-/** Byte-wise compare, as the C collation does. Returns [sign, index of first difference]. */
-function cmp(a, b) {
-  const n = Math.min(a.length, b.length);
-  for (let i = 0; i < n; i++) if (a[i] !== b[i]) return [a[i] < b[i] ? -1 : 1, i];
-  return [Math.sign(a.length - b.length), n];
-}
-function why(entry, keyStr) {
-  const [sgn, i] = cmp(entry, keyStr);
-  if (sgn === 0) return `<code>'${esc(entry)}'</code> is your key.`;
-  return `<code>'${esc(entry)}'</code> ${sgn < 0 ? '&lt;' : '&gt;'} <code>'${esc(keyStr)}'</code>: they first differ at character ${i + 1}, <code>${esc(entry[i])}</code> against <code>${esc(keyStr[i])}</code>.`;
-}
-
-function initLookup(fig, app) {
-  const S = { key: 'user777777', lv: 0, msg: '', good: null };
-  const sql = h('div');
-  const pick = chips(Object.keys(TREE).map((k) => [k, k === 'user1000001' ? `${k} (no such row)` : k]),
-    (k) => { S.key = k; S.lv = 0; S.msg = ''; S.good = null; draw(); }, { value: S.key, label: 'search key' });
-  const slots = [0, 1, 2, 3].map(() => h('div', { class: 'wv-card' }));
-  const msg = h('div', { class: 'wv-note', 'aria-live': 'polite' });
-  const count = h('p', { class: 't-s' });
-  const tools = h('div');
-  app.append(
-    h('div', { class: 'wv-field' }, h('label', null, 'search for')), pick.el,
-    sql,
-    h('div', { class: 'wv-cards v-pqo-slots' }, ...slots),
-    h('div', { class: 'v-pqo-gap' }), msg,
-    h('div', { class: 'v-pqo-foot' }, count, tools),
-    colorKey([['k-opt', 'your choice'], ['k-look', 'the page you are on'], ['k-data', 'keys, blocks, rows'], ['k-gap', 'wrong turn, or no match']]));
-
-  function choose(lv, item) {
-    const T = TREE[S.key];
-    const [, , win, pk] = T.levels[lv];
-    const ks = full(S.key);
-    const e = win.find((x) => x[0] === item);
-    S.good = false;
-    if (item === pk && (lv < 2 || T.found)) {
-      S.lv = lv + 1; S.good = true;
-      S.msg = lv < 2 ? `Right: block ${e[2]}.` : `Found it: row ${e[2]}.`;
-    } else if (item === 'none') {
-      if (!T.found) { S.lv = 3; S.good = true; S.msg = 'Right. No entry equals the key, so there is no row and Postgres never reads the table.'; } else S.msg = 'It is here. Look again.';
-    } else if (lv < 2) {
-      if (e[1] === null || cmp(e[1], ks)[0] <= 0) {
-        const next = win[win.indexOf(e) + 1];
-        S.msg = `${e[1] === null ? 'The first child holds everything below the next key.' : why(full(e[1]), ks)} But the next key, <code>'${esc(full(next[1]))}'</code>, is also not greater than yours, so keep going right. Follow the <b>last</b> key that is not greater.`;
-      } else {
-        S.msg = `${why(full(e[1]), ks)} This child starts after your key, so your key is in the child before it.`;
-      }
-    } else {
-      S.msg = `${why(full(e[1]), ks)} Not your key.`;
-    }
-    draw();
-  }
-
-  function draw() {
-    const T = TREE[S.key];
-    sql.innerHTML = codeBlock([`SELECT * FROM users WHERE email = «'${full(S.key)}'»;`]);
-    slots.forEach((el, lv) => {
-      const state = lv < S.lv ? 'done' : lv === S.lv ? 'now' : 'later';
-      el.className = `wv-card${state === 'now' ? ' is-look' : ''}${state === 'later' ? ' v-pqo-later' : ''}`;
-      if (lv === 3) {
-        const [, , win, pk] = T.levels[2];
-        const tid = win.find((x) => x[0] === pk)[2];
-        const blk = T.found ? tid.slice(1).split(',')[0] : '';
-        if (state !== 'later' && !T.found) el.className = 'wv-card is-bad';
-        el.innerHTML = `<h5>table <span class="c-data">${T.found && state !== 'later' ? `block ${blk}` : ''}</span></h5>${
-          state === 'later' ? '<p class="t-s">not read yet</p>'
-            : T.found ? `<div class="v-pqo-pos"><i style="left:${((+blk + 0.5) / TABLE * 100).toFixed(2)}%"></i></div>
-              <dl class="wv-kv"><dt>row</dt><dd class="c-look">${tid}</dd><dt>id</dt><dd class="c-data">${T.row[0]}</dd><dt>name</dt><dd class="c-data">'${T.row[1]}'</dd><dt>created_at</dt><dd class="c-data">${T.row[2]}</dd></dl>
-              <p class="t-xs">${T.row[3]} rows on this page</p>`
-              : '<p class="c-bad">not read: no row to fetch</p>'}`;
-        return;
-      }
-      const [blk, n, win, pk, before, after] = T.levels[lv];
-      let body;
-      if (state === 'later') body = '<p class="t-s">not read yet</p>';
-      else {
-        const rows = win.map(([item, k, to]) => {
-          const label = k === null ? '−∞ (lowest)' : `'${esc(k)}@…'`;
-          const inner = `<span class="t-mute">${item}</span> <span class="c-data">${label}</span><br><span>→ ${lv < 2 ? `block ${to}` : to}</span>`;
-          if (state === 'now') return `<button type="button" class="wv-chip v-pqo-ent" data-item="${item}">${inner}</button>`;
-          const cls = item === pk ? (lv === 2 && !T.found ? 'v-pqo-miss' : 'v-pqo-chosen') : 'v-pqo-dim';
-          return `<div class="v-pqo-ent ${cls}">${inner}${cls === 'v-pqo-miss' ? ' <b class="c-bad">≠ key</b>' : ''}</div>`;
-        }).join('');
-        body = `<div class="v-pqo-pos" title="block ${blk} of 4,961"><i style="left:${((blk + 0.5) / 4961 * 100).toFixed(2)}%"></i></div>
-          ${state === 'now' ? `<p class="t-b">${lv < 2 ? 'Which child can hold your key?' : 'Which entry is your key?'}</p>` : ''}
-          <div class="v-pqo-ents">${before ? '<span class="t-mute">⋮</span>' : ''}${rows}${after ? '<span class="t-mute">⋮</span>' : ''}</div>
-          ${state === 'now' && lv === 2 ? '<button type="button" class="wv-chip v-pqo-ent" data-item="none">none of these</button>' : ''}
-          <p class="t-xs">${n} ${lv < 2 ? 'children' : 'entries'} on this page</p>`;
-      }
-      el.innerHTML = `<h5>${NAMES[lv]} <span class="c-data">${state === 'later' ? '' : `block ${blk}`}</span></h5>${body}`;
-      el.querySelectorAll('[data-item]').forEach((b) => b.addEventListener('click', () => choose(lv, b.dataset.item === 'none' ? 'none' : +b.dataset.item)));
-    });
-    const read = Math.min(S.lv + 1, T.found ? 4 : 3);
-    const done = S.lv >= 3;
-    count.innerHTML = `pages read: <b class="t-l ${done ? 'c-look' : ''}">${read}</b>${done ? ` · <code>Buffers: shared hit=${T.found ? '3 read=1' : '3'}</code>` : ''}`;
-    msg.innerHTML = S.msg || 'Each key on a root or branch page is the lowest key in its child. Follow the last key that is not greater than yours. Keys compare as text, one character at a time.';
-    msg.className = `wv-note${S.good === true ? ' is-good' : S.good === false ? ' is-bad' : ''}`;
-    tools.replaceChildren(done
-      ? btn('↻ start over', () => { S.lv = 0; S.msg = ''; S.good = null; draw(); })
-      : btn('show me', () => { const [, , , pk] = T.levels[S.lv]; choose(S.lv, S.lv === 2 && !T.found ? 'none' : pk); }));
-  }
-  draw();
 }
 
 /* ============================================================== PLANNER */
@@ -422,9 +279,10 @@ function initPlanner(fig, app) {
   });
   const q = ask('Both columns have a B-tree index, and each filter below matches about 10,000 rows. Which one keeps those rows on fewer pages?',
     [['seq', 'seq'], ['score', 'score'], ['same', 'about the same']], 'seq',
-    () => { P.guessed = true; x.set(6); return 'The 10,000 rows with <code>seq &lt; 10000</code> sit on 333 neighbouring pages. The 10,103 rows with <code>score &lt; 10000</code> are spread over 8,739 pages. Now move x.'; });
+    () => { P.guessed = true; x.set(6); x.el.style.display = ''; return 'The 10,000 rows with <code>seq &lt; 10000</code> sit on 333 neighbouring pages. The 10,103 rows with <code>score &lt; 10000</code> are spread over 8,739 pages. Now move x.'; });
   const x = range('x', { min: 0, max: 15, value: P.i, fmt: (i) => `${fmt(PICK.seq[i][0])} rows`, oninput: (i) => { P.i = i; draw(); } });
   const rpc = chips([[4, '4 (default)'], [1.1, '1.1 (common on SSDs)']], (v) => { P.rpc = v; draw(); }, { value: 4, label: 'random_page_cost' });
+  x.el.style.display = 'none';
   const costs = h('div');
   const two = h('div', { class: 'v-pqo-two' }, ...COLS.map((c) => c.el));
 
@@ -432,7 +290,7 @@ function initPlanner(fig, app) {
     sql, q.el, x.el, two,
     h('details', null, h('summary', null, 'Costs and timings behind each pick'),
       h('div', { class: 'wv-field' }, h('label', null, 'random_page_cost')), rpc.el, costs),
-    colorKey([['k-opt', 'what you change'], ['v-pqo-k-read', 'page holds a matching row'], K_IDLE, K_BAD, ['k-pick', "the planner's pick"]]));
+    colorKey([['v-pqo-k-read', 'page holds a matching row'], K_IDLE, K_BAD]));
 
   const cost = (p) => (P.rpc === 4 ? p[3] : p[4]);
   const pickOf = (p) => { const c = cost(p); return c.indexOf(Math.min(...c)); };
@@ -450,22 +308,22 @@ function initPlanner(fig, app) {
   }
   function draw() {
     const i = P.i; const xv = PICK.seq[i][0];
-    sql.innerHTML = codeBlock([`SELECT * FROM users WHERE seq | score < «${xv}»;`]);
+    sql.innerHTML = codeBlock([`SELECT * FROM users WHERE seq < «${xv}»;`, `SELECT * FROM users WHERE score < «${xv}»;`]);
     two.classList.toggle('v-pqo-hidden', !P.guessed);
     COLS.forEach((c) => {
       const pt = PICK[c.col][i];
       const pk = pickOf(pt);
       const pages = c.col === 'seq' ? SEQ_PAGES[i] : SCORE_PAGES[i];
       c.pages.innerHTML = P.guessed ? `<b class="c-data">${fmt(pages)}</b> of 33,333 pages hold the rows` : '<b>?</b> pages hold the rows';
-      c.pick.innerHTML = P.guessed ? `planner picks <b class="c-pick">${PLANS[pk]}</b> · ${ms(pt[5][pk])}${pk === 0 && pages < TABLE ? ` · <span class="c-bad">reads the other ${fmt(TABLE - pages)} pages too</span>` : ''}` : '';
+      c.pick.innerHTML = P.guessed ? `planner picks <b>${PLANS[pk]}</b> · ${ms(pt[5][pk])}${pk === 0 && pages < TABLE ? ` · <span class="c-bad">reads the other ${fmt(TABLE - pages)} pages too</span>` : ''}` : '';
     });
     costs.innerHTML = COLS.map((c) => {
       const pt = PICK[c.col][i]; const pk = pickOf(pt); const cs = cost(pt);
       const fast = pt[5].indexOf(Math.min(...pt[5]));
       return `<p class="t-b">WHERE ${c.col} &lt; ${fmt(xv)} · estimate ${fmt(pt[1])} rows, actual ${fmt(pt[2])}</p>
         <div class="wv-scroll"><table class="wv-table"><thead><tr><th>plan · buffers</th><th>cost</th><th>time</th></tr></thead><tbody>${
-        PLANS.map((name, k) => `<tr class="${k === pk ? 'is-look' : ''}"><td>${k === pk ? `<b class="c-pick">${name}</b>` : name}<br><span class="t-xs">${fmt(pt[6][k])} buffers</span></td><td>${fmt(cs[k])}</td><td class="${k === fast ? 'c-safe' : ''}">${ms(pt[5][k])}</td></tr>`).join('')}</tbody></table></div>`;
-    }).join('') + '<p class="t-s">Cost is the planner\'s estimate; it picks the lowest (orange). Measured time: fastest in green. Buffers count page reads, so an Index Scan that returns to the same page counts it again.</p>';
+        PLANS.map((name, k) => `<tr><td>${k === pk ? `<b>${name}</b> · pick` : name}<br><span class="t-xs">${fmt(pt[6][k])} buffers</span></td><td>${k === pk ? `<b>${fmt(cs[k])}</b>` : fmt(cs[k])}</td><td>${k === fast ? `<b>${ms(pt[5][k])}</b> · fastest` : ms(pt[5][k])}</td></tr>`).join('')}</tbody></table></div>`;
+    }).join('') + '<p class="t-s">Cost is the planner\'s estimate; it picks the lowest. Time is measured. Buffers count page reads, so an Index Scan that returns to the same page counts it again.</p>';
     paintMaps();
   }
   resized(two, () => {
@@ -529,7 +387,6 @@ const CLIENT = {
   'created_at||': 137.8, 'created_at||10': 0.5, 'created_at|created_at DESC|': 136.3, 'created_at|created_at DESC|10': 0.7, 'created_at|name|': 525.1, 'created_at|name|10': 111.8,
 };
 /* users_created_at_idx: metapage 0, root 290, branches below; 2,733 leaves. */
-const IDX_N = 2745;
 const IDX_INNER = new Set([0, 3, 289, 290, 575, 860, 1145, 1430, 1715, 2000, 2285, 2570]);
 
 /** Pages each query reads: table blocks, index blocks, temp kB, rows scanned. */
@@ -549,10 +406,9 @@ function readsOf(cols, order, lim) {
 
 /* Goals the reader meets by changing the query. */
 const GOALS = [
-  ['Get the 10 newest users while reading fewer than 10 pages.', (q, r) => q.lim && q.order === 'created_at DESC' && r.nTable + r.nIdx < 10],
-  ['Read every created_at value without reading the table.', (q, r) => !q.lim && q.cols === 'created_at' && q.order !== 'name' && r.nTable === 0],
-  ['Sort all users by name and write under 100,000 kB of temp files.', (q, r) => !q.lim && q.order === 'name' && r.temp < 100000],
-  ['Find a query where LIMIT 10 still reads all 33,333 table pages.', (q, r) => q.lim && r.nTable === TABLE],
+  ['Send all 1,000,000 rows in under 50 MB.', (q, r) => !q.lim && r.bytes < 50e6],
+  ['Get the 10 newest users from fewer than 10 pages.', (q, r) => q.lim && q.order === 'created_at DESC' && r.nTable + r.nIdx < 10],
+  ['Find a LIMIT 10 query that still reads all 33,333 table pages.', (q, r) => q.lim && r.nTable === TABLE],
 ];
 
 function initBudget(fig, app) {
@@ -565,10 +421,10 @@ function initBudget(fig, app) {
   const goals = h('ul', { class: 'v-pqo-goals' });
   const maps = [
     ['users', 'table · 33,333 pages', pageMap(TABLE, 'users table pages')],
-    ['users_created_at_idx', 'B-tree · 2,745 pages', pageMap(IDX_N, 'users_created_at_idx pages')],
-    ['temp files', 'sort spill, 8 KB per square', pageMap(30094, 'temp file blocks, 8 KB each')],
-    ['sent to psql', '8 KB per square', pageMap(29853, 'data sent to the client, in 8 KB units')],
+    ['sent to psql', 'one square per 8 KB', pageMap(29853, 'data sent to the client, in 8 KB units')],
   ].map(([title, meta, m]) => ({ m, ...mapBlock(title, m, meta) }));
+  const extra = h('p', { class: 't-s v-pqo-extra' });
+  maps[0].el.append(extra);
   const mapsBox = h('div', { class: 'v-pqo-maps' }, ...maps.map((x) => x.el));
   const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
   const explain = h('div');
@@ -580,7 +436,7 @@ function initBudget(fig, app) {
       h('div', null, h('p', { class: 't-b' }, 'Change the query. Can you meet each goal?'), goals, note),
       mapsBox),
     h('details', null, h('summary', null, 'EXPLAIN (ANALYZE, BUFFERS) for this query'), explain),
-    colorKey([['k-opt', 'what you change'], K_READ, K_IDLE, ['v-pqo-k-bad', 'read but thrown away, or temp files'], K_LOOK, ['k-safe', 'goal met']]));
+    colorKey([['v-pqo-k-read', 'page read, or data sent'], K_IDLE, K_BAD]));
 
   let R = null;
   function paintMaps() {
@@ -588,24 +444,23 @@ function initBudget(fig, app) {
     const T = tokens(fig);
     const waste = R.scan > 100 * (Q.lim ? 10 : 1e6);
     const first = (f, n) => { for (let p = 0; p < n; p++) if (f(p)) return p; return 0; };
-    const tiny = (f, n, count) => (count > 0 && count <= 10 ? [{ page: first(f, n), label: `${count} pages` }] : []);
+    const tiny = (f, n, count) => (count > 0 && count <= 10 ? [{ page: first(f, n), label: `${count} pages`, color: T.data }] : []);
     maps[0].m.paint(T, (p) => (R.table(p) ? (waste ? T.bad : T.data) : T.idle), tiny(R.table, TABLE, R.nTable));
-    maps[1].m.paint(T, (p) => (R.idx(p) ? T.data : T.idle), tiny(R.idx, IDX_N, R.nIdx));
-    const tb = Math.round(R.temp / 8);
-    maps[2].m.paint(T, (p) => (p < tb ? T.bad : T.idle));
     const sent = Math.ceil(R.bytes / PAGE);
-    maps[3].m.paint(T, (p) => (p < sent ? T.data : T.idle), sent <= 10 ? [{ page: 0, label: mb(R.bytes) }] : []);
+    maps[1].m.paint(T, (p) => (p < sent ? T.data : T.idle), sent <= 10 ? [{ page: 0, label: mb(R.bytes), color: T.data }] : []);
   }
   function draw() {
     const k = `${Q.cols}|${Q.order}|${Q.lim}`;
     sql.innerHTML = codeBlock([`SELECT ${Q.cols} FROM users${Q.order ? ` ORDER BY ${Q.order}` : ''}${Q.lim ? ` LIMIT ${Q.lim}` : ''};`]);
     R = { ...readsOf(Q.cols, Q.order, Q.lim), bytes: BYTES[k] };
     const waste = R.scan > 100 * (Q.lim ? 10 : 1e6);
-    goals.innerHTML = GOALS.map(([text, ok]) => (ok(Q, R) ? `<li class="c-safe">✓ ${text}</li>` : `<li>○ ${text}</li>`)).join('');
-    maps[0].lab.innerHTML = R.nTable ? `<b class="${waste ? 'c-bad' : 'c-data'}">${fmt(R.nTable)}</b> read` : `not read${R.vm ? ` (visibility map: ${R.vm})` : ''}`;
-    maps[1].lab.innerHTML = R.nIdx ? `<b class="c-data">${fmt(R.nIdx)}</b> read` : 'not read';
-    maps[2].lab.innerHTML = R.temp ? `<b class="c-bad">${fmt(R.temp)} kB</b>` : 'none';
-    maps[3].lab.innerHTML = `<b class="c-data">${mb(R.bytes)}</b> · ${ms(CLIENT[k])}`;
+    goals.innerHTML = GOALS.map(([text, ok]) => (ok(Q, R) ? `<li><b>✓ ${text}</b></li>` : `<li>○ ${text}</li>`)).join('');
+    maps[0].lab.innerHTML = R.nTable ? `<b class="${waste ? 'c-bad' : 'c-data'}">${fmt(R.nTable)}</b> read` : 'not read';
+    const also = [];
+    if (R.nIdx) also.push(`${fmt(R.nIdx)} index page${R.nIdx > 1 ? 's' : ''}`);
+    if (R.vm) also.push(`${R.vm} visibility-map page${R.vm > 1 ? 's' : ''}`);
+    extra.innerHTML = [also.length ? `Also read: ${also.join(' and ')}.` : '', R.temp ? `Sort wrote ${fmt(R.temp)} kB of temp files.` : ''].filter(Boolean).join(' ');
+    maps[1].lab.innerHTML = `<b class="c-data">${mb(R.bytes)}</b> · ${ms(CLIENT[k])}`;
     let m;
     if (Q.lim && Q.order === 'name') m = '<b>LIMIT did not cut the reads.</b> No index gives rows in <code>name</code> order, so Postgres reads all 1,000,000 rows and keeps the best 10 as it goes.';
     else if (Q.lim && Q.order) m = '<b>The index gives rows newest first</b>, so Postgres stops after 10.';
@@ -615,17 +470,17 @@ function initBudget(fig, app) {
     else if (Q.order) m = 'The table is already in <code>created_at</code> order on disk, so walking the index backwards costs less than a sort.';
     else m = `Rows are stored whole, so any column list reads the same 33,333 pages. What changes is how much is sent${Q.cols === '*' ? '.' : `: ${mb(R.bytes)} instead of ${mb(BYTES['*||'])}.`}`;
     note.innerHTML = m;
-    note.className = `wv-note${waste ? ' is-bad' : (Q.lim && Q.order) || R.nTable === 0 ? ' is-good' : ''}`;
+    note.className = `wv-note${waste ? ' is-bad' : ''}`;
     explain.innerHTML = codeBlock(EXPLAIN[k].map((ln) => {
       let t = ln;
       if (waste && /Seq Scan.*rows=1000000/.test(t)) t = `⟦${t}⟧`;
-      return t.replace(/(Disk: \d+kB|temp read=\d+ written=\d+)/g, '⟦$1⟧').replace(/(Heap Fetches: 0)/, '⟪$1⟫');
+      return t.replace(/(Disk: \d+kB|temp read=\d+ written=\d+)/g, '⟦$1⟧');
     }));
     paintMaps();
   }
   resized(mapsBox, () => {
     const w = mapsBox.clientWidth - 8;
-    const cd = cellFor(TABLE, w, 75);
+    const cd = cellFor(TABLE, w, 120);
     maps.forEach((x) => x.m.layout(w, cd));
     paintMaps();
   });
@@ -633,4 +488,4 @@ function initBudget(fig, app) {
   draw();
 }
 
-register({ 'pqo-pages': initPages, 'pqo-lookup': initLookup, 'pqo-planner': initPlanner, 'pqo-budget': initBudget });
+register({ 'pqo-pages': initPages, 'pqo-planner': initPlanner, 'pqo-budget': initBudget });

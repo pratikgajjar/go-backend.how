@@ -2,7 +2,7 @@
 <rect width="720" height="614" rx="6" fill="#fbfaf7" stroke="#0a0d12"/>
 <g font-family="'JetBrains Mono',ui-monospace,Menlo,monospace" font-size="11" fill="#0a0d12">
 <path d="M0.5,6 a5.5,5.5 0 0 1 5.5,-5.5 h708 a5.5,5.5 0 0 1 5.5,5.5 V54 H0.5 Z" fill="#f1f0ed"/>
-<text x="14" y="32" font-size="12.5"><tspan fill="#0a0d12">SELECT * FROM users WHERE </tspan><tspan fill="#0d53af">seq</tspan><tspan fill="#44484e"> / </tspan><tspan fill="#0d53af">score</tspan><tspan fill="#0a0d12"> &lt; </tspan><tspan fill="#6c4122">300,000</tspan><tspan fill="#0a0d12">;</tspan></text>
+<text x="14" y="32" font-size="12.5"><tspan fill="#0a0d12">SELECT * FROM users WHERE </tspan><tspan fill="#0d53af">seq</tspan><tspan fill="#44484e"> (or </tspan><tspan fill="#0d53af">score</tspan><tspan fill="#44484e">)</tspan><tspan fill="#0a0d12"> &lt; </tspan><tspan fill="#6c4122">300,000</tspan><tspan fill="#0a0d12">;</tspan></text>
 <text x="20" y="76" font-size="11.5" font-weight="800">WHERE seq &lt; 300,000 (disk order)</text>
 <text x="20" y="94" fill="#44484e" font-size="10">planner's pick, x = 10 … 1M</text>
 <rect x="20.0" y="100" width="280.0" height="18" fill="#ffdcb4" stroke="#c14900"/><text x="25.0" y="113" fill="#c14900" font-size="10" font-weight="700">Index Scan</text>

@@ -17,23 +17,6 @@
 .wv-key i.v-pqo-k-read { background: var(--brown); border-color: var(--brown); }
 .wv-key i.v-pqo-k-bad { background: var(--red); border-color: var(--red); }
 
-/* lookup: four fixed page slots */
-.v-pqo-slots { grid-template-columns: minmax(0, 1fr); margin-top: 0.6rem; }
-@media (min-width: 880px) { .v-pqo-slots { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.v-pqo-slots > .wv-card { min-width: 0; }
-.v-pqo-later { opacity: 0.5; }
-.v-pqo-pos { position: relative; height: 5px; margin: 0.35rem 0 0.4rem; background: var(--brown-l); }
-.v-pqo-pos i { position: absolute; top: -3px; bottom: -3px; width: 3px; margin-left: -1.5px; background: var(--purple); }
-.v-pqo-ents { display: grid; gap: 0.3rem; margin: 0.35rem 0; }
-.v-pqo-ents > span { text-align: center; }
-.v-pqo-ent { width: 100%; overflow-wrap: anywhere; }
-div.v-pqo-ent { padding: 0.25rem 0.4rem; }
-.v-pqo-chosen { background: var(--brown-l); }
-.v-pqo-miss { background: var(--red-l); }
-.v-pqo-dim { opacity: 0.5; }
-.v-pqo-gap { height: 0.7rem; }
-.v-pqo-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.5rem; }
-
 /* planner */
 .v-pqo-pickline { min-height: 2.8em; margin-top: 0.4rem !important; }
 
@@ -42,5 +25,6 @@ div.v-pqo-ent { padding: 0.25rem 0.4rem; }
 .v-pqo-part { display: flex; flex-direction: column; }
 .v-pqo-goals { list-style: none; padding: 0; margin: 0.4rem 0 0.8rem; display: grid; gap: 0.35rem; }
 .v-pqo-maps { min-width: 0; display: grid; gap: 0.1rem; }
+.v-pqo-extra { margin: 0.3rem 0 0 !important; min-height: 1.4em; }
 @media (min-width: 760px) { .v-pqo-two--budget { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); } }
 .v-pqo-col > .wv-btn { margin: 0 0 0.8rem; }

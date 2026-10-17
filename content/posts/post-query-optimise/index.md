@@ -48,10 +48,9 @@ on `email`? Guess in the figure before it shows you.
 A B-tree index is itself made of 8 KB pages, arranged in levels. The root
 page splits the key range between its children, each child splits it
 again, and the leaf pages at the bottom hold every key with the address of
-its row. Postgres reads one page per level, then the table page. Walk it
-yourself.
-
-{{< viz kind="pqo-lookup" fig="2" title="One B-tree lookup, page by page" fallback="lookup.svg" alt="The root, branch, and leaf pages of users_email_idx and the table page that one lookup reads, with the keys on each page" caption="Walk the tree yourself: on each page, pick the entry to follow. Block numbers, keys, and row addresses (TIDs) are from `pageinspect` on the sample table; keys leave out `@example.com`. The strip under each block number shows where the page sits in its file." >}}
+its row. Postgres reads one page per level, then the table page: in
+Figure 1 that is root block 164, branch block 3662, leaf block 3735, and
+table block 25924.
 
 The tree is short because each page holds hundreds of keys. Here the root
 points to 32 branch pages, each branch page points to about 150 leaf pages,
@@ -77,7 +76,7 @@ and what each plan costs, and it runs the cheapest one. Costs are in
 abstract units: reading one page in sequence costs 1 (`seq_page_cost`), and
 reading one page at random costs 4 (`random_page_cost`).
 
-{{< viz kind="pqo-planner" fig="3" title="Same kind of index, different plans" fallback="planner.svg" alt="Which table pages hold rows matching WHERE score < x or WHERE seq < x, the plan the planner picks for each x, and its cost and measured time" caption="Move `x` to change how many rows match. Each scan type was forced with `enable_*` settings to get its cost and time. Times are medians of five `EXPLAIN ANALYZE` runs with the table in memory." >}}
+{{< viz kind="pqo-planner" fig="2" title="Same kind of index, different plans" fallback="planner.svg" alt="Which table pages hold rows matching WHERE score < x or WHERE seq < x, the plan the planner picks for each x, and its cost and measured time" caption="Move `x` to change how many rows match. Each scan type was forced with `enable_*` settings to get its cost and time. Times are medians of five `EXPLAIN ANALYZE` runs with the table in memory." >}}
 
 `score` and `seq` have the same kind of index and the same filter. The
 difference is correlation. Rows with a small `seq` sit together at the
@@ -116,11 +115,11 @@ Three places to read first:
 - `rows=1` in the first bracket is the estimate; `rows=1.00` in the second
   is what happened. A large gap means the statistics are off, and the plan
   may be too.
-- `Buffers: shared hit=4` is the four pages from Figures 1 and 2. `hit`
+- `Buffers: shared hit=4` is the four pages from Figure 1. `hit`
   pages were already in Postgres's shared buffers; `read` pages came from
   the operating system or the disk.
 - `cost=0.42..8.44` is the cost to return the first row and all rows, in
-  the units from Figure 3.
+  the units from Figure 2.
 
 # What SELECT \* and LIMIT save
 
@@ -137,9 +136,9 @@ answer from the index alone and skip the table.
 `LIMIT` stops a query after N rows, but it saves reads only if the plan
 produces rows in the requested order as it goes. `OFFSET` works the same
 way: `OFFSET 100000` reads 100,000 rows and throws them away. Try both
-tips on the goals below.
+tips on the goals in the figure.
 
-{{< viz kind="pqo-budget" fig="4" title="What each query reads and sends" fallback="budget.svg" alt="EXPLAIN output and page maps for the table, the created_at index, temp files, and data sent, for SELECT *, SELECT id, name, and SELECT created_at with and without ORDER BY and LIMIT" caption="Plans are real `EXPLAIN (ANALYZE, BUFFERS)` output from one run. Client time is psql fetching every row over a Unix socket, median of five runs. `work_mem` is the default 4 MB." >}}
+{{< viz kind="pqo-budget" fig="3" title="What each query reads and sends" fallback="budget.svg" alt="Page maps for the table pages read and the data sent, for SELECT *, SELECT id, name, and SELECT created_at with and without ORDER BY and LIMIT" caption="Plans are real `EXPLAIN (ANALYZE, BUFFERS)` output from one run. Client time is psql fetching every row over a Unix socket, median of five runs. `work_mem` is the default 4 MB." >}}
 
 On this table `SELECT *` sends 245 MB to the client and `SELECT id, name`
 sends 40 MB, from the same 33,333 pages. `ORDER BY created_at DESC LIMIT 10`
