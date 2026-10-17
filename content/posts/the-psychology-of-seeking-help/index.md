@@ -6,7 +6,7 @@ lastmod = 2024-07-05T22:21:15+05:30
 publishDate = "2024-07-05T22:21:15+05:30"
 draft = false
 tags = ['gyan', 'engineering']
-images = ["og-ab2181a2.png"]
+images = ["og-f507b89c.png"]
 theme = "wisteria"
 +++
 

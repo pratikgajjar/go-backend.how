@@ -9,38 +9,35 @@
     text { font-family: var(--font-mono); }
   </style>
   <!-- sheet with hard shadow -->
-  <rect x="56" y="56" width="1096" height="526" class="ink"/>
-  <rect x="48" y="48" width="1096" height="526" class="box"/>
+  <rect x="56" y="56" width="1104" height="526" class="ink"/>
+  <rect x="48" y="48" width="1104" height="526" class="box"/>
 
-  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
-  <text x="96" y="180" font-size="52" font-weight="800" class="ink">The Psychology of Seeking Help</text>
+  <text x="96" y="104" font-size="28" class="mute">backend.how</text>
+  <text x="96" y="176" font-size="52" font-weight="800" class="ink">The Psychology of Seeking Help</text>
 
   <!-- two first messages about the same failing test (samples from Fig. 1);
-       purple underline = the phrase that shows the type. 24 px mono = 14.4 px per char -->
-  <g font-size="24">
-    <rect x="96" y="228" width="650" height="80" class="msg"/>
-    <text x="120" y="276" class="ink">tests are broken, can someone look?</text>
-    <line x1="379" y1="286" x2="624" y2="286" class="clue"/>
+       purple underline = the phrase that shows the type. 28 px mono = 16.8 px per char -->
+  <g font-size="28">
+    <rect x="96" y="222" width="650" height="84" class="msg"/>
+    <text x="120" y="274" class="ink">tests are broken, can someone look?</text>
+    <line x1="422" y1="286" x2="708" y2="286" class="clue"/>
 
-    <rect x="96" y="336" width="650" height="124" class="msg"/>
-    <text x="120" y="384" class="ink">docker ps shows no db container.</text>
-    <line x1="120" y1="394" x2="581" y2="394" class="clue"/>
-    <text x="120" y="430" class="ink">make test stopped starting it after #412.</text>
-    <line x1="552" y1="440" x2="696" y2="440" class="clue"/>
+    <rect x="96" y="338" width="650" height="84" class="msg"/>
+    <text x="120" y="390" class="ink">docker ps shows no db container.</text>
+    <line x1="120" y1="402" x2="642" y2="402" class="clue"/>
   </g>
 
   <!-- message -> type -->
-  <line x1="758" y1="268" x2="800" y2="268" class="arr"/>
-  <path d="M814 268 l-16 -9 v18 z" class="head"/>
-  <line x1="758" y1="398" x2="800" y2="398" class="arr"/>
-  <path d="M814 398 l-16 -9 v18 z" class="head"/>
+  <line x1="758" y1="264" x2="800" y2="264" class="arr"/>
+  <path d="M814 264 l-16 -9 v18 z" class="head"/>
+  <line x1="758" y1="380" x2="800" y2="380" class="arr"/>
+  <path d="M814 380 l-16 -9 v18 z" class="head"/>
 
-  <text x="830" y="264" font-size="26" font-weight="800" class="ink">Direct Seeker</text>
-  <text x="830" y="294" font-size="22" class="mute">effort: low</text>
+  <g font-size="28" font-weight="800" class="ink">
+    <text x="830" y="274">Direct Seeker</text>
+    <text x="830" y="372">Persistent</text>
+    <text x="830" y="408">Problem Solver</text>
+  </g>
 
-  <text x="830" y="380" font-size="26" font-weight="800" class="ink">Persistent</text>
-  <text x="830" y="412" font-size="26" font-weight="800" class="ink">Problem Solver</text>
-  <text x="830" y="442" font-size="22" class="mute">effort: high</text>
-
-  <text x="96" y="516" font-size="26" class="ink">The first message shows how much they tried.</text>
+  <text x="96" y="500" font-size="28" class="ink">The first message shows how much they tried.</text>
 </svg>
