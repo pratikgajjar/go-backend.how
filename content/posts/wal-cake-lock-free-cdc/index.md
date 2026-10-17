@@ -16,11 +16,10 @@ hide_toc = true
 WAL Cake is a Go service that copies row changes from Postgres to Parquet
 files in S3, one folder per day, to build a data lake. Postgres sends those
 changes as one ordered stream, and expects one ordered answer: a single
-position that says "everything before this is safe". Both ends are sequential.
-The slow work in between, encoding Parquet and uploading to S3, does not have
-to be. This post shows how WAL Cake runs that middle part in parallel while it
-still reads and acknowledges the WAL in order, how it is tested, and where it
-can still replay or stall.
+position that says "everything before this is safe". The slow work in between,
+encoding Parquet and uploading to S3, can run in parallel. This post shows how
+WAL Cake does that while it still reads and acknowledges the WAL in order, how
+it is tested, and where it can still replay or stall.
 
 I wrote most of WAL Cake, and we ran it in production at a large Indian fintech
 company. Everything in this post refers to commit
@@ -56,16 +55,13 @@ and orange is the option we chose.
 
 WAL Cake builds the raw layer of a data lake. It reads committed row changes,
 writes them to S3 as Parquet files, and tells Postgres which WAL it can delete.
-Files are split by the UTC day each transaction committed: each file holds rows
-from one day only, under a `YYYY/MM/DD` prefix. A query or a daily job for one
-day reads one prefix, and never has to filter out rows from the day before or
-after.
+Each file holds rows from one UTC commit day, under a `YYYY/MM/DD` prefix. A
+query or a daily job for one day reads one prefix and filters out nothing.
 
-Postgres and S3 each keep data safely, but they do not know about each other.
 A row is safe in Postgres after commit. A file is safe in S3 after `PutObject`
-returns. Between them, WAL Cake holds rows only in memory. If it crashes,
-Postgres must still have every row that is not yet in S3. So the consumer must
-follow one rule:
+returns. Between the two, WAL Cake holds rows only in memory. If it crashes,
+Postgres must still have every row that is not yet in S3. So the consumer
+follows one rule:
 
 **Advance the slot only past rows that are already in S3.**
 
@@ -73,8 +69,8 @@ follow one rule:
 
 {{< walviz kind="options" fig="1" title="Options for copying Postgres changes to S3" fallback="pipeline.svg" alt="Four options for copying Postgres changes to S3 as Parquet, with benefits, costs, and the one WAL Cake chose" >}}
 
-Every option has to follow the same rule. They differ in which system keeps
-track of the slot position, and in how much control you get over the files.
+Every option follows the same rule. They differ in which system tracks the slot
+position, and in how much control you get over the files.
 
 - **Debezium with Kafka Connect** reads pgoutput[^debezium-pg] and stores its
   position in Kafka. An S3 sink connector writes the files and can partition
@@ -101,9 +97,8 @@ The simplest correct consumer does this in a loop:
 2. Upload it to S3 and wait.
 3. Send the batch's last LSN to Postgres.
 
-This follows the rule, because nothing is confirmed before it is in S3. The
-problem is step 2. The worker does nothing while it waits for S3, so upload
-latency sets the throughput.
+This follows the rule, because nothing is confirmed before it is in S3. But the
+worker is idle during step 2, so S3 latency sets the throughput.
 
 An S3 PUT from inside the same region usually takes tens to a few hundred
 milliseconds. One public benchmark of 500 KB PUTs measured a median of 70 ms
@@ -127,12 +122,12 @@ four[^defaults]. Use the figure below to try other values.
 {{< walviz kind="sizing" fig="2" title="How many workers?" fallback="s3-concurrency.svg" alt="Workers needed across S3 PUT latency and input rate" caption="Each grey band is one worker count from `ceil(R × (E + P) / B)`. The orange curve is the capacity of the workers you run. Move the cursor to evaluate any point, or change `B` and `E` to move the bands." >}}
 
 This is an upper bound: it assumes full batches and no retries. More workers do
-not make a single upload faster. They let other uploads run while one waits.
+not make one upload faster. They let other uploads run while one waits.
 
 # Where the parallelism can go
 
-The WAL has to be read in order, and the ACK has to be sent in order. So which
-part of the pipeline can run in parallel? Look at each step:
+The WAL must be read in order, and the ACK must be sent in order. Each step of
+the pipeline, in order:
 
 - **Reading** is one stream. Only one connection can read from a replication
   slot at a time[^logical], and Postgres sends each transaction after it
@@ -154,16 +149,16 @@ one reader  →  cut into segments  →  N workers: encode + upload  →  one AC
 (in order)                           (finish in any order)           (in order)
 ```
 
-This is Amdahl's law in practice. Per 1,000 rows, the serial part takes about
+Amdahl's law gives the limit. Per 1,000 rows, the serial part takes about
 0.5 ms and the parallel part about 101 ms, so the serial part is about 0.5% of
-the work. In theory, the single reader only becomes the limit at around 200
+the work. In theory, the single reader becomes the limit only at around 200
 workers. In practice, other limits come first: memory per worker, and the
 walsender, the single Postgres process that decodes the slot. I have not
 measured the walsender's ceiling. The 0.5 µs is for a short five-column row;
 wider rows cost more.
 
-The hard part is the last arrow: turning results that finish in any order back
-into one ordered ACK.
+The hard part is the last arrow. Results that finish in any order must become
+one ordered ACK.
 
 # Parallel uploads break the ACK
 
@@ -175,9 +170,6 @@ Postgres cannot accept "`S2` and `S4` are done, `S1` and `S3` are not." If the
 consumer sends the end of `S4`, it also confirms `S1` and `S3`. If the process
 crashes at that moment, Postgres will not send `S1` and `S3` again, and S3
 does not have them. Those rows are lost.
-
-So uploads can finish in any order, but the ACK must only move forward in
-order.
 
 # The fix: ACK only a contiguous prefix
 
@@ -341,7 +333,7 @@ space       channel: wakes the writer when readIdx moves
 ```
 
 The three counters only increase. Only the array index wraps, using
-`index % size`. Because of this, the ring is full exactly when
+`index % size`. So the ring is full exactly when
 `writeIdx - readIdx >= size`.
 
 At any moment, the positions fall into four ranges:
@@ -401,8 +393,8 @@ rb.tracker.Set(segment.StartIdx, &segment)
 rb.segments <- segment
 ```
 
-This order matters. Because every segment is in `tracker` before any worker
-starts, the walker can see a gap: a segment that exists but is not done yet.
+Because every segment is in `tracker` before any worker starts, the walker can
+see a gap: a segment that exists but is not done yet.
 
 A channel send happens before the matching receive in the Go memory
 model[^gomem], so a worker sees the events written before its segment was
@@ -452,21 +444,18 @@ It reads the last event before it stores `readIdx`, because the writer may
 reuse that slot as soon as `readIdx` moves. `acked` is an `ack.Position`: an
 atomic register that only moves forward. The replicator reads it on each loop
 iteration, which is at least once a second while it is receiving, and sends a
-status update when it grows. A
-register cannot drop an ACK, and it never holds a stale one, because only the
-highest value matters.
+status update when it grows. A register cannot drop an ACK, and it never holds
+a stale one, because only the highest value matters.
 
-The walk only ever sees each segment three times: added, marked done, and
-deleted. So the total work is `O(N)` for `N` segments.
+The walk touches each segment three times: added, marked done, and deleted. So
+the total work is `O(N)` for `N` segments.
 
-The figure below runs the `S1`–`S4` example with 2 events per segment and 8
-slots. Step through it and watch `tracker` and `readIdx`.
+The figure below runs the `S1`–`S4` example. Watch `tracker` and `readIdx`.
 
 {{< walviz kind="ring-walk" fig="4" title="The contiguous walk, one step at a time" fallback="ring-buffer-walk.svg" alt="An eight-slot ring: out-of-order completions and the contiguous readIdx walk" caption="Four workers, two events per batch, eight slots. Use ← and → to step." >}}
 
 At step 10, event `e9` is written to `buffer[0]`, the slot `e1` used before.
-Its position is 8, and `8 % 8 = 0`. The counters keep growing, and only the
-array index wraps.
+Its position is 8, and `8 % 8 = 0`.
 
 ## The ring at production size
 
@@ -485,12 +474,12 @@ with 14,000 events/s.
 
 ## What "mutex-free" means
 
-`Add` uses no mutex: one writer, atomic counters, and slots that only the
-writer fills, and only workers and the walker read. The tracker takes a mutex a few times per
-segment, which is a few times per 1,000 events. Go channels lock internally,
-workers wait on the network, and a full ring blocks the replicator. So the
-system is not lock-free, and does not need to be. `Add` takes about 11 ns, and
-the ring's job is ordering.
+`Add` uses no mutex. It has one writer and atomic counters, only the writer
+fills slots, and only workers and the walker read them. The tracker takes a
+mutex a few times per segment, so a few times per 1,000 events. Go channels lock
+internally, and a full ring blocks the replicator. So the system is not
+lock-free, and it does not need to be. `Add` takes about 11 ns, and the ring's
+job is ordering.
 
 # Parquet: small files
 
@@ -606,8 +595,7 @@ current code passes 25 random histories, and 5 more under the race detector.
 
 {{< walviz kind="map" fig="7" title="Where each fault lives" failures="true" fallback="pipeline.svg" alt="System map with eight numbered markers for replays, stalls, and changes WAL Cake does not capture" caption="Numbers match the list below." >}}
 
-None of these lose a committed row. The numbers match the markers in the
-figure.
+None of these lose a committed row.
 
 ## Replays
 
@@ -647,22 +635,17 @@ replication, and WAL builds up on the primary.
 
 # Takeaways
 
-- A CDC consumer should advance the replication slot only past rows that are
-  already in S3.
-- The WAL is read in order and acknowledged in order. Only the middle, encode
-  and upload, can run in parallel, and that is where the time goes.
-- Parallel uploads finish out of order. Recording every segment before it
-  starts, and moving the cursor only over finished segments, turns them back
-  into one ordered ACK.
+- Advance the replication slot only past rows that are already in S3.
+- Only encode and upload can run in parallel, and that is where the time goes.
+- Record every segment before it starts, and move the cursor only over
+  finished segments. Out-of-order uploads then give one ordered ACK.
 - Every LSN the consumer might send must be safe to confirm: the change LSN for
   a row, and the commit record's end for a commit.
 - Give the ring room for one more batch per worker, and wake the writer when
   space frees up, so the workers stay busy.
-- A day folder is only as exact as the timestamp used to split it. Use the
-  commit time from `BEGIN`.
+- Split day folders by the commit time from `BEGIN`.
 - Property tests over whole histories (crashes, restarts, back-to-back commits,
-  bulk loads) check the one rule directly: every committed change ends up in
-  S3.
+  bulk loads) check the one rule directly.
 
 [^debezium-pg]: <https://debezium.io/documentation/reference/stable/connectors/postgresql.html>
 [^debezium-server]: <https://debezium.io/documentation/reference/stable/operations/debezium-server.html>
