@@ -40,10 +40,3 @@
 @media (prefers-reduced-motion: no-preference) {
   .v-cc-bar i { transition: width 0.5s ease-out; }
 }
-
-/* main.css sets table width: max-content and wide cell padding with
-   !important on phones; undo it for this table only. */
-@media (max-width: 480px) {
-  .wv table.v-cc-grid { width: 100% !important; }
-  .wv .v-cc-grid th, .wv .v-cc-grid td { padding: 0.35rem 0.3rem !important; }
-}
