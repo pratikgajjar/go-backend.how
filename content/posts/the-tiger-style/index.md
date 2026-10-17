@@ -1,6 +1,6 @@
 +++
 title = "🪲 The Tiger Style"
-description = " Tiger Style is a coding philosophy focused on safety, performance, and developer experience. Inspired by the practices of TigerBeetle, it focuses on building robust, efficient, and maintainable software through disciplined engineering."
+description = "TigerBeetle's coding guide, reposted: safety, then performance, then developer experience, turned into rules for assertions, limits, static memory, batching, and naming."
 date = 2024-06-29T18:34:30+05:30
 lastmod = 2024-06-29T18:34:30+05:30
 publishDate = 2024-06-29T18:34:30+05:30
@@ -11,14 +11,14 @@ images = ["og-a635eef8.png"]
 theme = "tiger"
 +++
 
-TigerBeetle is a database for financial transactions, and TigerStyle is the guide its team writes
-code by. It ranks three goals, safety, then performance, then developer experience, and turns each
-into concrete rules: assert what every function expects, put a limit on every loop and queue,
-allocate all memory at startup, batch the work, and get the names right.
+TigerBeetle is a database for financial transactions. TigerStyle is the guide its team writes code
+by. It ranks three goals: safety, then performance, then developer experience. Each goal becomes
+rules: assert what every function expects, limit every loop and queue, allocate all memory at
+startup, batch the work, and name things well.
 
-This post reposts the guide under its Apache 2.0 license, with two figures where a rule is easier
-to try than to read. By the end you will know what TigerBeetle's compile-time assertions catch in
-its 128-byte `Transfer` struct, and why batching changes which cost you should cut first. The guide keeps evolving; the latest version is in the [TigerBeetle
+This post reposts the guide under its Apache 2.0 license and adds two figures. By the end you will
+know what compile-time assertions catch in TigerBeetle's 128-byte `Transfer` struct, and why
+batching changes which cost to cut first. The latest version of the guide is in the [TigerBeetle
 repository](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md).
 
 # The Essence Of Style
@@ -369,8 +369,8 @@ force multiplier for discovering bugs by fuzzing.**
 - Be on your guard for **[buffer bleeds](https://en.wikipedia.org/wiki/Heartbleed)**. This is a
   buffer underflow, the opposite of a buffer overflow, where a buffer is not fully utilized, with
   padding not zeroed correctly. This may not only leak sensitive information, but may cause
-  deterministic guarantees as required by TigerBeetle to be violated. The `amount: u64` edit in
-  Figure 1 makes one: 8 bytes of padding that no field sets.
+  deterministic guarantees as required by TigerBeetle to be violated. In Figure 1, `amount: u64`
+  leaves 8 bytes of padding that no field sets.
 
 - Use newlines to **group resource allocation and deallocation**, i.e. before the resource
   allocation and after the corresponding `defer` statement, to make leaks easier to spot.
