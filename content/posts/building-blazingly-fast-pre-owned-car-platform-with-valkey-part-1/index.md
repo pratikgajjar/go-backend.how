@@ -6,7 +6,7 @@ lastmod = 2024-06-16T23:27:27+05:30
 tags = ['django', 'redis', 'drf', 'cdc', 'valkey']
 series = ['valkey-car-platform']
 draft = false
-images = ["og-0cb5c2d7.png"]
+images = ["og-2ae96790.png"]
 theme = "tangerine"
 +++
 

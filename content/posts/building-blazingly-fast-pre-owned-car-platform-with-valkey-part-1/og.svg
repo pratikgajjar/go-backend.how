@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .proc { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .data { fill: var(--brown-l); stroke: var(--brown); stroke-width: 2.5; stroke-dasharray: 8 5; }
+    .arr { stroke: var(--ink); stroke-width: 2.5; fill: none; }
+    .head { fill: var(--ink); }
+    .bin { stroke: var(--orange); stroke-width: 4; fill: none; }
+    .org { fill: var(--orange); }
+    .brn { fill: var(--brown); }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="182" font-size="58" font-weight="800" class="ink">Building blazingly fast</text>
+  <text x="96" y="234" font-size="34" font-weight="600" class="ink">pre-owned car platform with Valkey - Part 1</text>
+
+  <g font-size="22" text-anchor="middle">
+    <!-- three apps write to MySQL directly -->
+    <rect x="96" y="290" width="184" height="46" class="proc"/><text x="188" y="320" class="ink">CakePHP</text>
+    <rect x="96" y="345" width="184" height="46" class="proc"/><text x="188" y="375" class="ink">Django</text>
+    <rect x="96" y="400" width="184" height="46" class="proc"/><text x="188" y="430" class="ink">price script</text>
+    <path d="M280 313 L309 346" class="arr"/><path d="M318 356 l-15.5 -4 l9 -8 z" class="head"/>
+    <path d="M280 368 L306 368" class="arr"/><path d="M318 368 l-14 -8 v16 z" class="head"/>
+    <path d="M280 423 L309 390" class="arr"/><path d="M318 380 l-6.5 14 l-9 -8 z" class="head"/>
+
+    <rect x="320" y="330" width="120" height="76" class="proc"/><text x="380" y="376" class="ink">MySQL</text>
+
+    <!-- the choice: read the binlog -->
+    <line x1="440" y1="368" x2="522" y2="368" class="bin"/>
+    <path d="M538 368 l-18 -10 v20 z" class="org"/>
+    <text x="489" y="350" class="org" font-weight="700">binlog</text>
+
+    <rect x="540" y="330" width="112" height="76" class="proc"/><text x="596" y="376" class="ink">Kafka</text>
+    <line x1="652" y1="368" x2="676" y2="368" class="arr"/><path d="M688 368 l-14 -8 v16 z" class="head"/>
+    <rect x="690" y="330" width="150" height="76" class="proc"/><text x="765" y="376" class="ink">consumer</text>
+    <line x1="840" y1="368" x2="864" y2="368" class="arr"/><path d="M876 368 l-14 -8 v16 z" class="head"/>
+
+    <!-- one pre-computed JSON per car, in Valkey -->
+    <text x="987" y="306" class="mute">Valkey</text>
+    <rect x="878" y="320" width="218" height="96" class="data"/>
+    <text x="987" y="360" class="ink" font-weight="700">dp:2323</text>
+    <text x="987" y="392" class="brn">car JSON</text>
+
+    <!-- buyer reads one key -->
+    <line x1="987" y1="416" x2="987" y2="474" class="arr"/><path d="M987 486 l-8 -14 h16 z" class="head"/>
+    <text x="987" y="518" class="ink">car page, 60 ms</text>
+  </g>
+  <text x="96" y="518" font-size="24" class="ink">Every write from every app goes through the binlog.</text>
+</svg>
