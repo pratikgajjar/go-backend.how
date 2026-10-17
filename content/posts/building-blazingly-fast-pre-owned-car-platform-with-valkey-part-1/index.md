@@ -10,7 +10,7 @@ images = ["og-0cb5c2d7.png"]
 theme = "tangerine"
 +++
 
-Buyers reached our pre-owned car platform from ads, and the car page they landed on had to answer in 60 ms. This post shows how we served that page from one pre-computed JSON in [Valkey](https://valkey.io/), how a reader on the MySQL binlog kept that JSON fresh when three different apps changed prices and photos, and what happens to a price change when each part of that pipeline fails. The listing page is covered in [Part 2](/posts/pre-owned-car-platform-with-valkey-part-2/). This guide assumes some familiarity with backend technology.
+Buyers reached our pre-owned car platform from ads, and the car page they opened had to respond in 60 ms. This post shows how we served that page from one pre-computed JSON in [Valkey](https://valkey.io/), how a reader on the MySQL binlog kept that JSON fresh when three different apps changed prices and photos, and what happens to a price change when each part of that pipeline fails. The listing page is covered in [Part 2](/posts/pre-owned-car-platform-with-valkey-part-2/). This guide assumes some familiarity with backend technology.
 
 {{< details "What is Valkey?" >}}
 Valkey is an open-source, high-performance key/value datastore under the BSD license. It works as a cache, a message queue or a primary database. It runs as a standalone daemon or as a cluster with replication and high availability.
@@ -110,11 +110,11 @@ def get_recommendation(active_car_ids: list[int], buyer_id: Optional[int], seen_
 
 ### Filters
 
-Buyers filter by colour, make, model, accessory, rating, ownership and more. We built the filters with [Django-filter](https://django-filter.readthedocs.io/en/stable/guide/usage.html). Queries with many joins can strain the database.
+Buyers filter by colour, make, model, accessory, rating, ownership and more. We built the filters with [Django-filter](https://django-filter.readthedocs.io/en/stable/guide/usage.html). Queries with many joins can put a high load on the database.
 
 ### Pagination
 
-Returning all cars in Mumbai in one request strains every component. With 1,000 cars:
+Returning all cars in Mumbai in one request puts a high load on every component. With 1,000 cars:
 
 1. **Database** - fetches details for 1,000 cars.
 2. **Backend Server** - turns the result into JSON, with high CPU and memory use.
@@ -282,13 +282,13 @@ The library uses the table name as the topic and sends one JSON message per chan
           "after_values":  {"id": 2323, "price": 510000, ...}}}
 ```
 
-An insert (`WriteRowsEvent`) carries `row.values` instead. A consumer reads the topics that affect the car page and rebuilds or invalidates the cached JSON.
+An insert (`WriteRowsEvent`) has `row.values` instead. A consumer reads the topics that affect the car page and rebuilds or invalidates the cached JSON.
 
 ## One price change, end to end
 
 A price script lowers car 2323 from ₹5,25,000 to ₹5,10,000. These are the steps until a buyer sees the new price.
 
-{{< viz kind="change-timeline" fig="2" title="One price change, in order" fallback="timeline.svg" alt="Swimlanes for the price script, MySQL, producer, Kafka, consumer, Valkey and buyer. A price UPDATE moves through each lane; Valkey serves the old price from the commit until the consumer SETs the new JSON" caption="Car 2323, prices, binlog positions and offsets are sample values. Producer calls follow mysql-data-stream-kafka and kafka-python 1.4.6, cache calls follow django-redis, and the consumer code is a sketch. Dots are in order; the spacing is not time." >}}
+{{< viz kind="change-timeline" fig="2" title="One price change, in order" fallback="timeline.svg" alt="Swimlanes for the price script, MySQL, producer, Kafka, consumer, Valkey and buyer. A price UPDATE moves through each row; Valkey serves the old price from the commit until the consumer SETs the new JSON" caption="Car 2323, prices, binlog positions and offsets are sample values. Producer calls follow mysql-data-stream-kafka and kafka-python 1.4.6, cache calls follow django-redis, and the consumer code is a sketch. Dots are in order; the spacing is not time." >}}
 
 # When a part fails
 
@@ -304,7 +304,7 @@ Each of them can fail on its own, and so can the network between them.
 
 > 1. The network is reliable; - [Wiki](https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing)
 
-{{< viz kind="outage-timeline" fig="3" title="The same change when one part fails" fallback="timeline.svg" alt="The price-change swimlanes with one component down: the change waits, resumes from a saved position or offset, and the stretch where Valkey serves the old price grows" caption="Numbers match the sections below. Pick a failure and say whether the change is delayed or lost before the rest of the timeline appears. For Kafka, compare the producer settings `acks=1` and `acks='all'`." >}}
+{{< viz kind="outage-timeline" fig="3" title="The same change when one part fails" fallback="timeline.svg" alt="The price-change swimlanes with one component down: the change waits, resumes from a saved position or offset, and the time during which Valkey serves the old price gets longer" caption="Numbers match the sections below. Pick a failure and say whether the change is delayed or lost before the rest of the timeline appears. For Kafka, compare the producer settings `acks=1` and `acks='all'`." >}}
 
 ## 1. Consumer node fails
 
@@ -316,7 +316,7 @@ If the producer cannot push to Kafka, it must not lose its place in the binlog. 
 
 ## 3. Valkey server fails
 
-Use a managed service such as AWS ElastiCache, or run Valkey with a replica and automatic failover. If the consumer cannot write to Valkey, it does not commit the offset, and it clears the backlog once Valkey is back. Replication to the replica is asynchronous, so a failover can lose the last few writes. The 12-hour TTL limits how long such a key stays stale.
+Use a managed service such as AWS ElastiCache, or run Valkey with a replica and automatic failover. If the consumer cannot write to Valkey, it does not commit the offset, and it processes the waiting messages when Valkey is back. Replication to the replica is asynchronous, so a failover can lose the last few writes. The 12-hour TTL limits how long such a key stays stale.
 
 For 10,000 active cars with a 20 KB payload each, the cache needs about 200 MB before compression.
 To keep memory bounded, set `maxmemory-policy` to `volatile-lru` and give every key a TTL. Valkey then evicts the least recently used keys that have a TTL.
@@ -329,7 +329,7 @@ Run at least 3 brokers, with a topic replication factor of 3 and `min.insync.rep
 
 The binlog is on disk, so a restart or a dropped connection loses nothing while the binlog files are kept. The producer resumes from its last position.
 
-A long producer outage lets the binlog grow. Keep enough disk and retention (`binlog_expire_logs_seconds`, 30 days by default in MySQL 8.0) to cover it, and set alarms on disk use.
+During a long producer outage, the binlog grows. Keep enough disk and retention (`binlog_expire_logs_seconds`, 30 days by default in MySQL 8.0) to cover it, and set alarms on disk use.
 
 If the binlog is lost anyway, a Django management command rebuilds the cache for all active cars.
 
@@ -338,7 +338,7 @@ If the binlog is lost anyway, a Django management command rebuilds the cache for
 1. The car page for anonymous buyers is one gzipped JSON under `dp:{car_id}` in Valkey.
 2. Model signals and a domain layer see only writes that go through Django. The binlog sees every committed write, including the CakePHP portal and the price scripts.
 3. Until the consumer writes the new JSON, buyers see the old price.
-4. Most failures delay a change instead of losing it. A Kafka leader crash with `acks=1` and a Valkey failover can still lose one; the 12-hour TTL bounds how long it stays wrong.
+4. Most failures delay a change instead of losing it. A Kafka leader crash with `acks=1` and a Valkey failover can still lose one; the 12-hour TTL limits how long it stays stale.
 
 [Part 2](/posts/pre-owned-car-platform-with-valkey-part-2/) covers the listing page: pagination and per-buyer ordering with Redis sorted sets, lists, and other data structures.
 

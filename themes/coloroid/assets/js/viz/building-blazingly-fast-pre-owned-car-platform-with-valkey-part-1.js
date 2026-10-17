@@ -111,7 +111,7 @@ function initHookSets(fig, app) {
 
   tree.classList.add(`${P}tree`);
   app.append(h('div', { class: `${P}hookgrid` }, q, wcard, tree, fb, h('div', { class: 'wv-bar' }, show, next, restart)),
-  key([['look', 'the write in your hand'], ['safe', 'the smallest ring that sees it'], ['gap', 'your guess, when wrong'], ['pick', 'the hook we chose']]));
+  key([['look', 'the current write'], ['safe', 'the smallest ring that sees it'], ['gap', 'your guess, when wrong'], ['pick', 'the hook we chose']]));
 
   function load(i) {
     k = i; answered = false;
@@ -143,7 +143,7 @@ function initHookSets(fig, app) {
     place(w);
     fb.hidden = false;
     fb.className = `wv-note ${ok ? 'is-good' : 'is-bad'}`;
-    fb.innerHTML = `<b>${ok ? 'Right.' : id ? `It lands in “${RINGS[w.set].title}”.` : `“${RINGS[w.set].title}”.`}</b> ${w.why}`;
+    fb.innerHTML = `<b>${ok ? 'Right.' : id ? `It belongs in “${RINGS[w.set].title}”.` : `“${RINGS[w.set].title}”.`}</b> ${w.why}`;
     next.textContent = k >= WRITES.length - 1 ? 'See the count →' : 'Next write →';
     next.hidden = false; show.hidden = true;
   }
@@ -167,7 +167,7 @@ function initHookSets(fig, app) {
     wcard.hidden = true;
     fb.hidden = false;
     fb.className = 'wv-note';
-    fb.innerHTML = '<b>Only the outer ring holds every write.</b> A hook sees the writes inside its ring. The binlog reader is the only hook every writer passes, so that is where we put it. Tap a placed write to read why it sits there.';
+    fb.innerHTML = '<b>Only the outer ring holds every write.</b> A hook sees the writes inside its ring. Only the binlog reader sees writes from every writer, so we chose it. Tap a placed write to read why it is in that ring.';
     next.hidden = true; show.hidden = true; restart.hidden = false;
   }
 
@@ -215,7 +215,7 @@ const E = {
       'producer.send(topic=«"cars"», value=«b\'{"schema": "carsdb", "table": "cars",»',
       '    «"type": "UpdateRowsEvent", "row": {…, "price": 510000}}}\'»)',
       '// 296 bytes · no key: kafka-python picks a random partition',
-    ])}<p>It lands on partition 2 at offset 88,120. With no key, two changes to one car can land in different partitions and arrive in any order. Sending the car id as the key keeps one car's changes in one partition, in order.</p>`,
+    ])}<p>It is written to partition 2 at offset 88,120. With no key, two changes to one car can go to different partitions and arrive in any order. Sending the car id as the key keeps one car's changes in one partition, in order.</p>`,
     ...extra,
   }),
   map: (x, extra = {}) => ({
@@ -227,7 +227,7 @@ const E = {
       '          "car_features": lambda r: r["car_id"]}',
       'row = msg["row"].get("after_values") or msg["row"]["values"]',
       'car_id = CAR_ID[msg["table"]](row)     // «2323»',
-    ])}<p>The binlog knows rows, not car pages. The consumer needs one rule per table. When someone adds a table to the car page, they add a rule here.</p>`,
+    ])}<p>Each binlog event is one table row, and the consumer must find the car page for that row. It needs one rule per table. When someone adds a table to the car page, they add a rule here.</p>`,
     ...extra,
   }),
   set: (x, extra = {}) => ({
@@ -237,19 +237,19 @@ const E = {
       'payload = build_car_json(2323)        // reads ~10 tables on MySQL',
       'cache.set("dp:2323", payload, timeout=12 * 3600)',
       'SET «:1:dp:2323» «1f 8b 08 00 …» PX «43200000»   // pickle → gzip',
-    ])}<p>The consumer reads the car's current rows, not the values in the event, so a late or repeated event still writes the latest state. django-redis adds the <code>:1:</code> version prefix and sends 12 hours as milliseconds.</p>`,
+    ])}<p>The consumer reads the car's current rows from MySQL and ignores the values in the event, so a late or repeated event still writes the latest state. django-redis adds the <code>:1:</code> version prefix and sends 12 hours as milliseconds.</p>`,
     ...extra,
   }),
   ack: (x, extra = {}) => ({
     x, lane: 'Kafka', tag: '88,121',
     title: 'Commit the offset after the SET',
-    body: `${code(['consumer.commit()      // p2: 88,120 → «88,121»'])}<p>The offset moves only after the SET returns. If the consumer dies in between, Kafka hands out 88,120 again and the same JSON is built again. Delivery is at-least-once, and a rebuild is safe to repeat.</p>`,
+    body: `${code(['consumer.commit()      // p2: 88,120 → «88,121»'])}<p>The offset moves only after the SET returns. If the consumer crashes in between, Kafka delivers 88,120 again and the same JSON is built again. Delivery is at-least-once, and a rebuild is safe to repeat.</p>`,
     ...extra,
   }),
   get: (x) => ({
     x, lane: 'Valkey', tag: 'GET', src: [x - 0.6, 'buyer'],
     title: 'The next buyer gets the new price',
-    body: `${code(['GET /listing/2323/', 'cache.get("dp:2323")   // GET :1:dp:2323 → gunzip → unpickle', `→ 200 {"id": 2323, "price": «${NEW}», …}`])}<p>One key lookup and no MySQL query. The red stretch on the Valkey lane, from the commit to the SET, is the lag of the pipeline.</p>`,
+    body: `${code(['GET /listing/2323/', 'cache.get("dp:2323")   // GET :1:dp:2323 → gunzip → unpickle', `→ 200 {"id": 2323, "price": «${NEW}», …}`])}<p>One key lookup and no MySQL query. The red bar on the Valkey row, from the commit to the SET, is the lag of the pipeline.</p>`,
   }),
 };
 
@@ -263,18 +263,18 @@ const NORMAL = {
 const FAULTS = [
   {
     key: '1', name: '1 · Consumer', resume: 'The consumer resumes at the last committed offset.', ask: 3.4, answer: 'delayed',
-    intro: 'The consumer node dies right after the change reaches Kafka.',
+    intro: 'The consumer node crashes right after the change reaches Kafka.',
     why: 'Kafka keeps the message, and the consumer never committed its offset, so it reads the change after it restarts. Until then the page shows the old price.',
     events: [E.commit(1), E.read(2), E.send(3),
       { x: 5, lane: 'Kafka', tag: 'waits', kind: 'wait', src: null, title: 'The message waits in Kafka', body: '<p>Kafka keeps messages for 7 days by default (<code>log.retention.hours=168</code>). The committed offset for partition 2 is still 88,120. The car page shows the old price the whole time.</p>' },
-      { ...E.map(7), kind: 'resume', tag: 'from 88,120', title: 'The consumer restarts at the committed offset', body: `${code(['// group resumes p2 at the committed offset', 'poll() → offset «88,120»'])}<p>Anything the consumer wrote before it died but did not commit is processed again. The rebuild gives the same JSON, so a repeat is harmless.</p>` },
+      { ...E.map(7), kind: 'resume', tag: 'from 88,120', title: 'The consumer restarts at the committed offset', body: `${code(['// group resumes p2 at the committed offset', 'poll() → offset «88,120»'])}<p>Anything the consumer processed before it crashed but did not commit is processed again. The rebuild gives the same JSON, so a repeat is harmless.</p>` },
       E.set(8), E.ack(9)],
     blocks: [['consumer', 3.4, 6.6]],
     bands: [[0, 1, 'ok'], [1, 8, 'stale'], [8, 99, 'ok']],
   },
   {
     key: '2', name: '2 · Producer', resume: 'The producer resumes at its saved binlog position.', ask: 1.4, answer: 'delayed',
-    intro: 'The producer node dies right after the UPDATE commits.',
+    intro: 'The producer node crashes right after the UPDATE commits.',
     why: 'The change waits in the binlog on the MySQL disk, and the producer resumes from its saved position.',
     events: [E.commit(1),
       { x: 3, lane: 'MySQL', tag: 'in binlog', kind: 'wait', src: null, title: 'The event stays in the binlog', body: '<p>The binlog file is on the MySQL disk. Nothing is lost while MySQL still has that file.</p>' },
@@ -286,23 +286,23 @@ const FAULTS = [
   },
   {
     key: '3', name: '3 · Valkey', resume: 'The offset was never committed, so the consumer retries the same message.', ask: 4.4, answer: 'delayed',
-    intro: 'Valkey goes down just as the consumer is ready to write.',
+    intro: 'Valkey goes down when the consumer is about to write.',
     why: 'The SET fails, so the consumer does not commit the offset. It retries until Valkey is back.',
     events: [E.commit(1), E.read(2), E.send(3), E.map(4),
       { x: 5, lane: 'consumer', tag: 'SET ✗', kind: 'fail', title: 'SET fails, the offset stays', body: `${code(['cache.set(...)      // ⟦ConnectionError⟧', '// no commit: p2 stays at «88,120»'])}<p>The consumer does not commit the offset, so the change is not lost. It retries.</p>` },
       { x: 6.5, lane: 'consumer', tag: 'retry ✗', kind: 'fail', src: [5, 'consumer'], title: 'Retries fail while Valkey is down', body: '<p>While Valkey is down, the API cannot read the cache either. What a buyer sees then depends on the API\'s fallback.</p>' },
-      E.set(8, { kind: 'resume', tag: 'SET ✓', src: [6.5, 'consumer'], title: 'Valkey is back and the retry succeeds', body: `${code(['SET «:1:dp:2323» «1f 8b 08 00 …» PX «43200000»   // ⟪OK⟫'])}<p>If Valkey failed over to a replica instead, the last writes before the failure can be missing, because replication is asynchronous. The 12-hour TTL limits how long such a key stays wrong.</p>` }),
+      E.set(8, { kind: 'resume', tag: 'SET ✓', src: [6.5, 'consumer'], title: 'Valkey is back and the retry succeeds', body: `${code(['SET «:1:dp:2323» «1f 8b 08 00 …» PX «43200000»   // ⟪OK⟫'])}<p>If Valkey failed over to a replica instead, the last writes before the failure can be missing, because replication is asynchronous. The 12-hour TTL limits how long such a key stays stale.</p>` }),
       E.ack(9)],
     blocks: [['Valkey', 4.4, 7.6]],
     bands: [[0, 1, 'ok'], [1, 4.4, 'stale'], [4.4, 7.6, 'down'], [7.6, 8, 'stale'], [8, 99, 'ok']],
   },
   {
     key: '4a', name: "4 · Kafka, acks=1", ask: 3.5,
-    resume: 'Nothing resumes: no part still has the change.',
-    intro: 'The partition leader dies right after it confirms the message. The producer uses the kafka-python default, acks=1.', answer: 'lost',
-    why: 'The leader confirmed before any follower copied the message, then died. The producer does not resend it, so car 2323 keeps the old price until its 12-hour TTL ends.',
+    resume: 'Nothing resumes, because no part still has the change.',
+    intro: 'The partition leader crashes right after it confirms the message. The producer uses the kafka-python default, acks=1.', answer: 'lost',
+    why: 'The leader confirmed before any follower copied the message, then crashed. The producer does not resend it, so car 2323 keeps the old price until its 12-hour TTL ends.',
     events: [E.commit(1), E.read(2),
-      E.send(3, { tag: 'leader ack', title: 'The leader confirms alone', body: `${code(['KafkaProducer(bootstrap_servers=…)   // acks=«1» by default'])}<p>With <code>acks=1</code> the leader confirms before any follower has copied the message.</p>` }),
+      E.send(3, { tag: 'leader ack', title: 'Only the leader confirms', body: `${code(['KafkaProducer(bootstrap_servers=…)   // acks=«1» by default'])}<p>With <code>acks=1</code> the leader confirms before any follower has copied the message.</p>` }),
       { x: 5.2, lane: 'Kafka', tag: 'lost', kind: 'lost', title: 'The new leader never had the message', body: '<p>A follower becomes leader without the message. The producer already has its ack, so it does not resend. Nothing tells the consumer about the price change.</p>' },
       { x: 8, lane: 'Valkey', tag: 'TTL ends', kind: 'expire', src: null, title: 'The key expires 12 hours after its last SET', body: '<p>Car 2323 keeps the old price until its 12-hour TTL removes the key.</p>' }],
     blocks: [['Kafka', 3.5, 4.8]],
@@ -311,11 +311,11 @@ const FAULTS = [
   {
     key: '4b', name: "4 · Kafka, acks='all'", ask: 3.5,
     resume: 'The new leader already has the message, so the consumer reads it as usual.',
-    intro: "The partition leader dies right after it confirms the message. The producer uses acks='all', and the topic has replication factor 3 and min.insync.replicas=2.", answer: 'delayed',
+    intro: "The partition leader crashes right after it confirms the message. The producer uses acks='all', and the topic has replication factor 3 and min.insync.replicas=2.", answer: 'delayed',
     why: 'An in-sync follower already had the message, so it becomes leader and the consumer reads the change a little later.',
     events: [E.commit(1), E.read(2),
       E.send(3, { tag: 'leader + follower', title: 'The leader confirms after a follower has it', body: `${code(["KafkaProducer(bootstrap_servers=…, acks=«'all'»)", '// topic: replication.factor=«3», min.insync.replicas=«2»'])}<p>The leader answers only after an in-sync follower has the message.</p>` }),
-      { x: 5, lane: 'Kafka', tag: 'new leader', kind: 'resume', src: [3, 'Kafka'], title: 'A follower with the message takes over', body: '<p>The new leader has offset 88,120, so the consumer reads it as usual.</p>' },
+      { x: 5, lane: 'Kafka', tag: 'new leader', kind: 'resume', src: [3, 'Kafka'], title: 'A follower with the message becomes leader', body: '<p>The new leader has offset 88,120, so the consumer reads it as usual.</p>' },
       E.map(6), E.set(7), E.ack(8)],
     blocks: [['Kafka', 3.5, 4.8]],
     bands: [[0, 1, 'ok'], [1, 7, 'stale'], [7, 99, 'ok']],
@@ -330,7 +330,7 @@ const FAULTS = [
       E.send(6), E.map(7), E.set(8), E.ack(9)],
     blocks: [['MySQL', 1.4, 4.6]],
     bands: [[0, 1, 'ok'], [1, 8, 'stale'], [8, 99, 'ok']],
-    extra: 'Binlog files survive a restart. If a file is purged before the producer reads it, those changes never reach Kafka: rebuild every active car with the management command.',
+    extra: 'Binlog files stay on disk after a restart. If a file is purged before the producer reads it, those changes never reach Kafka. Then rebuild every active car with the management command.',
   },
 ];
 
@@ -566,7 +566,7 @@ function initChange(fig, app) {
   let mode = 'ask'; let guess = -1;
   const skip = h('button', { type: 'button', class: 'wv-btn wv-btn--ghost', onclick: () => { mode = 'watch'; t.prompt(null); } }, 'skip the guess');
   const askEl = h('div', { class: 'wv-callout' },
-    h('p', null, h('b', null, 'Guess first. '), `The script has just changed the price to ${inr(NEW)}. At which step does a buyer first see it? Tap a dot.`), skip);
+    h('p', null, h('b', null, 'Guess first. '), `The script changes the price to ${inr(NEW)}. At which step does a buyer first see it? Tap a dot.`), skip);
   const t = timeline(fig, app, {
     onDot(k) {
       if (mode !== 'ask') return false;
