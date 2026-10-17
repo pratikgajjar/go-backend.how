@@ -21,8 +21,8 @@ const SAY = {
   2: [true, 'Six stacks. Each one stops at month 2. None reaches the window.'],
   3: [true, 'Four stacks. Each one stops at month 3, one month short of the window.'],
   4: [true, 'Three stacks. Each one stops at month 4, the bottom edge of the window, and starts again.'],
-  6: [false, 'Two stacks. Each one runs to month 6, the top of the window, so it gets comfortable even if it takes you the full six months.'],
-  12: [false, 'One stack. Comfortable by month 6, then six more months going deeper in the same stack.'],
+  6: [false, 'Two stacks. Each one runs to month 6, the top of the window, so you get comfortable in each even if it takes the full six months.'],
+  12: [false, 'One stack. You are comfortable by month 6, then you have six more months to learn the same stack in more depth.'],
 };
 
 function initOneStack(fig, app) {
