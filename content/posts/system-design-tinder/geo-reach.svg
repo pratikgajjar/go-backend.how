@@ -13,6 +13,7 @@
 <text x="200.0" y="57" font-size="12" font-weight="750" fill="#2a1c1e" text-anchor="middle">search radius 16 km</text>
 <text x="129" y="117" font-size="11" font-weight="700" fill="#7b5431">one cell: 3.7 × 4.9 km</text>
 <text x="200" y="254" font-size="11" font-weight="700" fill="#2a1c1e" text-anchor="middle">9 cells reach 3.9 km</text>
+<text x="200" y="320" font-size="11" font-weight="700" fill="#c23a2c" text-anchor="middle">outside the 9 cells: never read</text>
 <rect x="404" y="120" width="210" height="160" fill="#fbe1dd"/><rect x="404" y="120" width="4" height="160" fill="#c23a2c"/>
 <text x="418" y="142" font-size="12" font-weight="750" fill="#c23a2c">80% of the search</text>
 <text x="418" y="157" font-size="12" font-weight="750" fill="#c23a2c">circle is outside</text>

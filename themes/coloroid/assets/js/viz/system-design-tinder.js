@@ -49,6 +49,8 @@ function onBreak(app, bp, cb) {
 function remountStepper(host, steps, onStep, opts) {
   const box = h('div');
   const st = stepper(box, steps, onStep, opts);
+  /* The stepper handles ←/→; keep them from reaching the page's prev/next-post keys. */
+  box.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.stopPropagation(); });
   box.append(st.el);
   host.replaceChildren(box);
   st.go(0);
@@ -340,6 +342,8 @@ function initGeoReach(fig, app) {
     const top = Y(uy) - r * sc;
     g.append(s('text', { x: X(ux), y: top > 18 ? top - 6 : top + 16, class: 't-s t-b halo', 'text-anchor': 'middle' }, `search radius ${r} km`));
     g.append(s('text', { x: X(ux), y: Y(uy) + M.reach * sc + 15, class: 't-xs t-b halo', 'text-anchor': 'middle' }, `9 cells reach ${kmTxt(M.reach)} km`));
+    const below = Math.min(Y(uy) + r * sc, MH); const gap = below - Y(-ch);
+    if (M.reach < r && gap > 26) g.append(s('text', { x: X(ux), y: Y(-ch) + gap / 2 + 4, class: 't-xs t-b t-bad halo', 'text-anchor': 'middle' }, 'outside the 9 cells: never read'));
     g.append(s('text', { x: X(-cw) + 2, y: Y(2 * ch) - 5, class: 't-xs t-b t-data halo' }, `one cell: ${kmTxt(cw)} × ${kmTxt(ch)} km`));
     g.append(s('g', { class: `${P}user` },
       s('circle', { cx: X(ux), cy: Y(uy), r: 14, style: 'fill:transparent' }),
