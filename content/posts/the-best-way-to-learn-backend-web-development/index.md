@@ -6,7 +6,7 @@ lastmod = 2026-01-18T03:13:23+05:30
 publishDate = 2024-07-01T03:13:23+05:30
 draft = false
 tags = ['backend', 'gyan']
-images = ["og-dd7f375a.png"]
+images = ["og-a30a348e.png"]
 theme = "pistachio"
 +++
 

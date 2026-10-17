@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .brick { fill: var(--board); stroke: var(--ink); stroke-width: 2; }
+    .win { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2; }
+    .look { fill: var(--purple); } .bad { fill: var(--red); }
+    .rule { stroke: var(--ink); stroke-width: 2.5; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1104" height="526" class="ink"/>
+  <rect x="48" y="48" width="1104" height="526" class="box"/>
+
+  <text x="96" y="104" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="170" font-size="54" font-weight="800" class="ink">The Best Way to Learn</text>
+  <text x="96" y="232" font-size="54" font-weight="800" class="ink">Backend Web Development</text>
+
+  <!-- the months 4-6 window: feel comfortable in your stack -->
+  <rect x="96" y="270" width="1008" height="116" class="win"/>
+  <text x="116" y="318" font-size="24" font-weight="800" class="look">comfortable in your stack</text>
+  <text x="116" y="352" font-size="22" class="ink">months 4–6</text>
+
+  <!-- one brick = one month in one stack -->
+  <g font-size="22" text-anchor="middle">
+    <!-- switch every 3 months: stops at month 3 -->
+    <rect x="640" y="460" width="140" height="32" class="brick"/><text x="710" y="484" class="ink">1</text>
+    <rect x="640" y="424" width="140" height="32" class="brick"/><text x="710" y="448" class="ink">2</text>
+    <rect x="640" y="388" width="140" height="32" class="brick"/><text x="710" y="412" class="ink">3</text>
+    <!-- one stack: reaches the window -->
+    <rect x="900" y="460" width="140" height="32" class="brick"/><text x="970" y="484" class="ink">1</text>
+    <rect x="900" y="424" width="140" height="32" class="brick"/><text x="970" y="448" class="ink">2</text>
+    <rect x="900" y="388" width="140" height="32" class="brick"/><text x="970" y="412" class="ink">3</text>
+    <rect x="900" y="352" width="140" height="32" class="brick"/><text x="970" y="376" class="ink">4</text>
+    <rect x="900" y="316" width="140" height="32" class="brick"/><text x="970" y="340" class="ink">5</text>
+    <rect x="900" y="280" width="140" height="32" class="brick"/><text x="970" y="304" class="ink">6</text>
+    <text x="710" y="370" font-weight="800" class="bad">↺ back to month 0</text>
+  </g>
+  <line x1="600" y1="494" x2="1080" y2="494" class="rule"/>
+  <g font-size="22" text-anchor="middle">
+    <text x="710" y="526" class="ink">switch every 3 months</text>
+    <text x="970" y="526" class="ink">one stack</text>
+  </g>
+
+  <text x="96" y="466" font-size="28" class="ink">One stack for 6 months.</text>
+</svg>
