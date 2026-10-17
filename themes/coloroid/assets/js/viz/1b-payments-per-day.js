@@ -59,7 +59,7 @@ function initOneBatch(fig, app) {
       reveal();
       const n = flushEnds(PG_RUNS.ins.perRow).length;
       const x = flushEnds(PG_RUNS.xfer.perRow).length;
-      return `${right ? '<b>Right.</b> ' : ''}<b>${fmt(n)}</b> flushes for 8,190 single-row inserts, at the measured rate. ${v === 8190 ? 'Not one per commit: with' : 'With'} 8 backends, about 2.4 commits share each flush. In the transfer run, where each transaction does more work, it would be ${fmt(x)}. TigerBeetle makes the whole request durable with <b>one prepare</b> before it runs any of it.`;
+      return `${right ? '<b>Right.</b> ' : ''}<b>${fmt(n)}</b> flushes for 8,190 single-row inserts, at the measured rate. With 8 backends, about 2.4 commits share each flush${v === 8190 ? ', so Postgres does not flush once per commit' : ''}. In the transfer run, where each transaction does more work, it would be ${fmt(x)}. TigerBeetle makes the whole request durable with <b>one prepare</b> before it runs any of it.`;
     });
 
   app.append(
@@ -192,7 +192,7 @@ function initGroupCommit(fig, app) {
   const rW = range('backends', { min: 1, max: 16, value: P.W, oninput: (v) => { P.W = v; update(); } });
 
   /* predict first: what does doubling the backends do to a flush? */
-  const question = ask('Below: 8 backends, each flush 163 µs. Double the backends to 16. Each flush then carries…',
+  const question = ask('Below: 8 backends, each flush 163 µs. Double the backends to 16. Each flush then covers…',
     [['fewer', 'fewer commits'], ['same', 'the same number'], ['more', 'more commits']], 'more',
     () => {
       rW.set(16);
@@ -210,7 +210,7 @@ function initGroupCommit(fig, app) {
     h('div', { class: 'wv-bar' }, prevB, pos, nextB),
     note,
     fit,
-    colorKey([['k-run', 'waiting for a flush'], ['k-look', 'made durable by the selected flush'], ['k-gap', 'just missed it']]),
+    colorKey([['k-run', 'waiting for a flush'], ['k-look', 'made durable by the selected flush'], ['k-gap', 'inserted after the flush started']]),
   );
 
   const visible = () => sim.flushes.map((q, j) => j).filter((j) => j >= sim.warm && sim.flushes[j].e <= win.t1);
@@ -305,7 +305,7 @@ function initGroupCommit(fig, app) {
       svg.append(s('text', { x: inside ? bx + 4 : bx + bw + 4, y: y + laneH / 2 + 3.5, class: `t-xs t-b halo ${cls}` }, text));
     };
     tag(tags.wait, 'waiting', '');
-    tag(tags.late, 'just missed', 'v-1b-tbad');
+    tag(tags.late, 'too late', 'v-1b-tbad');
     /* the label sits on the selected flush */
     const cx = (x(f.s) + x(f.e)) / 2;
     const anchor = cx > width - 120 ? 'end' : cx < L + 120 ? 'start' : 'middle';
@@ -319,7 +319,7 @@ function initGroupCommit(fig, app) {
     prevB.disabled = idx <= 0; nextB.disabled = idx >= v.length - 1;
     const who = f.m.map((b) => `b${b + 1}`).join(', ');
     note.innerHTML = `<span class="k">Flush ${idx + 1}</span>Makes <b class="c-look">${f.m.length} commit${f.m.length > 1 ? 's' : ''}</b> durable (${who}).${late.size
-      ? ` <span class="c-bad">${[...late].map((b) => `b${b + 1}`).join(', ')} inserted ${late.size > 1 ? 'their commit records' : 'its commit record'} just after it started, so ${late.size > 1 ? 'they wait' : 'it waits'} for the next one.</span>` : ''}`;
+      ? ` <span class="c-bad">${[...late].map((b) => `b${b + 1}`).join(', ')} inserted ${late.size > 1 ? 'their commit records' : 'its commit record'} after it started, so ${late.size > 1 ? 'they wait' : 'it waits'} for the next one.</span>` : ''}`;
   }
 
   update();
@@ -378,7 +378,7 @@ const JOURNAL = [
   {
     label: 'Batch', at: ['client'], edge: ['req'], disk: 0, mem: 0,
     title: 'The client sends 8,190 transfers in one request', where: 'cmd/tb/transfers/main.go',
-    body: () => `<p>8,190 × 128 B = <b>1,048,320 B</b>. With the 256 B message header that is exactly 1 MiB, TigerBeetle's <code>message_size_max</code>. The benchmark sends full batches. (The Go client used here sends 8,190; current TigerBeetle docs list 8,189 per request.)</p><p>Every field of the benchmark's transfers that the client does not set, such as <code>pending_id</code> and the three <code>user_data</code> fields, is zero. That matters in step 4.</p>`,
+    body: () => `<p>8,190 × 128 B = <b>1,048,320 B</b>. With the 256 B message header that is exactly 1 MiB, TigerBeetle's <code>message_size_max</code>. The benchmark sends full batches. (The Go client used here sends 8,190; current TigerBeetle docs list 8,189 per request.)</p><p>Every field of the benchmark's transfers that the client does not set, such as <code>pending_id</code> and the three <code>user_data</code> fields, is zero. Step 4 uses this fact.</p>`,
   },
   {
     label: 'Prepare', at: ['wp'], edge: ['wp'], disk: MiB, mem: 0,
@@ -414,13 +414,13 @@ const JOURNAL = [
   },
   {
     label: 'Compact', at: ['grid'], edge: ['grid'], durable: ['wp', 'wh', 'grid'], disk: null, mem: 0,
-    title: 'Every 32 ops, tables move down to disk', where: 'src/lsm/compaction.zig',
+    title: 'Every 32 ops, compaction writes tables to disk', where: 'src/lsm/compaction.zig',
     body: () => `${codeBlock([
       'bar   = 32 ops (lsm_compaction_ops)',
       'mutable   → immutable  // in memory, sorted',
       'immutable → level 0    // 512 KiB grid blocks',
       'level n   → level n+1  // 7 levels, ×8 each',
-    ], [2, 3])}<p>Compaction does a slice of this work after every commit, so the cost is spread evenly over the ops. Each merge reads tables and writes them again one level down, so each value is written several times over its life. That, on top of up to 824 B per transfer, is where the measured <b>8.2×</b> comes from.</p>`,
+    ], [2, 3])}<p>Compaction does a slice of this work after every commit, so the cost is spread evenly over the ops. Each merge reads tables and writes them again one level down, so each value is written several times over its life. These rewrites, plus up to 824 B per transfer, cause the measured <b>8.2×</b>.</p>`,
   },
   {
     label: 'Checkpoint', at: ['sb'], edge: ['ckpt'], durable: ['wp', 'wh', 'grid', 'sb'], disk: 4 * 24 * 1024, mem: 0,
