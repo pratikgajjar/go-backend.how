@@ -144,7 +144,7 @@ body[class*="theme-"] .wv code { background: var(--tint2); color: var(--ink); bo
   touch-action: manipulation;
   transition: background-color 0.15s, color 0.15s;
 }
-.wv-btn:hover:not(:disabled) { background: var(--tint2); }
+.wv-btn:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--tint2); }
 .wv-btn[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: var(--board); }
 .wv-btn:disabled { opacity: 0.35; cursor: default; }
 .wv-btn--ghost { border-style: dashed; }
@@ -406,7 +406,7 @@ body[class*="theme-"] .wv code { background: var(--tint2); color: var(--ink); bo
   border: 1.25px solid var(--ink); border-radius: 0;
   padding: 0.5rem 0.7rem; min-height: 34px; cursor: pointer; touch-action: manipulation;
 }
-.wv-chip:hover:not(:disabled) { background: var(--tint2); }
+.wv-chip:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--tint2); }
 .wv-chip[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: var(--board); }
 .wv-chip.is-right { background: var(--green-l); border-color: var(--green); color: var(--ink); }
 .wv-chip.is-wrong { background: var(--red-l); border: 1.5px dashed var(--red); color: var(--ink); }
