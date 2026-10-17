@@ -39,7 +39,7 @@ const MESSAGES = [
   {
     id: 'delegator', time: '10:40',
     parts: [['Tests need the local DB after the compose change.', 'knows the problem'], ' ',
-      ['You set that up, can you sort it?', 'hands it over'], ' ', ['Not really my area.', 'outside their job']],
+      ['You set that up, can you sort it?', 'hands it over'], ' ', ['Not my area.', 'outside their job']],
   },
   {
     id: 'exhausted', time: '14:55',
@@ -58,8 +58,8 @@ const MESSAGES = [
 const WHY = {
   persistent: 'They tried, narrowed it down, and want confirmation or a new angle.',
   exhausted: 'They tried everything and ask as a last resort, hoping for one piece of advice.',
-  connector: 'They have seen something similar and need help bridging the gap.',
-  direct: 'Nothing tried yet. They assume someone else can solve it faster.',
+  connector: 'They have seen something similar and need someone to explain how it relates to this problem.',
+  direct: 'They have tried nothing yet and assume someone else can solve it faster.',
   delegator: 'They know the problem and would rather someone else did it.',
 };
 
@@ -124,8 +124,8 @@ function initSorter(fig, app) {
   function finish() {
     const right = picks.filter((p, k) => p === MESSAGES[k].id).length;
     pos.textContent = `${MESSAGES.length} / ${MESSAGES.length}`;
-    card.replaceChildren(h('h5', null, `You placed ${right} of ${MESSAGES.length}`),
-      h('p', { class: 'v-psh-body' }, 'Every message was about the same failing test. What changed was what the person had done before they wrote it, and that is what the reply should answer.'));
+    card.replaceChildren(h('h5', null, `You got ${right} of ${MESSAGES.length} right`),
+      h('p', { class: 'v-psh-body' }, 'Every message was about the same failing test. Each person had done different work before they wrote, and the reply should match that work.'));
     slot.replaceChildren();
     slot.hidden = true;
     score.textContent = "";
@@ -139,7 +139,7 @@ function initSorter(fig, app) {
     h('div', { class: 'v-psh-gap' }),
     slot,
     h('div', { class: 'wv-bar' }, next, again),
-    colorKey([['k-held', 'the right type'], ['k-gap', 'your guess, if wrong']]),
+    colorKey([['k-held', 'the correct type'], ['k-gap', 'your guess, if wrong']]),
   );
   go(0);
 }
@@ -170,7 +170,7 @@ const QUESTIONS = [
     options: [
       ['inquisitive', 'Asked why it broke, and how to stop it happening again.'],
       ['solution', 'Applied it and got back to work.'],
-      ['disinterested', 'Let them sort it out. I needed it working, not explained.'],
+      ['disinterested', 'Let them sort it out. I only needed it to work.'],
     ],
   },
 ];
@@ -204,7 +204,7 @@ function initLastAsk(fig, app) {
     note.replaceChildren(
       h('p', { class: 'v-psh-you' }, 'You asked as ', h('b', null, NAMES[ans.seeker]), ` ${CHAN[ans.channel]}, and took the fix as `, h('b', null, REACT[ans.reaction]), '.'),
       h('p', { class: 'v-psh-you' }, h('span', { class: 'k' }, 'Next time'),
-        tip || 'Nothing to change. You tried first, learned why it broke, and asked where others can find the answer.'),
+        tip || 'You do not need to change anything. You tried first, learned why it broke, and asked where others can find the answer.'),
     );
   }
 

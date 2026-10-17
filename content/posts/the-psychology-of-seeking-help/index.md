@@ -10,13 +10,13 @@ images = ["og-7ea28dc5.png"]
 theme = "wisteria"
 +++
 
-The first message someone sends when they are stuck tells you most of what they need from you. This post sorts help seekers into five types by how much they tried before asking, and into three types by how they take the fix. By the end, you should be able to place a message in a few seconds, answer the need behind it, and know where to ask so that one answer helps more than one person.
+The first message someone sends when they are stuck tells you most of what they need from you. This post sorts help seekers into five types by how much they tried before asking, and into three types by how they take the fix. By the end, you should be able to identify the type of a message in a few seconds, give the help that type needs, and know where to ask so that one answer helps more than one person.
 
 As a backend engineer, I've seen the same few patterns in how people ask for help. A pattern describes how someone asks in one moment. The same engineer can be a Direct Seeker on a busy Monday and a Persistent Problem Solver on Friday.
 
 # Types of Help Seekers
 
-Two things separate the types, the effort spent before asking and the difficulty of the problem.
+The types differ in two things: the effort spent before asking, and the difficulty of the problem.
 
 ## The Persistent Problem Solver
 
@@ -37,7 +37,7 @@ They have tried everything they can think of and failed. They ask as a last reso
 **Effort Level:** High  
 **Difficulty:** Medium
 
-They have solved related problems before but do not see how those connect to this one. They need help with context to bridge the gap.
+They have solved related problems before but do not see how those connect to this one. They need someone to explain how the earlier problems relate to this one.
 
 ## The Direct Seeker
 
@@ -55,9 +55,9 @@ They know the problem but prefer not to solve it. Someone else can do it faster,
 
 ## Reading the first message
 
-The type usually shows in the first message. Here are five sample messages about the same failing test.
+The type usually shows in the first message. Fig. 1 has five sample messages about the same failing test.
 
-{{< viz kind="sorter" fig="1" title="Who wrote this?" wide="false" fallback="sorter.svg" alt="Five sample Slack messages about the same failing test, one per help seeker type, with the phrases that give each type away" caption="Pick a type before the clues appear. The messages are samples." >}}
+{{< viz kind="sorter" fig="1" title="Who wrote this?" wide="false" fallback="sorter.svg" alt="Five sample Slack messages about the same failing test, one per help seeker type, with the phrases that identify each type" caption="Pick a type before the clues appear. The messages are samples." >}}
 
 # Reactions to Solutions
 
@@ -69,7 +69,7 @@ They want to understand the fix so the issue does not come back. They ask how it
 
 ## The Solution Seeker
 
-They care only about the immediate issue. They want the fix, not the process, and they struggle to answer detailed questions about it.
+They care only about the immediate issue. They want the fix and do not ask how it works, and they struggle to answer detailed questions about it.
 
 ## The Disinterested
 
@@ -77,14 +77,14 @@ They have no interest in the problem or the fix. They want it resolved fast, wit
 
 # Where to ask
 
-A phone or WhatsApp call needs the other person right now. They stop what they are doing, and the answer is not written down anywhere. A direct message or personal email does not interrupt, but only one person sees it. If they are busy, you wait, and the answer stays private.
+A phone or WhatsApp call needs the other person right now. They stop what they are doing, and the answer is not written down anywhere. A direct message or personal email does not interrupt anyone. Only one person sees it. If they are busy, you wait, and the answer stays private.
 
 A message in a public channel avoids both problems. It does not force anyone to stop work. Anyone who is free can answer, and the answer stays searchable for the next person who hits the same problem.
 
 # Takeaways
 
-How someone asks tells you what they need. A persistent solver wants a second opinion. A direct seeker first needs someone to find out how hard the problem is. Recognising the pattern lets you give that help, and asking in public lets that help reach more than one person.
+How someone asks tells you what they need. A persistent solver wants a second opinion. A direct seeker first needs someone to find out how hard the problem is. When you recognise the pattern, you can give that help. When you ask in public, more than one person can use the answer.
 
-To place your own last ask, answer the three questions in Fig. 2.
+To find the type of your own last ask, answer the three questions in Fig. 2.
 
 {{< viz kind="last-ask" fig="2" title="Your last ask" wide="false" fallback="last-ask.svg" alt="Three questions about the last time you asked for help, and the seeker type, reaction, and channel each answer points to" caption="Answers map to the types above. Nothing you pick leaves this page." >}}
