@@ -347,11 +347,12 @@ function initAim(fig, app) {
 function sideView(where) {
   // you on the left, the screen, the body on it, the head in front or behind
   const hx = where === 'front' ? 78 : 122;
-  return s('svg', { viewBox: '0 -8 150 72', class: 'v-cs-side', 'aria-hidden': 'true' },
+  return s('svg', { viewBox: '0 -8 150 77', class: 'v-cs-side', 'aria-hidden': 'true' },
     s('circle', { cx: 14, cy: 34, r: 6, class: 'v-cs-side-line' }),
     s('text', { x: 14, y: 58, class: 't-xs', 'text-anchor': 'middle' }, 'you'),
-    s('line', { x1: 100, y1: 6, x2: 100, y2: 60, class: 'v-cs-side-line dash' }),
+    s('line', { x1: 100, y1: 6, x2: 100, y2: 54, class: 'v-cs-side-line dash' }),
     s('circle', { cx: 100, cy: 40, r: 11, class: 'v-cs-side-line' }),
+    s('text', { x: 100, y: 66, class: 't-xs', 'text-anchor': 'middle' }, 'body'),
     s('circle', { cx: hx, cy: 18, r: 7, class: 'v-cs-side-head' }),
     s('text', { x: hx, y: 4, class: 't-xs t-b t-look', 'text-anchor': 'middle' }, 'head'));
 }
