@@ -1,30 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 710" width="720" height="710" role="img" aria-label="SELECT * FROM users ORDER BY name LIMIT 10 reads all 33,333 pages to send 10 rows">
-<rect width="720" height="710" rx="6" fill="#fbfaf7" stroke="#0a0d12"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 490" width="720" height="490" role="img" aria-label="SELECT * FROM users ORDER BY name LIMIT 10 reads all 33,333 table pages to send 2.4 kB, which meets the goal of finding a LIMIT 10 query that still reads every page">
+<rect width="720" height="490" rx="6" fill="#fbfaf7" stroke="#0a0d12"/>
 <g font-family="'JetBrains Mono',ui-monospace,Menlo,monospace" font-size="11" fill="#0a0d12">
 <path d="M0.5,6 a5.5,5.5 0 0 1 5.5,-5.5 h708 a5.5,5.5 0 0 1 5.5,5.5 V54 H0.5 Z" fill="#f1f0ed"/>
-<text x="14" y="32" font-size="12.5"><tspan fill="#0a0d12">SELECT </tspan><tspan fill="#0d53af">*</tspan><tspan fill="#0a0d12"> FROM users </tspan><tspan fill="#0d53af">ORDER BY name</tspan><tspan fill="#0a0d12"> </tspan><tspan fill="#0d53af">LIMIT 10</tspan><tspan fill="#0a0d12">;</tspan></text>
-<rect x="14" y="70" width="692" height="128" rx="4" fill="#f1f0ed"/>
-<text x="26" y="90" font-size="11" fill="#0a0d12" xml:space="preserve">Limit (actual rows=10.00 loops=1)</text>
-<text x="26" y="106" font-size="11" fill="#0a0d12" xml:space="preserve">  Buffers: shared hit=15494 read=17842</text>
-<text x="26" y="122" font-size="11" fill="#0a0d12" xml:space="preserve">  -&gt;  Sort (actual rows=10.00 loops=1)</text>
-<text x="26" y="138" font-size="11" fill="#0a0d12" xml:space="preserve">        Sort Key: name</text>
-<text x="26" y="154" font-size="11" fill="#0a0d12" xml:space="preserve">        Sort Method: top-N heapsort  Memory: 29kB</text>
-<text x="26" y="170" font-size="11" fill="#be1219" xml:space="preserve">        -&gt;  Seq Scan on users (actual rows=1000000.00 loops=1)</text>
-<text x="26" y="186" font-size="11" fill="#0a0d12" xml:space="preserve">              Buffers: shared hit=15491 read=17842</text>
-<text x="20" y="224" font-size="10.5">users · table · 33,333 pages</text>
-<text x="20" y="238" fill="#be1219" font-size="10.5" font-weight="700">read 33,333 pages to return 10 rows</text>
-<rect x="18" y="246" width="324" height="422" fill="none" stroke="#0a0d12" stroke-dasharray="3 3"/>
-<rect x="20" y="248" width="320" height="416" fill="#be1219"/>
-<rect x="20" y="664" width="106" height="2" fill="#be1219"/>
-<text x="380" y="224" font-size="10.5">sent to the client, in 8 KB squares</text>
-<text x="380" y="238" fill="#6c4122" font-size="10.5" font-weight="700">2.4 kB · 1 square</text>
-<rect x="378" y="246" width="324" height="378" fill="none" stroke="#0a0d12" stroke-dasharray="3 3"/>
-<rect x="380" y="248" width="2" height="2" fill="#6c4122"/>
-<rect x="382" y="248" width="318" height="2" fill="#f6e3ce"/>
-<rect x="380" y="250" width="320" height="370" fill="#f6e3ce"/>
-<rect x="380" y="620" width="186" height="2" fill="#f6e3ce"/>
-<rect x="20" y="682" width="11" height="11" fill="#6c4122"/><text x="37" y="692" fill="#44484e" font-size="10.5">page read or data sent</text>
-<rect x="240" y="682" width="11" height="11" fill="#f6e3ce"/><text x="257" y="692" fill="#44484e" font-size="10.5">not read / not sent</text>
-<rect x="460" y="682" width="11" height="11" fill="#be1219"/><text x="477" y="692" fill="#44484e" font-size="10.5">read but not returned</text>
+<text x="14" y="32" font-size="12.5">SELECT <tspan fill="#0d53af">*</tspan> FROM users ORDER BY <tspan fill="#0d53af">name</tspan> LIMIT <tspan fill="#0d53af">10</tspan>;</text>
+<text x="18" y="84" font-size="11.5" font-weight="700">Change the query. Can you meet each goal?</text>
+<text x="18" y="110">○ Send all 1,000,000 rows in under 50 MB.</text>
+<text x="18" y="134">○ Get the 10 newest users from fewer</text>
+<text x="32" y="150">than 10 pages.</text>
+<text x="18" y="174" font-weight="700">✓ Find a LIMIT 10 query that still</text>
+<text x="32" y="190" font-weight="700">reads all 33,333 table pages.</text>
+<rect x="14" y="208" width="330" height="92" fill="#ffdad6"/><rect x="14" y="208" width="3" height="92" fill="#be1219"/>
+<text x="28" y="230"><tspan font-weight="700">LIMIT did not cut the reads.</tspan></text>
+<text x="28" y="248">No index gives rows in name order,</text>
+<text x="28" y="266">so Postgres reads all 1,000,000 rows</text>
+<text x="28" y="284">and keeps the best 10 as it goes.</text>
+<text x="376" y="84" font-weight="700">users</text><text x="706" y="84" text-anchor="end"><tspan fill="#be1219" font-weight="700">33,333</tspan> read</text>
+<rect x="376" y="92" width="330" height="140" fill="none" stroke="#0a0d12" stroke-dasharray="3 3"/>
+<rect x="379" y="95" width="324" height="134" fill="#be1219"/>
+<text x="376" y="248" font-size="10" fill="#44484e">table · 33,333 pages</text>
+<text x="376" y="284" font-weight="700">sent to psql</text><text x="706" y="284" text-anchor="end"><tspan fill="#6c4122" font-weight="700">2.4 kB</tspan> · 67 ms</text>
+<rect x="376" y="292" width="330" height="126" fill="none" stroke="#0a0d12" stroke-dasharray="3 3"/>
+<rect x="379" y="295" width="324" height="120" fill="#f6e3ce"/>
+<circle cx="388" cy="304" r="5" fill="#6c4122" stroke="#fbfaf7" stroke-width="2"/><text x="400" y="308" font-weight="700">2.4 kB</text>
+<text x="376" y="434" font-size="10" fill="#44484e">one square per 8 KB</text>
+<rect x="18" y="459" width="11" height="11" fill="#6c4122"/><text x="35" y="468" fill="#44484e" font-size="10.5">page read, or data sent</text>
+<rect x="220" y="459" width="11" height="11" fill="#f6e3ce"/><text x="237" y="468" fill="#44484e" font-size="10.5">page on disk, not read</text>
+<rect x="420" y="459" width="11" height="11" fill="#be1219"/><text x="437" y="468" fill="#44484e" font-size="10.5">page read for nothing</text>
 </g>
 </svg>
