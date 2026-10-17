@@ -7,7 +7,7 @@ publishDate = "2024-07-16T23:10:26+05:30"
 draft = false
 featured = false
 tags = ["stereograms", "vision", "dark-mode", "focus"]
-images = ["og-eb3a0221.png"]
+images = ["og-b262da2e.png"]
 theme = "lavender"
 +++
 

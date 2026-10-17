@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .screen { fill: var(--ink); }
+    .cat { fill: none; stroke: var(--board); }
+    .solid { fill: var(--board); stroke: var(--board); stroke-width: 40; stroke-linejoin: round; }
+    .sight { stroke: var(--ink); stroke-width: 3; }
+    .eye { fill: var(--board); stroke: var(--ink); stroke-width: 3; }
+    .tip { fill: var(--purple); }
+    text { font-family: var(--font-mono); }
+  </style>
+  <defs>
+    <!-- cat outline from cat-stereogram.png, units are image pixels from the body centre -->
+    <g id="headbits">
+      <path d="M-224,-1858 L-275,-1545 L-180,-1620 Z" class="solid"/>
+      <line x1="-716" y1="-1338" x2="-406" y2="-1273" stroke-width="52"/>
+      <line x1="-716" y1="-1273" x2="-406" y2="-1265" stroke-width="52"/>
+      <line x1="-709" y1="-1195" x2="-406" y2="-1253" stroke-width="52"/>
+    </g>
+    <g id="rings">
+      <circle cx="0" cy="-1240" r="354.5" stroke-width="121"/>
+      <circle cx="0" cy="0" r="887" stroke-width="133"/>
+    </g>
+    <path id="tail" d="M-6,947 L-6,1137 C-6,1247 -106,1287 -206,1284 C-356,1277 -556,1057 -756,1037 C-926,1022 -1056,1157 -1056,1338" stroke-width="97"/>
+  </defs>
+
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1104" height="526" class="ink"/>
+  <rect x="48" y="48" width="1104" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="182" font-size="56" font-weight="800" class="ink">A Cat Stereogram - Dark Mode</text>
+
+  <!-- the pair on screen -->
+  <rect x="96" y="222" width="524" height="160" class="screen"/>
+  <g class="cat" transform="translate(240,312.4) scale(0.044)"><use href="#rings"/><use href="#headbits"/><use href="#tail"/></g>
+  <g class="cat" transform="translate(476,312.4) scale(-0.044,0.044)"><use href="#rings"/><use href="#headbits"/></g>
+
+  <!-- crossed lines of sight: left eye to right cat, right eye to left cat -->
+  <line x1="288" y1="504" x2="476" y2="382" class="sight"/>
+  <line x1="428" y1="504" x2="240" y2="382" class="sight"/>
+  <circle cx="288" cy="504" r="13" class="eye"/>
+  <circle cx="428" cy="504" r="13" class="eye"/>
+  <text x="262" y="512" font-size="24" text-anchor="end" class="ink">left eye</text>
+  <text x="454" y="512" font-size="24" class="ink">right eye</text>
+  <circle cx="358" cy="458.6" r="10" class="tip"/>
+  <text x="400" y="466" font-size="24" font-weight="700" class="tip">fingertip</text>
+
+  <!-- what you see: one cat with both ears, both whiskers and the tail -->
+  <path d="M640 302 h48" class="sight"/>
+  <path d="M700 302 l-16 -10 v20 z" class="ink"/>
+  <rect x="720" y="222" width="384" height="160" class="screen"/>
+  <g class="cat" transform="translate(912,312.4) scale(0.044)"><use href="#rings"/><use href="#headbits"/><use href="#tail"/></g>
+  <g class="cat" transform="translate(912,312.4) scale(-0.044,0.044)"><use href="#headbits"/></g>
+
+  <text x="720" y="436" font-size="26" class="ink">Cross your eyes at a</text>
+  <text x="720" y="472" font-size="26" class="ink">fingertip, and the two</text>
+  <text x="720" y="508" font-size="26" class="ink">cats merge into one.</text>
+</svg>
