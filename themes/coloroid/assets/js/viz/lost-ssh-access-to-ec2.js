@@ -1,24 +1,20 @@
 /*
- * Figures for "Lost SSH Access to EC2". House look (.wv) and shared
- * components; this file only decides what each figure does.
+ * Figures for "Lost SSH Access to EC2". Both use one map: the user data,
+ * the two marker files cloud-init checks, and authorized_keys. The map stays
+ * in place; only the state changes, so the reader's picture carries from
+ * Fig. 1 to Fig. 2.
  *
- *   lssh-hero    predict: "your key is in user data and you restart; do you
- *                get in?", then see the marker file that says no, then add
- *                the override and see the second marker that says yes
- *   lssh-play    be cloud-init: for three modules, find the marker file on
- *                the disk and choose run or skip; then one question about a
- *                second recovery
- *   lssh-choose  answer two questions about your instance, get the line to
- *                use, and see what it does on the next three boots
+ *   lssh-restart  predict: a new key in user data, then a restart. Do you get
+ *                 in? See the launch marker that blocks it, then add the
+ *                 override and see the second marker that lets it through.
+ *   lssh-again    predict: a second recovery with the same once line. See
+ *                 the .once marker from the first recovery block it, then
+ *                 switch to always.
  *
- * Log lines, paths, and byte counts come from cloud-init 26.1 on Ubuntu
- * 24.04, run in a container with a NoCloud seed in place of IMDS. Instance
- * ID and key bodies are samples.
+ * Paths, module names and log lines come from cloud-init 26.1 on Ubuntu
+ * 24.04 (container, NoCloud seed). Key comments are samples.
  */
-import { h, s, btn, ask, chips, codeBlock, colorKey, uid, register } from './lib.js';
-
-const IID = 'i-0a1b2c3d4e5f60718';
-const AK = '/home/ubuntu/.ssh/authorized_keys';
+import { h, s, btn, ask, colorKey, uid, register } from './lib.js';
 
 /* ------------------------------------------------------------- helpers */
 
@@ -32,297 +28,188 @@ function onLayout(el, cb) {
   new ResizeObserver(check).observe(el);
   check();
 }
-/** Key glyph: bow, shaft, two teeth. tone: data | safe | bad | mute. */
+/** Key glyph: bow, shaft, two teeth. tone: ink | safe | bad | mute. */
 function keyGlyph(x, y, tone) {
   return s('g', { class: `v-lssh-kg is-${tone}`, transform: `translate(${x},${y})` },
-    s('circle', { cx: 0, cy: 0, r: 8 }), s('path', { d: 'M8,0 H34 M26,0 V7 M31,0 V6' }));
+    s('circle', { cx: 0, cy: 0, r: 7 }), s('path', { d: 'M7,0 H30 M23,0 V6 M27,0 V5' }));
 }
-/** File outline with a folded corner; `cls` picks the drawing style. */
-function fileCard(x, y, w, hh, cls) {
+/** File outline with a folded corner. Files are data at rest, so dashed. */
+function fileCard(x, y, w, hh, tone) {
   const f = 12;
-  return s('path', { class: `v-lssh-file ${cls}`, d: `M${x},${y} H${x + w - f} L${x + w},${y + f} V${y + hh} H${x} Z M${x + w - f},${y} V${y + f} H${x + w}` });
+  return s('path', { class: `v-lssh-file is-${tone}`, d: `M${x},${y} H${x + w - f} L${x + w},${y + f} V${y + hh} H${x} Z M${x + w - f},${y} V${y + f} H${x + w}` });
 }
-/** main.js maps ← → on the document to prev/next post; keep keys in the figure. */
-const keep = (e) => { if (e.key.startsWith('Arrow')) e.stopPropagation(); };
+const T = (x, y, t, cls = '', a = 'start') => s('text', { x, y, class: cls, 'text-anchor': a }, t);
+const TONE = { bad: 't-bad', safe: 't-safe', mute: 't-mute', ink: '' };
 
-/* ================================================================ hero */
+/* ------------------------------------------------------------ the map */
 
-const HERO = {
+const LAYOUT = {
   wide: {
-    vb: [900, 250],
-    doc: [10, 80, 160, 90],
-    a: [300, 8, 320, 100], b: [300, 142, 320, 100],
-    ak: [690, 70, 200, 110], prompt: [690, 212],
-    railA: [[170, 125], [230, 125], [230, 58], [292, 58]], stopA: [292, 58],
-    railB: [[230, 125], [230, 192], [296, 192]],
-    out: [[620, 192], [655, 192], [655, 140], [686, 140]],
+    vb: [900, 260],
+    doc: [10, 70, 200, 118],
+    a: [300, 8, 320, 104], b: [300, 146, 320, 104],
+    ak: [690, 50, 200, 140], prompt: [690, 222],
+    railA: [[210, 129], [250, 129], [250, 60], [292, 60]], stopA: [292, 60],
+    railB: [[250, 129], [250, 198], [296, 198]],
+    out: [[620, 198], [655, 198], [655, 150], [686, 150]],
   },
   tall: {
-    vb: [360, 560],
-    doc: [100, 4, 160, 84],
-    a: [30, 120, 320, 100], b: [30, 266, 320, 100],
-    ak: [30, 400, 320, 104], prompt: [30, 540],
-    railA: [[100, 46], [12, 46], [12, 170], [24, 170]], stopA: [24, 170],
-    railB: [[12, 170], [12, 316], [26, 316]],
-    out: [[190, 366], [190, 396]],
+    vb: [360, 620],
+    doc: [80, 4, 200, 112],
+    a: [30, 144, 320, 104], b: [30, 290, 320, 104],
+    ak: [30, 428, 320, 140], prompt: [30, 604],
+    railA: [[80, 60], [12, 60], [12, 196], [24, 196]], stopA: [24, 196],
+    railB: [[12, 196], [12, 342], [26, 342]],
+    out: [[190, 394], [190, 424]],
   },
 };
 
-function initHero(fig, app) {
-  const id = uid('lsshh');
-  let st = 'ask'; let L = null;
-  const stage = h('div', { class: 'v-lssh-svg' });
-  const next = h('div', { class: 'wv-bar' });
-  const T = (x, y, t, cls = '', a = 'start') => s('text', { x, y, class: cls, 'text-anchor': a }, t);
+/**
+ * One state of the map.
+ *   key      name of the key in user data
+ *   line     the cloud_final_modules line in user data, or null
+ *   a        launch marker: 'unknown' | 'bad' (exists, the point) | 'quiet' (exists, context)
+ *   b        null (empty slot) | 'default' | 'once-run' | 'once-skip' | 'always-run' | 'unknown'
+ *   keys     [[comment, tone]] lines in authorized_keys
+ *   prompt   [text, tone]
+ */
+function drawMap(stage, L, st, id) {
+  const [W, H] = L.vb; const tall = L === LAYOUT.tall;
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': st.label });
+  svg.innerHTML = `<defs><marker id="${id}-g" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="v-lssh-ah"/></marker></defs>`;
 
-  const q = ask('Your new public key is in the user data. You start the instance. Do you get in?',
-    [['yes', 'Yes, cloud-init adds it'], ['no', 'No']], 'no',
-    () => {
-      st = 'plain'; draw(); controls();
-      return 'You do not get in. Cloud-init reads the new key on every boot, but the module that writes keys, <code>users_groups</code>, ran at launch and left a marker file. The marker is still there, so the module skips.';
-    });
-
-  function controls() {
-    if (st === 'plain') {
-      next.replaceChildren(btn('Add cloud_final_modules: [users-groups, once] ▶', () => { st = 'fixed'; draw(); controls(); }));
-    } else if (st === 'fixed') {
-      next.replaceChildren(
-        h('div', { class: 'wv-note is-good' }, 'The override runs the same module again under a different marker file, one that does not exist yet. So the module runs and appends your key.'),
-        btn('Start over', () => { st = 'ask'; q.reset(); draw(); controls(); }, { class: 'wv-btn wv-btn--ghost' }));
-    } else next.replaceChildren();
+  // user data
+  const [dx, dy, dw, dh] = L.doc;
+  svg.append(fileCard(dx, dy, dw, dh, 'ink'));
+  svg.append(T(dx + 14, dy + 22, 'user data', 't-m t-b'));
+  svg.append(keyGlyph(dx + 22, dy + 48, 'ink'));
+  svg.append(T(dx + 62, dy + 52, st.key, 't-s'));
+  if (st.line) {
+    svg.append(T(dx + 14, dy + 78, 'cloud_final_modules:', 't-xs'));
+    svg.append(T(dx + 14, dy + 94, `- ${st.line}`, 't-xs t-b'));
   }
 
-  function draw() {
-    const [W, H] = L.vb; const tall = L === HERO.tall;
-    const shown = st !== 'ask'; const fixed = st === 'fixed';
-    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'User data with your new key, two cloud-init marker files, and authorized_keys' });
-    svg.innerHTML = `<defs><marker id="${id}-g" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="v-lssh-ah"/></marker></defs>`;
+  // init stage: users_groups, once per instance
+  svg.append(s('path', { d: path(L.railA), class: 'edge' }));
+  const [ax, ay, aw, ah] = L.a;
+  const aBad = st.a === 'bad';
+  if (st.a !== 'unknown') { const [sx, sy] = L.stopA; svg.append(s('path', { d: `M${sx - 2},${sy - 14} V${sy + 14}`, class: `v-lssh-stop is-${aBad ? 'bad' : 'ink'}` })); }
+  svg.append(fileCard(ax, ay, aw, ah, aBad ? 'bad' : 'ink'));
+  svg.append(T(ax + 14, ay + 22, 'init stage · users_groups', 't-m t-b'));
+  svg.append(T(ax + 14, ay + 40, 'once per instance, marker:', 't-xs'));
+  svg.append(T(ax + 14, ay + 58, tall ? '…/instances/<id>/sem/' : '/var/lib/cloud/instances/<id>/sem/', 't-s'));
+  svg.append(T(ax + 14, ay + 74, 'config_users_groups', 't-s t-b'));
+  if (st.a !== 'unknown') svg.append(T(ax + aw - 14, ay + ah - 10, 'exists since launch → skip', `t-s t-b ${aBad ? 't-bad' : ''}`, 'end'));
+  else svg.append(T(ax + aw - 14, ay + ah - 10, 'exists?', 't-s t-mute', 'end'));
 
-    const [dx, dy, dw, dh] = L.doc;
-    svg.append(fileCard(dx, dy, dw, dh, 'is-data'));
-    svg.append(T(dx + 14, dy + 22, 'user data', 't-m t-b'));
-    svg.append(keyGlyph(dx + 24, dy + 50, 'data'));
-    svg.append(T(dx + 68, dy + 55, 'new key', 't-s t-b t-data'));
-
-    svg.append(s('path', { d: path(L.railA), class: 'edge' }));
-    if (shown) { const [sx, sy] = L.stopA; svg.append(s('path', { d: `M${sx - 2},${sy - 14} V${sy + 14}`, class: 'v-lssh-stop' })); }
-
-    const [ax, ay, aw, ah] = L.a;
-    svg.append(fileCard(ax, ay, aw, ah, shown ? 'is-bad' : 'is-data'));
-    svg.append(T(ax + 14, ay + 22, 'users_groups · once per instance', 't-m t-b'));
-    svg.append(T(ax + 14, ay + 44, tall ? '…/instances/<id>/sem/' : '/var/lib/cloud/instances/<id>/sem/', 't-s t-data'));
-    svg.append(T(ax + 14, ay + 60, 'config_users_groups', 't-s t-b t-data'));
-    svg.append(T(ax + aw - 14, ay + ah - 12, shown ? 'exists since launch → skip' : 'marker file: ?', `t-s t-b ${shown ? 't-bad' : 't-mute'}`, 'end'));
-
-    const [bx, by, bw, bh] = L.b;
-    if (fixed) {
-      svg.append(s('path', { d: path(L.railB), class: 'edge-ack', 'marker-end': `url(#${id}-g)` }));
-      svg.append(fileCard(bx, by, bw, bh, 'is-absent'));
-      svg.append(T(bx + 14, by + 22, 'users-groups · once', 't-m t-b'));
-      svg.append(T(bx + 14, by + 44, '/var/lib/cloud/sem/', 't-s t-data'));
-      svg.append(T(bx + 14, by + 60, 'config_users_groups.once', 't-s t-b t-data'));
-      svg.append(T(bx + bw - 14, by + bh - 12, 'not there yet → run', 't-s t-b t-safe', 'end'));
-      svg.append(s('path', { d: path(L.out), class: 'edge-ack', 'marker-end': `url(#${id}-g)` }));
-    } else if (shown) {
-      svg.append(s('rect', { x: bx, y: by, width: bw, height: bh, class: 'rule dash' }));
-      svg.append(T(bx + bw / 2, by + bh / 2 - 4, 'final stage: its default list', 't-s t-mute', 'middle'));
-      svg.append(T(bx + bw / 2, by + bh / 2 + 14, 'has no users-groups', 't-s t-mute', 'middle'));
+  // final stage slot
+  const [bx, by, bw, bh] = L.b;
+  const B = st.b;
+  if (B === 'default') {
+    svg.append(s('rect', { x: bx, y: by, width: bw, height: bh, class: 'rule dash' }));
+    svg.append(T(bx + bw / 2, by + bh / 2 - 4, 'final stage: its default list', 't-s', 'middle'));
+    svg.append(T(bx + bw / 2, by + bh / 2 + 14, 'has no users-groups', 't-s', 'middle'));
+  } else if (B) {
+    const run = B.endsWith('run'); const always = B.startsWith('always');
+    const tone = B === 'unknown' ? 'ink' : run ? 'safe' : 'bad';
+    svg.append(s('path', { d: path(L.railB), class: run ? 'edge-ack' : 'edge', 'marker-end': run ? `url(#${id}-g)` : null }));
+    if (B === 'once-skip') { const [ex, ey] = L.railB[L.railB.length - 1]; svg.append(s('path', { d: `M${ex},${ey - 14} V${ey + 14}`, class: 'v-lssh-stop is-bad' })); }
+    svg.append(fileCard(bx, by, bw, bh, B === 'once-run' || always ? 'absent' : tone));
+    svg.append(T(bx + 14, by + 22, `final stage · users-groups`, 't-m t-b'));
+    if (always) {
+      svg.append(T(bx + 14, by + 40, 'always, marker:', 't-xs'));
+      svg.append(T(bx + 14, by + 64, 'none', 't-s t-b'));
+      svg.append(T(bx + bw - 14, by + bh - 10, 'nothing to find → run', 't-s t-b t-safe', 'end'));
+    } else {
+      svg.append(T(bx + 14, by + 40, 'once, marker:', 't-xs'));
+      svg.append(T(bx + 14, by + 58, '/var/lib/cloud/sem/', 't-s'));
+      svg.append(T(bx + 14, by + 74, 'config_users_groups.once', 't-s t-b'));
+      const say = { 'once-run': 'not there yet → run', 'once-skip': 'exists since recovery 1 → skip', unknown: 'exists?' }[B];
+      svg.append(T(bx + bw - 14, by + bh - 10, say, `t-s t-b ${TONE[tone] || 't-mute'}`, 'end'));
     }
-
-    const [kx, ky, kw, kh] = L.ak;
-    svg.append(fileCard(kx, ky, kw, kh, 'is-data'));
-    svg.append(T(kx + 14, ky + 22, 'authorized_keys', 't-m t-b'));
-    svg.append(keyGlyph(kx + 22, ky + 50, 'data'));
-    svg.append(T(kx + 64, ky + 55, 'old@laptop', 't-s t-data'));
-    svg.append(keyGlyph(kx + 22, ky + 80, fixed ? 'safe' : shown ? 'bad' : 'mute'));
-    svg.append(T(kx + 64, ky + 85, fixed ? 'new@laptop' : shown ? 'new: not added' : 'new@laptop ?', `t-s t-b ${fixed ? 't-safe' : shown ? 't-bad' : 't-mute'}`));
-    const [px, py] = L.prompt;
-    svg.append(T(px, py, fixed ? 'ubuntu@ip-172-31-5-20:~$' : shown ? 'Permission denied (publickey)' : '$ ssh … → ?', `t-s t-b ${fixed ? 't-safe' : shown ? 't-bad' : 't-mute'}`));
-    stage.replaceChildren(svg);
+    if (run) svg.append(s('path', { d: path(L.out), class: 'edge-ack', 'marker-end': `url(#${id}-g)` }));
   }
 
-  app.append(q.el, next, stage,
-    colorKey([['k-data', 'your key, files'], ['k-gap', 'marker exists: skip'], ['k-held', 'no marker: run'], ['k-opt', 'your answer']]));
-  onLayout(stage, (m) => { L = HERO[m]; draw(); });
+  // authorized_keys
+  const [kx, ky, kw, kh] = L.ak;
+  svg.append(fileCard(kx, ky, kw, kh, 'ink'));
+  svg.append(T(kx + 14, ky + 22, 'authorized_keys', 't-m t-b'));
+  st.keys.forEach(([name, tone], i) => {
+    const yy = ky + 50 + i * 28;
+    svg.append(keyGlyph(kx + 22, yy, tone));
+    svg.append(T(kx + 62, yy + 4, name, `t-s ${tone === 'ink' ? '' : `t-b ${TONE[tone]}`}`));
+  });
+  const [px, py] = L.prompt;
+  svg.append(T(px, py, st.prompt[0], `t-s t-b ${TONE[st.prompt[1]]}`));
+  stage.replaceChildren(svg);
 }
 
-/* ======================================================== play cloud-init */
+/**
+ * A predict-then-see figure on the map: a question, a reveal, one action.
+ * states: { ask, seen, done }; text: { q, choices, answer, seen, act, done }.
+ */
+function mapFigure(app, states, text) {
+  const id = uid('lssh');
+  const stage = h('div', { class: 'v-lssh-svg' });
+  const bar = h('div', { class: 'wv-bar' });
+  let st = 'ask'; let L = null;
+  const draw = () => L && drawMap(stage, L, states[st], id);
 
-/* Tree rows: [id, text]. Rows with `later` stay blank until they exist. */
-const TREE = [
-  ['r1', '/var/lib/cloud/'],
-  ['inst', `├── instances/${IID}/sem/`],
-  ['cug', '│   ├── config_users_groups'],
-  ['more', '│   └── … 18 more markers from launch'],
-  ['gsem', '└── sem/'],
-  ['spo', '    ├── config_scripts_per_once.once'],
-  ['cugo', '    └── config_users_groups.once', 'later'],
-  ['gap', ''],
-  ['akd', AK],
-  ['k1', '    «ssh-ed25519 …Pcno old@laptop»'],
-  ['k2', '    «ssh-ed25519 …Iosi new@laptop»', 'later'],
-];
-
-const MODULES = [
-  {
-    stage: 'init', name: 'update_hostname', freq: 'always', marker: null, answer: 'run', row: null,
-    right: '<code>always</code> keeps no marker file, so there is nothing to find. It runs on every boot.',
-    log: ['Running config-update_hostname using lock (<cloudinit.helpers.DummyLock …>)'],
-  },
-  {
-    stage: 'init', name: 'users_groups', freq: 'once-per-instance', marker: `/var/lib/cloud/instances/${IID}/sem/config_users_groups`, answer: 'skip', row: 'cug',
-    right: 'The file has been there since launch, and a stop and start keeps the instance ID. So the module skips, even though your new key is in the config.',
-    log: ['Running module users_groups with frequency once-per-instance', '⟦config-users_groups already ran (freq=once-per-instance)⟧'],
-  },
-  {
-    stage: 'final', name: 'users-groups', freq: 'once', marker: '/var/lib/cloud/sem/config_users_groups.once', answer: 'run', row: 'gsem', from: 'your cloud_final_modules',
-    right: 'No such file, so the module runs. It writes the marker first, then appends your key: the file grows from 92 to 184 bytes.',
-    log: ['⟪Writing to /var/lib/cloud/sem/config_users_groups.once - wb: [644] 24 bytes⟫', `⟪Writing to ${AK} - wb: [600] 184 bytes⟫`],
-    adds: ['cugo', 'k2'],
-  },
-];
-const RETRIEVE = {
-  q: 'Months later you lose this key too. You repeat the same steps with a third key. On that boot, does users-groups (once) run?',
-  answer: 'skip',
-  right: 'The <code>.once</code> file from today is still on the disk, so cloud-init skips the module and logs SUCCESS. <code>once</code> means once per disk, not once per recovery. Fig. 3 picks the line for your case.',
-  log: ['⟦config-users-groups already ran (freq=once)⟧', 'finish: modules-final/config-users-groups: SUCCESS: config-users-groups previously ran'],
-};
-
-function initPlay(fig, app) {
-  let k = 0; // 0..2 modules, 3 retrieval
-  const results = [];
-  const table = h('table', { class: 'wv-table' });
-  const askBox = h('div');
-  const tree = h('div');
-  const log = h('div');
-
-  const exists = (rid, row) => !row[2] || MODULES.slice(0, results.length).some((m) => m.adds?.includes(rid));
-
-  function drawTree(hot, fresh = []) {
-    const lines = []; const hotIdx = [];
-    TREE.forEach((row, i) => {
-      const [rid, text] = row;
-      if (!exists(rid, row)) { lines.push(''); return; }
-      lines.push(fresh.includes(rid) ? `⟪${text.replace(/[«»]/g, '')}⟫` : text);
-      if (rid === hot) hotIdx.push(i);
-    });
-    tree.innerHTML = codeBlock(lines, hotIdx);
+  const q = ask(text.q, text.choices, text.answer, () => { st = 'seen'; draw(); controls(); return text.seen; });
+  // Answering disables the chips and replacing a button drops focus to the
+  // page, where main.js maps arrow keys to the previous/next post. Move focus
+  // to the next control instead.
+  function controls() {
+    if (st === 'seen') {
+      const act = btn(text.act, () => { st = 'done'; draw(); controls(); });
+      bar.replaceChildren(act);
+      act.focus({ preventScroll: true });
+    }
+    else if (st === 'done') {
+      const again = btn('Start over', () => { st = 'ask'; q.reset(); draw(); controls(); q.el.querySelector('.wv-chip').focus({ preventScroll: true }); }, { class: 'wv-btn wv-btn--ghost' });
+      bar.replaceChildren(h('div', { class: 'wv-note', html: text.done }), again);
+      again.focus({ preventScroll: true });
+    } else bar.replaceChildren();
   }
-
-  function drawTable(hl = k) {
-    table.replaceChildren(
-      h('thead', null, h('tr', null, h('th', null, 'module'), h('th', null, 'frequency'), h('th', null, 'result'))),
-      h('tbody', null, ...MODULES.map((m, i) => {
-        const r = results[i];
-        return h('tr', { class: i === hl ? 'is-look' : r === 'skip' ? 'is-gap' : r ? 'is-held' : '' },
-          h('td', null, h('b', null, m.name), h('br'), `${m.stage} stage`), h('td', null, m.freq.replace('once-per-instance', 'once per instance')),
-          h('td', null, r ? (r === 'run' ? 'ran' : 'skipped') : '—'));
-      })));
-  }
-
-  function render() {
-    drawTable();
-    drawTree(null);
-    const isQ = k === MODULES.length;
-    const item = isQ ? RETRIEVE : MODULES[k];
-    const question = isQ ? RETRIEVE.q : `${item.name} (${item.freq})${item.from ? `, from ${item.from}` : ''}. ${item.marker ? 'Find its marker file in the tree. Run or skip?' : 'It has no marker file. Run or skip?'}`;
-    const a = ask(question, [['run', 'Run'], ['skip', 'Skip']], item.answer, (v, right) => {
-      if (!isQ) results.push(item.answer);
-      log.innerHTML = codeBlock(item.log, [item.log.length - 1]);
-      drawTree(isQ ? 'cugo' : item.row, isQ ? [] : item.adds || []);
-      k += 1;
-      drawTable(-1);
-      const label = k < MODULES.length ? 'Next module ▶' : k === MODULES.length ? 'One more question ▶' : 'Play again';
-      askBox.append(h('div', { class: 'wv-bar' }, btn(label, () => {
-        if (k > MODULES.length) { k = 0; results.length = 0; log.innerHTML = codeBlock(['(nothing yet)']); }
-        render();
-      }, k > MODULES.length ? { class: 'wv-btn wv-btn--ghost' } : {})));
-      return `<b>${right ? 'Right.' : `It ${item.answer === 'run' ? 'runs' : 'skips'}.`}</b> ${item.right}`;
-    });
-    askBox.replaceChildren(
-      item.marker ? h('dl', { class: 'wv-kv' }, h('dt', null, 'marker'), h('dd', null, h('code', null, item.marker))) : null,
-      h('div', { style: 'height:.5rem' }),
-      a.el);
-  }
-
-  fig.addEventListener('keydown', keep);
-  log.innerHTML = codeBlock(['(nothing yet)']);
-  app.append(
-    h('p', { class: 'wv-q' }, 'You are cloud-init on the recovery boot. Before each module runs, you check the disk for its marker file.'),
-    h('div', { class: 'v-lssh-play' },
-      h('div', { class: 'v-lssh-a-q' }, table),
-      h('div', { class: 'v-lssh-a-t wv-card' }, h('h5', null, 'the disk (root volume)'), tree),
-      h('div', { class: 'v-lssh-a-a' }, askBox),
-      h('div', { class: 'v-lssh-a-l wv-card' }, h('h5', null, 'cloud-init.log'), log)),
-    colorKey([['k-opt', 'your choice'], ['k-look', 'this module / the file to check'], ['k-data', 'keys'], ['k-held', 'runs, written'], ['k-gap', 'skipped']]));
-  render();
+  app.addEventListener('keydown', (e) => { if (e.key.startsWith('Arrow')) e.stopPropagation(); });
+  app.append(q.el, bar, stage, colorKey([['k-gap', 'marker exists: skip'], ['k-held', 'no marker: run']]));
+  onLayout(stage, (m) => { L = LAYOUT[m]; draw(); });
 }
 
-/* ======================================================== choose a line */
+/* ================================================================ Fig. 1 */
 
-/* Three boots for each line, from the container runs. keys: [name, state]. */
-const STRIP = {
-  once: [
-    { t: 'this boot', v: 'key added', tone: 'good', keys: [['old', ''], ['new', 'added']], mk: '.once written' },
-    { t: 'next boot, if you forget to clear', v: 'no change', tone: '', keys: [['old', ''], ['new', '']], mk: '.once found', cost: 'final stage runs only users-groups' },
-    { t: 'a later recovery', v: 'skipped', tone: 'bad', keys: [['old', ''], ['new', ''], ['newer', 'missing']], mk: '.once found → skip' },
-  ],
-  always: [
-    { t: 'this boot', v: 'key added', tone: 'good', keys: [['old', ''], ['new', 'added']], mk: 'no marker' },
-    { t: 'next boot, if you forget to clear', v: 'rewritten', tone: '', keys: [['old', ''], ['new', '']], mk: 'no marker', cost: 're-adds keys you delete; final stage runs only users-groups' },
-    { t: 'a later recovery', v: 'key added', tone: 'good', keys: [['old', ''], ['new', ''], ['newer', 'added']], mk: 'no marker' },
-  ],
-};
-
-function advise(prior, clear) {
-  if (prior === 'no' && clear === 'yes') return ['once', 'Its marker does not exist on this disk yet, so it runs. This is the line AWS documents. <code>always</code> would work too.'];
-  if (prior === 'no') return ['once', 'If the override stays in user data, <code>once</code> does nothing on later boots, so a key you remove later stays removed. The final stage still skips its other modules until you clear it.'];
-  if (clear === 'yes') return ['always', '<code>once</code> could find a marker from the earlier recovery and skip without an error. <code>always</code> keeps no marker, so it runs.'];
-  return ['always', '<code>once</code> could find a marker from the earlier recovery. <code>always</code> runs, but until you clear the user data it adds this key back on every boot, even after you delete it. Set a reminder.'];
+function initRestart(fig, app) {
+  const old = ['old@laptop', 'ink'];
+  mapFigure(app, {
+    ask: { label: 'User data with a new key; whether the users_groups marker exists is not shown yet', key: 'new@laptop', line: null, a: 'unknown', b: null, keys: [old, ['new@laptop ?', 'mute']], prompt: ['$ ssh -i new … ?', 'mute'] },
+    seen: { label: 'The users_groups marker from launch exists, so the module skips and the new key is not added', key: 'new@laptop', line: null, a: 'bad', b: 'default', keys: [old, ['new: not added', 'bad']], prompt: ['Permission denied (publickey)', 'bad'] },
+    done: { label: 'With the override, users-groups runs in the final stage under a marker that does not exist yet, and the new key is added', key: 'new@laptop', line: '[users-groups, once]', a: 'bad', b: 'once-run', keys: [old, ['new@laptop', 'safe']], prompt: ['ubuntu@ip-172-31-5-20:~$', 'safe'] },
+  }, {
+    q: 'Your new public key is in the user data. You start the instance. Do you get in?',
+    choices: [['yes', 'Yes, cloud-init adds it'], ['no', 'No']],
+    answer: 'no',
+    seen: 'You do not get in. Cloud-init reads the new user data on this boot, but the module that writes keys, <code>users_groups</code>, ran at launch and left a marker file. The marker is still there, so the module skips.',
+    act: 'Add the cloud_final_modules line ▶',
+    done: 'The line runs the same module again in the final stage, under a different marker file that does not exist yet. So it runs and appends your key.',
+  });
 }
 
-function initChoose(fig, app) {
-  const ans = { prior: null, clear: null };
-  let view = null;
-  const result = h('div', { 'aria-live': 'polite' });
+/* ================================================================ Fig. 2 */
 
-  function question(name, label, hint, opts) {
-    const c = chips(opts, (v) => { ans[name] = v; view = null; render(); }, { label: label.replace(/<[^>]+>/g, '') });
-    return h('div', null, h('p', { class: 'wv-q', html: label }), hint ? h('p', { html: hint }) : null, h('div', { style: 'height:.4rem' }), c.el);
-  }
-
-  function strip(line) {
-    return h('div', { class: 'wv-cards' }, ...STRIP[line].map((b) => h('div', { class: `wv-card${b.tone ? ` is-${b.tone}` : ''}` },
-      h('h5', null, b.t),
-      h('p', null, h('b', { class: b.tone === 'good' ? 'c-safe' : b.tone === 'bad' ? 'c-bad' : '' }, b.v)),
-      h('p', null, ...b.keys.flatMap(([n, st], i) => [i ? ' · ' : '', h('span', { class: st === 'added' ? 'c-safe' : st === 'missing' ? 'c-bad' : 'c-data' }, st === 'added' ? `+${n}` : st === 'missing' ? `✗ ${n}` : n)])),
-      h('p', { class: 'c-data' }, b.mk),
-      b.cost ? h('p', { class: 'c-bad' }, b.cost) : null)));
-  }
-
-  function render() {
-    if (!ans.prior || !ans.clear) { result.replaceChildren(h('div', { class: 'wv-note' }, 'Answer both questions to see the line.')); return; }
-    const [pick, why] = advise(ans.prior, ans.clear);
-    const line = view || pick;
-    const other = line === 'once' ? 'always' : 'once';
-    result.replaceChildren(
-      h('div', { class: `wv-card${line === pick ? ' is-pick' : ''}` },
-        h('h5', null, line === pick ? 'in step 3, use' : 'for comparison'),
-        h('div', { html: codeBlock(['cloud_final_modules:', `- [users-groups, ${line}]`]) })),
-      h('div', { style: 'height:.6rem' }),
-      h('div', { class: 'wv-note', html: line === pick ? why : `This is the other line, for comparison. For your answers, use <code>${pick}</code>.` }),
-      h('div', { style: 'height:.6rem' }),
-      strip(line),
-      h('div', { class: 'wv-bar', style: 'margin-top:.7rem' }, btn(`See ${other} instead`, () => { view = other; render(); }, { class: 'wv-btn wv-btn--ghost' })));
-  }
-
-  fig.addEventListener('keydown', keep);
-  app.append(
-    question('prior', 'Has this disk been recovered before with <code>[users-groups, once]</code>?', 'An image made from such a disk carries the marker too, unless <code>cloud-init clean</code> ran first.', [['no', 'No'], ['yes', 'Yes'], ['unsure', 'Not sure']]),
-    question('clear', 'Will you clear the user data as soon as you are back in?', null, [['yes', 'Yes'], ['forget', 'I might forget']]),
-    result,
-    colorKey([['k-opt', 'your answers'], ['k-pick', 'the line to use'], ['k-data', 'keys, markers'], ['k-held', 'key added'], ['k-gap', 'problem']]));
-  render();
+function initAgain(fig, app) {
+  const had = [['old@laptop', 'ink'], ['new@laptop', 'ink']];
+  mapFigure(app, {
+    ask: { label: 'A second recovery with the same once line; whether the .once marker exists is not shown yet', key: 'third@laptop', line: '[users-groups, once]', a: 'quiet', b: 'unknown', keys: [...had, ['third@laptop ?', 'mute']], prompt: ['$ ssh -i third … ?', 'mute'] },
+    seen: { label: 'The .once marker from the first recovery exists, so users-groups skips and the third key is not added', key: 'third@laptop', line: '[users-groups, once]', a: 'quiet', b: 'once-skip', keys: [...had, ['third: not added', 'bad']], prompt: ['Permission denied (publickey)', 'bad'] },
+    done: { label: 'With always, users-groups keeps no marker, runs, and adds the third key', key: 'third@laptop', line: '[users-groups, always]', a: 'quiet', b: 'always-run', keys: [...had, ['third@laptop', 'safe']], prompt: ['ubuntu@ip-172-31-5-20:~$', 'safe'] },
+  }, {
+    q: 'A year later you lose the new key too. You repeat the steps with a third key and the same [users-groups, once] line. Do you get in?',
+    choices: [['yes', 'Yes, it worked last time'], ['no', 'No']],
+    answer: 'no',
+    seen: 'You do not get in. The <code>.once</code> marker from the first recovery is still on the root volume, so cloud-init skips the module and still logs <code>SUCCESS: config-users-groups previously ran</code>.',
+    act: 'Change once to always ▶',
+    done: '<code>always</code> keeps no marker, so the module runs. It also runs on every later boot until you clear the user data, and adds this key back even if you delete it.',
+  });
 }
 
-register({ 'lssh-hero': initHero, 'lssh-play': initPlay, 'lssh-choose': initChoose });
+register({ 'lssh-restart': initRestart, 'lssh-again': initAgain });

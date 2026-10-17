@@ -46,7 +46,7 @@ you never touch the volume.
 The natural first try is to put your new key in the user data under `users:`
 and restart. Guess what happens before you read on:
 
-{{< viz kind="lssh-hero" fig="1" title="A key in user data, then a restart" fallback="hero.svg" alt="A new SSH key in EC2 user data meets two cloud-init marker files. The init-stage marker for users_groups exists, so the key is blocked. The final-stage marker config_users_groups.once does not exist, so users-groups runs and appends the key to authorized_keys." caption="The paths are real cloud-init paths; `<id>` is the instance ID." >}}
+{{< viz kind="lssh-restart" fig="1" title="A key in user data, then a restart" fallback="restart.svg" alt="A new SSH key in EC2 user data meets two cloud-init marker files. The init-stage marker for users_groups exists since launch, so the module skips. With the cloud_final_modules line, the final stage runs users-groups under the marker config_users_groups.once, which does not exist yet, so it runs and appends the key to authorized_keys." caption="The paths are real cloud-init paths; `<id>` is the instance ID." >}}
 
 By default, user data scripts and cloud-init directives run only on the first
 boot of an instance[^ud]. Cloud-init still fetches the user data on every boot.
@@ -60,10 +60,9 @@ skips.
 
 The script below adds a `cloud_final_modules` list. It replaces the modules the
 final stage of cloud-init runs, and runs `users-groups` again with frequency
-`once`. That frequency checks a different marker, one that does not exist yet.
-In the figure, you are cloud-init on the recovery boot:
-
-{{< viz kind="lssh-play" fig="2" title="Play cloud-init" fallback="boot.svg" alt="The recovery boot as a cloud-init log and the files it checks: users_groups is skipped because its per-instance marker exists; users-groups runs with frequency once, creates config_users_groups.once, and appends the new key to authorized_keys" caption="Log lines, paths, and byte counts come from cloud-init 26.1 on Ubuntu 24.04, run in a container with a local (NoCloud) data source in place of IMDS. The instance ID and key bodies are samples." >}}
+`once`. That frequency checks a different marker,
+`/var/lib/cloud/sem/config_users_groups.once`, which does not exist yet. So the
+module runs, writes that marker, and appends your key to `authorized_keys`.
 
 # Step by step
 
@@ -117,18 +116,23 @@ What each part of the script does:
 
 # once or always
 
+The script uses `once`. Suppose you need it a second time on the same instance:
+
+{{< viz kind="lssh-again" fig="2" title="A second recovery" fallback="again.svg" alt="A second recovery with the same [users-groups, once] line: the marker config_users_groups.once from the first recovery exists, so users-groups skips and the third key is not added. With [users-groups, always] there is no marker, so the module runs and adds the key." caption="The log line is from cloud-init 26.1 on Ubuntu 24.04, run in a container." >}}
+
 `once` means once per disk, not once per recovery. The marker
 `/var/lib/cloud/sem/config_users_groups.once` stays on the root volume, so a
-second recovery with the same line does nothing.
+second recovery with the same line does nothing. An image made from the volume
+carries the marker too, unless `cloud-init clean` ran first.
 
-`always` keeps no marker, but while it stays in user data it adds the key back on every boot, even after you
-delete it by hand. With either line in place, the final stage skips its other
-modules, such as `scripts_user` and `final_message`. That is why step 7 clears
-the user data. Which line fits depends on your instance:
+`always` keeps no marker, but while it stays in user data it adds the key back
+on every boot, even after you delete it by hand. With either line in place, the
+final stage skips its other modules, such as `scripts_user` and
+`final_message`. That is why step 7 clears the user data.
 
-{{< viz kind="lssh-choose" wide="false" fig="3" title="Which line should you use?" fallback="lanes.svg" alt="once adds the key on the first recovery and skips a second one; always adds the key every time but re-adds it on every boot while set; no override never adds it" caption="The three boots come from the same container runs as Fig. 2." >}}
-
-If you used `once` and may need this again, delete
+Use `once` on a disk that has never been recovered this way. If it has, or you
+are not sure, use `always` and clear the user data as soon as you are in. To
+keep `once` working for next time, delete
 `/var/lib/cloud/sem/config_users_groups.once` once you are back in.
 
 # Limits

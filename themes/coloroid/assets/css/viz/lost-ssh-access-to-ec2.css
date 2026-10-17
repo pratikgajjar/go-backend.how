@@ -1,35 +1,21 @@
 /* Figures for "Lost SSH Access to EC2": layout and drawing only.
- * Colours, type, controls and cards come from walviz.css. */
+ * Colours, type and controls come from walviz.css. */
 
-/* SVG drawings */
-.v-lssh-svg { width: 100%; }
-.wv .v-lssh-file { fill: var(--board); stroke: var(--ink); stroke-width: 1.4; }
-.wv .v-lssh-file.is-data { stroke: var(--brown); stroke-dasharray: 5 4; }
+.v-lssh-svg { width: 100%; margin-top: 0.4rem; }
+
+/* files are data at rest: dashed outlines */
+.wv .v-lssh-file { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-dasharray: 5 4; }
 .wv .v-lssh-file.is-bad { fill: var(--red-l); stroke: var(--red); stroke-width: 2; }
-.wv .v-lssh-file.is-absent { fill: var(--green-l); stroke: var(--green); stroke-width: 2; stroke-dasharray: 6 5; }
-.wv .v-lssh-stop { stroke: var(--red); stroke-width: 6; }
+.wv .v-lssh-file.is-absent { stroke: var(--green); stroke-width: 2; stroke-dasharray: 2 4; }
+
+/* a module stopped by its marker */
+.wv .v-lssh-stop { stroke-width: 6; }
+.wv .v-lssh-stop.is-bad { stroke: var(--red); }
+.wv .v-lssh-stop.is-ink { stroke: var(--ink); }
 .wv .v-lssh-ah { fill: var(--green); }
-.wv .v-lssh-kg circle, .wv .v-lssh-kg path { fill: none; stroke-width: 2.2; stroke-linecap: round; }
-.wv .v-lssh-kg.is-data * { stroke: var(--brown); }
+
+.wv .v-lssh-kg circle, .wv .v-lssh-kg path { fill: none; stroke-width: 2; stroke-linecap: round; }
+.wv .v-lssh-kg.is-ink * { stroke: var(--ink); }
 .wv .v-lssh-kg.is-safe * { stroke: var(--green); }
 .wv .v-lssh-kg.is-bad * { stroke: var(--red); stroke-dasharray: 3 3; }
 .wv .v-lssh-kg.is-mute * { stroke: var(--mute); stroke-dasharray: 3 3; }
-
-/* Play cloud-init: on phones, show the disk before the question so the
-   reader can look up the marker while answering. */
-.v-lssh-play {
-  display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem 1rem; align-items: start;
-  grid-template-areas: "q" "t" "a" "l";
-}
-.v-lssh-a-q { grid-area: q; }
-.v-lssh-a-t { grid-area: t; }
-.v-lssh-a-a { grid-area: a; }
-.v-lssh-a-l { grid-area: l; }
-@media (min-width: 760px) {
-  .v-lssh-play { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "q t" "a t" "a l"; }
-}
-/* Wrap long paths and log lines instead of scrolling. The theme sets
-   `pre code { width: max-content !important }` on phones. */
-.wv .v-lssh-play pre.wv-code { white-space: pre-wrap; overflow-wrap: anywhere; }
-body[class*="theme-"] .wv .v-lssh-play pre.wv-code code { width: auto !important; }
-.wv .v-lssh-play .wv-kv dd, .wv .v-lssh-play .wv-kv code { white-space: normal; overflow-wrap: anywhere; }
