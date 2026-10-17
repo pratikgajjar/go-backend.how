@@ -76,11 +76,11 @@ const REQ_OUT = {
   },
   x: {
     subs: [null, ['gone', 'bad'], ['order row written', 'safe'], ['never called', 'bad']],
-    text: 'The database says the order exists, and nothing records that step 3 is still owed. Nobody retries it.', bad: true,
+    text: 'The database says the order exists, and nothing records that step 3 still needs to run. Nobody retries it.', bad: true,
   },
   c: {
     subs: [null, ['must retry later', 'bad'], ['order row written', 'safe'], ['call failed', 'bad']],
-    text: 'The backend must remember to retry step 3, even if it restarts. That needs a durable record of what is owed, written with step 2: an outbox row, or a workflow engine\'s state.',
+    text: 'The backend must remember to retry step 3, even if it restarts. That needs a durable record of the work still to do, written with step 2: an outbox row, or a workflow engine\'s state.',
   },
 };
 
@@ -119,7 +119,7 @@ const TRIP = [
     ],
     hot: [0, 2, 3, 4, 5, 6, 7, 8],
     touch: { hn: 1, shards: 1, cur: 2, exe: 2, aim: 1, tt: 1 },
-    note: 'Every transaction starts with the shard lock. If another History host took shard 3, it bumped <code>range_id</code> when it did. This check then fails, and this host stops writing.',
+    note: 'Every transaction starts with the shard lock. If another History host acquired shard 3, it incremented <code>range_id</code> when it did. This check then fails, and this host stops writing.',
   },
   {
     label: 'Dispatch', events: [],
@@ -163,7 +163,7 @@ const TRIP = [
       { from: 'worker', to: 'hist', via: 'fe', label: 'RespondActivityTaskCompleted' },
       { from: 'hist', to: 'pg', db: 9, label: 'events 6–8, then tx 3' },
     ],
-    call: 'The worker runs <code>ProcessPayment</code> and reports the result. History appends three events and schedules a workflow task, so the workflow can wake up.',
+    call: 'The worker runs <code>ProcessPayment</code> and reports the result. History appends three events and schedules a workflow task, so the workflow code can continue.',
     sql: [
       'INSERT INTO history_node … node_id = «6»     // events 6–8',
       ...FENCE(9),
@@ -637,7 +637,7 @@ function initCrash(fig, app) {
     banner.className = 'wv-note';
     banner.innerHTML = cs.t
       ? `<span class="k">${cs.t}</span>sample time`
-      : '<span class="k">Result</span>Both systems start the interrupted step twice, so step bodies must be idempotent. They differ on the code between steps: Temporal runs it again and checks it against history; Absurd runs it again and trusts it.';
+      : '<span class="k">Result</span>Both systems start the interrupted step twice, so step bodies must be idempotent. They differ on the code between steps: Temporal runs it again and checks it against history; Absurd runs it again and does not check it.';
     paint(CT, T); paint(CA, A);
     for (const [sys, C] of [['T', CT], ['A', CA]]) {
       if (v !== 'clock' || i !== PREDICT[sys].at) continue;
@@ -704,7 +704,7 @@ function initCost(fig, app) {
     const stat = (k, v, cls = 'c-data') => `<div class="wv-stat"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
     stats.innerHTML = stat('Temporal, your Postgres', `${fmt(t * R)}/s`) + stat('Absurd, your Postgres', `${fmt(a * R)}/s`);
     const meas = mt ? ` Measured at N = ${S.n}: ${mt[1]} and ${ma[1]}.` : '';
-    note.innerHTML = `40 + 35 × ${S.n} = ${fmt(t)} and 11 + 7 × ${S.n} = ${fmt(a)} statements per unit, so Temporal runs <b>${(t / a).toFixed(1)}×</b> as many.${meas} The ratio tends to 35 / 7 = 5 as N grows. This counts statements, not their cost.`;
+    note.innerHTML = `40 + 35 × ${S.n} = ${fmt(t)} and 11 + 7 × ${S.n} = ${fmt(a)} statements per unit, so Temporal runs <b>${(t / a).toFixed(1)}×</b> as many.${meas} The ratio tends to 35 / 7 = 5 as N grows. These are statement counts. They do not include the time each statement takes.`;
   }
   new ResizeObserver(() => draw()).observe(app);
   draw();
