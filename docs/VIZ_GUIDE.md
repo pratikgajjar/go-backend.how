@@ -190,6 +190,31 @@ remember, and what the reader does that makes them remember it. Then design
 the smallest figure that makes that happen. If two posts end up with the
 same mechanic, check that it is the best fit for both and not habit.
 
+## Lessons from explorable explanations
+
+From ciechanow.ski, Making Software, Nicky Case's explorable-explanations
+notes, and the `technical-explanatory-minimalism` skill
+(github.com/orchimada/technical-explanatory-minimalism):
+
+- **Decompose, then compose.** Show one part on its own before the whole
+  system. Do not open a post with the full map.
+- **A part keeps its name and colour** in every figure and in the prose.
+- **Label on the artwork.** Put names next to the parts; the key is a
+  backup, not the main way to read the figure.
+- **Layout follows causality.** Left to right or top to bottom in the order
+  the real system moves data or time.
+- **Pick the form by what it shows.** Prose suits abstract ideas, a chart
+  suits relationships, motion suits change over time, and an interactive
+  suits a process, a system, or a model.
+- **One handle, many coordinated changes.** One slider or step should move
+  everything that depends on it, so the reader sees cause and effect.
+- **Scrub equals play.** Reaching step N by Play, Next, or a pill gives the
+  same picture. Keep one state object and one render function.
+- **Hook without prerequisites.** The first interaction needs no prior
+  knowledge.
+- **Real numbers on the figure,** with units, not idealised shapes alone.
+- **Pause work offscreen** and respect reduced motion.
+
 ## Match the interaction to the kind of post
 
 Systems posts (Postgres, Temporal, TigerBeetle, Valkey) explain a
