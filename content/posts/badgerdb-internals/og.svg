@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .ok { fill: var(--green-l); stroke: var(--green); stroke-width: 2.5; }
+    .bad { fill: var(--red-l); stroke: var(--red); stroke-width: 2.5; }
+    .okt { fill: var(--green); } .badt { fill: var(--red); }
+    .axis { stroke: var(--ink); stroke-width: 2.5; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="182" font-size="56" font-weight="800" class="ink">BadgerDB Internals</text>
+  <text x="96" y="228" font-size="28" font-weight="600" class="ink">How an LSM Sustains 1M Writes/sec Without Compaction Stalls</text>
+
+  <!-- same WriteBatch code, two value sizes: throughput (median of 3 runs) -->
+  <line x1="310" y1="264" x2="310" y2="454" class="axis"/>
+  <g font-size="26">
+    <text x="290" y="317" text-anchor="end" class="ink">128 B values</text>
+    <rect x="310" y="272" width="400" height="72" class="ok"/>
+    <text x="730" y="317" class="okt" font-weight="700">891 K ops/s, 0 s stall</text>
+
+    <text x="290" y="413" text-anchor="end" class="ink">1 KB values</text>
+    <rect x="310" y="368" width="110" height="72" class="bad"/>
+    <text x="440" y="413" class="badt" font-weight="700">245 K ops/s, 13.8 s of 20.4 s stalled</text>
+  </g>
+
+  <text x="96" y="514" font-size="26" class="ink">Same code. 1 KB values stay in the LSM, L0 fills, writes wait.</text>
+</svg>
