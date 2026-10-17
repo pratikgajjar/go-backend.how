@@ -14,7 +14,7 @@ html {
     --selection: oklch(83.08% 0.126316 68.2133);
     --selection-fg: oklch(0% 0 0);
     --font-mono: "JetBrains Mono", monospace;
-    --font-display: "Departure Mono", monospace;
+    --font-display: "Bricolage Grotesque", system-ui, sans-serif;
     --font-heading: var(--font-display);
     
     /* Article theme colors - can be overridden per-page */
@@ -60,10 +60,10 @@ body {
 
 /* Article title - elegant display typography */
 .article-title {
-    font-weight: 400;
+    font-weight: 600;
     font-size: 2.8rem;
     line-height: 1.15;
-    letter-spacing: -0.07em;
+    letter-spacing: -0.03em;
     margin-bottom: 0.5em;
 }
 
@@ -82,8 +82,9 @@ h6 {
     font-family: var(--font-heading);
     font-optical-sizing: auto;
     font-style: normal;
+    font-weight: 600;
     line-height: 1.3em;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.02em;
     color: var(--article-text);
 }
 
@@ -93,15 +94,15 @@ h6 {
     font-size: 1.6rem;
     margin-top: 1.5em;
     margin-bottom: 0.6em;
-    letter-spacing: -0.06em;
+    letter-spacing: -0.025em;
 }
 
 .article-content h3 {
-    font-weight: 500;
+    font-weight: 600;
     font-size: 1.25rem;
     margin-top: 1.25em;
     margin-bottom: 0.5em;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.015em;
 }
 
 h1 a,
@@ -306,10 +307,10 @@ header .site-title {
     margin: 0;
     font-family: var(--font-heading);
     line-height: 1.3em;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.02em;
     color: var(--article-text);
     font-size: 2em;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 footer {
@@ -1148,14 +1149,25 @@ body.theme-tiger hr {
     src: url("/fonts/jetbrains/JetBrainsMono-Italic[wght].woff2") format("woff2-variations");
 }
 
-/* Departure Mono for display typography */
+/* Bricolage Grotesque for display typography — SemiBold 600 only, with the
+   opsz axis (12–96) kept so large titles get the display cut. Split into
+   latin + latin-ext subsets; the browser fetches latin-ext only when needed. */
 @font-face {
-    font-family: "Departure Mono";
+    font-family: "Bricolage Grotesque";
     font-style: normal;
-    font-weight: 400;
+    font-weight: 600;
     font-display: swap;
-    font-feature-settings: "locl";
-    src: url("/fonts/departuremono/DepartureMono-Regular.woff2") format("woff2");
+    src: url("/fonts/bricolage/BricolageGrotesque-SemiBold-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: "Bricolage Grotesque";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/bricolage/BricolageGrotesque-SemiBold-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 /* Mobile-specific overrides - must be at end for specificity */
@@ -1743,7 +1755,7 @@ html[data-force-dark] body[class*="theme-"] {
     letter-spacing: 0.18em;
     opacity: 0.75;
     margin-bottom: 0.6rem;
-    font-weight: 400;
+    font-weight: 600;
     border-bottom: 1px dashed;
     padding-bottom: 0.4rem;
 }
@@ -1788,7 +1800,7 @@ html[data-force-dark] body[class*="theme-"] {
     opacity: 0.85;
     line-height: 1;
     font-family: var(--font-display);
-    font-weight: 400;
+    font-weight: 600;
 }
 
 .page-404 p {
