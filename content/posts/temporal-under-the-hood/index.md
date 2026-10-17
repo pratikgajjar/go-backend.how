@@ -13,28 +13,23 @@ featured = true
 
 # What you'll learn
 
-Durable execution engines like [Temporal](https://temporal.io/) are
-increasingly how backend teams handle multi-step workflows — payments,
-order fulfilment, LLM agent loops, scheduled jobs. They make "run this
-4-step thing, retry on failure, wait for a webhook on step 3" trivial to
-express in code.
+Backend teams use durable execution engines like
+[Temporal](https://temporal.io/) for multi-step workflows: payments, order
+fulfilment, LLM agent loops, scheduled jobs. "Run this 4-step thing, retry
+on failure, wait for a webhook on step 3" becomes a few lines of code.
 
-What that leaves out is the _cost_. By the time you ship, your Postgres
-is handling an order of magnitude more queries than you expected, and
-you're not sure why.
+Those few lines have a _cost_ in the database. This post measures it. By
+the end you'll know:
 
-This post dissects that cost. By the end you'll know:
-
-- **What Temporal actually does in Postgres** — every table it creates,
-  every SQL statement per workflow, and why each one exists
-- **How much durability costs you** — in queries, in storage, in Postgres
-  IOPS, and in machines
-- **What a much simpler alternative looks like** — I benchmark
+- **What Temporal does in Postgres**: every table it creates, every SQL
+  statement per workflow, and why each one exists
+- **What durability costs**: in queries, in storage, and in throughput
+- **What a simpler alternative looks like**: I benchmark
   [Absurd](https://github.com/earendil-works/absurd)[^1], a single-SQL-file
   durable-execution engine by Armin Ronacher, against Temporal on the
   same workload
-- **When Temporal's complexity is worth paying for, and when it isn't**
-  — with concrete cost models you can apply to your own workload
+- **When Temporal's complexity is worth paying for**, with cost models
+  you can apply to your own workload
 
 The short version:
 
@@ -46,25 +41,24 @@ The short version:
 The rest of the post explains what the extra ~113 statements buy.
 
 This post does not argue that Temporal is overkill. It measures what you pay
-for. Both systems are good. They're solving slightly
-different versions of the same problem.
+for. The two systems solve different versions of the same problem.
 
 # Two writes and a crash
 
-Almost everyone is in distributed-systems land without realising. A microservice
-making a network call looks like this:
+A service that writes to its database and calls another service is already a
+distributed system:
 
 {{< viz kind="tuth-request" fig="1" title="A request with two writes" wide="false" fallback="request.svg" alt="App calls Backend; Backend writes to its DB (step 2) and calls an external service (step 3); steps 2 and 3 are failure points" >}}
 
-Any of **2** (DB write) or **3** (external service call) can fail for a
-dozen reasons — buggy code, a network blip, the third-party is down, the
-DB is failing over, the instance is gone. Step 2 failing is often worse
-than step 3, because your state store is how you'd even _remember_ to
-retry step 3. The worst case is a crash between them: the database says the
-order exists, and nothing records that step 3 is still owed. How do you guarantee that both calls happened *at least
-once* and that the system converges?
+Step **2** (DB write) and step **3** (external call) can each fail: a bug,
+a network blip, a third-party outage, a database failover, a lost instance.
+A failure at step 2 is often worse, because the database is where you would
+record that step 3 needs a retry. The worst case is a crash between them.
+The database says the order exists, and nothing records that step 3 is
+still owed. You need both calls to happen *at least once*, and the system
+to converge.
 
-Here are the common approaches:
+Common approaches:
 
 1. [Saga](https://microservices.io/patterns/data/saga.html)
 2. [CQRS — Command Query Responsibility Segregation](https://microservices.io/patterns/data/cqrs.html)
@@ -72,31 +66,30 @@ Here are the common approaches:
 4. [Outbox Pattern](https://www.decodable.co/blog/revisiting-the-outbox-pattern) _must read_
 5. Durable Functions / Workflow Engine
 
-This post is about the last one — and specifically, about what it _costs_ to
-run it.
+This post is about the last one, and what it _costs_ to run.
 
 ## Durable execution systems
 
 A durable execution system records the state of each workflow as it runs.
 When a host or the code fails, another machine picks up the execution where
 it stopped, so step 3 is not forgotten. [Temporal](https://temporal.io/) is
-the best-known open-source one. Apart from it, there is an entire zoo:
+the best-known open-source one. Others:
 
 | System | Runtime | Storage | License | Notes |
 |---|---|---|---|---|
 | [Temporal](https://temporal.io/) | Go server | Pluggable (Postgres, MySQL, Cassandra) | MIT | Fork of Cadence |
 | [Cadence](https://github.com/cadence-workflow/cadence) | Go server | same | MIT | The original, by Uber |
 | [Conductor](https://conductor-oss.org/) | Java server | Cassandra / MySQL / Postgres / Redis | Apache-2.0 | By Netflix, now OSS fork |
-| [Restate](https://restate.dev/) | Rust server | own storage | BSL | Promising, single-binary |
+| [Restate](https://restate.dev/) | Rust server | own storage | BSL | Single binary |
 | [DBOS](https://docs.dbos.dev/) | Python/TS SDK | Postgres | MIT | SDK-heavy, ~22k LOC Python |
 | [Inngest](https://www.inngest.com/) | Go server | Postgres + Redis | SSPL | Event-driven, HTTP-based |
 | [Absurd](https://github.com/earendil-works/absurd) | *none* (SDK only) | Postgres | Apache-2.0 | One SQL file, pull-based |
-| [CloudFlare Workflows](https://developers.cloudflare.com/workflows/) | Workers runtime | Cloudflare | proprietary | Vendor-locked |
-| [AWS Step Functions](https://aws.amazon.com/step-functions/) | AWS | AWS | proprietary | Vendor-locked |
-| [Azure Durable Functions](https://learn.microsoft.com/en-us/azure/azure-functions/durable/) | Azure | Azure Storage | proprietary | Vendor-locked |
+| [CloudFlare Workflows](https://developers.cloudflare.com/workflows/) | Workers runtime | Cloudflare | proprietary | Managed only |
+| [AWS Step Functions](https://aws.amazon.com/step-functions/) | AWS | AWS | proprietary | Managed only |
+| [Azure Durable Functions](https://learn.microsoft.com/en-us/azure/azure-functions/durable/) | Azure | Azure Storage | proprietary | Managed only |
 
-We're going to look at two of these in depth — the one that everyone cites as
-the "real" solution (Temporal) and the one that fits on a napkin (Absurd).
+This post measures two of them: Temporal, and Absurd, which fits in one SQL
+file.
 
 # Vocabulary
 
@@ -112,39 +105,35 @@ Both systems use the same ideas under slightly different names.
 | Event History | Checkpoints | The replay state |
 | Signal | Event | External wake-up |
 
-The **activity/step** is the hinge: once it completes, its result is
-persisted, and re-executing the workflow will skip it. That's what makes the
-whole thing "durable".
+The **activity/step** is the key unit. When it completes, its result is
+persisted, and a re-run of the workflow skips it. That is what makes the
+workflow durable.
 
 # How Temporal runs
 
-Your worker is stateless and talks to the Temporal server via gRPC. The
-Temporal server itself is _not_ a single binary; it's four internal
-services (processes you run) that all share one database (Postgres, MySQL,
-or Cassandra).
+Your worker is stateless and talks to the Temporal server over gRPC. The
+server is four internal services that share one database (Postgres, MySQL,
+or Cassandra). They can run as separate processes or together in one.
 
 **Frontend** terminates gRPC, authenticates, and routes requests to one of
 the three back-end services. **History** owns workflow state machines
 (executions, event history, scheduled tasks). **Matching** runs the task
 queues that activities and workflow tasks are dispatched through.
-**Worker** runs Temporal's own internal maintenance workflows — confusingly
-named, nothing to do with _your_ worker processes.
+**Worker** runs Temporal's own internal maintenance workflows. It is not
+related to _your_ worker processes.
 
-When you scale Temporal horizontally, you scale those services (more
-process replicas), not your database (until you do). That's the whole
-operational contract. The services are stateless replicas of each other,
-and Postgres holds all the state.
+The services keep no state of their own; Postgres holds all of it. To scale
+Temporal, you add service replicas. The database does not scale that way.
 
 # What Temporal writes to Postgres
 
-I use Postgres because it's the easiest backend to inspect, and because it
-exposes the scaling story cleanly. Most production Temporal clusters end up
-database-bound: the server services are stateless, the database is not.
+I use Postgres because it is the easiest backend to inspect. Most production
+Temporal clusters end up database-bound, so the database is where to look.
 
 ## The schema
 
-A fresh Temporal 1.28 auto-setup installs **37 tables** into your database.
-Here are the ones that matter:
+A fresh Temporal 1.28 auto-setup installs **37 tables**. These are the ones
+that matter:
 
 ```txt
 shards                   ─ owns a range of workflows (the unit of sharding)
@@ -165,12 +154,10 @@ cluster_membership       ─ which server nodes are alive
 namespaces               ─ tenant isolation
 ```
 
-Plus another 21 tables for request cancellations, signals, child workflows,
-chasm nodes, namespace metadata, nexus endpoints, replication DLQ, schema
-versioning, etc. (the full schema lives in upstream Temporal[^6]).
-
-Every one of these tables is there to support a _specific_ distributed-systems
-guarantee. Let's unpack the important ones.
+The other 21 tables cover request cancellations, signals, child workflows,
+chasm nodes, namespace metadata, nexus endpoints, the replication DLQ, and
+schema versioning[^6]. Each table supports a specific distributed-systems
+guarantee.
 
 ## Sharding: workflows → shards
 
@@ -189,15 +176,15 @@ func WorkflowIDToHistoryShard(
 }
 ```
 
-A `(namespace_id, workflow_id)` pair hashes to a **shard_id**. That shard is
-owned by one history service instance. Every write for that workflow —
-executions, history events, scheduled tasks — goes to that shard.
+A `(namespace_id, workflow_id)` pair hashes to a **shard_id**. One History
+instance owns that shard. Every write for that workflow (executions, history
+events, scheduled tasks) goes to that shard.
 
 The default `numHistoryShards` in dev is 4. A production cluster uses 512 or
 2048. **You cannot change this number without re-sharding your database**, so
-people tend to over-provision it upfront.
+teams over-provision it up front.
 
-The shard table itself looks like this:
+The shard table:
 
 ```sql
 CREATE TABLE shards (
@@ -213,15 +200,13 @@ CREATE TABLE shards (
 it increments `range_id` with an `UPDATE shards`. Every later write from that
 host checks `range_id` in the same transaction, so a host that lost the shard
 gets rejected.
-This is how Temporal guarantees that only one host is mutating a workflow's
-state at a time.
-
-You will see `SELECT range_id FROM shards WHERE shard_id = $1 FOR SHARE`
-on **every** workflow mutation. We'll count them below.
+This is how Temporal ensures that only one host mutates a workflow's state
+at a time. You will see `SELECT range_id FROM shards WHERE shard_id = $1 FOR SHARE`
+on **every** workflow mutation.
 
 ## The executions table: current state
 
-This is where a workflow's current state lives:
+A workflow's current state lives here:
 
 ```sql
 CREATE TABLE executions (
@@ -240,20 +225,18 @@ CREATE TABLE executions (
 );
 ```
 
-The `data` column holds a protobuf-serialised `WorkflowMutableState` — the
-complete current state of the workflow, including pending activities, timers,
-child workflows, and so on. It's a single blob that Temporal reads, mutates
-in memory, and writes back.
+The `data` column holds a protobuf-serialised `WorkflowMutableState`: the
+full current state, including pending activities, timers, and child
+workflows. Temporal reads the blob, changes it in memory, and writes it back.
 
-`db_record_version` is **another fencing token** — this one for
-optimistic-concurrency writes on individual workflows. Combined with `range_id`,
-Temporal guarantees single-writer semantics at two levels: shard and workflow.
+`db_record_version` is **a second fencing token**, for optimistic-concurrency
+writes on one workflow. With `range_id`, Temporal has a single writer at two
+levels: shard and workflow.
 
 ## history_node: the event log
 
-Now the interesting one. Temporal is fundamentally **event-sourced**: the
-authoritative state of every workflow is the sequence of events it emitted,
-not the `executions` blob. The blob is just a cache.
+Temporal is **event-sourced**. The authoritative state of a workflow is the
+sequence of events it emitted. The `executions` blob is a cache.
 
 ```sql
 CREATE TABLE history_node (
@@ -269,11 +252,9 @@ CREATE TABLE history_node (
 );
 ```
 
-A single "node" contains a batch of events. Let me show you what a
-3-activity workflow actually writes.
-
-This is the full history of one `OrderFulfillmentWorkflow` execution from my
-benchmark, which calls three activities in sequence:
+One row ("node") holds a batch of events. This is the full history of one
+`OrderFulfillmentWorkflow` run from my benchmark. It calls three activities
+in sequence:
 
 ```txt
  1  WorkflowExecutionStarted   {WorkflowType:OrderFulfillmentWorkflow, Input:...}
@@ -307,11 +288,10 @@ in batches, one batch per transaction, and each batch is one row in
 `history_node`: 23 events become 12 rows. Figure 2 below shows the three
 batches of one activity.
 
-These events exist for replay. If your worker
-crashes mid-workflow, Temporal replays the entire event history against your
-workflow code — which *must* be deterministic — and the SDK routes every
-`ExecuteActivity` call to its already-recorded result instead of executing it
-again. The 23 events are what makes that replay possible.
+These events exist for replay. If your worker crashes mid-workflow, Temporal
+replays the full event history against your workflow code, which *must* be
+deterministic. The SDK returns each `ExecuteActivity` call's recorded result
+instead of running it again.
 
 ## One activity, four transactions
 
@@ -323,8 +303,7 @@ schedules it to the workflow code that gets its result.
 
 {{< viz kind="tuth-trip" fig="2" title="One activity, four transactions" fallback="trip.svg" alt="One activity through your worker, the frontend, history, and matching, with the Postgres statements each of its four transactions runs" caption="`ProcessPayment` in the 3-activity benchmark workflow. Statements and event batches follow the Temporal 1.28.2 source and match the measured per-activity deltas below. Shard 3 is a sample value." >}}
 
-Two details are easy to miss. Each of the four transactions starts with the
-same five statements: the shard lock, then a lock and an update on
+Each of the four transactions starts with the same five statements: the shard lock, then a lock and an update on
 `current_executions` and on `executions`. And a worker never queries Postgres.
 It long-polls Matching over gRPC, and Matching writes to `tasks` only when no
 worker is waiting.
@@ -337,12 +316,11 @@ timeouts in the figure), `visibility_tasks` (search index updates), and
 
 ## A real query trace
 
-To check the model against reality, I ran real workflows and counted what
-Postgres sees. I spun up Postgres 17 and Temporal 1.28.2 inside a Podman Linux VM on
-an M4 Mac mini, enabled `pg_stat_statements`, and ran **500 workflows with 3
-activities each**.
+To check the model, I counted what Postgres sees. I ran Postgres 17 and
+Temporal 1.28.2 in a Podman Linux VM on an M4 Mac mini, enabled
+`pg_stat_statements`, and ran **500 workflows with 3 activities each**.
 
-Here are the top queries by call count, after `pg_stat_statements_reset()`:
+Top queries by call count, after `pg_stat_statements_reset()`:
 
 ```sql
  calls | avg_ms | per-wf | query
@@ -365,18 +343,16 @@ Here are the top queries by call count, after `pg_stat_statements_reset()`:
 ```
 
 Counting every non-trivial statement (ignoring `BEGIN`/`COMMIT`/`SET`) gives
-**~145 SQL statements per 3-activity workflow**. Across 16 different tables.
+**~145 SQL statements per 3-activity workflow**, across 16 tables.
 
-This is the cost of event sourcing with strict ordering and fencing, and
-Figure 2 shows where it comes from: every transaction fences the shard and the
-workflow row before it writes events, timers, and tasks. Every statement is
-fast — 0.003 to 0.023 ms — but there are a lot of them.
+Figure 2 shows where they come from: every transaction fences the shard and
+the workflow row before it writes events, timers, and tasks. Each statement
+takes 0.003 to 0.023 ms. The cost is in the count.
 
-## How does it scale per activity?
+## Cost per activity {#how-does-it-scale-per-activity}
 
-This is the part I really wanted to pin down. I ran the same 200-workflow
-benchmark but with 1, 3, 5, and 10 no-op activities per workflow, resetting
-`pg_stat_statements` each time:
+I ran a 200-workflow benchmark with 1, 3, 5, and 10 no-op activities per
+workflow, and reset `pg_stat_statements` before each run:
 
 | activities | total SQL | per-workflow | throughput |
 |-----------:|----------:|-------------:|-----------:|
@@ -402,8 +378,7 @@ Temporal cost model:  ~40 + 35 × N   SQL statements per workflow
                                      (where N = activity count)
 ```
 
-Where do the 35 per-activity queries land? I diffed the N=1 and N=5 runs
-and computed the delta per activity:
+To place the 35 per-activity statements, I diffed the N=1 and N=5 runs:
 
 | Per-activity ops                | N=1  | N=5   | delta÷4 |
 |---------------------------------|-----:|------:|--------:|
@@ -439,16 +414,12 @@ These deltas are the four transactions from [Figure 2](#one-activity-four-transa
 - **~2** `tasks` and `task_queues` statements, when Matching has no worker
   waiting
 
-That is the decomposition of the 35. None of it is wasted: every statement
-corresponds to a specific distributed-systems guarantee. But every write
-is also a WAL record to flush and a dead row to vacuum, and every
-`FOR UPDATE` is a lock to acquire.
+Each statement backs a specific guarantee. Each write is also a WAL record
+to flush and a dead row to vacuum, and each `FOR UPDATE` is a lock to take.
 
-Run these numbers against your own workflow: a 20-activity checkout flow is
-~740 SQL statements against 16 tables, per checkout. On a 1K-checkouts/sec
-service, that's **740,000 statements/sec in Postgres**. Sharding and
-matching replicas scale horizontally, but the database is where the meter
-ticks.
+Apply this to a 20-activity checkout flow: ~740 SQL statements per
+checkout. At 1K checkouts/sec, that is **740,000 statements/sec in
+Postgres**. History and Matching replicas scale out. The database does not.
 
 ## Storage cost
 
@@ -472,23 +443,20 @@ task_queues                   67 rows    344 kB
 total                                     93 MB
 ```
 
-That is about 12.5 kB per workflow. The `history_node` table alone is
-44 MB across 91,522 rows, 12 per workflow — each row
-batches multiple protobuf-encoded events (averaging **~280 bytes of
-event-payload per row**, plus btree overhead). That's Temporal's
-"receipts file", and **it never goes away** unless you explicitly
-configure history retention.
+That is about 12.5 kB per workflow. `history_node` is 44 MB: 91,522 rows,
+12 per workflow, each a batch of protobuf-encoded events (**~280 bytes of
+event payload per row**, plus btree overhead). A closed workflow's history
+stays until the namespace's retention period ends, at least 1 day[^10].
 
-Even `activity_info_maps` is interesting: 16 live rows, but 2.6 MB because
-its btree indexes are not yet vacuumed. Temporal churns this table hard —
-insert on schedule, delete on completion, insert again on retry. Index
-bloat is a known operational concern.
+`activity_info_maps` has 16 live rows but takes 2.6 MB, because its btree
+indexes are not yet vacuumed. Temporal inserts a row on schedule, deletes it
+on completion, and inserts again on retry, so the indexes bloat.
 
 ## Throughput
 
-Running my 500-workflow benchmark with a single worker
+The 500-workflow benchmark, with one worker
 (`MaxConcurrentActivityExecutionSize=500`, `MaxConcurrentWorkflowTaskExecutionSize=500`)
-and concurrent starts from a single client:
+and concurrent starts from one client:
 
 | Starts | Concurrency | Throughput | p50 ms | p99 ms | Max ms |
 |--------|-------------|-----------:|-------:|-------:|-------:|
@@ -497,15 +465,13 @@ and concurrent starts from a single client:
 |  1000  |      64     |   65.6/s   |  660.9 | 2976.3 | 4799.4 |
 |  5000  |     128     |   77.5/s   | 1049.6 | 7060.9 |13668.0 |
 
-Adding spawn concurrency lifts throughput because Temporal's backend is doing
-dozens of writes per workflow and the client bottleneck at 16 is the
-round-trip time, not the backend. The backend saturates near ~80 workflows/s
-on this hardware — **about 11,600 SQL statements/s across all those tables**
-(80 × 145).
+At concurrency 16 the client waits on round trips, so more concurrency lifts
+throughput. The backend saturates near 80 workflows/s on this hardware:
+**about 11,600 SQL statements/s** (80 × 145).
 
-This is a single `auto-setup` pod on a 4-CPU VM. Real Temporal clusters run
-history/matching as separate replicas and scale linearly with database IOPS.
-The number of SQL statements per workflow does not change with cluster size.
+This is one `auto-setup` container on a 4-CPU VM. Production clusters run
+History and Matching as separate replicas and scale with database IOPS. The
+SQL statements per workflow do not change with cluster size.
 
 ---
 
@@ -514,16 +480,14 @@ because each activity takes four transactions that each fence the shard and
 the workflow row. Its history grows by 6 events and 3 rows per activity. On
 one 4-CPU VM it tops out near 80 workflows/s.
 
-Now the other extreme.
-
 # Absurd: the Postgres-only counterpart
 
-[Absurd](https://github.com/earendil-works/absurd) was built by Armin Ronacher
-(of Flask / Jinja fame) for Earendil's agent workloads. It's a **single `.sql`
-file** — 1,685 lines[^4] — that installs a durable-execution engine into your
-existing Postgres. It has no server or services of its own. The SDK is
-under 2,000 lines of code per language. You apply the SQL, create a queue,
-connect workers, and go.
+Armin Ronacher (author of Flask and Jinja) built
+[Absurd](https://github.com/earendil-works/absurd) for Earendil's agent
+workloads. It is a **single `.sql` file**, 1,685 lines[^4], that installs a
+durable-execution engine into an existing Postgres. It has no server of its
+own. The SDK is under 2,000 lines per language. You apply the SQL, create a
+queue, and connect workers.
 
 It came out in November 2025[^1]. Armin has since written about running it
 in production at Earendil[^2]. I ran the same benchmark against it.
@@ -541,9 +505,9 @@ e_default   ─ events (external signals, first-write-wins)
 w_default   ─ wait registrations (sleeping on events)
 ```
 
-Absurd has no shard table, history log, or transfer queue. Three of the five tables carry the primary workload (tasks, runs,
-checkpoints); the other two (`e_`, `w_`) only grow when you use events. The
-full schema for one queue:
+Absurd has no shard table, history log, or transfer queue. Three of the five
+tables carry the main workload (tasks, runs, checkpoints). The other two
+(`e_`, `w_`) grow only when you use events. The three main tables:
 
 ```sql
 CREATE TABLE absurd.t_default (
@@ -594,12 +558,12 @@ CREATE TABLE absurd.c_default (
 ) WITH (fillfactor=70);
 ```
 
-`fillfactor=70` leaves slack in each page for HOT updates — a Postgres trick
-to keep update-heavy tables fast. The rest are plain rows.
+`fillfactor=70` leaves free space in each page for HOT updates, which keeps
+update-heavy tables fast. The rest is plain rows.
 
 ## The claim loop
 
-Every Absurd worker runs this function, via stored procedure:
+Every Absurd worker calls this stored procedure:
 
 ```sql
 CREATE FUNCTION absurd.claim_task(
@@ -646,15 +610,14 @@ END;
 $$;
 ```
 
-`SELECT ... FOR UPDATE SKIP LOCKED` was added to Postgres 9.5 in 2016[^7]
-specifically for this use case: multiple consumers can poll the same queue
-without blocking each other. This is also the basis for pgmq[^8],
-[River](https://riverqueue.com/), and a half-dozen other Postgres-native
-queues. Absurd just layers state machines and checkpoints on top.
+Postgres 9.5 (2016) added `SELECT ... FOR UPDATE SKIP LOCKED`[^7] for this
+case: many consumers poll one queue without blocking each other. pgmq[^8],
+[River](https://riverqueue.com/), and other Postgres-native queues use it
+too. Absurd adds state machines and checkpoints on top.
 
-## A step is just a checkpoint
+## A step is a checkpoint {#a-step-is-just-a-checkpoint}
 
-Here's what the Absurd worker does for each task:
+For each task, the Absurd worker does this:
 
 ```txt
 # pseudocode — the real SDK wraps this more ergonomically
@@ -684,13 +647,13 @@ This is the main difference from Temporal:
 | Code between steps | Must be deterministic & bounded | Runs however many times it runs |
 
 The figure kills the worker during step 3 in both systems. Switch the code
-between steps to read the clock to see where the two models part.
+between steps to read the clock to see where the models differ.
 
 {{< viz kind="tuth-crash" fig="3" title="The worker dies during step 3" fallback="crash.svg" alt="Timeline of Temporal and Absurd recovering from a worker crash during the third step, with and without code that reads the clock" caption="Behaviour from Temporal 1.28.2, Go SDK 1.34, and `absurd.sql`. Timeouts are the benchmark's: a 30 s activity StartToClose and a 30 s Absurd claim. Clock times are sample values. `exec` stands for `workflow.ExecuteActivity(…).Get(…)`." >}}
 
-The Absurd model checks less. You can re-run an LLM call or a random number
-generator between steps, and Absurd does not notice. In exchange, the mental
-model is much simpler: a step either has a checkpoint or it runs.
+Absurd checks less. Code between steps can call an LLM or a random number
+generator, and Absurd does not notice. In exchange, the model is simpler: a
+step either has a checkpoint or it runs.
 
 ## A real query trace
 
@@ -707,9 +670,8 @@ After running **5000 Absurd tasks** with 3 steps each:
 ```
 
 **~32 SQL statements per 3-step task**, touching only 3 of the 5 tables
-(`t_`, `r_`, `c_`; `e_` and `w_` are unused because we don't emit events).
-Running the same
-1/3/5/10 scaling experiment:
+(`t_`, `r_`, `c_`; `e_` and `w_` stay empty because the workload emits no
+events). The same 1/3/5/10 scaling run:
 
 | steps | total SQL | per-task | throughput |
 |------:|----------:|---------:|-----------:|
@@ -744,20 +706,16 @@ step.** The slope ratio, 35 / 7, stays at 5 as you add units of work. The
 ratio of totals rises from 4.2× at `N = 1` on the fitted lines (4.3× measured)
 toward 5×.
 
-Each Absurd step is:
-- 1 checkpoint read (returns empty on first run, cached value on replay)
-- 1 checkpoint write (on first run)
-- plus amortized claim polling and implicit internal queries in the SPs
+Each Absurd step is one checkpoint read (empty on the first run, the cached
+value on replay) and one checkpoint write on the first run. On top of that
+come a share of the batched claim polling and the queries inside the stored
+procedures. A task adds one `spawn_task` (a row in `t_` and `r_`) and one
+`complete_run` (marks `r_` and `t_` completed, clears `w_`).
 
-Task lifecycle is:
-- 1 spawn_task (inserts a row in `t_` and `r_`)
-- N step reads + N step writes
-- 1 complete_run (marks `r_` as completed, `t_` as completed, clears `w_`)
-- Plus your share of claim polling (batched)
-
-The average `set_task_checkpoint_state` takes 0.342ms — slightly more than
-Temporal's raw inserts because it's a full stored procedure with multiple
-updates inside it. But there are an order of magnitude fewer round trips.
+One `set_task_checkpoint_state` call averages 0.342 ms. That is more than any
+single Temporal statement (0.003 to 0.023 ms), because it is a stored
+procedure with several updates inside. Absurd makes about a fifth as many
+calls.
 
 ## Storage cost
 
@@ -774,12 +732,9 @@ queues                        1 rows    32 kB
 total                                  13 MB
 ```
 
-- 3 checkpoint rows per task (one per step).
-- 1 run row per attempt (on first-try success, 1 row per task).
-- 1 task row per task.
-
-That is about 1.9 kB per task. No event history means no 44 MB
-`history_node`. **Absurd stores ~7× less per task.**
+Each task has 3 checkpoint rows (one per step), one run row per attempt, and
+one task row. That is about 1.9 kB per task. With no event history, **Absurd
+stores ~7× less per task.**
 
 ## Throughput
 
@@ -791,17 +746,16 @@ Same hardware, same workload:
 |  1000  |     64      |   8     | 1435.8/s   |  285.4 | 518.9  |  524.0 |
 |  5000  |    128      |  16     | 1450.6/s   | 1564.5 |2705.1  | 2729.4 |
 
-Absurd saturates around 1,450 tasks/s — **~20× higher throughput** than
-Temporal on identical hardware (22× at 1,000 starts, 19× at 5,000), and much
-tighter tail latencies (519 ms p99 vs 2976 ms p99 at 1,000 starts). On this
-hardware Postgres plus 16 worker goroutines is the bottleneck, not
-anything Absurd does.
+Absurd saturates near 1,450 tasks/s, **~20× Temporal's throughput** on the
+same hardware (22× at 1,000 starts, 19× at 5,000). Its p99 at 1,000 starts
+is 519 ms, against 2,976 ms for Temporal. The bottleneck here is Postgres and
+the 16 worker goroutines.
 
 # Single-workflow round-trip latency
 
-Throughput under load is one axis; latency for a _single_ workflow is
-another. If you throw one workflow at each system at a time and wait for
-completion before starting the next (n=100 per row):
+Latency for a _single_ workflow is a separate measure. I ran one workflow at
+a time on each system and waited for it to complete before the next (n=100
+per row):
 
 | N  | Temporal p50 | Absurd p50 | ratio |
 |---:|-------------:|-----------:|------:|
@@ -810,19 +764,16 @@ completion before starting the next (n=100 per row):
 |  5 |     67.3 ms  |   11.1 ms  |  6.1× |
 | 10 |     90.7 ms  |   12.1 ms  |  7.5× |
 
-The per-activity latency slope is **~8.5 ms in Temporal** versus **~0.2 ms
-in Absurd** — a 42.5× difference per unit of work. Each Absurd step is
-essentially just a single `set_task_checkpoint_state` stored-procedure call
-(0.342 ms measured). Each Temporal activity routes through the matching
-service's dispatch loop, a decision round-trip back to the worker, then
-history event persistence — several network hops per activity, even on a
-single-node deploy.
+Per activity, latency grows **~8.5 ms in Temporal** and **~0.2 ms in
+Absurd**, a 42.5× difference. An Absurd step is a checkpoint read and a
+`set_task_checkpoint_state` call. A Temporal activity goes through Matching's
+dispatch loop, a workflow task round trip to the worker, and history writes:
+several network hops, even on a single-node deploy.
 
-Temporal's tail is dramatic and bimodal: the p50 for a 10-activity workflow
-is ~91 ms, but the p90 is **1.05 seconds** — an 11.6× gap inside one
-distribution. Most of that variance is matching-service dispatch jitter
-(sticky queue falling back to normal dispatch). Absurd's p99 for a 10-step
-task was **20.2 ms** — tail essentially matches the median.
+Temporal's tail is bimodal. For 10 activities, p50 is ~91 ms and p90 is
+**1.05 s**, an 11.6× gap. Most of that gap is Matching dispatch jitter: the
+sticky queue falls back to normal dispatch. Absurd's p99 for 10 steps was
+**20.2 ms**.
 
 # Head to head
 
@@ -831,8 +782,7 @@ services next to Postgres. The benchmark used the `auto-setup` image, which
 runs all four in one process. To run Absurd, you apply one SQL file to
 Postgres and run your workers.
 
-Same workload (3-step order fulfillment), same hardware, same Postgres
-instance, same VM:
+Same 3-step workload, hardware, Postgres instance, and VM:
 
 | Dimension | Temporal | Absurd |
 |---|---|---|
@@ -851,42 +801,40 @@ instance, same VM:
 
 # What Temporal gives you in return
 
-The numbers above are the cost. Here is what Temporal gives you for the
-heavier machinery:
+The numbers above are the cost. This is what the extra machinery buys:
 
-**1. Deterministic replay.** The worker process can die at any point, and a
-fresh one rebuilds the workflow by replaying every event. This is powerful — you can write `if (x > 0) signalSomeone()`
-and Temporal guarantees that on replay, `x` has the same value and the
-branch is taken the same way. Absurd doesn't give you this; you have to
-manually ensure that between-step code is idempotent. [Figure 3](#a-step-is-just-a-checkpoint)
-shows both sides when the code reads the clock.
+**1. Deterministic replay.** A worker can die at any point, and a fresh one
+rebuilds the workflow by replaying every event. If you write
+`if (x > 0) signalSomeone()`, Temporal ensures that on replay `x` has the
+same value and the code takes the same branch. In Absurd, you must make
+between-step code idempotent yourself. [Figure 3](#a-step-is-just-a-checkpoint)
+shows both when the code reads the clock.
 
 **2. Signals, timers, child workflows as first-class primitives.** Temporal
 has dedicated table machinery for signals (`signals_requested_sets`,
 `signal_info_maps`), child workflows (`child_execution_info_maps`), and
 user timers (`timer_info_maps`). You can `workflow.Signal()` a running workflow
 from outside and Temporal routes it through matching with correct ordering.
-Absurd has events, which are first-emit-wins and much simpler, but less
-expressive.
+Absurd has events, which are first-emit-wins: simpler, but less expressive.
 
-**3. Battle-tested at Uber / Snap / Netflix scale.** Cadence (Temporal's
-predecessor) powers Uber's workflow orchestration. Temporal itself is used
-by Snap, Box, Coinbase, and many more. If your workflows span months or
-cross data centers, you want that hardening.
+**3. Production use at Uber, Snap, and Netflix scale.** Cadence, Temporal's
+predecessor, runs workflow orchestration at Uber. Snap, Box, Coinbase, and
+others use Temporal. Workflows that span months or cross data centers need
+that hardening.
 
 **4. Versioning & replay migration.** When you update workflow code, Temporal
 has [patched / version APIs](https://docs.temporal.io/dev-guide/typescript/versioning)
 to keep old workflows replayable. Absurd's "re-run between checkpoints" model
-lets you deploy any code — which is nice for agility, less nice for
-correctness when you _want_ historical workflows to replay as they did before.
+lets you deploy any code. That helps agility, and hurts correctness when you
+_want_ old workflows to replay as they did before.
 
-**5. Cross-cluster replication.** That `replication_tasks` table exists to
-mirror workflow state to another DC. Temporal supports geo-redundant clusters.
-Absurd is one Postgres instance — you can replicate Postgres, but you lose
-the workflow-level replication semantics.
+**5. Cross-cluster replication.** The `replication_tasks` table mirrors
+workflow state to another data center. Temporal supports geo-redundant
+clusters. Absurd runs on one Postgres instance. You can replicate Postgres,
+but you lose workflow-level replication semantics.
 
-**6. A huge ecosystem.** UI, metrics, observability integrations, a CLI,
-dozens of SDKs, a Temporal Cloud. When things go wrong at 3am, that matters.
+**6. Ecosystem.** A UI, metrics, observability integrations, a CLI, SDKs in
+7 languages, and Temporal Cloud. That matters during an incident at 3am.
 
 From the Absurd comparison docs[^3]:
 
@@ -908,42 +856,36 @@ From the Absurd comparison docs[^3]:
 
 - You already run a platform team that can operate gRPC services and a
   Postgres cluster that handles tens of thousands of IOPS.
-- Your workflows span weeks/months, have complex versioning needs, use
+- Your workflows span weeks or months, need complex versioning, or use
   signals heavily.
 - You need cross-DC replication or compliance-grade audit trails.
-- You're buying the ecosystem (UI, SDKs in 7 languages, Temporal Cloud).
+- You want the ecosystem: UI, SDKs in 7 languages, Temporal Cloud.
 
 **Pick Absurd (or a Postgres-native system) when:**
 
-- You want to self-host durable execution in an app you're shipping, without
-  forcing your users to run another service.
-- Your workflows are minutes-to-days-long, with straightforward retry
-  semantics.
-- You're writing agents or LLM pipelines where between-step code naturally
-  varies (sampling, timestamps, non-determinism) and deterministic replay
-  would actually get in the way.
+- You ship durable execution inside an app your users self-host, and you do
+  not want them to run another service.
+- Your workflows run minutes to days, with simple retry semantics.
+- You write agents or LLM pipelines where between-step code varies
+  (sampling, timestamps), and deterministic replay would get in the way.
 - You want to read the entire engine in an afternoon.
 
 **Pick something in between** (DBOS, Inngest, Restate) when your needs sit
-between these poles. The space is young and healthy; the choices are better
-than they were two years ago.
+between these two.
 
 # Takeaways
 
-Temporal's complexity isn't incidental. Event sourcing, sharded fencing
-tokens, separate matching/history/frontend services, and 37 tables are
-what you need to build a distributed workflow runtime that scales to
-millions of workflows, survives zone failures, and supports workflows that
-run for years. If you need that, the cost is worth paying.
+Temporal's complexity has a purpose. Event sourcing, sharded fencing tokens,
+separate matching/history/frontend services, and 37 tables let a workflow
+runtime scale to millions of workflows, survive zone failures, and run
+workflows for years. If you need that, the cost is worth paying.
 
-Most of us don't. Most of the durable-execution needs I've seen in
-practice are "run this 4-step thing, make sure it eventually finishes,
-retry on failure, let me wait for this webhook." That's an afternoon's
-worth of SQL.
+Most durable-execution needs I've seen in practice are "run this 4-step
+thing, make sure it eventually finishes, retry on failure, let me wait for
+this webhook." That's an afternoon's worth of SQL.
 
-When sirupsen's napkin math[^9] tells you to start with the
-first-principles back of the envelope, this is what it looks like in
-the workflow-engine domain:
+The back-of-the-envelope numbers, in the style of Sirupsen's napkin
+math[^9]:
 
 ```txt
 Temporal:  ~40 + 35·N   SQL per workflow   (37 tables, event-sourced, fenced)
@@ -956,21 +898,16 @@ Absurd:    ~11 +  7·N   SQL per task       ( 5 tables, checkpoint-based)
        latency-slope ratio:   42.5×
 ```
 
-Temporal is event-sourced **insurance** — deterministic replay,
-cross-DC replication, workflows that run for years. Absurd is
-checkpoint-based **minimalism** — one SQL file, one database, no
-extra services.
-
-Both are correct answers, to different problems. Before you adopt either,
-multiply `35 × activities_per_workflow × workflows_per_sec` and check
-whether that's what you want your Postgres doing all day, and whether you
-need the guarantees it pays for.
+Before you adopt Temporal, multiply
+`35 × activities_per_workflow × workflows_per_sec`. That is the load your
+Postgres carries all day. Then check whether you need the guarantees it pays
+for.
 
 # Appendix: reproducing the benchmarks
 
-Everything runs inside a Podman Linux VM on macOS — the same setup I used
-for the [1B Payments/Day post](../1b-payments-per-day/). Full source and
-setup scripts are in the bench/ directory of this site's repo.
+Everything runs inside a Podman Linux VM on macOS, the same setup I used
+for the [1B Payments/Day post](../1b-payments-per-day/). Source and setup
+scripts are in [`bench/`](https://github.com/pratikgajjar/go-backend.how/tree/main/bench).
 
 **Hardware:** Apple M4 Pro Mac mini, 10 cores, 24 GB RAM, macOS 26.1
 **VM:** Podman machine, 4 CPUs, 8 GB RAM, kernel 6.12 aarch64
@@ -1013,7 +950,7 @@ Storage comes from `pg_total_relation_size()` per table.
 
 _Disclaimer: benchmarks ran on a single M4 Mac mini inside a 4-CPU Podman VM.
 Production Temporal deployments scale history and matching services
-horizontally and use much larger Postgres clusters. The throughput numbers
+horizontally and use larger Postgres clusters. The throughput numbers
 here should be read as "ratio of orchestration work per unit of user work,"
 not as production capacity planning._
 
@@ -1026,6 +963,7 @@ not as production capacity planning._
 [^7]: [What is SELECT … SKIP LOCKED for? — 2ndQuadrant](https://www.2ndquadrant.com/en/blog/what-is-select-skip-locked-for-in-postgresql-9-5/)
 [^8]: [pgmq — a battle-tested Postgres queue](https://github.com/pgmq/pgmq)
 [^9]: [napkin-math — Sirupsen](https://github.com/sirupsen/napkin-math)
+[^10]: [Retention Period — Temporal docs](https://docs.temporal.io/temporal-service/temporal-server#retention-period)
 
 _Temporal® is a trademark of Temporal Technologies, Inc. PostgreSQL® is a trademark of The PostgreSQL Global Development Group. Absurd is by Armin Ronacher / Earendil Works. This post is an independent benchmark and analysis — it is not affiliated with, endorsed by, or sponsored by any of these projects. All trademarks belong to their respective owners._
 
@@ -1046,8 +984,7 @@ wrote the Go benchmark drivers, ran the workloads, queried
 diagrams, and then wrote a Python script to double-check its own
 arithmetic — which caught three mistakes I'd have otherwise shipped
 (see [`bench/validate_math.py`](https://github.com/pratikgajjar/go-backend.how/blob/main/bench/validate_math.py)).
-Turns out "reviewed by the same LLM that wrote it" still beats "not
-reviewed."
+"Reviewed by the same LLM that wrote it" still beats "not reviewed."
 
 Session stats (final total from the pi harness):
 
@@ -1056,13 +993,7 @@ model           input   output  cache_read  cache_write   cost    turns
 claude-opus-4-6   781    364k     196.0M        2.0M    $119.50   628
 ```
 
-**628 tool turns and $119.50 later, here we are** — at a 99% cache hit
-rate, which is the only reason this wasn't a four-figure bill. A post
-about query efficiency that also turns out to be a lesson in
-context-window efficiency. Memoization all the way down.
-
-Benchmark code is in [`bench/`](https://github.com/pratikgajjar/go-backend.how/tree/main/bench)
-if you want to reproduce or extend it.
+The 99% cache hit rate is the only reason this was not a four-figure bill.
 
 I'm publishing the numbers so the next person doesn't have to burn
 $120, a weekend, and one Mac mini's fan life to know them.
