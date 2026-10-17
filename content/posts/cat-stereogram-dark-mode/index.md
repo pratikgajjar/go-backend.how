@@ -29,9 +29,9 @@ The usual advice is to relax your eyes and look through the image, as if at a wa
 
 Cross your eyes instead, so the lines of sight meet in front of the page. Now the left eye lands on the right cat and the right eye on the left cat, and that works however far apart the cats are. The hard part is knowing how far to cross. A fingertip solves that: it gives both eyes one point to look at, and you move it until the cats line up.
 
-Try it on the pair below. Hold a fingertip between you and the screen, look at it, and answer the question under the cats.
+Try it on the pair below. The questions under it tell you what to do next.
 
-{{< viz kind="try" fig="1" title="Cross your eyes with a fingertip" fallback="try.svg" alt="Two white line cats on black, with what you see at each stage: four cats with the tails side by side, four with the tails one cat apart, and three when fused" caption="Fingertip distances assume eyes 63 mm apart and a typical screen: 35 cm away on a phone, 55 cm on a computer. Yours will differ a little. Eyes have no colour in the site palette, so orange stands for the left eye and blue for the right." >}}
+{{< viz kind="try" title="Cross your eyes with a fingertip" fallback="try.svg" alt="Two white line cats on black, with what you see at each stage: four cats with the tails side by side, four with the tails one cat apart, and three when fused" caption="Fingertip distances assume eyes 63 mm apart and a typical screen: 35 cm away on a phone, 55 cm on a computer. Yours will differ a little." >}}
 
 With the printed card, the steps are the same:
 
@@ -45,7 +45,7 @@ With the printed card, the steps are the same:
 
 The fingertip marks the point where the lines of sight cross. For eyes `e` apart, looking at cats `s` apart from a distance `D`, that point is `D × e / (e + s)` from your eyes. Answer each question under the drawing before it moves.
 
-{{< viz kind="aim" fig="2" title="Where the lines of sight cross" fallback="aim.svg" alt="Seen from above: the left eye's line of sight goes to the right cat and the right eye's to the left cat, and they cross at the fingertip" caption="Side-to-side distances are drawn 1.5 times wider than depth so the lines stay apart. Orange stands for the left eye and blue for the right." >}}
+{{< viz kind="aim" title="Where the lines of sight cross" fallback="aim.svg" alt="Seen from above: the left eye's line of sight goes to the right cat and the right eye's to the left cat, and they cross at the fingertip" caption="Side-to-side distances are drawn 1.5 times wider than depth so the lines stay apart." >}}
 
 So start with the cats close together: the fingertip sits further from your face, and the eyes cross less. If you cannot cross far enough, move back. The extra inward turn, beyond what the page itself needs, is the cat spacing divided by the viewing distance. For the print at 40 cm that is 10.6 / 40, or 26.5 prism dioptres (1 prism dioptre moves the aim 1 cm at 1 m). Doubling the distance halves it.
 
@@ -53,13 +53,13 @@ So start with the cats close together: the fingertip sits further from your face
 
 The pair is flat because its two outlines line up exactly. A stereogram gets depth from small side-to-side differences between its two images. The pair below has its heads moved a few pixels. Guess first, then fuse it.
 
-{{< viz kind="depth" fig="3" title="Move the heads, then fuse" fallback="depth.svg" alt="The cat pair with the heads moved 12 px further apart than the bodies; with crossed eyes the head sits in front of the body" >}}
+{{< viz kind="depth" title="Move the heads, then fuse" fallback="depth.svg" alt="The cat pair with the heads moved 12 px further apart than the bodies; with crossed eyes the head sits in front of the body" >}}
 
 A stereogram made for crossing shows its depth inside out when you look through it, and the other way round.
 
 # What it does for your eyes
 
-Merging this pair makes both eyes turn inward together while focus stays on the page. Cards that work the same way, "Life Saver" cards and eccentric circles, are part of the office-based vision therapy in the Convergence Insufficiency Treatment Trial (CITT) group's trials.[^mop] In their 2008 trial, 12 weeks of supervised therapy helped children with convergence insufficiency more than home pencil push-ups or placebo therapy did.[^citt] The trial tested the full therapy programme, not stereograms on their own. I know of no study showing that viewing stereograms reduces eye strain from screens. For that, the AOA suggests the 20-20-20 rule: every 20 minutes, look at something 20 feet away for 20 seconds.[^aoa]
+Merging this pair makes both eyes turn inward together while focus stays on the page. Cards that work the same way, "Life Saver" cards and eccentric circles, are part of the office-based vision therapy in the Convergence Insufficiency Treatment Trial (CITT) group's trials.[^mop] In their 2008 trial, 12 weeks of supervised therapy helped children with convergence insufficiency more than home pencil push-ups, home computer therapy, or placebo therapy did.[^citt] The trial tested the full therapy programme, not stereograms on their own. I know of no study showing that viewing stereograms reduces eye strain from screens. For that, the AOA suggests the 20-20-20 rule: every 20 minutes, look at something 20 feet away for 20 seconds.[^aoa]
 
 # What to remember
 

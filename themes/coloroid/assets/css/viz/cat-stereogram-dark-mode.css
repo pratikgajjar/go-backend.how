@@ -1,6 +1,6 @@
 /* cat-stereogram-dark-mode: layout and drawing only. Classes are prefixed v-cs-.
- * Colours are the shared tokens. The two eyes are mapped onto the palette:
- * orange = left eye, blue = right eye (each figure's key says so). */
+ * Colours are the shared tokens. The two eyes have no site colour, so the
+ * fused view maps them: orange = left eye, blue = right eye (the key says so). */
 
 /* cats */
 .wv .v-cs-cat { fill: none; stroke-linecap: butt; }
@@ -25,13 +25,9 @@
 
 /* aim: seen from above */
 .wv .v-cs-scr { stroke: var(--ink); stroke-width: 2.5; }
-.wv .v-cs-ray { stroke-width: 2; stroke-linecap: round; }
-.wv .v-cs-ray.is-l { stroke: var(--orange); }
-.wv .v-cs-ray.is-r { stroke: var(--blue); }
-.wv .v-cs-catdot { fill: var(--brown); }
-.wv .v-cs-eye { fill: var(--board); stroke-width: 2.5; }
-.wv .v-cs-eye.is-l { stroke: var(--orange); }
-.wv .v-cs-eye.is-r { stroke: var(--blue); }
+.wv .v-cs-ray { stroke: var(--ink); stroke-width: 1.75; stroke-linecap: round; }
+.wv .v-cs-catdot { fill: var(--ink); }
+.wv .v-cs-eye { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
 .wv .v-cs-finger { fill: var(--purple); }
 .wv .v-cs-meet { fill: var(--board); stroke: var(--purple); stroke-width: 2.5; }
 .v-cs-qs { margin-top: 0.6rem; min-height: 6rem; }

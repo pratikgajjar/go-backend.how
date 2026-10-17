@@ -2,13 +2,13 @@
 <rect x="0.75" y="0.75" width="718.5" height="164.5" fill="#fbfaf7" stroke="#0a0d12" stroke-width="1.5"/>
 <line x1="409.1" y1="18.0" x2="409.1" y2="143.5" stroke="#0a0d12" stroke-width="2.5"/>
 <text x="409.1" y="12.0" font-size="11.5" fill="#0a0d12" text-anchor="middle">screen, 55 cm away</text>
-<text x="409.1" y="161.5" font-size="11.5" fill="#6c4122" text-anchor="middle">cats 20 mm apart</text>
-<line x1="44" y1="49.4" x2="409.1" y2="90.7" stroke="#c14900" stroke-width="2"/>
-<line x1="44" y1="112.1" x2="409.1" y2="70.8" stroke="#0d53af" stroke-width="2"/>
-<circle cx="409.1" cy="70.8" r="3.5" fill="#6c4122"/><circle cx="409.1" cy="90.7" r="3.5" fill="#6c4122"/>
-<circle cx="44" cy="49.4" r="7" fill="#fbfaf7" stroke="#c14900" stroke-width="2.5"/><circle cx="44" cy="112.1" r="7" fill="#fbfaf7" stroke="#0d53af" stroke-width="2.5"/>
-<text x="32" y="37.4" font-size="11.5" font-weight="700" fill="#c14900">left eye</text>
-<text x="32" y="134.1" font-size="11.5" font-weight="700" fill="#0d53af">right eye</text>
+<text x="409.1" y="161.5" font-size="11.5" fill="#0a0d12" text-anchor="middle">cats 20 mm apart</text>
+<line x1="44" y1="49.4" x2="409.1" y2="90.7" stroke="#0a0d12" stroke-width="1.75"/>
+<line x1="44" y1="112.1" x2="409.1" y2="70.8" stroke="#0a0d12" stroke-width="1.75"/>
+<circle cx="409.1" cy="70.8" r="3.5" fill="#0a0d12"/><circle cx="409.1" cy="90.7" r="3.5" fill="#0a0d12"/>
+<circle cx="44" cy="49.4" r="7" fill="#fbfaf7" stroke="#0a0d12" stroke-width="2.5"/><circle cx="44" cy="112.1" r="7" fill="#fbfaf7" stroke="#0a0d12" stroke-width="2.5"/>
+<text x="32" y="37.4" font-size="11.5" font-weight="700" fill="#0a0d12">left eye</text>
+<text x="32" y="134.1" font-size="11.5" font-weight="700" fill="#0a0d12">right eye</text>
 <circle cx="321.1" cy="80.8" r="6" fill="#7024ab"/>
 <text x="321.1" y="66.8" font-size="11.5" font-weight="800" fill="#7024ab" text-anchor="middle">fingertip, 42 cm</text>
 </svg>

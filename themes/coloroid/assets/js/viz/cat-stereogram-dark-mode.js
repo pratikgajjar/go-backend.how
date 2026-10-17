@@ -15,10 +15,12 @@
  * 2,501.5 px apart). CAT units are image pixels from the left cat's body
  * centre; the right cat is the mirror image without the tail.
  *
- * Colour (site palette): ink = the printed cats and what both eyes see,
- * purple = look here, red = not possible. The two eyes have no colour in
- * the site grammar, so they are mapped onto it and the key says so:
- * orange = left eye, blue = right eye.
+ * Colour: ink for the cats and the lines of sight; purple for the one
+ * thing to look at in a view (tails, arrows, fingertip, moving head); red
+ * for "not possible". Only the fused view needs the two eyes told apart:
+ * they have no colour in the site grammar, so orange stands for the left
+ * eye and blue for the right. Each view keeps to two accents, and the key
+ * lists only what the current view shows.
  */
 import { h, s, register, clamp, tween, range, chips, ask, colorKey } from './lib.js';
 
@@ -107,7 +109,7 @@ function initTry(fig, app) {
     oninput: (v) => { sp = v; drawPair(pair, W, L, sp); go(state); },
   });
   const coach = h('div', { class: 'v-cs-coach', 'aria-live': 'polite' });
-  const key = colorKey([['k-ink', 'the printed cats, or both eyes'], ['k-look', 'look here'], ...EYE_KEY]);
+  let key = h('div');
   app.append(h('div', { class: 'wv-grid-ctrl' }, spacing.el), pair, coach, key);
 
   /** A small picture of one view, drawn at the reader's spacing. */
@@ -187,7 +189,7 @@ function initTry(fig, app) {
     fused: () => ({
       pic: view(0.5, { eyes: true, label: 'Three cats: the left eye gives the orange parts, the right eye the blue parts, and both eyes see the rings of the middle cat' }),
       say: '<b>Fused.</b> Each eye gives the middle cat one ear and one set of whiskers, and the right eye gives the tail. Take the fingertip away and hold the cross. The cat sharpens when focus settles on the screen.',
-      tone: 'good', back: 'Start over',
+      back: 'Start over', key: [['k-ink', 'both eyes'], ...EYE_KEY],
     }),
     blur: () => ({
       say: 'That is normal at first. Your eyes point at the fingertip, so the cats are out of focus. Hold still for a few seconds. If it stays hard, move <b>Cats apart</b> to the left.',
@@ -213,6 +215,9 @@ function initTry(fig, app) {
     if (st.say) kids.push(h('div', { class: `wv-note${st.tone ? ` is-${st.tone}` : ''}`, html: st.say }));
     if (st.back) kids.push(h('div', { class: 'wv-bar v-cs-back' }, btn(st.back, () => go(st.to ?? 'ask'))));
     coach.replaceChildren(...kids);
+    const marks = ['four', 'under', 'over'].includes(next);
+    const nk = colorKey(st.key ?? [['k-ink', 'the cats'], ...(marks ? [['k-look', 'look here']] : [])]);
+    key.replaceWith(nk); key = nk;
   }
 
   sized(pair, (w) => {
@@ -239,8 +244,8 @@ function initAim(fig, app) {
   const spacing = range('Cats apart', { min: 10, max: 110, value: st.s, fmt: (v) => `${Math.round(v)} mm`, oninput: (v) => { cancel(); st.s = v; draw(); } });
   const mode = chips([['cross', 'Cross'], ['through', 'Look through']], (v) => { st.mode = v; draw(); }, { value: 'cross', label: 'How you aim' });
   const play = h('div', { class: 'wv-grid-ctrl' }, spacing.el, mode.el);
-  play.hidden = true;
-  const key = colorKey([...EYE_KEY, ['k-look', 'where the lines of sight meet'], ['k-gap', 'not possible']]);
+  play.style.display = 'none';
+  let key = h('div');
   app.append(svg, qs, play, key);
 
   let cancel = () => {};
@@ -264,7 +269,7 @@ function initAim(fig, app) {
     const k = [
       s('line', { x1, y1: cy - half - 8, x2: x1, y2: cy + half + 8, class: 'v-cs-scr' }),
       s('text', { x: x1, y: cy - half - 14, class: 't-s', 'text-anchor': 'middle' }, `screen, ${cm(D)} away`),
-      s('text', { x: x1, y: cy + half + 26, class: 't-s t-data', 'text-anchor': 'middle' }, `cats ${Math.round(st.s)} mm apart`),
+      s('text', { x: x1, y: cy + half + 26, class: 't-s', 'text-anchor': 'middle' }, `cats ${Math.round(st.s)} mm apart`),
     ];
     const cross = st.mode === 'cross';
     const aim = cross ? [yC[1], yC[0]] : [yC[0], yC[1]];
@@ -272,19 +277,19 @@ function initAim(fig, app) {
     if (cross) meet = { z: fingerMM(st.s, D), front: true };
     else if (st.s < EYE_GAP) meet = { z: (D * EYE_GAP) / (EYE_GAP - st.s), front: false };
     else fail = true;
-    ['l', 'r'].forEach((eye, i) => {
-      k.push(s('line', { x1: x0, y1: yE[i], x2: x1, y2: aim[i], class: `v-cs-ray is-${eye}` }));
+    [0, 1].forEach((i) => {
+      k.push(s('line', { x1: x0, y1: yE[i], x2: x1, y2: aim[i], class: 'v-cs-ray' }));
       if (!cross && !st.hide) {
         const dx = x1 - x0; const dy = aim[i] - yE[i];
         const tMax = (xMax - x0) / dx;
         const tEnd = meet ? Math.min(tMax, (X(meet.z) - x0) / dx) : tMax;
-        k.push(s('line', { x1, y1: aim[i], x2: x0 + dx * tEnd, y2: yE[i] + dy * tEnd, class: `v-cs-ray is-${eye} dash` }));
+        k.push(s('line', { x1, y1: aim[i], x2: x0 + dx * tEnd, y2: yE[i] + dy * tEnd, class: 'v-cs-ray dash' }));
       }
     });
     k.push(s('circle', { cx: x1, cy: yC[0], r: 3.5, class: 'v-cs-catdot' }), s('circle', { cx: x1, cy: yC[1], r: 3.5, class: 'v-cs-catdot' }),
-      s('circle', { cx: x0, cy: yE[0], r: 7, class: 'v-cs-eye is-l' }), s('circle', { cx: x0, cy: yE[1], r: 7, class: 'v-cs-eye is-r' }),
-      s('text', { x: x0 - 12, y: yE[0] - 12, class: 't-s t-b t-pick' }, 'left eye'),
-      s('text', { x: x0 - 12, y: yE[1] + 22, class: 't-s t-b v-cs-t-r' }, 'right eye'));
+      s('circle', { cx: x0, cy: yE[0], r: 7, class: 'v-cs-eye' }), s('circle', { cx: x0, cy: yE[1], r: 7, class: 'v-cs-eye' }),
+      s('text', { x: x0 - 12, y: yE[0] - 12, class: 't-s t-b' }, 'left eye'),
+      s('text', { x: x0 - 12, y: yE[1] + 22, class: 't-s t-b' }, 'right eye'));
     if (meet && !(st.hide && !cross)) {
       const mx = X(meet.z);
       const behind = meet.z - D;
@@ -299,6 +304,9 @@ function initAim(fig, app) {
     }
     if (fail && !st.hide) k.push(s('text', { x: x1 - 10, y: cy + 4, class: 't-s t-b t-bad halo', 'text-anchor': 'end' }, '✕ eyes would turn outward'));
     svg.replaceChildren(...k);
+    const shown = meet && !(st.hide && !cross);
+    const nk = colorKey([['k-ink', 'lines of sight'], ...(shown ? [['k-look', 'where they meet']] : []), ...(fail && !st.hide ? [['k-gap', 'not possible']] : [])]);
+    key.replaceWith(nk); key = nk;
     spacing.input.value = Math.round(st.s);
     spacing.el.querySelector('output').textContent = `${Math.round(st.s)} mm`;
     mode.set(st.mode);
@@ -316,7 +324,7 @@ function initAim(fig, app) {
     (v, right) => {
       st.hide = false;
       animate(106, 2200);
-      play.hidden = false;
+      play.style.display = '';
       return `${right ? 'Yes, only' : 'Only'} the 2 cm pair. Looking through, each eye aims at the cat on its own side, so the lines of sight meet behind the screen, and only while the cats are closer together than your eyes. At 10 cm the eyes would have to turn outward. Now move the cats and switch methods yourself.`;
     });
   let q2shown = false;
