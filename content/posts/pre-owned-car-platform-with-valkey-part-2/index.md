@@ -1,5 +1,5 @@
 +++
-title = "Building pre-owned Car Platform With Valkey - Part 2"
+title = "🏎️ Building pre-owned Car Platform With Valkey - Part 2"
 description = "How we moved the listing page of a used-car marketplace from Django filters on SQL to Valkey: each filter is a sorted set of car ids, a page is their intersection, and a personalised order is computed per request from one unordered set."
 date = 2024-07-17T19:54:52+05:30
 lastmod = 2024-07-17T19:54:52+05:30
