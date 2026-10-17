@@ -119,7 +119,6 @@ body[data-show="published"] [data-draft="1"], body[data-show="drafts"] [data-dra
   <h1>OG cards</h1><span class="n">{{ len $posts }} posts · 1200×630</span>
   <span class="sp"></span>
   <span><span class="seg-label">view</span><span class="seg" data-key="view"><button value="grid">grid</button><button value="feeds">feeds</button></span></span>
-  <span><span class="seg-label">size</span><span class="seg" data-key="size"><button value="280px">S</button><button value="380px">M</button><button value="560px">L</button></span></span>
   <span><span class="seg-label">feeds</span><span class="seg" data-key="scheme"><button value="light">light</button><button value="dark">dark</button></span></span>
   <span><span class="seg" data-key="show"><button value="all">all</button><button value="published">published</button><button value="drafts">drafts</button></span></span>
 </div>
@@ -194,10 +193,10 @@ body[data-show="published"] [data-draft="1"], body[data-show="drafts"] [data-dra
 
 <script>
 (() => {
-  const b = document.body, root = document.documentElement;
+  const b = document.body;
   const saved = JSON.parse(localStorage.getItem('ogp') || '{}');
   const apply = (key, val) => {
-    if (key === 'size') root.style.setProperty('--w', val); else b.dataset[key] = val;
+    b.dataset[key] = val;
     document.querySelectorAll(`.seg[data-key="${key}"] button`).forEach((x) => x.setAttribute('aria-pressed', String(x.value === val)));
     saved[key] = val; localStorage.setItem('ogp', JSON.stringify(saved));
   };
@@ -209,7 +208,7 @@ body[data-show="published"] [data-draft="1"], body[data-show="drafts"] [data-dra
   };
   const ro = new ResizeObserver((es) => es.forEach((e) => fit(e.target)));
   document.querySelectorAll('.mock').forEach((m) => ro.observe(m));
-  const defaults = { view: 'grid', size: '380px', scheme: 'light', show: 'all' };
+  const defaults = { view: 'grid', scheme: 'light', show: 'all' };
   for (const k in defaults) apply(k, saved[k] || defaults[k]);
   document.querySelectorAll('.seg').forEach((s) => s.addEventListener('click', (e) => {
     if (e.target.value) apply(s.dataset.key, e.target.value);
