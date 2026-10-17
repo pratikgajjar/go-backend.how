@@ -158,19 +158,19 @@ const QUESTIONS = [
     ],
   },
   {
-    id: 'reaction', q: 'When the fix came, what did you do?',
-    options: [
-      ['inquisitive', 'Asked why it broke, and how to stop it happening again.'],
-      ['solution', 'Applied it and got back to work.'],
-      ['disinterested', 'Let them sort it out. I needed it working, not explained.'],
-    ],
-  },
-  {
     id: 'channel', q: 'Where did you ask?',
     options: [
       ['call', 'A phone or WhatsApp call.'],
       ['dm', 'A direct message or personal email.'],
       ['public', 'A public channel.'],
+    ],
+  },
+  {
+    id: 'reaction', q: 'When the fix came, what did you do?',
+    options: [
+      ['inquisitive', 'Asked why it broke, and how to stop it happening again.'],
+      ['solution', 'Applied it and got back to work.'],
+      ['disinterested', 'Let them sort it out. I needed it working, not explained.'],
     ],
   },
 ];
