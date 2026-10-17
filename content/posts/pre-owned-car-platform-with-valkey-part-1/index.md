@@ -7,7 +7,7 @@ tags = ['django', 'redis', 'drf', 'cdc', 'valkey']
 series = ['valkey-car-platform']
 aliases = ["/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1/"]
 draft = false
-images = ["og-e8888238.png"]
+images = ["og-39619237.png"]
 theme = "tangerine"
 +++
 
