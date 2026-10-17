@@ -28,7 +28,7 @@ Source: [NPCI product-statistics](https://www.npci.org.in/product/upi/product-st
 
 Put those numbers side-by-side: Jan 2025 to Jan 2026, volume jumped from 17B to 21.7B in a single year — **28% YoY growth, month after month**. Bank count grew from 647 → 691. Rupee value from ₹23.48L Cr → ₹28.33L Cr.
 
-That's ~700 million transactions per day today, spread across 694 banks. At 28% YoY, UPI crosses **1 billion transactions per day by late 2027**. The biggest banks (SBI, HDFC, ICICI) already handle 15–25% of volume each, so the "1B/day for a single bank" threshold — which feels fantastical today — is table-stakes engineering by 2028.
+That's ~700 million transactions per day today, spread across 694 banks. At 28% YoY, UPI crosses **1 billion transactions per day by late 2027**. The biggest banks (SBI, HDFC, ICICI) already handle 15–25% of volume each. At the same growth, one of them would need to handle 1B/day on its own in about 7–9 years.
 
 **What does it take for one node to handle 1 billion payments per day?** That's ~12,000 TPS average, ~30,000 TPS at the normal daily peak (2.5× the average — morning 11 AM rush and evening 8-10 PM burst). Seasonal spikes (Diwali shopping, IPL finals, tax deadline) push another 2× on top, so budget closer to **5× the average (~60,000 TPS)** for actual worst-case capacity.
 
