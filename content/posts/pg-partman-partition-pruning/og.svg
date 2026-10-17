@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .red { fill: var(--red); } .green { fill: var(--green); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .hot { fill: var(--red-l); stroke: var(--red); stroke-width: 2.5; stroke-dasharray: 6 4; }
+    .open { fill: var(--green-l); stroke: var(--green); stroke-width: 2.5; stroke-dasharray: 6 4; }
+    .pruned { fill: none; stroke: var(--mute); stroke-opacity: 0.5; stroke-width: 2; stroke-dasharray: 6 4; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1104" height="526" class="ink"/>
+  <rect x="48" y="48" width="1104" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="178" font-size="54" font-weight="800" class="ink">pg_partman + Partition Pruning</text>
+  <text x="96" y="230" font-size="30" font-weight="600" class="ink">Why Your Time-Series Still Reads 90% of the Disk</text>
+
+  <!-- same query over 90 daily children; only the time bound differs.
+       Each row: children the planner opens at plan time. -->
+  <text x="96" y="317" font-size="26" class="ink">now() - 1 hour</text>
+  <rect x="340" y="280" width="40" height="56" class="hot"/>
+  <rect x="385" y="280" width="40" height="56" class="hot"/>
+  <rect x="430" y="280" width="40" height="56" class="hot"/>
+  <rect x="475" y="280" width="40" height="56" class="hot"/>
+  <rect x="520" y="280" width="40" height="56" class="hot"/>
+  <rect x="565" y="280" width="40" height="56" class="hot"/>
+  <rect x="610" y="280" width="40" height="56" class="hot"/>
+  <rect x="655" y="280" width="40" height="56" class="hot"/>
+  <rect x="700" y="280" width="40" height="56" class="hot"/>
+  <rect x="745" y="280" width="40" height="56" class="hot"/>
+  <rect x="790" y="280" width="40" height="56" class="hot"/>
+  <rect x="835" y="280" width="40" height="56" class="hot"/>
+  <text x="900" y="317" font-size="26" font-weight="700" class="red">90 opened</text>
+
+  <text x="96" y="405" font-size="26" class="ink">$1 from client</text>
+  <rect x="340" y="368" width="40" height="56" class="pruned"/>
+  <rect x="385" y="368" width="40" height="56" class="pruned"/>
+  <rect x="430" y="368" width="40" height="56" class="pruned"/>
+  <rect x="475" y="368" width="40" height="56" class="pruned"/>
+  <rect x="520" y="368" width="40" height="56" class="pruned"/>
+  <rect x="565" y="368" width="40" height="56" class="pruned"/>
+  <rect x="610" y="368" width="40" height="56" class="pruned"/>
+  <rect x="655" y="368" width="40" height="56" class="pruned"/>
+  <rect x="700" y="368" width="40" height="56" class="pruned"/>
+  <rect x="745" y="368" width="40" height="56" class="pruned"/>
+  <rect x="790" y="368" width="40" height="56" class="pruned"/>
+  <rect x="835" y="368" width="40" height="56" class="open"/>
+  <text x="900" y="405" font-size="26" font-weight="700" class="green">1 opened</text>
+
+  <text x="340" y="456" font-size="22" class="mute">90 days ago</text>
+  <text x="875" y="456" font-size="22" text-anchor="end" class="mute">today</text>
+
+  <text x="96" y="512" font-size="24" class="ink">The planner can't prune on now(). Pass the time as $1.</text>
+</svg>
