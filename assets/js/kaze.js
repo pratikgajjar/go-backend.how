@@ -273,6 +273,18 @@ void main(){
   }
   const frontSide = () => (B.faceS >= 0 ? 1 : -1);
   let sink = 12;
+  /* phones: the side margin is ~16px, so he peeks around the left edge inside it (hat brim + one eye)
+     and never covers text; he slides out of sight while you scroll and steps out only when you invite him */
+  let textLeft = 16, textLeftAt = 0;
+  function peekX() {
+    const t = performance.now();
+    if (t - textLeftAt > 1000) {
+      textLeftAt = t; const m = document.querySelector('main');
+      if (m) { const r = m.getBoundingClientRect(); textLeft = r.left + (parseFloat(getComputedStyle(m).paddingLeft) || 0); }
+    }
+    return textLeft - 1 - 17.6 * S;                                   // hat brim ends right at the text's edge
+  }
+  const stageOut = () => act && ['gear', 'love', 'finale', 'meditate'].includes(act.name);
   const floorY = () => (MOBILE() ? H + sink * S : H - 3);
   function surfaceY() {
     if (!B.surf) return floorY();
@@ -534,7 +546,13 @@ void main(){
     const sp = Math.min(1, Math.abs(B.vx) / 70);
     const bob = -Math.abs(Math.sin(B.walkPh)) * 1.3 * S * sp;
     B.y = surfaceY() - lerp(FOOT, SEAT - 0.5, B.sitK) * S + bob - B.lev * S;
-    const lim = 16 * S, rlim = B.surf ? lim : (MOBILE() ? lim : 76); if (B.x < lim) { B.x = lim; B.want = 0; } if (B.x > W - rlim) { B.x = W - rlim; B.want = 0; }
+    const peeking = MOBILE() && !B.surf && !stageOut();
+    const lim = 16 * S, rlim = B.surf ? lim : (MOBILE() ? lim : 76); if (B.x < lim && !peeking) { B.x = lim; B.want = 0; } if (B.x > W - rlim) { B.x = W - rlim; B.want = 0; }
+    if (peeking) {                                                   // phone peek (see peekX)
+      const tx = busy() ? -30 * S : peekX(); B.want = 0; B.vx = 0; B.x += (tx - B.x) * Math.min(1, dt * 6); B.face = 1;
+      if (performance.now() > lookLock) lookAt = [W * 0.6, B.y - 40];   // peeking into the page
+    }
+    else if (MOBILE() && !B.surf && !B.want && B.x < 22 * S) B.x += (22 * S - B.x) * Math.min(1, dt * 8);   // invited: step fully into view
     const tr = clamp(B.vx * 0.0014, -0.16, 0.16) + GV.g5 * Math.sin(T * 5.7) * 0.14;   // gear 5: rubbery sway
     B.rv += ((tr - B.rot) * 170 - B.rv * 15) * dt; B.rot += B.rv * dt;
   }
@@ -544,7 +562,8 @@ void main(){
     B.x += B.vx * dt; B.y += B.vy * dt; B.rot += B.rv * dt; B.rv *= 1 - 0.6 * dt;
     if (Math.abs(B.rv) < 0.5) { B.rv += (-Math.atan2(Math.sin(B.rot), Math.cos(B.rot)) * 30 - B.rv * 5) * dt; }
     const fy = B.y + FOOT * S, lim = 16 * S;
-    if (B.x < lim) { B.x = lim; B.vx = Math.abs(B.vx) * 0.5; kick(-2.5); hatKick(4); if (Math.abs(B.vx) > 300) dust(B.x - 10, B.y, 3, 1); }
+    const lw = MOBILE() ? -30 * S : lim;                             // phones: he may hang off the left edge (peek)
+    if (B.x < lw) { B.x = lw; B.vx = Math.abs(B.vx) * 0.5; kick(-2.5); hatKick(4); if (Math.abs(B.vx) > 300) dust(B.x - 10, B.y, 3, 1); }
     if (B.x > W - lim) { B.x = W - lim; B.vx = -Math.abs(B.vx) * 0.5; kick(-2.5); hatKick(-4); if (Math.abs(B.vx) > 300) dust(B.x + 10, B.y, 3, -1); }
     if (B.y < 34 * S) { B.y = 34 * S; B.vy = Math.abs(B.vy) * 0.4; kick(-2); }
     if (B.vy > 0 && !MOBILE()) {                           // land on a perch corner?
@@ -1139,10 +1158,8 @@ void main(){
     if (pendingHello) { const h = pendingHello; pendingHello = null; return run(wave(h, 2200)); }
     if (MOBILE()) {
       const r = Math.random();
-      if (r < 0.55) return run(idle(rnd(2500, 6000)));
-      if (r < 0.85) return run(walkTo(rnd(14, 64)));
-      if (t > omReadyAt && !busy()) { omReadyAt = t + rnd(60000, 120000); return run(meditate(rnd(12000, 20000))); }
-      return run(cheer());
+      if (r < 0.8) return run(idle(rnd(3000, 7000)));               // a quiet peeker: no walking or tricks over the text
+      return run(wave(null, 1100));                                  // silent: no speech bubbles over the text
     }
     if (idleFor > 18000 && idleFor < 45000 && t > omReadyAt && !B.surf) { omReadyAt = t + rnd(80000, 140000); return run(meditate(rnd(14000, 22000))); }
     if (idleFor > 45000) return run(sleep(rnd(30000, 90000)));
@@ -1336,7 +1353,7 @@ void main(){
     const dt = Math.min(1 / 30, Math.max(0.001, (tNow - lastT) / 1000)); lastT = tNow; T += dt;
     const sy = scrollY; scrollV += ((sy - lastSY) / dt - scrollV) * Math.min(1, dt * 9); lastSY = sy;
     const wind = clamp((Math.abs(scrollV) - 900) / 2600, 0, 1);
-    if (MOBILE()) sink += ((busy() ? 44 : act && act.name === 'gear' ? -1 : 12) - sink) * Math.min(1, dt * 7);   // duck while you scroll, peek when you stop, stand up for a gear   // duck while you scroll, peek when you stop
+    if (MOBILE()) sink += ((stageOut() ? -1 : 2) - sink) * Math.min(1, dt * 7);   // stand on the bottom edge; hiding is sideways (peekX)
 
     if (B.mode === 'ground') groundStep(dt); else if (B.mode === 'air') airStep(dt); else if (B.mode === 'hang') hangStep(dt); else if (B.mode === 'held') heldStep(dt);
 
@@ -1403,7 +1420,7 @@ void main(){
   try { if (!sessionStorage.getItem('kz-s')) { sessionStorage.setItem('kz-s', '1'); visits = +(localStorage.getItem('kz-v') || 0) + 1; localStorage.setItem('kz-v', String(visits)); } else visits = 0; } catch (e) { /* private mode */ }
   const g0 = gutters();
   B.x = g0.length ? rnd(g0[0][0], g0[0][1]) : rnd(40, 110);
-  if (MOBILE()) B.x = rnd(16, 40);
+  if (MOBILE()) B.x = peekX();
   B.face = B.x < W / 2 ? 1 : -1; B.faceS = B.face;
 
   if (REDUCE) {                                   // still life: sit in the gutter, no motion
