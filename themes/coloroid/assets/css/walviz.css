@@ -448,6 +448,8 @@ body[class*="theme-"] .wv code { background: var(--tint2); color: var(--ink); bo
 .wv summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--ink); }
 .wv details[open] summary { margin-bottom: 0.4rem; }
 
+.wv [hidden] { display: none !important; }
+.wv code, .wv pre { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
 .wv-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) {
