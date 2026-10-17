@@ -69,7 +69,7 @@ Output metrics are the effect: pace, heart-rate zones, power zones, and stride l
 
 Garmin compares each input metric with other runners and puts it in a percentile band. Start with my own first number, then type yours to see where each one sits and which one to work on first.
 
-{{< viz kind="form-check" fig="1" wide="false" title="Where your form sits" fallback="form-check.svg" alt="Four bars, one per input metric, each split into Garmin's five percentile bands, with a sample runner marked on each" caption="Garmin Connect shows these numbers for each run under Running Dynamics. The starting cadence and pace are mine; the contact time and bounce are sample values. The runner moves at the cadence, contact time, and bounce in the rows. Step length comes from pace and cadence: `1000 / (pace × cadence)`. Band edges are from the tables below." >}}
+{{< viz kind="form-check" fig="1" wide="false" title="Where your form sits" fallback="form-check.svg" alt="Four bars, one per input metric, each split into Garmin's five percentile bands. My starting cadence of 120 spm sits in the bottom 5%." caption="Garmin Connect shows these numbers for each run under Running Dynamics. The 120 spm cadence is mine from my first runs. The other three are sample values; the ratio is 9.0 cm of bounce over my 0.88 m step at 9:30 min/km. Band edges are from the tables below." >}}
 
 ## Cadence
 
@@ -174,9 +174,7 @@ pace (min/km) = 1000 / (cadence × stride length)
 
 Only two numbers set pace: how often your feet land and how far you travel on each step. Ground contact time and vertical ratio are not in the formula. They change what each step costs, not how far it goes.
 
-{{< viz kind="footprints" fig="2" wide="false" title="Closing the gap to a goal" fallback="footprints.svg" alt="Five seconds of footprints for a 25:00 5K today and for a 20:00 goal, reached with 184 spm and 1.36 m steps" caption="Each row is five seconds of running. Step length is speed ÷ cadence. *A bit of both* splits the extra speed evenly between cadence and step length." >}}
-
-Try my next goal, a 5K in 20:00. At 180 spm it still needs 1.39 m per step, so cadence alone does not get there. Longer steps can increase speed without much more effort, but they need to be balanced with cadence to avoid overstriding, which can lead to injury. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
+My next goal is a 5K in 20:00, which is 250 m every minute. At 180 spm that still needs 1.39 m per step, so cadence alone does not get there. Longer steps can increase speed without much more effort, but they need to be balanced with cadence to avoid overstriding, which can lead to injury. Train one metric at a time: raise cadence, or lower ground contact time or vertical ratio. Calisthenics builds the strength that shortens ground contact.
 
 {{< youtube id=Jj9ZgQgQvBk start=207 loading=lazy title="Lift costs less energy">}}
 
@@ -196,7 +194,7 @@ Training in the appropriate heart rate zones can optimize your workout for diffe
 
 Type your max heart rate to get your zones in bpm. If you do not know your max, the age field uses `220 − age`, the default Strava uses.[^3] A measured max is better.
 
-{{< viz kind="hr-zones" fig="3" wide="false" title="Your heart-rate zones" fallback="hr-zones.svg" alt="Five heart-rate zones for a max of 180 bpm: 90–117, 118–144, 145–153, 154–165, and 166–180, with a 140 bpm run in zone 2" caption="Zones use the percentages in the table. The bpm edges round down, so zone 2 for a max of 180 is 118–144 bpm. Type a run's average heart rate to see its zone." >}}
+{{< viz kind="hr-zones" fig="2" wide="false" title="Your heart-rate zones" fallback="hr-zones.svg" alt="Five heart-rate zones for a max of 180 bpm: 90–117, 118–144, 145–153, 154–165, and 166–180, with a 140 bpm run in zone 2" caption="Zones use the percentages in the table. The bpm edges round down, so zone 2 for a max of 180 is 118–144 bpm. Type a run's average heart rate to see its zone." >}}
 
 More on zones: <https://stories.strava.com/articles/understanding-heart-rate-zones-and-how-they-impact-your-training>
 
@@ -242,7 +240,7 @@ Protein is essential for muscle recovery and growth. After a run, your muscles n
 
 **20-30g of protein**: within the first hour after your run.
 
-**Complete proteins**: Opt for sources such as beans, lentils, almonds, tofu, or paneer.
+**Protein sources**: Tofu and paneer are complete proteins. Beans, lentils, and almonds are not complete on their own, so pair them with grains, like dal with rice.
 
 ### Healthy Fats
 
@@ -269,9 +267,11 @@ Vitamins and minerals are crucial for overall health. Focus on eating a variety 
 
 ## One goal at a time
 
-{{< viz kind="progress" fig="4" wide="false" title="My pace, goal by goal" fallback="progress.svg" alt="My pace by goal: 4K at 9:30 per km before the plan, then 5K at 7:00, under 6:00, 4:57, a 10K under 60 minutes, and a sub-20 5K still ahead" caption="Each dot is a goal I set, in the order I set them. The dashed one is still open." >}}
-
-The next goal is a 5K under 20 minutes (4:00 min/km) by 2026. Fig. 2 shows what it asks for: at 180 spm, 1.39 m per step.
+1. 5K in about 35 minutes (7:00 min/km). Done, October 2024.
+2. 5K under 30 minutes (6:00 min/km). Done, Nov 15, 2024.
+3. 5K under 25 minutes (5:00 min/km). Done, Dec 4, 2024.
+4. 10K under 60 minutes (6:00 min/km). Done, Feb 6, 2025.
+5. 5K under 20 minutes (4:00 min/km). In progress, by 2026.
 
 {{< figure src="aws-reinvent-2024-5k.jpg" title="AWS re:Invent 2024 5K" alt="AWS badge showing the 5K run achieved in 24 min 45 seconds" >}}
 

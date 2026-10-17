@@ -1,37 +1,26 @@
 /* running-101 figures: layout and drawing only. Colours are shared tokens.
    Garmin's five percentile bands map to red, light red, neutral, light
-   green, green. Heart-rate zones are brown, darker for harder. */
+   green, green; the reader's number is an ink mark. */
 
-/* percentile band bar with the reader's marker */
-.v-r101-bar { position: relative; display: flex; gap: 2px; height: 12px; margin: 0.6rem 0 0.5rem; }
+/* form-check: one row per metric, fixed order, white space between */
+.v-r101-rows { display: grid; gap: 1.1rem; margin: 1.1rem 0 0.8rem; }
+.v-r101-rhd { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.3rem 0.6rem; }
+.v-r101-rhd .wv-field { margin: 0; }
+.v-r101-rhd input { width: 6.5em; }
+
+/* percentile band bar with the reader's mark */
+.v-r101-bar { position: relative; display: flex; gap: 2px; height: 10px; margin: 0.55rem 0 0.4rem; }
 .v-r101-b0 { background: var(--red); }
 .v-r101-b1 { background: var(--red-l); }
 .v-r101-b2 { background: var(--tint2); }
 .v-r101-b3 { background: var(--green-l); }
 .v-r101-b4 { background: var(--green); }
 .v-r101-you {
-  position: absolute; top: -6px; width: 5px; height: 24px; margin-left: -2.5px;
-  background: var(--purple); outline: 2px solid var(--board);
+  position: absolute; top: -6px; width: 4px; height: 22px; margin-left: -2px;
+  background: var(--ink); outline: 2px solid var(--board);
 }
 
-/* rows: one card per input metric, fixed order */
-.v-r101-rows { display: grid; gap: 0.5rem; margin: 0.9rem 0 0.4rem; }
-.v-r101-rhd { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; }
-.v-r101-rhd .wv-field { margin: 0; }
-.v-r101-vr { display: inline-flex; align-items: center; gap: 0.6rem; }
-.v-r101-tagline { min-height: 1.4em; }
-
-/* inputs in a wrapping row */
+/* hr-zones: inputs in a wrapping row */
 .v-r101-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0; margin: 0 0 0.6rem; }
-
-/* heart-rate zones: brown data, darker = harder */
-.v-r101-zbar { position: relative; display: flex; gap: 2px; height: 26px; margin: 0.3rem 0 0.8rem; }
-.v-r101-zbar > span:not(.v-r101-you) { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; }
-.v-r101-zbar .v-r101-you { height: 38px; }
-.v-r101-z1 { background: var(--brown-l); }
-.v-r101-z2 { background: color-mix(in srgb, var(--brown) 30%, var(--brown-l)); }
-.v-r101-z3 { background: color-mix(in srgb, var(--brown) 55%, var(--brown-l)); }
-.v-r101-z4 { background: color-mix(in srgb, var(--brown) 78%, var(--brown-l)); }
-.v-r101-z5 { background: var(--brown); }
-.v-r101-z3 b, .v-r101-z4 b, .v-r101-z5 b { color: var(--board); }
-.wv-key i.v-r101-z1, .wv-key i.v-r101-z3, .wv-key i.v-r101-z5 { border-color: var(--brown); }
+.v-r101-fields input { width: 5.5em; }
+.viz--hr-zones .wv-table td:nth-child(2) { white-space: nowrap; }
