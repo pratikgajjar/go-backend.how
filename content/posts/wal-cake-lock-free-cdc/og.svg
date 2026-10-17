@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .seg { fill: var(--board); stroke: var(--ink); stroke-width: 2; }
+    .done { fill: var(--green-l); stroke: var(--green); stroke-width: 2.5; }
+    .wait { fill: var(--board); stroke: var(--ink); stroke-width: 2; stroke-dasharray: 7 5; }
+    .ack { fill: var(--purple); } .ackl { stroke: var(--purple); stroke-width: 4; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="58" font-weight="800" class="ink">WAL Cake</text>
+  <text x="96" y="244" font-size="34" font-weight="600" class="ink">Ordered ACKs from parallel S3 uploads</text>
+
+  <!-- six WAL segments, uploads finish out of order -->
+  <g font-size="22" text-anchor="middle">
+    <rect x="96"  y="330" width="150" height="96" class="done"/><text x="171" y="386" class="ink">S1 ✓</text>
+    <rect x="262" y="330" width="150" height="96" class="done"/><text x="337" y="386" class="ink">S2 ✓</text>
+    <rect x="428" y="330" width="150" height="96" class="wait"/><text x="503" y="386" class="mute">S3 …</text>
+    <rect x="594" y="330" width="150" height="96" class="done"/><text x="669" y="386" class="ink">S4 ✓</text>
+    <rect x="760" y="330" width="150" height="96" class="done"/><text x="835" y="386" class="ink">S5 ✓</text>
+    <rect x="926" y="330" width="150" height="96" class="seg"/><text x="1001" y="386" class="mute">S6</text>
+  </g>
+
+  <!-- ACK pointer stops at the end of the contiguous prefix -->
+  <line x1="420" y1="306" x2="420" y2="452" class="ackl"/>
+  <path d="M420 460 l-12 -18 h24 z" class="ack"/>
+  <text x="96" y="512" font-size="26" class="ink">ACK to Postgres = end of the contiguous prefix (after S2)</text>
+</svg>
