@@ -1,25 +1,11 @@
-/* Figures for "The Best Way to Learn Backend Web Development". Prefix: v-bwl-
+/* Figure for "The Best Way to Learn Backend Web Development". Prefix: v-bwl-
  * Layout and SVG drawing only; chrome and tokens come from walviz.css.
- *   brown  a month in one stack (data)    red     a month lost to a switch
- *   purple the window or milestone to reach   green   months inside it, building time
- *   orange the post's 30% mark and advice     blue    the reader's answers
+ * Ink bricks (one month in one stack), purple = the window to reach,
+ * red = a switch.
  */
 
-/* bricks: one month in one stack */
-.wv .v-bwl-brick { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.2; transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.2, 1), fill 0.3s; }
-.wv .v-bwl-brick.is-in { fill: var(--green-l); stroke: var(--green); }
-.wv .v-bwl-brick.is-before { fill: var(--red-l); stroke: var(--red); stroke-dasharray: 3 2; }
-
-/* the window to reach, the reader's position, the 30% mark */
+.wv .v-bwl-brick { opacity: 0; transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.3s; }
+.wv .v-bwl-brick.is-shown { opacity: 1; }
 .wv .v-bwl-win { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.4; }
-.wv .v-bwl-here { stroke: var(--ink); stroke-width: 2; }
-.wv .v-bwl-build { fill: var(--green-l); stroke: var(--ink); stroke-width: 1.4; }
-.wv .v-bwl-rule30 { stroke: var(--orange); stroke-width: 2.5; }
 
-/* layout */
-.wv--one-stack svg { max-width: 680px; margin: 0.4rem 0 0.8rem; }
-.v-bwl-steps { display: grid; gap: 0.7rem; }
-.v-bwl-pic { margin: 0.5rem 0 0.6rem; }
-.v-bwl-pic svg { max-width: 680px; }
-.v-bwl-steps .wv-range input { flex: 1 1 auto; min-width: 0; }
-.v-bwl-steps .wv-card p { margin: 0; }
+.wv--one-stack svg { max-width: 640px; margin: 0.4rem 0 0.8rem; }
