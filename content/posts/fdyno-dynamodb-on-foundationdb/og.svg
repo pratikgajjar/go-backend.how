@@ -13,29 +13,28 @@
   <rect x="56" y="56" width="1096" height="526" class="ink"/>
   <rect x="48" y="48" width="1096" height="526" class="box"/>
 
-  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="116" font-size="28" class="mute">backend.how</text>
   <text x="96" y="186" font-size="58" font-weight="800" class="ink">fdyno</text>
   <text x="96" y="244" font-size="34" font-weight="600" class="ink">DynamoDB on FoundationDB</text>
 
   <!-- one PutItem becomes one FDB transaction -->
-  <rect x="96" y="352" width="140" height="96" class="op"/>
-  <text x="166" y="408" font-size="22" text-anchor="middle" class="ink">PutItem</text>
-  <line x1="236" y1="400" x2="264" y2="400" class="arr"/>
-  <path d="M276 400 l-14 -10 v20 z" class="head"/>
+  <rect x="96" y="348" width="164" height="104" class="op"/>
+  <text x="178" y="410" font-size="28" text-anchor="middle" class="ink">PutItem</text>
+  <line x1="260" y1="400" x2="284" y2="400" class="arr"/>
+  <path d="M296 400 l-14 -10 v20 z" class="head"/>
 
   <!-- the transaction holds item, both indexes and the CDC record -->
-  <rect x="284" y="296" width="812" height="180" class="txn"/>
-  <text x="304" y="330" font-size="22" font-weight="700" class="gtext">one FDB transaction</text>
-  <g font-size="24" text-anchor="middle">
-    <rect x="304" y="352" width="140" height="96" class="data"/><text x="374" y="408" class="ink">item</text>
-    <rect x="460" y="352" width="140" height="96" class="data"/><text x="530" y="408" class="ink">GSI-1</text>
-    <rect x="616" y="352" width="140" height="96" class="data"/><text x="686" y="408" class="ink">GSI-2</text>
-    <rect x="772" y="352" width="140" height="96" class="data"/><text x="842" y="408" class="ink">CDC</text>
+  <rect x="300" y="284" width="796" height="196" class="txn"/>
+  <text x="320" y="324" font-size="28" font-weight="700" class="gtext">one FDB transaction</text>
+  <g font-size="30" text-anchor="middle">
+    <rect x="320" y="348" width="132" height="104" class="data"/><text x="386" y="411" class="ink">item</text>
+    <rect x="466" y="348" width="132" height="104" class="data"/><text x="532" y="411" class="ink">GSI-1</text>
+    <rect x="612" y="348" width="132" height="104" class="data"/><text x="678" y="411" class="ink">GSI-2</text>
+    <rect x="758" y="348" width="132" height="104" class="data"/><text x="824" y="411" class="ink">CDC</text>
   </g>
   <!-- single commit point -->
-  <line x1="944" y1="316" x2="944" y2="458" class="commit"/>
-  <text x="962" y="396" font-size="24" font-weight="700" class="gtext">commit</text>
-  <text x="962" y="428" font-size="22" class="gtext">1 fsync</text>
+  <line x1="918" y1="300" x2="918" y2="464" class="commit"/>
+  <text x="936" y="411" font-size="30" font-weight="700" class="gtext">commit</text>
 
-  <text x="96" y="530" font-size="26" class="ink">All four are written together, or none are</text>
+  <text x="96" y="530" font-size="28" class="ink">All four are written together, or none are</text>
 </svg>
