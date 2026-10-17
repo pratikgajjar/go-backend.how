@@ -243,7 +243,8 @@ sit in between: model the body or the eyes, but keep it human and simple.
 - Simple technical English. Short sentences. Answer first.
 - No slop: no "let's dive in", "the magic", "game changer", "under the hood
   of", "it's not X, it's Y", "the trick is", anaphora ("No X. No Y. No Z."),
-  reveal colons, dramatic build-up, rhetorical questions, emoji in titles.
+  reveal colons, dramatic build-up, rhetorical questions, emoji in figure
+  titles. (Post titles keep their emoji.)
 - No digs at other tools or engineers. Delete the phrase; do not replace it.
 - Reasoning chain, not punchline: the conclusion follows from the steps.
 - Do not over-explain. If the figure shows it, the text need not repeat it.
