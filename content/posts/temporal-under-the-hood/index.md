@@ -741,7 +741,8 @@ models to your own workload.
 
 **A Temporal activity costs about 5× as many SQL statements as an Absurd
 step.** The slope ratio, 35 / 7, stays at 5 as you add units of work. The
-ratio of totals rises from about 4.2× at `N = 1` toward 5×.
+ratio of totals rises from 4.2× at `N = 1` on the fitted lines (4.3× measured)
+toward 5×.
 
 Each Absurd step is:
 - 1 checkpoint read (returns empty on first run, cached value on replay)
@@ -810,7 +811,7 @@ completion before starting the next (n=100 per row):
 | 10 |     90.7 ms  |   12.1 ms  |  7.5× |
 
 The per-activity latency slope is **~8.5 ms in Temporal** versus **~0.2 ms
-in Absurd** — a 40× difference per unit of work. Each Absurd step is
+in Absurd** — a 42.5× difference per unit of work. Each Absurd step is
 essentially just a single `set_task_checkpoint_state` stored-procedure call
 (0.342 ms measured). Each Temporal activity routes through the matching
 service's dispatch loop, a decision round-trip back to the worker, then
@@ -818,7 +819,7 @@ history event persistence — several network hops per activity, even on a
 single-node deploy.
 
 Temporal's tail is dramatic and bimodal: the p50 for a 10-activity workflow
-is ~91 ms, but the p90 is **1.05 seconds** — an 11× gap inside one
+is ~91 ms, but the p90 is **1.05 seconds** — an 11.6× gap inside one
 distribution. Most of that variance is matching-service dispatch jitter
 (sticky queue falling back to normal dispatch). Absurd's p99 for a 10-step
 task was **20.2 ms** — tail essentially matches the median.
@@ -952,7 +953,7 @@ Absurd:    ~11 +  7·N   SQL per task       ( 5 tables, checkpoint-based)
        per-unit-of-work slope: 5×
        throughput ratio:      20×
        storage ratio:          7×
-       latency-slope ratio:   40×
+       latency-slope ratio:   42.5×
 ```
 
 Temporal is event-sourced **insurance** — deterministic replay,
