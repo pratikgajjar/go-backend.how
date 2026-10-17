@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .op { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .txn { fill: var(--board); stroke: var(--green); stroke-width: 3; }
+    .data { fill: var(--brown-l); stroke: var(--brown); stroke-width: 2; stroke-dasharray: 7 5; }
+    .arr { stroke: var(--ink); stroke-width: 3; } .head { fill: var(--ink); }
+    .commit { stroke: var(--green); stroke-width: 6; } .gtext { fill: var(--green); }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="58" font-weight="800" class="ink">fdyno</text>
+  <text x="96" y="244" font-size="34" font-weight="600" class="ink">DynamoDB on FoundationDB</text>
+
+  <!-- one PutItem becomes one FDB transaction -->
+  <rect x="96" y="352" width="140" height="96" class="op"/>
+  <text x="166" y="408" font-size="22" text-anchor="middle" class="ink">PutItem</text>
+  <line x1="236" y1="400" x2="264" y2="400" class="arr"/>
+  <path d="M276 400 l-14 -10 v20 z" class="head"/>
+
+  <!-- the transaction holds item, both indexes and the CDC record -->
+  <rect x="284" y="296" width="812" height="180" class="txn"/>
+  <text x="304" y="330" font-size="22" font-weight="700" class="gtext">one FDB transaction</text>
+  <g font-size="24" text-anchor="middle">
+    <rect x="304" y="352" width="140" height="96" class="data"/><text x="374" y="408" class="ink">item</text>
+    <rect x="460" y="352" width="140" height="96" class="data"/><text x="530" y="408" class="ink">GSI-1</text>
+    <rect x="616" y="352" width="140" height="96" class="data"/><text x="686" y="408" class="ink">GSI-2</text>
+    <rect x="772" y="352" width="140" height="96" class="data"/><text x="842" y="408" class="ink">CDC</text>
+  </g>
+  <!-- single commit point -->
+  <line x1="944" y1="316" x2="944" y2="458" class="commit"/>
+  <text x="962" y="396" font-size="24" font-weight="700" class="gtext">commit</text>
+  <text x="962" y="428" font-size="22" class="gtext">1 fsync</text>
+
+  <text x="96" y="530" font-size="26" class="ink">All four are written together, or none are</text>
+</svg>
