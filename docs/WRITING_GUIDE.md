@@ -258,7 +258,7 @@ Winston insists on **a well-lit room, well-chosen time, half-full at
 minimum**. The blog equivalents:
 
 - **Well-lit**: light/dark theme both legible. WCAG-AA contrast on
-  every page (we enforce this — see `scripts/site-quality-check.py`).
+  every page.
 - **Well-chosen time**: don't ship posts on Friday evening. Tuesday
   morning UTC catches the EU + US workday.
 - **Half-full**: don't publish until at least one trusted reader has
@@ -333,10 +333,9 @@ For posts:
 - Ask them: "Where did you get bored? Where did you stop and
   re-read? Where did you stop and Google something?"
 - A reviewer who knows what you mean is worse than no reviewer.
-- The autoresearch defect detector
-  (`scripts/site-quality-check.py`) catches *syntactic* problems
-  (broken anchors, missing alt text). It cannot tell you the post
-  is boring. That's the human reviewer's job.
+- A checker can catch *syntactic* problems (broken anchors, missing
+  alt text). It cannot tell you the post is boring. That's the human
+  reviewer's job.
 
 ---
 
@@ -465,7 +464,7 @@ Run this before opening the PR / pushing to `main`:
 - [ ] **Crimes audit**: no slide-crime equivalents — figures that
       read themselves, no chase-the-reference footnotes, ≤ 1 apex-
       lon slide, no 600-word paragraph.
-- [ ] **Lit room**: WCAG-AA contrast (scripts/site-quality-check.py),
+- [ ] **Lit room**: WCAG-AA contrast,
       Lighthouse ≥ 85 perf on the new post.
 - [ ] **Outside reviewer**: a non-domain reader has read it and
       reported where they re-read or googled.
@@ -511,7 +510,8 @@ guidance:
 - `feedback_blog_footnotes.md` — footnote restraint.
 - `feedback_blog_audit_floor_then_factcheck.md` — review process.
 - `AGENTS.md` — theme assignment, code-block tags.
-- `scripts/site-quality-check.py` — pre-publish defect detector.
+- `scripts/viz-check.py` — figure check (mount, overflow, JS errors).
+- `scripts/slop-check.py` — Claudism candidates (see `docs/CLAUDISMS.md`).
 
 ---
 
