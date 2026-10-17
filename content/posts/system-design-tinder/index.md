@@ -11,7 +11,7 @@ theme = "blush"
 
 A dating app at scale answers one question many times a second: **how do you show someone the right person, right now, within 10 miles, when 75 million people use the app every day?**
 
-By the end of this post you will know how to size that system from a few business numbers, why the obvious designs break (a geo query per swipe, a match check that reads before it writes, a chat that trusts the live connection), and what to build instead: a deck of candidates ranked ahead of time, geohash cells sized to the search radius, one Redis key per pair for matches, and a message store the phone syncs from. Five figures let you try each part.
+By the end of this post you will know how to size that system from a few business numbers, why the obvious designs break (a geo query per swipe, a match check that reads before it writes, a chat that trusts the live connection), and what to build instead: a deck of candidates ranked ahead of time, geohash cells sized to the search radius, one Redis key per pair for matches, and a message store the phone syncs from. Four figures let you try the parts that are easy to get wrong.
 
 ---
 
@@ -25,7 +25,7 @@ Beyond the basics of profiles and matching, here are the harder problems worth s
 
 3. **The Mutual Interest Problem**: Unlike Instagram where you follow someone and you're done, here both people must swipe right. Your recommendation engine needs to predict *bilateral* attraction.
 
-4. **The Chat Delivery Guarantee**: When someone finally matches, that first message must not be lost. This isn't "eventual consistency is fine" territory. This is "we lose a user forever" territory.
+4. **The Chat Delivery Guarantee**: When someone finally matches, that first message must not be lost. "Eventually" is not good enough here: lose the first message and you can lose the user for good.
 
 ---
 
@@ -60,7 +60,7 @@ Derive real numbers from business metrics instead of guessing.
 
 ```txt
 Daily swipes = 75M × 50 = 3.75 billion swipes/day
-             ≈ 2 billion (accounting for variance)
+             ≈ 2 billion (not every daily user swipes a full session)
 
 Peak QPS for swipes = (2B × 0.4) / (3 hours × 3600)
                     = 800M / 10,800
@@ -73,7 +73,7 @@ Each swipe triggers:
 - 1 recommendation fetch if queue is low
 - 1 potential match notification
 
-So your **effective QPS is 4× your swipe rate**: ~300,000 operations/second at peak.
+So your **effective QPS is up to 4× your swipe rate**: ~300,000 operations/second at peak.
 
 **Location updates:**
 
@@ -133,11 +133,9 @@ It fails twice. On the read side, at 74,000 swipes per second, a geo query plus 
 
 ## Rank Ahead of Time, Serve the Top
 
-**Solution: pre-computation plus a queue.** Every 15 minutes, an offline pipeline generates candidates from nearby geohash cells, ranks them, and writes each user's top 200 into a Redis sorted set: their deck. When the user opens the app, the service pops the top 10 (`ZPOPMAX deck:u42 10`), drops anyone swiped since the deck was built, and returns the cards within a 50 ms P99 target. Swipe a few cards and watch what each swipe costs:
+**Solution: pre-computation plus a queue.** Every 15 minutes, an offline pipeline generates candidates from nearby geohash cells, ranks them, and writes each user's top 200 into a Redis sorted set: their deck. When the user opens the app, the service pops the top 10 (`ZPOPMAX deck:u42 10`), drops anyone swiped since the deck was built, and returns the cards well inside the 100 ms P99 target. A swipe never touches the deck: it is one small write, and the phone pops 10 more after its last card. At 74,000 swipes per second, that is about 7,400 pops per second.
 
-{{< viz kind="deck-hero" fig="2" title="Swipe your deck" fallback="deck-hero.svg" alt="A phone showing the top card of a precomputed deck, the deck as a Redis sorted set of IDs and scores, and the offline pipeline that builds it every 15 minutes" caption="IDs and scores are samples. The next sections take each part apart." >}}
-
-The expensive work, finding people nearby and scoring them, happens in the offline box, away from the request. The next sections open that box.
+The expensive work, finding people nearby and scoring them, happens in the offline pipeline, away from the request. The next sections cover those two steps.
 
 ## Candidate Generation: Geohash Cells
 
@@ -171,7 +169,7 @@ def get_candidates(user):
 
 The part that is easy to get wrong is the reach. Nine square cells are not a circle, and a cell's width depends on latitude. Guess first, then move the user, the radius, and the precision:
 
-{{< viz kind="geo-reach" fig="3" title="How far do 9 geohash cells reach?" fallback="geo-reach.svg" alt="A 3 by 3 block of precision-5 geohash cells around a user in New York, with a 16 km search circle; 80% of the circle falls outside the block" caption="Geohash strings are real for the chosen point. Distances assume a spherical Earth." >}}
+{{< viz kind="geo-reach" fig="2" title="How far do 9 geohash cells reach?" fallback="geo-reach.svg" alt="A 3 by 3 block of precision-5 geohash cells around a user in New York, with a 16 km search circle; 80% of the circle falls outside the block" caption="Geohash strings are real for the chosen point. Distances assume a spherical Earth." >}}
 
 In the worst case, when the user stands in a corner of their cell, the block reaches only one cell side: 4.9 km at precision 5 on the equator, 3.7 km in New York. That is far short of the 10 miles (16 km) in the opening question. So choose the precision from the radius: use the smallest cells whose 3×3 block still holds the circle, then drop candidates by real distance. Redis `GEOSEARCH` works the same way. It estimates the cell size from the radius, reads the 3×3 block, and moves to bigger cells when the block does not cover the search area[^geosearch].
 
@@ -258,7 +256,7 @@ When both users swipe right, you need to:
 
 A and B swipe right on each other within the same few milliseconds. Each request must save its own swipe and check for the other one. Whether the match is found depends on how those two steps are written, and on the order in which the calls reach Redis.
 
-{{< viz kind="swipe-race" fig="4" title="Two right swipes at the same moment" fallback="swipe-race.svg" alt="Outcomes of two simultaneous right swipes for five ways of saving a swipe, across every order of the Redis calls" caption="A and B are sample user IDs. Hash slots are from `CLUSTER KEYSLOT`, and the `CROSSSLOT` reply is what a Valkey 9.1 cluster returns for this transaction." >}}
+{{< viz kind="swipe-race" fig="3" title="Two right swipes at the same moment" fallback="swipe-race.svg" alt="Outcomes of two simultaneous right swipes for five ways of saving a swipe, across every order of the Redis calls" caption="A and B are sample user IDs. Hash slots are from `CLUSTER KEYSLOT`, and the `CROSSSLOT` reply is what a Valkey 9.1 cluster returns for this transaction." >}}
 
 Checking before writing can miss the match, and a replica that lags the primary has the same effect. Writing before checking can create the match twice. A `MULTI`/`EXEC` transaction fixes both on one Redis node, and redis-py's `pipeline()` already sends one. On Redis Cluster, though, `right:A` and `right:B` hash to different slots, and a transaction may only touch keys in one slot[^crossslot]. One key per pair, with a hash tag, keeps the transaction in one slot:
 
@@ -270,6 +268,9 @@ def record_swipe(swiper_id, target_id, direction):
 
     # One key per pair. Both users build the same key, and Redis Cluster
     # hashes only the part inside {…}, so the key has a single slot.
+    # The deck filter reads this per-user set; the match decision does not.
+    redis.sadd(f"right:{swiper_id}", target_id)
+
     lo, hi = sorted((swiper_id, target_id))
     key = f"likes:{{{lo}:{hi}}}"
 
@@ -293,7 +294,7 @@ def record_swipe(swiper_id, target_id, direction):
     return None
 ```
 
-`added == 1` keeps a repeated swipe from creating the match again. The cost is one small key for every pair with at least one like. If the app has a "Likes You" screen, keep `right:{user}` for it as well; the match decision does not read it.
+`added == 1` keeps a repeated swipe from creating the match again. The cost is one small key for every pair with at least one like. The per-user sets `left:{user}` and `right:{user}` stay, because the deck filter reads them to drop people already swiped.
 
 ---
 
@@ -308,7 +309,7 @@ Chat has to handle all of this:
 
 Each phone holds a WebSocket to one gateway pod. Gateways pass messages to each other through Redis Pub/Sub, and every message is stored in ScyllaDB. Pub/Sub delivers at most once and keeps no copy[^pubsub], so the live path alone cannot keep the first promise above. Pick a fault and follow the first message:
 
-{{< viz kind="chat-timeline" fig="5" title="The first message, as both phones see it" fallback="chat-timeline.svg" alt="Arjun's phone, the backend event log, and Riya's phone: the message is stored, the live Pub/Sub path drops it, a push goes out, and Riya's phone syncs it from ScyllaDB" caption="Names, IDs, text, and the 5-second timeout are samples. The `message_id` is a real version-1 UUID for 2026-02-14 15:11:07 UTC." >}}
+{{< viz kind="chat-timeline" fig="4" title="The first message, as both phones see it" fallback="chat-timeline.svg" alt="Arjun's phone, the backend event log, and Riya's phone: the message is stored, the live Pub/Sub path drops it, a push goes out, and Riya's phone syncs it from ScyllaDB" caption="Names, IDs, text, and the 5-second timeout are samples. The `message_id` is a real version-1 UUID for 2026-02-14 15:11:07 UTC." >}}
 
 Every fault ends the same way, because only two things carry the guarantee: the row in ScyllaDB and the phone's ACK. A successful socket write is not an ACK. The kernel accepts the bytes even when the phone is gone, and Linux keeps retransmitting for 13 to 30 minutes before it reports the connection dead[^tcp].
 
@@ -432,15 +433,13 @@ In small towns, users run out of profiles in 2 days. Solutions:
 4. Save the swipe and check for the match in one transaction on one key. On Redis Cluster, that means one key per pair.
 5. Store the message first, count it delivered only when the phone ACKs, and let the phone sync from the store.
 
-The hardest part of building a dating app isn't the technology. It's the **product-engineering intersection**:
+The hardest questions sit where product and engineering meet:
 
 - How do you balance showing users attractive profiles (engagement) vs. compatible profiles (retention)?
 - How do you prevent the platform from becoming a "top 10% get everything" economy?
 - How do you detect and handle bad actors at scale?
 
-Every architectural decision ties back to these questions. The best systems engineers don't just build scalable systems; they build systems that make the product better.
-
-Now go build something people will swipe right on.
+Every architectural decision ties back to these questions.
 
 [^geosearch]: <https://github.com/redis/redis/blob/unstable/src/geohash_helper.c>, `geohashCalculateAreasByShapeWGS84`
 [^crossslot]: <https://redis.io/docs/latest/develop/using-commands/multi-key-operations/>

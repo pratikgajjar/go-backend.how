@@ -1,29 +1,26 @@
 /*
  * system-design-tinder — figures for "System Design - Tinder".
  *
- *   arch-paths     (Fig. 1) the architecture, one path at a time, hop by hop
- *                  at the reader's pace, with the post's peak rate and target.
- *   deck-hero      (Fig. 2) the reader swipes a precomputed deck and sees
- *                  what each swipe costs (one pop per 10 cards, small writes
- *                  per swipe) next to the offline work that built the deck.
- *   geo-reach      (Fig. 3) predict first, then explore how far 9 geohash
- *                  cells reach around one user for a radius, precision and
- *                  city. Real geohash encoding; spherical-Earth distances.
- *   swipe-race     (Fig. 4) two right swipes at once, as the Redis calls each
+ *   arch-paths     (Fig. 1) the architecture, one user action at a time,
+ *                  hop by hop at the reader's pace.
+ *   geo-reach      (Fig. 2) predict first, then drag the user and change the
+ *                  radius and precision: how far 9 geohash cells reach.
+ *                  Real geohash encoding; spherical-Earth distances.
+ *   swipe-race     (Fig. 3) two right swipes at once, as the Redis calls each
  *                  request sends. The reader predicts the outcome first.
- *   chat-timeline  (Fig. 5) the first message as Arjun's phone, the backend
- *                  and Riya's phone see it, event by event, with a fault to
- *                  pick and a check-yourself question at the end.
+ *   chat-timeline  (Fig. 4) the first message as Arjun's phone, the backend
+ *                  and Riya's phone see it, with a fault to pick and a
+ *                  check-yourself question at the end.
  *
  * House look only: shared tokens and components from walviz.css and lib.js.
- * The post CSS does layout and drawing.
+ * The post CSS does layout and drawing. At most two accent colours per view.
  *
  * Checked outside the repo: geohash strings against pygeohash; hash slots
  * against CLUSTER KEYSLOT on Valkey 9.1; the CROSSSLOT reply against a
- * one-node Valkey cluster. IDs, names, times, scores and text are samples.
+ * Valkey cluster. IDs, names, times and text are samples.
  */
 
-import { h, s, range, register, clamp, esc, uid, stepper, chips, ask, colorKey, codeBlock, REDUCED } from './lib.js';
+import { h, s, range, register, clamp, esc, uid, stepper, chips, ask, colorKey, codeBlock } from './lib.js';
 
 /* ---------------------------------------------------------------- shared */
 
@@ -56,102 +53,6 @@ function remountStepper(host, steps, onStep, opts) {
   host.replaceChildren(box);
   st.go(0);
   return st;
-}
-
-/* ================================================================ DECK */
-
-/*
- * The reader swipes their own deck. Each tap shows the small writes it
- * costs; every tenth card shows the one pop that refills the phone. The
- * ranking work stays offline and never runs while they swipe.
- */
-const DECK_SIZE = 200;
-const PAGE = 10;
-function sampleDeck() {
-  let seed = 42;
-  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
-  const used = new Set(); const out = [];
-  let score = 0.93;
-  while (out.length < DECK_SIZE) {
-    const id = `u${Math.floor(rnd() * 9000) + 100}`;
-    if (used.has(id)) continue;
-    used.add(id);
-    score -= 0.0015 + rnd() * 0.0025;
-    out.push([id, Math.max(score, 0.05)]);
-  }
-  return out;
-}
-function initDeck(fig, app) {
-  const deck = sampleDeck();
-  const st = { redis: deck.slice(PAGE), phone: deck.slice(0, PAGE), swiped: 0, last: null };
-  const face = h('div', { class: `${P}face` });
-  const count = h('p', { class: `${P}small` });
-  const nope = h('button', { class: 'wv-btn', type: 'button' }, '✕ Nope');
-  const like = h('button', { class: 'wv-btn', type: 'button' }, '♥ Like');
-  const zset = h('tbody');
-  const more = h('p', { class: `${P}small` });
-  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
-  nope.addEventListener('click', () => swipe('left'));
-  like.addEventListener('click', () => swipe('right'));
-  fig.addEventListener('keydown', (e) => {
-    if (e.target.closest('input, select')) return;
-    if (e.key === 'ArrowLeft') { swipe('left'); e.preventDefault(); e.stopPropagation(); }
-    if (e.key === 'ArrowRight') { swipe('right'); e.preventDefault(); e.stopPropagation(); }
-  });
-
-  app.append(
-    h('div', { class: 'wv-cards' },
-      h('div', { class: 'wv-card' },
-        h('h5', null, 'Your phone'),
-        h('div', { class: `${P}phone` }, face, h('div', { class: `${P}btns` }, nope, like)),
-        count, h('div', { style: 'height:.5rem' }), note),
-      h('div', { class: 'wv-card is-data' },
-        h('h5', null, 'Your deck in Redis'),
-        h('p', { class: `${P}small c-data` }, 'deck:u42 · sorted set'),
-        h('table', { class: 'wv-table' }, h('thead', null, h('tr', null, h('th', null, 'member'), h('th', null, 'score'))), zset),
-        more),
-      h('div', { class: 'wv-card' },
-        h('h5', null, 'Built offline, every 15 min'),
-        h('ol', { class: `${P}list` },
-          h('li', null, 'Read 9 nearby geohash cells'),
-          h('li', null, 'Keep up to 500 candidates'),
-          h('li', null, 'Score each pair: ', h('code', null, 'P(A→B) × P(B→A) × fairness')),
-          h('li', null, 'Write the top 200 into your deck')),
-        h('p', { class: `${P}small` }, 'None of this runs while you swipe.'))),
-    colorKey([['k-data', 'your deck: IDs and scores (samples)'], ['k-look', 'the next pop']]),
-  );
-
-  function render() {
-    const top = st.phone[0];
-    face.replaceChildren(...(top
-      ? [h('span', { class: `${P}avatar` }), h('b', { class: 'c-data' }, top[0]), h('span', { class: 'c-data' }, `score ${top[1].toFixed(2)}`)]
-      : [h('b', null, 'Deck empty'), h('span', null, 'The next offline run refills it.')]));
-    count.textContent = `${st.phone.length} of ${PAGE} cards left on the phone · ${st.swiped} swiped`;
-    const soon = st.phone.length <= 3;
-    zset.replaceChildren(...st.redis.slice(0, 5).map(([id, sc]) => h('tr', { class: soon ? 'is-look' : '' }, h('td', { class: 'c-data' }, id), h('td', { class: 'c-data' }, sc.toFixed(3)))));
-    more.textContent = st.redis.length > 5 ? `… ${st.redis.length - 5} more · ${st.redis.length} in Redis${soon ? ' · highlighted rows are the next pop' : ''}` : `${st.redis.length} in Redis`;
-    nope.disabled = !top; like.disabled = !top;
-    const L = st.last;
-    note.className = 'wv-note';
-    if (!L) note.innerHTML = `Opening the app popped your top ${PAGE} cards: <code>ZPOPMAX deck:u42 ${PAGE}</code>. No ranking ran. Swipe with the buttons or the arrow keys.`;
-    else if (L.pop) note.innerHTML = `That was your last card on the phone, so the app popped ${PAGE} more: <code>ZPOPMAX deck:u42 ${PAGE}</code>. One read for the next ${PAGE} swipes.`;
-    else note.innerHTML = L.dir === 'right'
-      ? `Your right swipe is two small writes: <code>SADD right:u42 ${L.id}</code> and the match check in Fig. 4. The deck did not change.`
-      : `Your left swipe is one small write: <code>SADD left:u42 ${L.id}</code>. The deck did not change.`;
-  }
-  function swipe(dir) {
-    const top = st.phone.shift();
-    if (!top) return;
-    st.swiped++;
-    st.last = { dir, id: top[0] };
-    if (!st.phone.length && st.redis.length) {
-      st.phone = st.redis.slice(0, PAGE); st.redis = st.redis.slice(PAGE);
-      st.last.pop = true;
-    }
-    face.classList.add(dir === 'left' ? 'is-left' : 'is-right');
-    setTimeout(() => { face.classList.remove('is-left', 'is-right'); render(); }, REDUCED ? 0 : 180);
-  }
-  render();
 }
 
 /* ========================================================== ARCH PATHS */
@@ -202,7 +103,7 @@ const HOPTO = {
 /* Rates and targets are the ones derived in the post's requirements. */
 const PATHS = {
   open: {
-    label: 'Open the app', rate: 'peak rate not derived in the post', target: 'recommendations P99 < 100 ms',
+    label: 'Open the app', rate: 'about 7,400 deck pops/s at peak (one per 10 swipes)', target: 'recommendations P99 < 100 ms',
     hops: [
       ['gw', 'Phone → API gateway', 'GET /recs'],
       ['rec', 'Gateway → Recommendation svc', ''],
@@ -217,7 +118,7 @@ const PATHS = {
     hops: [
       ['gw', 'Phone → API gateway', 'POST /swipe {target: "u7", dir: "right"}'],
       ['swipe', 'Gateway → Swipe svc', ''],
-      ['swipes', 'Save the like and count the pair (Fig. 4)', 'MULTI · SADD likes:{u42:u7} u42 · SCARD · EXEC'],
+      ['swipes', 'Save the like and count the pair (Fig. 3)', 'MULTI · SADD likes:{u42:u7} u42 · SCARD · EXEC'],
       ['notif', 'On a match, queue one notification', ''],
       ['push', 'APNs / FCM tell both phones', '"It\'s a Match!"'],
     ],
@@ -229,7 +130,7 @@ const PATHS = {
       ['scylla', 'Store the message first', 'INSERT INTO messages … \'pending\''],
       ['pub', 'Publish to the recipient\'s channel', 'PUBLISH user:riya …'],
       ['sub', 'The recipient\'s gateway writes it to their socket', ''],
-      [null, 'No ACK in time: push, then the phone syncs (Fig. 5)', ''],
+      [null, 'No ACK in time: push, then the phone syncs (Fig. 4)', ''],
     ],
   },
   location: {
@@ -237,7 +138,7 @@ const PATHS = {
     hops: [
       ['kafka', 'Phone → Kafka, as a buffer', '{user_id, lat, lng}'],
       ['loc', 'The processor reads a batch', ''],
-      ['geo', 'Move the user to their new cell (Fig. 3)', 'SREM active:dr5rd:… u42 · SADD active:dr5re:… u42'],
+      ['geo', 'Move the user to their new cell (Fig. 2)', 'SREM active:dr5rd:… u42 · SADD active:dr5re:… u42'],
       ['geooff', 'Every 15 min: read candidates from 9 cells', 'SMEMBERS active:<cell>:<bucket> ×9'],
       ['pgoff', 'Join profile fields and preferences', ''],
       ['offdeck', 'Rank and write the top 200', 'ZADD deck:u42 0.91 u7 …'],
@@ -248,7 +149,7 @@ function initArchPaths(fig, app) {
   const id = uid('tdr');
   let path = 'swipe'; let hop = 0;
   const stage = h('div');
-  const load = h('dl', { class: 'wv-kv' });
+  const load = h('p', { class: `${P}small` });
   const stepHost = h('div');
   const cap = h('div', { class: 'wv-callout', 'aria-live': 'polite' });
   const trail = h('ol', { class: `${P}list` });
@@ -261,7 +162,7 @@ function initArchPaths(fig, app) {
     wide = app.clientWidth >= 700;
     stage.replaceChildren();
     numG = null;
-    keyHost.replaceChildren(colorKey([...(wide ? [['k-ink', 'service (dashed: data at rest)']] : []), ['k-look', 'this hop'], ['k-data', 'commands and rates'], ['k-safe', 'latency target'], ['k-opt', 'paths']]));
+    keyHost.replaceChildren(colorKey(wide ? [['k-ink', 'service (dashed: data at rest)'], ['k-look', 'this hop'], ['k-data', 'what the store holds']] : [['k-look', 'this hop']]));
     if (!wide) return;
     const svg = s('svg', { viewBox: '0 0 960 534', role: 'img', 'aria-label': fig.getAttribute('aria-label') });
     svg.append(markers(id));
@@ -317,7 +218,7 @@ function initArchPaths(fig, app) {
   }
   function mount() {
     const p = PATHS[path];
-    load.innerHTML = `<dt>Peak load</dt><dd class="c-data">${esc(p.rate)}</dd><dt>Target</dt><dd class="c-safe">${esc(p.target)}</dd>`;
+    load.textContent = `${p.rate} · ${p.target}`;
     remountStepper(stepHost, p.hops.map(([eid]) => ({ label: eid ? AN[HOPTO[eid]][4] : 'push + sync' })), (i) => show(i), { interval: 2600 });
   }
   build(); mount();
@@ -343,11 +244,7 @@ function geohash(lat, lon, p) {
   return { hash: out, lat: la, lon: lo };
 }
 
-const CITIES = [
-  { name: 'Mumbai', lat: 19.076, lon: 72.8777 },
-  { name: 'New York', lat: 40.7128, lon: -74.006 },
-  { name: 'Stockholm', lat: 59.3293, lon: 18.0686 },
-];
+const NYC = { name: 'New York', lat: 40.7128, lon: -74.006 };
 
 function reachModel(u, p, r) {
   const g = geohash(u.lat, u.lon, p);
@@ -366,18 +263,7 @@ function reachModel(u, p, r) {
       if ((bx - ux) ** 2 + (by - uy) ** 2 > r * r) outC++;
     }
   }
-  let cells = 0;
-  for (let i = Math.floor((ux - r) / W); i <= Math.floor((ux + r) / W); i++) {
-    for (let j = Math.floor((uy - r) / H); j <= Math.floor((uy + r) / H); j++) {
-      const nx = clamp(ux, i * W, (i + 1) * W); const ny = clamp(uy, j * H, (j + 1) * H);
-      if ((nx - ux) ** 2 + (ny - uy) ** 2 <= r * r) cells++;
-    }
-  }
-  const names = [];
-  for (const dy of [1, 0, -1]) for (const dx of [-1, 0, 1]) {
-    names.push({ dx, dy, hash: geohash((g.lat[0] + g.lat[1]) / 2 + dy * dlat, (g.lon[0] + g.lon[1]) / 2 + dx * dlon, p).hash });
-  }
-  return { g, W, H, ux, uy, reach, missed: miss / inC, over: outC / (N * N), cells, names };
+  return { g, W, H, ux, uy, reach, missed: miss / inC, over: outC / (N * N) };
 }
 
 /** Smallest cells (highest precision) whose 3×3 block holds the circle. */
@@ -387,37 +273,28 @@ function pickPrecision(u, r) {
 }
 const kmTxt = (v) => (v >= 10 ? v.toFixed(0) : v.toFixed(1));
 function initGeoReach(fig, app) {
-  const st = { city: 1, p: 5, r: 16, u: { ...CITIES[1] } };
-  const id = uid('tdr');
+  const st = { p: 5, r: 16, u: { ...NYC } };
   const stage = h('div', { class: `${P}map` });
-  const keys = h('div', { 'aria-live': 'polite' });
   const say = h('div', { class: 'wv-note', 'aria-live': 'polite' });
   let L = null; let svg = null; let M = null; let view = null;
 
-  const cityC = pickRow('City', CITIES.map((x, i) => [i, x.name]), st.city, (i) => { st.city = i; st.u = { ...CITIES[i] }; where.set('city'); draw(); });
   const precC = pickRow('Precision', [4, 5, 6].map((p) => [p, String(p)]), st.p, (p) => { st.p = p; draw(); });
   const rad = range('Search radius', { min: 1, max: 50, value: st.r, fmt: (v) => `${v} km${v === 16 ? ' ≈ 10 mi' : ''}`, oninput: (v) => { st.r = v; draw(); } });
-  const where = pickRow('User at', [['city', 'city centre'], ['c', 'cell centre'], ['k', 'cell corner']], 'city', (v) => {
-    const g = geohash(st.u.lat, st.u.lon, st.p);
-    if (v === 'c') st.u = { lat: (g.lat[0] + g.lat[1]) / 2, lon: (g.lon[0] + g.lon[1]) / 2 };
-    else if (v === 'k') st.u = { lat: g.lat[1] - (g.lat[1] - g.lat[0]) * 0.02, lon: g.lon[1] - (g.lon[1] - g.lon[0]) * 0.02 };
-    else st.u = { ...CITIES[st.city] };
-    draw();
-  });
-  const ctl = h('div', null, cityC.el, precC.el, rad.el, where.el);
-  const hint = h('p', { class: `${P}small` }, 'Drag the purple dot, or focus the map and use the arrow keys.');
+  const ctl = h('div', null, precC.el, rad.el);
+  const hint = h('p', { class: `${P}small` }, 'Drag the dot (or focus the map and use the arrow keys). In a corner of its cell, the reach is shortest.');
 
   /* Predict first: most readers expect nine cells to cover a 10-mile circle. */
   const q = ask('Before you look: a user in New York searches within 10 miles (16 km). The code reads the 9 precision-5 cells around them. How much of that circle do the 9 cells cover?',
     [['all', 'All of it'], ['half', 'About half'], ['fifth', 'About a fifth']], 'fifth',
     (v, right) => (right ? '<b>Right: about a fifth.</b> The map below shows why.' : '<b>They cover about a fifth.</b> The map below shows why.'));
   q.el.addEventListener('click', (e) => { if (e.target.closest('.wv-chip')) reveal(); });
-  function reveal() { [ctl, stage, hint, keys, say].forEach((el) => { el.hidden = false; }); draw(); }
-  [ctl, stage, hint, keys, say].forEach((el) => { el.hidden = true; });
+  const shown = [ctl, stage, hint, say];
+  function reveal() { shown.forEach((el) => { el.hidden = false; }); draw(); }
+  shown.forEach((el) => { el.hidden = true; });
 
   app.append(q.el, ctl,
-    h('div', { class: `${P}geo` }, h('div', null, stage, hint), h('div', { class: `${P}side` }, keys, say)),
-    colorKey([['k-ink', 'search circle'], ['k-data', 'geohash cells and keys'], ['k-look', 'the user'], ['k-safe', 'guaranteed reach'], ['k-gap', 'missed area'], ['k-opt', 'controls'], ['k-pick', 'precision to use']]));
+    h('div', { class: `${P}geo` }, h('div', null, stage, hint), say),
+    colorKey([['k-ink', 'search circle; dashed: what 9 cells reach'], ['k-data', 'the 9 geohash cells'], ['k-gap', 'circle outside the cells'], ['k-safe', 'circle fully held']]));
 
   function draw() {
     L = app.clientWidth < 700 ? { W: 360, H: 330 } : { W: 440, H: 400 };
@@ -435,12 +312,13 @@ function initGeoReach(fig, app) {
     view = { X, Y, sc, cx, cy, MH };
 
     if (!svg || svg.dataset.w !== String(L.W)) {
-      svg = s('svg', { viewBox: `0 0 ${L.W} ${L.H}`, role: 'img', tabindex: 0, 'data-w': L.W });
+      svg = s('svg', { viewBox: `0 0 ${L.W} ${L.H}`, role: 'img', tabindex: 0, 'data-w': L.W, 'data-id': uid('tdr') });
       stage.replaceChildren(svg);
       wire();
     }
-    svg.setAttribute('aria-label', `3 by 3 geohash block at precision ${st.p} around a user in ${CITIES[st.city].name}, with a ${r} km search circle`);
-    svg.replaceChildren(markers(id), s('clipPath', { id: `${id}-c` }, s('rect', { x: 0, y: 0, width: L.W, height: MH })));
+    svg.setAttribute('aria-label', `3 by 3 geohash block at precision ${st.p} around a user in New York, with a ${r} km search circle`);
+    const id = svg.dataset.id;
+    svg.replaceChildren(s('clipPath', { id: `${id}-c` }, s('rect', { x: 0, y: 0, width: L.W, height: MH })));
     const g = s('g', { 'clip-path': `url(#${id}-c)` });
     svg.append(g);
     g.append(s('rect', { x: 0, y: 0, width: L.W, height: MH, style: 'fill:var(--tint)' }));
@@ -458,32 +336,27 @@ function initGeoReach(fig, app) {
     g.append(s('path', { d: bl.join(' '), style: 'stroke:var(--brown);stroke-width:1.4;fill:none;stroke-dasharray:5 3' }));
     g.append(s('rect', { x: X(0), y: Y(ch), width: cw * sc, height: ch * sc, style: 'fill:none;stroke:var(--brown);stroke-width:2.6' }));
     g.append(s('circle', { cx: X(ux), cy: Y(uy), r: r * sc, style: 'fill:none;stroke:var(--ink);stroke-width:1.8' }));
-    g.append(s('circle', { cx: X(ux), cy: Y(uy), r: M.reach * sc, style: 'fill:none;stroke:var(--green);stroke-width:2.4;stroke-dasharray:6 4' }));
+    g.append(s('circle', { cx: X(ux), cy: Y(uy), r: M.reach * sc, style: 'fill:none;stroke:var(--ink);stroke-width:1.8;stroke-dasharray:6 4' }));
     const top = Y(uy) - r * sc;
     g.append(s('text', { x: X(ux), y: top > 18 ? top - 6 : top + 16, class: 't-s t-b halo', 'text-anchor': 'middle' }, `search radius ${r} km`));
-    g.append(s('text', { x: X(ux), y: Y(uy) + M.reach * sc + 15, class: 't-xs t-b t-safe halo', 'text-anchor': 'middle' }, `9 cells reach ${kmTxt(M.reach)} km`));
+    g.append(s('text', { x: X(ux), y: Y(uy) + M.reach * sc + 15, class: 't-xs t-b halo', 'text-anchor': 'middle' }, `9 cells reach ${kmTxt(M.reach)} km`));
     g.append(s('text', { x: X(-cw) + 2, y: Y(2 * ch) - 5, class: 't-xs t-b t-data halo' }, `one cell: ${kmTxt(cw)} × ${kmTxt(ch)} km`));
     g.append(s('g', { class: `${P}user` },
       s('circle', { cx: X(ux), cy: Y(uy), r: 14, style: 'fill:transparent' }),
-      s('circle', { cx: X(ux), cy: Y(uy), r: 6.5, style: 'fill:var(--purple);stroke:var(--board);stroke-width:2.5' })));
+      s('circle', { cx: X(ux), cy: Y(uy), r: 6.5, style: 'fill:var(--ink);stroke:var(--board);stroke-width:2.5' })));
     const nice = [0.5, 1, 2, 5, 10, 20, 50].find((v) => v * sc >= 50) || 50;
     const by = L.H - 8;
     svg.append(s('path', { d: `M4,${by - 6} V${by} H${4 + nice * sc} V${by - 6}`, class: 'rule-ink' }),
       s('text', { x: 10 + nice * sc, y: by, class: 't-xs' }, `${nice} km`),
-      s('text', { x: L.W - 4, y: by, class: 't-xs', 'text-anchor': 'end' }, `${CITIES[st.city].name} · ${Math.abs(st.u.lat).toFixed(2)}°${st.u.lat >= 0 ? 'N' : 'S'}`));
+      s('text', { x: L.W - 4, y: by, class: 't-xs', 'text-anchor': 'end' }, `New York · ${st.u.lat.toFixed(2)}°N`));
 
-    const rows = [0, 1, 2].map((rI) => h('tr', null, ...M.names.slice(rI * 3, rI * 3 + 3).map((n) => h('td', { class: n.dx === 0 && n.dy === 0 ? 'c-look' : 'c-data' }, n.hash))));
-    keys.replaceChildren(h('div', { class: 'wv-card is-data' }, h('h5', null, 'The 9 keys one request reads'),
-      h('table', { class: `wv-table ${P}keys` }, h('tbody', null, ...rows)), h('code', null, 'SMEMBERS active:<cell>:<bucket>')));
-    const ok = M.reach >= r;
-    const missPct = Math.round(M.missed * 100);
     const pk = pickPrecision(st.u, r);
-    if (ok) {
+    if (M.reach >= r) {
       say.className = 'wv-note is-good';
-      say.innerHTML = `<b>The 9 cells hold the whole circle.</b> ${Math.round(M.over * 100)}% of the block lies outside it; those users are read, then dropped by the distance filter.${st.p !== pk ? ` Precision <span class="c-pick">${pk}</span> would hold it with smaller cells.` : ''}`;
+      say.innerHTML = `<b>The 9 cells hold the whole circle.</b> ${Math.round(M.over * 100)}% of the cells' area lies outside it; the distance filter drops the users there.${st.p !== pk ? ` Precision ${pk} would hold it with smaller cells.` : ''}`;
     } else {
       say.className = 'wv-note is-bad';
-      say.innerHTML = `<b>${missPct}% of the search circle is outside the 9 cells.</b> Users there are never candidates. At precision ${st.p}, covering the circle takes ${M.cells.toLocaleString('en-US')} cells, one <code>SMEMBERS</code> each. Here, precision <span class="c-pick">${pk}</span> is the smallest cell whose 3×3 block holds the circle.`;
+      say.innerHTML = `<b>${Math.round(M.missed * 100)}% of the search circle is outside the 9 cells.</b> Nobody there becomes a candidate. For this radius, precision ${pk} is the smallest cell whose 3×3 block holds the circle.`;
     }
   }
 
@@ -504,7 +377,7 @@ function initGeoReach(fig, app) {
       if (!dragging) return;
       const [px, py] = pt(e);
       st.u = toLatLon(clamp(px, 4, L.W - 4), clamp(py, 4, view.MH - 4));
-      where.set(''); draw();
+      draw();
     });
     const end = () => { dragging = false; };
     svg.addEventListener('pointerup', end);
@@ -515,7 +388,7 @@ function initGeoReach(fig, app) {
       e.preventDefault(); e.stopPropagation();
       const g = M.g;
       st.u = { lat: st.u.lat + d[1] * (g.lat[1] - g.lat[0]) * 0.1, lon: st.u.lon + d[0] * (g.lon[1] - g.lon[0]) * 0.1 };
-      where.set(''); draw();
+      draw();
     });
   }
   onBreak(app, 700, () => { if (!stage.hidden) draw(); });
@@ -595,7 +468,7 @@ function initSwipeRace(fig, app) {
     draw();
   });
   app.append(kindC.el, orderHost, stage, askHost, tally,
-    colorKey([['k-data', 'keys and replies'], ['k-look', 'a check that saw the like'], ['k-safe', 'one match'], ['k-gap', 'missed, doubled, or failed'], ['k-opt', 'options'], ['k-pick', 'our pick (one key per pair)']]));
+    colorKey([['k-safe', 'one match'], ['k-gap', 'missed, doubled, or failed']]));
 
   function draw() {
     const atomic = RACE[st.kind].atomic;
@@ -618,14 +491,14 @@ function initSwipeRace(fig, app) {
       h('div', { class: `${P}mid` }, h('span', { class: 'wv-tag' }, RACE[st.kind].cluster ? 'cluster' : 'redis')),
       h('div', { class: `${P}who` }, h('b', null, 'B’s request'), h('br'), 'swipes right on A'),
     ];
-    if (slotTxt) kids.push(h('p', { class: `${P}slots c-data`, style: 'grid-row:2' }, slotTxt));
+    if (slotTxt) kids.push(h('p', { class: `${P}slots`, style: 'grid-row:2' }, slotTxt));
     r.rows.forEach((row, k) => {
       const isA = row.u === 'A';
-      const replyCls = !st.open ? 'c-look' : row.tone === 'look' ? 'c-look' : row.tone === 'bad' ? 'c-bad' : 'c-data';
+      const replyCls = st.open && row.tone === 'bad' ? 'c-bad' : '';
       kids.push(h('div', { class: `wv-card ${P}call ${isA ? 'is-a' : 'is-b'}${st.open && row.tone === 'bad' ? ' is-bad' : ''}`, style: `grid-row:${base + k}` },
         row.tx ? h('div', null, 'MULTI … EXEC') : null,
         ...row.lines.map((ln) => h('code', null, ln)),
-        h('div', { class: `${replyCls} ${P}reply` }, st.open ? `→ ${row.reply}` : '→ ?')));
+        h('div', { class: `${P}reply ${replyCls}` }, st.open ? `→ ${row.reply}` : '→ ?')));
       kids.push(h('div', { class: `${P}t`, style: `grid-row:${base + k}` }, `t${k + 1}`));
     });
     if (st.open) {
@@ -635,7 +508,7 @@ function initSwipeRace(fig, app) {
         kids.push(h('div', { class: `wv-card ${P}end is-${u.toLowerCase()}${tone ? ` is-${tone}` : ''}`, style: `grid-row:${base + r.rows.length}` }, h('b', null, t)));
       });
       const keysShown = st.kind === 'pk' ? ['likes:{A:B}'] : ['right:A', 'right:B'];
-      kids.push(h('div', { class: `wv-card ${P}state ${r.err ? 'is-bad' : st.kind === 'pk' ? 'is-pick' : 'is-data'}`, style: `grid-row:${base + r.rows.length + 1}` },
+      kids.push(h('div', { class: `wv-card ${P}state${r.err ? ' is-bad' : ''}`, style: `grid-row:${base + r.rows.length + 1}` },
         h('code', null, r.err ? 'nothing saved' : keysShown.map((k) => `${k} = {${[...r.sets[k]].sort().join(', ')}}`).join('   '))));
     }
     stage.replaceChildren(...kids);
@@ -748,7 +621,7 @@ function initChatTimeline(fig, app) {
   app.append(faultC.el, stepHost,
     h('div', { class: `${P}chat` }, phoneA, h('div', { class: `${P}log` }, log), phoneB),
     now, askHost,
-    colorKey([['k-look', 'this event'], ['k-data', 'the message and commands'], ['k-safe', 'durable or delivered'], ['k-gap', 'where the live path loses it'], ['k-opt', 'faults to try']]));
+    colorKey([['k-ink', 'this event'], ['k-safe', 'stored or delivered'], ['k-gap', 'where the live path loses it']]));
 
   function phone(el, name, net, body) {
     const [nt, tone] = NET[net] || ['', ''];
@@ -757,14 +630,14 @@ function initChatTimeline(fig, app) {
   function show(i) {
     const e = ev[i];
     const status = { sending: 'sending…', sent: '✓ sent', delivered: '✓✓ delivered' }[e.a];
-    phone(phoneA, 'Arjun', null, [h('div', { class: 'wv-card is-data' }, h('span', { class: 'c-data' }, MSG.text), h('br'), h('span', { class: e.a === 'delivered' ? 'c-safe' : '' }, status))]);
+    phone(phoneA, 'Arjun', null, [h('div', { class: 'wv-card' }, MSG.text, h('br'), h('b', { class: e.a === 'delivered' ? 'c-safe' : '' }, status))]);
     const lost = ev.slice(0, i + 1).some((x) => x.tone === 'lost');
-    const rb = e.rv === 'msg' ? [h('div', { class: 'wv-card is-data' }, h('span', { class: 'c-data' }, MSG.text))]
+    const rb = e.rv === 'msg' ? [h('div', { class: 'wv-card' }, MSG.text)]
       : e.rv === 'banner' ? [h('div', { class: 'wv-card' }, h('b', null, 'Notification'), h('br'), `Arjun: ${MSG.text}`), h('p', { class: `${P}small` }, 'app closed')]
         : [h('p', { class: lost ? 'c-bad' : '' }, lost ? 'nothing arrived' : 'waiting…')];
     phone(phoneB, 'Riya', e.rn, rb);
-    log.replaceChildren(...ev.slice(0, i + 1).map((x, k) => h('li', { class: k === i ? 'wv-card is-look' : '' },
-      h('b', null, x.t), h('span', null, h('b', { class: x.tone === 'lost' ? 'c-bad' : x.tone === 'safe' ? 'c-safe' : '' }, x.who), ` ${x.what}`, h('br'), h('code', null, x.short || x.code)))));
+    log.replaceChildren(...ev.slice(0, i + 1).map((x, k) => h('li', { class: k === i ? 'wv-card' : '' },
+      h('b', null, x.t), h('span', null, h('b', { class: x.tone === 'lost' ? 'c-bad' : x.tone === 'safe' ? 'c-safe' : '' }, x.who), ` ${x.what}`))));
     now.className = `wv-note${e.tone === 'lost' ? ' is-bad' : e.tone === 'safe' ? ' is-good' : ''}`;
     now.innerHTML = `<p>${e.say}</p>${codeBlock(e.code.split('\n'))}`;
     askHost.replaceChildren();
@@ -784,7 +657,6 @@ function initChatTimeline(fig, app) {
 }
 
 register({
-  'deck-hero': initDeck,
   'arch-paths': initArchPaths,
   'geo-reach': initGeoReach,
   'swipe-race': initSwipeRace,

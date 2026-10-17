@@ -10,26 +10,16 @@
 .v-tdr-small { margin: 0.35rem 0 0 !important; }
 .v-tdr-list { margin: 0.2rem 0 0 !important; padding-left: 1.3rem !important; display: grid; gap: 0.2rem; }
 
-/* deck: a phone with one card on it */
-.v-tdr-phone { border: 2px solid var(--ink); border-radius: 22px; padding: 0.6rem; width: min(220px, 100%); margin: 0.3rem auto 0; display: grid; gap: 0.6rem; }
-.v-tdr-face { min-height: 128px; border-radius: 12px; background: var(--brown-l); display: grid; place-items: center; align-content: center; gap: 0.2rem; text-align: center; padding: 0.4rem; transition: transform 0.18s ease, opacity 0.18s ease; }
-.v-tdr-face.is-left { transform: translateX(-40%) rotate(-10deg); opacity: 0; }
-.v-tdr-face.is-right { transform: translateX(40%) rotate(10deg); opacity: 0; }
-.v-tdr-avatar { width: 46px; height: 46px; border-radius: 50%; background: var(--board); }
-.v-tdr-btns { display: flex; justify-content: center; gap: 0.5rem; }
-
 /* architecture: current hop and its number */
 .wv svg .v-tdr-cur { stroke: var(--purple); stroke-width: 2.6; opacity: 1; }
 .wv svg .v-tdr-num circle { fill: var(--ink); }
 .wv svg .v-tdr-num.is-cur circle { fill: var(--purple); }
 
-/* geo: map beside the keys and the verdict */
+/* geo: map beside the verdict */
 .v-tdr-geo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; align-items: start; margin-top: 0.6rem; }
 @media (min-width: 760px) { .v-tdr-geo { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); } }
-.v-tdr-side { display: grid; gap: 0.6rem; }
 .v-tdr-map svg { touch-action: none; }
 .v-tdr-user { cursor: grab; }
-.v-tdr-keys td { text-align: center; }
 
 /* swipe race: two request lanes around a time axis */
 .v-tdr-race { display: grid; grid-template-columns: minmax(0, 1fr) 2.4rem minmax(0, 1fr); gap: 0.4rem 0; position: relative; max-width: 720px; margin: 0.4rem auto 0.8rem; }
@@ -65,6 +55,3 @@
 .v-tdr-events li { display: grid; grid-template-columns: 3.6em minmax(0, 1fr); gap: 0.5rem; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--line); }
 .wv .v-tdr-events code { overflow-wrap: anywhere; }
 
-@media (prefers-reduced-motion: reduce) {
-  .v-tdr-face { transition: none; }
-}
