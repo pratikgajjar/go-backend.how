@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .file { fill: var(--board); stroke: var(--ink); stroke-width: 2; stroke-dasharray: 7 5; }
+    .read { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2.5; stroke-dasharray: 7 5; }
+    .edge { stroke: var(--line); stroke-width: 2; }
+    .path { stroke: var(--purple); stroke-width: 3; }
+    .ptr { stroke: var(--orange); stroke-width: 4; } .ptrf { fill: var(--orange); }
+    .pur { fill: var(--purple); }
+    .arr { stroke: var(--ink); stroke-width: 2.5; } .arrf { fill: var(--ink); }
+    #grid rect { stroke-dasharray: 5 4; }
+    text { font-family: var(--font-mono); }
+  </style>
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="186" font-size="54" font-weight="800" class="ink">Apache Iceberg Manifest Format</text>
+  <text x="96" y="240" font-size="32" font-weight="600" class="ink">A byte-level tour</text>
+
+  <!-- the one mutable pointer, swapped by CAS at commit -->
+  <text x="148" y="338" font-size="22" font-weight="700" text-anchor="middle" class="ptrf">CAS</text>
+  <circle cx="106" cy="355" r="9" class="ptrf"/>
+  <line x1="106" y1="355" x2="186" y2="355" class="ptr"/>
+  <path d="M200 355 l-16 -10 v20 z" class="ptrf"/>
+  <text x="148" y="392" font-size="22" text-anchor="middle" class="mute">catalog</text>
+
+  <!-- immutable tree: metadata.json -> manifest list -> manifests -> data files -->
+  <g font-size="22" text-anchor="middle">
+    <rect x="206" y="320" width="196" height="70" class="file"/><text x="304" y="362" class="ink">metadata.json</text>
+    <line x1="404" y1="355" x2="432" y2="355" class="arr"/><path d="M446 355 l-14 -8 v16 z" class="arrf"/>
+    <rect x="448" y="320" width="196" height="70" class="read"/><text x="546" y="362" class="ink">manifest list</text>
+  </g>
+
+  <!-- 150 manifests, one matches the day -->
+  <g>
+    <line x1="646" y1="355" x2="700" y2="291" class="edge"/>
+    <line x1="646" y1="355" x2="700" y2="323" class="edge"/>
+    <line x1="646" y1="355" x2="700" y2="387" class="edge"/>
+    <line x1="646" y1="355" x2="700" y2="419" class="edge"/>
+    <line x1="646" y1="355" x2="700" y2="355" class="path"/>
+    <rect x="700" y="279" width="110" height="24" class="file"/>
+    <rect x="700" y="311" width="110" height="24" class="file"/>
+    <rect x="700" y="343" width="110" height="24" class="read"/>
+    <rect x="700" y="375" width="110" height="24" class="file"/>
+    <rect x="700" y="407" width="110" height="24" class="file"/>
+  </g>
+  <text x="755" y="466" font-size="22" text-anchor="middle" class="mute">150 manifests</text>
+
+  <!-- data files: the manifest's column bounds leave a few candidates -->
+  <line x1="812" y1="355" x2="868" y2="355" class="path"/>
+  <g id="grid">
+    <rect x="870"  y="284" width="28" height="28" class="file"/><rect x="908"  y="284" width="28" height="28" class="file"/><rect x="946"  y="284" width="28" height="28" class="file"/><rect x="984"  y="284" width="28" height="28" class="file"/><rect x="1022" y="284" width="28" height="28" class="file"/><rect x="1060" y="284" width="28" height="28" class="file"/>
+    <rect x="870"  y="322" width="28" height="28" class="file"/><rect x="908"  y="322" width="28" height="28" class="read"/><rect x="946"  y="322" width="28" height="28" class="read"/><rect x="984"  y="322" width="28" height="28" class="file"/><rect x="1022" y="322" width="28" height="28" class="file"/><rect x="1060" y="322" width="28" height="28" class="file"/>
+    <rect x="870"  y="360" width="28" height="28" class="file"/><rect x="908"  y="360" width="28" height="28" class="read"/><rect x="946"  y="360" width="28" height="28" class="read"/><rect x="984"  y="360" width="28" height="28" class="file"/><rect x="1022" y="360" width="28" height="28" class="file"/><rect x="1060" y="360" width="28" height="28" class="file"/>
+    <rect x="870"  y="398" width="28" height="28" class="file"/><rect x="908"  y="398" width="28" height="28" class="file"/><rect x="946"  y="398" width="28" height="28" class="file"/><rect x="984"  y="398" width="28" height="28" class="file"/><rect x="1022" y="398" width="28" height="28" class="file"/><rect x="1060" y="398" width="28" height="28" class="file"/>
+  </g>
+  <text x="979" y="466" font-size="22" text-anchor="middle" class="mute">4,194,304 files</text>
+
+  <text x="96" y="522" font-size="26" class="ink">1 PiB table: plan a one-day query with <tspan class="pur" font-weight="700">2 GETs</tspan></text>
+</svg>
