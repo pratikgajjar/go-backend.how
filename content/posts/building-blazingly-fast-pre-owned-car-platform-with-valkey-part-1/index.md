@@ -50,9 +50,10 @@ Our goal is to maximize lead generation by providing a fast and seamless user ex
 1. Dedicated Page - Complete details of a single car, featuring over 10 photos and additional information.
 2. Listing Page - A catalog of cars with basic information and about four photos that can be scrolled horizontally.
 
-> Amazon found that every 100ms of latency cost them 1% in sales.
+> Amazon found that every 100ms of latency cost them 1% in sales. - [Greg Linden, "Make Data Useful", 2006](https://glinden.blogspot.com/2006/12/slides-from-my-talk-at-stanford.html)
+
 > In 2006, Google found an extra .5 seconds in search page generation
-> time dropped traffic by 20%. - [Marissa Mayer](http://glinden.blogspot.com/2006/11/marissa-mayer-at-web-20.html)
+> time dropped traffic by 20%. - [Marissa Mayer, Web 2.0 Summit 2006](https://glinden.blogspot.com/2006/11/marissa-mayer-at-web-20.html)
 
 # Specifications
 
