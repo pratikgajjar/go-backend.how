@@ -1,44 +1,15 @@
-/* "The Psychology of Seeking Help": layout and drawing only.
+/* "The Psychology of Seeking Help": layout only.
    Look, controls, and colours come from walviz.css and viz/lib.js. */
 
-/* ---------- drawing: one line symbol for the whole post ---------- */
-.wv .v-psh-line { stroke: var(--ink); stroke-width: 1.4; fill: none; }
-.wv .v-psh-start { fill: var(--board); stroke: var(--ink); stroke-width: 1.4; }
-.wv .v-psh-end { fill: var(--ink); }
-.wv .v-psh-mark { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
-.wv .v-psh-past { fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-dasharray: 2 2; }
-.wv .v-psh-link { stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 3 3; fill: none; }
-
-/* the part the reader just drew is the one highlight */
-.wv .v-psh-part.is-new :is(.v-psh-line, .v-psh-mark, .v-psh-past, .v-psh-link, .v-psh-start) { stroke: var(--purple); }
-.wv .v-psh-part.is-new .v-psh-end { fill: var(--purple); }
-.wv .v-psh-part.is-new text { fill: var(--purple); }
-
-/* ---------- Fig. 1: trails ---------- */
-.v-psh-rows { list-style: none; margin: 0; padding: 0; }
-.v-psh-row {
-  display: grid; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
-  grid-template-areas: "name svg" "rate svg";
-  column-gap: 1.2rem; align-items: center; margin: 0; padding: 0.35rem 0;
-  border-bottom: 1px solid var(--line);
-}
-.v-psh-row:first-child { border-top: 1px solid var(--line); }
-.v-psh-name { grid-area: name; align-self: end; }
-.v-psh-rate { grid-area: rate; align-self: start; }
-.v-psh-row svg { grid-area: svg; min-height: 40px; }
-@media (max-width: 640px) {
-  .v-psh-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: "name" "rate" "svg"; }
-}
-
-/* ---------- Fig. 2: sorter ---------- */
+/* Fig. 1: sorter. Stable heights so the controls do not jump between messages. */
 .v-psh-msg { min-height: 8.5rem; }
 .v-psh-meta { font-weight: 400; }
-.v-psh-body { line-height: 1.7; }
+.v-psh-body { line-height: 1.75; margin: 0; }
 .v-psh-body code { overflow-wrap: anywhere; }
-.wv mark.v-psh-clue { background: var(--purple-l); color: var(--ink); padding: 0 0.1em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.v-psh-clue { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .v-psh-gap { height: 0.8rem; }
 .v-psh-slot { min-height: 9rem; }
 
-/* ---------- Fig. 3: your own line ---------- */
-.v-psh-stage { min-height: 8rem; }
-.v-psh-own { max-width: 620px; margin: 0 auto; }
+/* Fig. 2: your last ask */
+.v-psh-you { margin: 0; }
+.v-psh-you + .v-psh-you { margin-top: 0.4rem; }

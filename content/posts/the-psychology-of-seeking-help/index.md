@@ -16,9 +16,7 @@ In my experience as a backend engineer, I've seen the same few patterns in how p
 
 # Types of Help Seekers
 
-Two things separate the types, the effort spent before asking and the difficulty of the problem. Here is what each one did before the question.
-
-{{< viz kind="trails" fig="1" title="What each did before asking" fallback="trails.svg" alt="Five help seekers as lines from the moment a problem appears to the moment they ask: many narrowing attempts, many dead ends, a half-remembered earlier problem, no attempts, and a hand-off" caption="Each line runs from the moment the problem appears to the moment the person asks. Each type is described below." >}}
+Two things separate the types, the effort spent before asking and the difficulty of the problem.
 
 ## The Persistent Problem Solver
 
@@ -89,7 +87,7 @@ This group is familiar with the problem but prefers not to solve it themselves. 
 
 The type usually shows in the first message. Here are five sample messages about the same failing test.
 
-{{< viz kind="sorter" fig="2" title="Who wrote this?" wide="false" fallback="sorter.svg" alt="Five sample Slack messages about the same failing test, one per help seeker type, with the phrases that give each type away" caption="Pick a type before the clues appear. The messages are samples." >}}
+{{< viz kind="sorter" fig="1" title="Who wrote this?" wide="false" fallback="sorter.svg" alt="Five sample Slack messages about the same failing test, one per help seeker type, with the phrases that give each type away" caption="Pick a type before the clues appear. The messages are samples." >}}
 
 # Reactions to Solutions
 
@@ -137,4 +135,4 @@ How someone asks tells you what they need. A persistent solver wants a second op
 
 What kind of person are you?
 
-{{< viz kind="last-ask" fig="3" title="Your last ask" wide="false" fallback="last-ask.svg" alt="Three questions about the last time you asked for help, and the seeker type, reaction, and channel each answer points to" caption="Answers map to the types above. Nothing you pick leaves this page." >}}
+{{< viz kind="last-ask" fig="2" title="Your last ask" wide="false" fallback="last-ask.svg" alt="Three questions about the last time you asked for help, and the seeker type, reaction, and channel each answer points to" caption="Answers map to the types above. Nothing you pick leaves this page." >}}
