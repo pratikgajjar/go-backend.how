@@ -6,7 +6,7 @@ lastmod = 2024-10-12T23:45:31+05:30
 publishDate = "2024-10-12T23:45:31+05:30"
 draft = false
 tags = [ "gyan", "health" ]
-images = ["og-bc23d970.png"]
+images = ["og-e906cd91.png"]
 featured = true
 theme = "mint"
 +++
