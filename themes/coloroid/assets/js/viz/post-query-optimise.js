@@ -127,7 +127,7 @@ function resized(el, fn) {
 }
 /** Swatches for the map colours, in colorKey form. */
 const K_IDLE = ['k-data', 'page on disk, not read'];
-const K_BAD = ['v-pqo-k-bad', 'page read for nothing'];
+const K_BAD = ['v-pqo-k-bad', 'page read but not needed'];
 
 /* ================================================================ PAGES */
 
@@ -142,7 +142,7 @@ const GUESSES = [
   [1, '1 page', 'One more than that. The table page comes last; first Postgres reads the index to learn which table page to open.'],
   [4, '4 pages', 'Right. One page per level of the tree, then the one table page with the row.'],
   [25, 'about 25', 'Fewer. The tree has three levels here, and Postgres reads one page per level.'],
-  [4961, 'all 4,961 index pages', 'Far fewer. The index is sorted, so Postgres reads one page per level, not the whole index.'],
+  [4961, 'all 4,961 index pages', 'Far fewer. The index is sorted, so Postgres reads only one page per level.'],
 ];
 
 function initPages(fig, app) {
@@ -279,7 +279,7 @@ function initPlanner(fig, app) {
   });
   const q = ask('Both columns have a B-tree index, and each filter below matches about 10,000 rows. Which one keeps those rows on fewer pages?',
     [['seq', 'seq'], ['score', 'score'], ['same', 'about the same']], 'seq',
-    () => { P.guessed = true; x.set(6); x.el.style.display = ''; return 'The 10,000 rows with <code>seq &lt; 10000</code> sit on 333 neighbouring pages. The 10,103 rows with <code>score &lt; 10000</code> are spread over 8,739 pages. Now move x.'; });
+    () => { P.guessed = true; x.set(6); x.el.style.display = ''; return 'The 10,000 rows with <code>seq &lt; 10000</code> are on 333 neighbouring pages. The 10,103 rows with <code>score &lt; 10000</code> are spread over 8,739 pages. Now move x.'; });
   const x = range('x', { min: 0, max: 15, value: P.i, fmt: (i) => `${fmt(PICK.seq[i][0])} rows`, oninput: (i) => { P.i = i; draw(); } });
   const rpc = chips([[4, '4 (default)'], [1.1, '1.1 (common on SSDs)']], (v) => { P.rpc = v; draw(); }, { value: 4, label: 'random_page_cost' });
   x.el.style.display = 'none';
@@ -288,7 +288,7 @@ function initPlanner(fig, app) {
 
   app.append(
     sql, q.el, x.el, two,
-    h('details', null, h('summary', null, 'Costs and timings behind each pick'),
+    h('details', null, h('summary', null, 'Costs and timings for each plan'),
       h('div', { class: 'wv-field' }, h('label', null, 'random_page_cost')), rpc.el, costs),
     colorKey([['v-pqo-k-read', 'page holds a matching row'], K_IDLE, K_BAD]));
 
@@ -323,7 +323,7 @@ function initPlanner(fig, app) {
       return `<p class="t-b">WHERE ${c.col} &lt; ${fmt(xv)} · estimate ${fmt(pt[1])} rows, actual ${fmt(pt[2])}</p>
         <div class="wv-scroll"><table class="wv-table"><thead><tr><th>plan · buffers</th><th>cost</th><th>time</th></tr></thead><tbody>${
         PLANS.map((name, k) => `<tr><td>${k === pk ? `<b>${name}</b> · pick` : name}<br><span class="t-xs">${fmt(pt[6][k])} buffers</span></td><td>${k === pk ? `<b>${fmt(cs[k])}</b>` : fmt(cs[k])}</td><td>${k === fast ? `<b>${ms(pt[5][k])}</b> · fastest` : ms(pt[5][k])}</td></tr>`).join('')}</tbody></table></div>`;
-    }).join('') + '<p class="t-s">Cost is the planner\'s estimate; it picks the lowest. Time is measured. Buffers count page reads, so an Index Scan that returns to the same page counts it again.</p>';
+    }).join('') + '<p class="t-s">Cost is the planner\'s estimate; it picks the lowest. Time is measured. Buffers count page reads, so an Index Scan that reads the same page twice counts it twice.</p>';
     paintMaps();
   }
   resized(two, () => {
@@ -462,13 +462,13 @@ function initBudget(fig, app) {
     extra.innerHTML = [also.length ? `Also read: ${also.join(' and ')}.` : '', R.temp ? `Sort wrote ${fmt(R.temp)} kB of temp files.` : ''].filter(Boolean).join(' ');
     maps[1].lab.innerHTML = `<b class="c-data">${mb(R.bytes)}</b> · ${ms(CLIENT[k])}`;
     let m;
-    if (Q.lim && Q.order === 'name') m = '<b>LIMIT did not cut the reads.</b> No index gives rows in <code>name</code> order, so Postgres reads all 1,000,000 rows and keeps the best 10 as it goes.';
+    if (Q.lim && Q.order === 'name') m = '<b>LIMIT did not reduce the reads.</b> No index gives rows in <code>name</code> order, so Postgres reads all 1,000,000 rows and keeps the first 10 in name order.';
     else if (Q.lim && Q.order) m = '<b>The index gives rows newest first</b>, so Postgres stops after 10.';
     else if (Q.lim) m = '<b>The scan stops after 10 rows</b>, but without ORDER BY they are whichever rows come first on disk.';
-    else if (R.nTable === 0) m = '<b>The index holds every column the query needs</b>, so Postgres skips the table and checks only the visibility map: an index-only scan.';
-    else if (R.temp) m = `The sort does not fit in <code>work_mem</code> (4 MB), so it spills to temp files. ${Q.cols === '*' ? 'Every column goes into the sort.' : 'Fewer columns make each sorted row smaller.'}`;
-    else if (Q.order) m = 'The table is already in <code>created_at</code> order on disk, so walking the index backwards costs less than a sort.';
-    else m = `Rows are stored whole, so any column list reads the same 33,333 pages. What changes is how much is sent${Q.cols === '*' ? '.' : `: ${mb(R.bytes)} instead of ${mb(BYTES['*||'])}.`}`;
+    else if (R.nTable === 0) m = '<b>The index holds every column the query needs</b>, so Postgres reads the index and the visibility map and does not read the table. This is an index-only scan.';
+    else if (R.temp) m = `The sort does not fit in <code>work_mem</code> (4 MB), so it writes to temp files. ${Q.cols === '*' ? 'Every column goes into the sort.' : 'Fewer columns make each sorted row smaller.'}`;
+    else if (Q.order) m = 'The table is already in <code>created_at</code> order on disk, so reading the index backwards costs less than a sort.';
+    else m = `Rows are stored whole, so any column list reads the same 33,333 pages. The column list changes only the number of bytes sent${Q.cols === '*' ? '.' : `: ${mb(R.bytes)} instead of ${mb(BYTES['*||'])}.`}`;
     note.innerHTML = m;
     note.className = `wv-note${waste ? ' is-bad' : ''}`;
     explain.innerHTML = codeBlock(EXPLAIN[k].map((ln) => {

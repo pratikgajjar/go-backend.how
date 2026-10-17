@@ -13,7 +13,7 @@
 <rect x="178" y="258" width="162" height="2" fill="#f6e3ce"/>
 <rect x="20" y="260" width="320" height="290" fill="#f6e3ce"/>
 <rect x="20" y="550" width="106" height="2" fill="#f6e3ce"/>
-<text x="20" y="570" fill="#6c4122" font-size="10.5" font-weight="700">9,999 pages hold matches, all together</text>
+<text x="20" y="570" fill="#6c4122" font-size="10.5" font-weight="700">9,999 adjacent pages hold matches</text>
 <text x="380" y="76" font-size="11.5" font-weight="800">WHERE score &lt; 300,000 (random order)</text>
 <text x="380" y="94" fill="#44484e" font-size="10">planner's pick, x = 10 … 1M</text>
 <rect x="380.0" y="100" width="240.0" height="18" fill="#ffdcb4" stroke="#c14900"/><text x="385.0" y="113" fill="#c14900" font-size="10" font-weight="700">Bitmap Heap Scan</text>
@@ -21,7 +21,7 @@
 <rect x="378" y="132" width="324" height="422" fill="none" stroke="#0a0d12" stroke-dasharray="3 3"/>
 <rect x="380" y="134" width="320" height="416" fill="#6c4122"/>
 <rect x="380" y="550" width="106" height="2" fill="#6c4122"/>
-<text x="380" y="570" fill="#6c4122" font-size="10.5" font-weight="700">33,333 pages hold matches: every page</text>
+<text x="380" y="570" fill="#6c4122" font-size="10.5" font-weight="700">all 33,333 pages hold matches</text>
 <rect x="20" y="586" width="11" height="11" fill="#6c4122" stroke="none"/><text x="37" y="596" fill="#44484e" font-size="10.5">page holds matching rows</text>
 <rect x="240" y="586" width="11" height="11" fill="#f6e3ce" stroke="none"/><text x="257" y="596" fill="#44484e" font-size="10.5">page has none</text>
 <rect x="460" y="586" width="11" height="11" fill="#ffdcb4" stroke="#c14900"/><text x="477" y="596" fill="#44484e" font-size="10.5">the planner's pick</text>
