@@ -241,6 +241,9 @@ function initRace(fig, app) {
         const again = ev.lsn >= slot;
         const r = inK && again ? ['twice', ''] : inK || again ? ['once', ''] : ['LOST', ' t-bad'];
         svg.append(T(x + cw / 2, y + 51, `t-xs t-b${r[1]}`, r[0], 'middle'));
+      } else if (inK || gapCell) {
+        // label the state on the cell itself; the key is only a backup
+        svg.append(T(x + cw / 2, y + 51, `t-xs${gapCell ? ' t-b t-bad' : ''}`, inK ? 'acked' : 'at risk', 'middle'));
       }
       x += cw + 6;
     });
