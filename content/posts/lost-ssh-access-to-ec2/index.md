@@ -13,13 +13,13 @@ theme = "steel"
 
 If you lose the private key for an EC2 instance, you can give it a new public
 key through its user data: stop the instance, paste a short cloud-config, and
-start it again. This post gives that script, shows why putting only your key in
-user data does nothing, and explains the one line that makes it work, down to
-the files cloud-init checks on disk.
+start it again. This post gives that script and explains why a key alone in
+user data does nothing. It then explains the `cloud_final_modules` line that
+fixes this, with the marker files that cloud-init checks on disk.
 
 # When the usual ways are not available
 
-AWS documents several ways back into an instance[^kc]. Each one needs something
+AWS documents several ways to get access to an instance again[^kc]. Each one needs something
 that was set up before you lost the key[^pre]:
 
 - **EC2 Instance Connect** needs the Instance Connect package on the instance
@@ -38,18 +38,18 @@ User data is text you attach to an instance. EC2 serves it through the instance
 metadata service (IMDS). Cloud-init, the program that set up the instance at
 launch, reads it at boot and runs it as root. Amazon Linux, Ubuntu, and most
 other Linux distributions for the cloud ship cloud-init, so there is nothing to
-install. The method takes one stop and start, and you never touch the volume.
+install. The method takes one stop and start, and you do not detach the volume.
 
 # The obvious attempt does not work
 
 The first thing to try is to put your new key in user data under `users:` and
 restart. Figure 1 shows what cloud-init does with it, without and with the fix.
 
-{{< viz kind="lssh-restart" fig="1" title="A key in user data, then a restart" fallback="restart.svg" alt="A new SSH key in EC2 user data meets two cloud-init marker files. The init-stage marker for users_groups exists since launch, so the module skips. With the cloud_final_modules line, the final stage runs users-groups under the marker config_users_groups.once, which does not exist yet, so it runs and appends the key to authorized_keys." caption="The paths are real cloud-init paths; `<id>` is the instance ID." >}}
+{{< viz kind="lssh-restart" fig="1" title="A key in user data, then a restart" fallback="restart.svg" alt="A new SSH key in EC2 user data, and two cloud-init marker files. The init-stage marker for users_groups exists since launch, so the module skips. With the cloud_final_modules line, the final stage runs users-groups under the marker config_users_groups.once, which does not exist yet, so it runs and appends the key to authorized_keys." caption="The paths are real cloud-init paths; `<id>` is the instance ID." >}}
 
 By default, user data scripts and cloud-init directives run only on the first
 boot of an instance[^ud]. Cloud-init still fetches the user data on every boot.
-Marker files on the root volume stop it from acting again. The module that writes SSH keys, `users_groups`, runs once per instance ID and
+Marker files on the root volume stop it from running the same modules again. The module that writes SSH keys, `users_groups`, runs once per instance ID and
 then writes `/var/lib/cloud/instances/<instance-id>/sem/config_users_groups`.
 A stop and start keeps the instance ID, so the module finds its marker and
 skips.
@@ -64,8 +64,8 @@ module runs, writes that marker, and appends your key to `authorized_keys`.
 
 # Step by step
 
-1. Stop the EC2 instance (do not terminate it). EC2 lets you edit user data
-   only while the instance is stopped.
+1. Stop the EC2 instance (do not terminate it). You can edit user data only
+   while the instance is stopped.
 2. In the EC2 console, select the instance, then choose "Actions" > "Instance
    Settings" > "Edit user data".
 3. Paste this cloud-config script:
@@ -100,10 +100,10 @@ users:
 
 What each part of the script does:
 
-- `Content-Type: multipart/mixed` wraps the config as one MIME part, so you can
+- `Content-Type: multipart/mixed` puts the config in one MIME part, so you can
   add more parts, such as a shell script, to the same user data.
 - The `#cloud-config` line marks the part as cloud-config YAML.
-- `users` names the user and the keys to add. Cloud-init appends the keys and
+- `users` lists the user and the keys to add. Cloud-init appends the keys and
   keeps the ones already in `authorized_keys`.
 - Older guides spell the key list `ssh-authorized-keys`. It still works, but
   cloud-init has marked it deprecated since version 18.3.
@@ -113,12 +113,12 @@ What each part of the script does:
 The script uses `once`. Figure 2 shows what happens when you need it a second
 time on the same instance.
 
-{{< viz kind="lssh-again" fig="2" title="A second recovery" fallback="again.svg" alt="A second recovery with the same [users-groups, once] line: the marker config_users_groups.once from the first recovery exists, so users-groups skips and the third key is not added. With [users-groups, always] there is no marker, so the module runs and adds the key." caption="The log line is from cloud-init 26.1 on Ubuntu 24.04, run in a container." >}}
+{{< viz kind="lssh-again" fig="2" title="A second recovery" fallback="again.svg" alt="A second recovery with the same [users-groups, once] line. The marker config_users_groups.once from the first recovery exists, so users-groups skips and the third key is not added. With [users-groups, always] there is no marker, so the module runs and adds the key." caption="The log line is from cloud-init 26.1 on Ubuntu 24.04, run in a container." >}}
 
 `once` means once per disk. The marker
 `/var/lib/cloud/sem/config_users_groups.once` stays on the root volume, so a
 second recovery with the same line does nothing. An image made from the volume
-carries the marker too, unless `cloud-init clean` ran first.
+also contains the marker, unless `cloud-init clean` ran first.
 
 `always` keeps no marker. While it stays in user data, it adds the key back on
 every boot, even after you delete it by hand. With either line in place, the
