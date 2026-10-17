@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    .ink { fill: var(--ink); } .mute { fill: var(--mute); }
+    .box { fill: var(--board); stroke: var(--ink); stroke-width: 2.5; }
+    .set { fill: var(--brown-l); fill-opacity: 0.55; stroke: var(--brown); stroke-width: 2.5; stroke-dasharray: 8 6; }
+    .brown { fill: var(--brown); }
+    .hit { fill: var(--purple); } .hitl { stroke: var(--purple); stroke-width: 4; }
+    .pur { fill: var(--purple); }
+    text { font-family: var(--font-mono); }
+  </style>
+  <defs>
+    <clipPath id="cB"><circle cx="284" cy="358" r="84"/></clipPath>
+    <clipPath id="cC"><circle cx="238" cy="432" r="84"/></clipPath>
+  </defs>
+
+  <!-- sheet with hard shadow -->
+  <rect x="56" y="56" width="1096" height="526" class="ink"/>
+  <rect x="48" y="48" width="1096" height="526" class="box"/>
+
+  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="182" font-size="52" font-weight="800" class="ink">Building pre-owned Car Platform</text>
+  <text x="96" y="236" font-size="34" font-weight="600" class="ink">With Valkey - Part 2</text>
+
+  <!-- three filter sets (data, dashed); the page is where all three overlap -->
+  <circle cx="192" cy="358" r="84" class="set"/>
+  <circle cx="284" cy="358" r="84" class="set"/>
+  <circle cx="238" cy="432" r="84" class="set"/>
+  <g clip-path="url(#cB)"><circle cx="192" cy="358" r="84" class="hit" clip-path="url(#cC)"/></g>
+
+  <g font-size="22" font-weight="700" class="brown" text-anchor="middle">
+    <text x="156" y="336">city</text>
+    <text x="322" y="336">price</text>
+    <text x="238" y="486">make</text>
+  </g>
+
+  <!-- pointer from the intersection to its meaning -->
+  <line x1="250" y1="392" x2="452" y2="392" class="hitl"/>
+  <path d="M470 392 l-20 -12 v24 z" class="hit"/>
+
+  <g font-size="26" class="ink">
+    <text x="486" y="320">filter</text><text x="596" y="320">=</text><text x="628" y="320">sorted set of car ids</text>
+    <g font-weight="700" class="pur">
+      <text x="486" y="401">page</text><text x="596" y="401">=</text><text x="628" y="401">ZINTERSTORE of the sets</text>
+    </g>
+    <text x="486" y="482">cards</text><text x="596" y="482">=</text><text x="628" y="482">one HMGET on car:</text>
+  </g>
+</svg>
