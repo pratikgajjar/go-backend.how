@@ -16,6 +16,7 @@
 .wv .v-1b-wait.is-sel { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.6; }
 .wv .v-1b-wait.is-late { fill: var(--red-l); stroke: var(--red); stroke-width: 1.6; stroke-dasharray: 3 2; }
 .wv .v-1b-hatch { stroke: var(--mute); stroke-width: 1; }
+.wv .v-1b-tbad { fill: var(--red); }
 .wv .v-1b-flush { cursor: pointer; }
 .wv .v-1b-flush rect { fill: var(--board); stroke: var(--ink); stroke-width: 1.2; }
 .wv .v-1b-flush.is-sel rect { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2.4; }

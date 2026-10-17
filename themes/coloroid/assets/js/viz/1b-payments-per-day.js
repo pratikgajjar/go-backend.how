@@ -183,7 +183,9 @@ function initGroupCommit(fig, app) {
   const P = { W: M.W, work: M.work, flush: M.flush };
   let sim = null; let win = null; let sel = 0;
   const base = simulate(M.W, M.work, M.flush);
-  const stage = h('div', { class: 'v-1b-strip' });
+  /* focusable, so ← → after tapping a flush step flushes instead of
+     reaching the page's own arrow-key navigation */
+  const stage = h('div', { class: 'v-1b-strip', tabindex: 0, 'aria-label': 'Flush timeline. Use left and right arrow keys to pick a flush.' });
   const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
   const fit = h('p', { class: 'v-1b-fit' });
 
@@ -260,6 +262,7 @@ function initGroupCommit(fig, app) {
     }
     const body = s('g', { 'clip-path': `url(#${id})` });
     const late = new Set();
+    const tags = {};
     const showAll = laneH >= 9;
     for (let b = 0; b < W; b++) {
       const y = top + b * pitch;
@@ -270,8 +273,15 @@ function initGroupCommit(fig, app) {
         const mine = ev.f === sel;
         const missed = ev.f === sel + 1 && ev.rec > f.s && ev.rec < f.e;
         if (missed) late.add(b);
+        const bx = x(ev.rec); const bw = x(ev.fe) - bx;
+        if (missed && !tags.late) tags.late = [bx, bw, y];
+        if (!mine && !missed && !tags.wait && bx >= L && bx + bw <= width - R - 60) {
+          const nx = sim.lanes[b].find((o) => o.rec > ev.fe);
+          const room = (nx ? x(nx.rec) : width) - (bx + bw);
+          if (bw >= 78 || room >= 60) tags.wait = [bx, bw, y];
+        }
         body.append(s('rect', {
-          x: x(ev.rec), y, width: Math.max(0.8, x(ev.fe) - x(ev.rec)), height: laneH,
+          x: bx, y, width: Math.max(0.8, bw), height: laneH,
           class: mine ? 'v-1b-wait is-sel' : missed ? 'v-1b-wait is-late' : 'v-1b-wait', fill: mine || missed ? null : `url(#${id}h)`,
         }));
       }
@@ -283,10 +293,19 @@ function initGroupCommit(fig, app) {
       const g = s('g', { class: `v-1b-flush${k === sel ? ' is-sel' : ''}` });
       g.append(s('rect', { x: x0 + 0.5, y: flushY, width: Math.max(0.5, w - 1), height: flushH }));
       if (w >= 11) g.append(s('text', { x: x0 + w / 2, y: flushY + flushH / 2 + 4, 'text-anchor': 'middle', class: 't-xs t-b' }, String(fl.m.length)));
-      g.addEventListener('click', () => pick(k));
+      g.addEventListener('click', () => { pick(k); stage.focus({ preventScroll: true }); });
       body.append(g);
     });
     svg.append(body);
+    /* name the parts on the artwork: one waiting bar, one that just missed */
+    const tag = (r, text, cls) => {
+      if (!r) return;
+      const [bx, bw, y] = r;
+      const inside = bw >= 78;
+      svg.append(s('text', { x: inside ? bx + 4 : bx + bw + 4, y: y + laneH / 2 + 3.5, class: `t-xs t-b halo ${cls}` }, text));
+    };
+    tag(tags.wait, 'waiting', '');
+    tag(tags.late, 'just missed', 'v-1b-tbad');
     /* the label sits on the selected flush */
     const cx = (x(f.s) + x(f.e)) / 2;
     const anchor = cx > width - 120 ? 'end' : cx < L + 120 ? 'start' : 'middle';
@@ -308,8 +327,8 @@ function initGroupCommit(fig, app) {
   new ResizeObserver(() => { if (Math.abs(app.clientWidth - lastW) > 4) { lastW = app.clientWidth; draw(); } }).observe(app);
   fig.addEventListener('keydown', (e) => {
     if (e.target.closest('input, summary, select')) return;
-    if (e.key === 'ArrowRight') { pick(sel + 1); e.preventDefault(); }
-    if (e.key === 'ArrowLeft') { pick(sel - 1); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { pick(sel + 1); e.preventDefault(); e.stopPropagation(); }
+    if (e.key === 'ArrowLeft') { pick(sel - 1); e.preventDefault(); e.stopPropagation(); }
   });
 }
 
@@ -607,8 +626,8 @@ function initBatchPath(fig, app) {
 
   fig.addEventListener('keydown', (e) => {
     if (e.target.closest('input, summary, select')) return;
-    if (e.key === 'ArrowRight') { go(step + 1); e.preventDefault(); }
-    if (e.key === 'ArrowLeft') { go(step - 1); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { go(step + 1); e.preventDefault(); e.stopPropagation(); }
+    if (e.key === 'ArrowLeft') { go(step - 1); e.preventDefault(); e.stopPropagation(); }
   });
   L = stage.clientWidth < 560 ? BP_LAYOUT.tall : BP_LAYOUT.wide;
   go(0);
