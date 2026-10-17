@@ -4,24 +4,7 @@
  * and viz/lib.js; colours here are the shared tokens.
  */
 
-/* Fig 1: the inlined card-once SVG. Class hooks map its drawing onto tokens
-   so dark mode works; the .svg file keeps light colours for the fallback. */
-.v-car1-card1 svg .f-ink { fill: var(--ink); }
-.v-car1-card1 svg .f-mute { fill: var(--mute); }
-.v-car1-card1 svg .f-paper { fill: var(--board); }
-.v-car1-card1 svg .f-tint { fill: var(--tint2); }
-.v-car1-card1 svg .f-line { fill: var(--line); }
-.v-car1-card1 svg .f-data { fill: var(--brown); }
-.v-car1-card1 svg .f-datal { fill: var(--brown-l); }
-.v-car1-card1 svg .f-safe { fill: var(--green); }
-.v-car1-card1 svg .f-safel { fill: var(--green-l); }
-.v-car1-card1 svg .f-pickl { fill: var(--orange-l); }
-.v-car1-card1 svg .s-ink { stroke: var(--ink); }
-.v-car1-card1 svg .s-data { stroke: var(--brown); }
-.v-car1-card1 svg .s-safe { stroke: var(--green); }
-.v-car1-card1 svg .s-pick { stroke: var(--orange); }
-
-/* Fig 2: nested hook rings (each ring is a .wv-card) */
+/* Fig 1: nested hook rings (each ring is a .wv-card) */
 .v-car1-hookgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; align-items: start; }
 @media (min-width: 760px) {
   .v-car1-hookgrid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); grid-template-rows: auto auto auto 1fr; column-gap: 1rem; }
@@ -32,14 +15,14 @@
 .v-car1-hookgrid .wv-bar { margin: 0; }
 .v-car1-hookgrid [hidden] { display: none; }
 .v-car1-ring .v-car1-ring { margin-top: 0.5rem; }
-.v-car1-ringsub { margin-bottom: 0.3rem; }
+.v-car1-ringsub { margin: 0 0 0.3rem; }
 .v-car1-placed { min-height: 2.2rem; margin: 0; }
 .v-car1-tree.is-asking .v-car1-ring { cursor: pointer; }
 .v-car1-tree.is-asking .v-car1-ring:hover { outline: 2px solid var(--purple); outline-offset: -4px; }
 .v-car1-tree.is-asking .v-car1-ring:has(.v-car1-ring:hover) { outline: none; }
 .v-car1-ring:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 
-/* Fig 3 and 4: swimlane timeline */
+/* Fig 2 and 3: swimlane timeline */
 .v-car1-ctrl .wv-range { flex: 1 1 14rem; }
 .v-car1-ctrl .wv-range input { flex: 1 1 auto; }
 .v-car1-tlgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; align-items: start; }
@@ -47,7 +30,6 @@
 .v-car1-tl svg { touch-action: none; cursor: ew-resize; user-select: none; }
 .v-car1-lane { fill: var(--board); }
 .v-car1-lane.odd { fill: var(--tint); }
-.v-car1-band--ok { fill: var(--green); }
 .v-car1-band--stale { fill: var(--red); }
 .v-car1-band--gone { fill: var(--line); }
 .v-car1-hatchbg { fill: var(--red-l); }
@@ -66,16 +48,18 @@
 .wv .v-car1-ev text.tag { fill: var(--mute); }
 .v-car1-ev.is-done circle { fill: var(--ink); stroke: var(--ink); }
 .wv .v-car1-ev.is-done text.n { fill: var(--board); }
-.wv .v-car1-ev.is-done text.tag { fill: var(--brown); font-weight: 700; }
-.v-car1-ev--resume circle { stroke: var(--purple); stroke-width: 2.5; }
-.v-car1-ev--resume.is-done circle { fill: var(--purple); stroke: var(--purple); }
+.wv .v-car1-ev.is-done text.tag { fill: var(--ink); font-weight: 700; }
 .v-car1-ev--fail.is-done circle, .v-car1-ev--lost.is-done circle { fill: var(--red); stroke: var(--red); }
 .v-car1-ev--wait circle { stroke-dasharray: 3 2; }
-.v-car1-ev--wait.is-done circle { fill: var(--brown-l); stroke: var(--brown); }
-.wv .v-car1-ev--wait.is-done text.n { fill: var(--brown); }
+.v-car1-ev--wait.is-done circle { fill: var(--board); stroke: var(--ink); }
+.wv .v-car1-ev--wait.is-done text.n { fill: var(--ink); }
 .v-car1-ev--expire.is-done circle { fill: var(--line); stroke: var(--mute); }
 .wv .v-car1-ev--expire.is-done text.n { fill: var(--ink); }
 .v-car1-ev.is-cur circle { stroke: var(--purple); stroke-width: 3; }
+/* Fig 3 has no time control: the selected dot is ink, inverted */
+.v-car1-tl.is-still .v-car1-ev.is-cur circle { fill: var(--board); stroke: var(--ink); stroke-width: 3; }
+.wv .v-car1-tl.is-still .v-car1-ev.is-cur text.n { fill: var(--ink); }
+.v-car1-tl.is-still svg { cursor: default; }
 .v-car1-ev.is-hidden { display: none; }
 .v-car1-ev.is-guess circle { stroke: var(--purple); stroke-width: 3; stroke-dasharray: 3 2; }
 .wv .v-car1-ev.is-guess text.tag { fill: var(--purple); font-weight: 800; }
@@ -84,14 +68,9 @@
 .v-car1-cursor line { stroke: var(--purple); stroke-width: 2; }
 .v-car1-cursor rect { fill: var(--purple); }
 
-/* the buyer's view: a .wv-card with a drawn car */
-.v-car1-buyer .wv-kv { margin-top: 0.3rem; }
-.v-car1-photo { background: var(--tint2); padding: 0.35rem 1.2rem; margin: 0.35rem 0 0.45rem; }
-.v-car1-caricon { display: block; width: 100%; height: auto; max-height: 64px; }
-.v-car1-caricon .body { fill: var(--board); stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; }
-.v-car1-caricon .win { fill: var(--tint); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
-.v-car1-caricon .tyre { fill: var(--ink); }
-.v-car1-caricon .hub { fill: var(--board); }
+/* the buyer's view (Fig 2) */
+.v-car1-buyer p { margin: 0 0 0.4rem; }
+.v-car1-buyer .wv-kv { margin: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .v-car1-hop, .v-car1-ev circle { transition: none; }

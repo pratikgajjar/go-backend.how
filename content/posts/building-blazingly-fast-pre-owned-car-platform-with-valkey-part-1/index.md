@@ -100,14 +100,14 @@ Dynamic Entities
 1. GET https://api.car.com/listing/?city_id=1&model_id=123&owner=1
 2. GET https://api.car.com/listing/?slug=used-tata-nexon-cars-in-mumbai
 3. GET https://api.car.com/listing/?slug=used-tata-nexon-cars-in-mumbai&buyer_id=123
-4. GET https://api.car.com/listing/?slug=used-tata-cars-in-mumbai&seen_card_ids=10,11,12
+4. GET https://api.car.com/listing/?slug=used-tata-cars-in-mumbai&seen_car_ids=10,11,12
 ```
 
 Data science model can use either `buyer_id` or `seen_car_ids` to order list of cars based on most relevant to least. In case of `None` order based on generic recommendation.
 
 ```python
-def get_recommendation(active_car_ids: [int], buyer_id: int, seen_card_ids: Optional[int]):
-    return model.get_order(active_car_ids, buyer_id=buyer_id, seen_card_ids=seen_card_ids)
+def get_recommendation(active_car_ids: list[int], buyer_id: Optional[int], seen_car_ids: Optional[list[int]]):
+    return model.get_order(active_car_ids, buyer_id=buyer_id, seen_car_ids=seen_car_ids)
 ```
 
 ### Filters
@@ -205,8 +205,6 @@ Anonymous users
 1. Store pre-computed `JSON` response of car
 2. Fetch `JSON` by `key` and return response
 
-{{< viz kind="card-once" fig="1" fallback="card-once.svg" alt="The car card for car 2323 is built once from about 10 MySQL tables and stored in Valkey under dp:2323. Ad clicks from Google, Facebook and Instagram each read it with one key lookup. When any row changes, the binlog, producer, Kafka and consumer rebuild it." caption="Car 2323 and its price are samples. The green path is the rest of this post: how the card stays fresh." >}}
-
 ```txt
 key_pattern = "dp:{car_id}"
 expiry = 12 hours
@@ -214,10 +212,11 @@ value = gzipped json payload
 "dp:2323" : '{"id":2323, "images": ["url1", "url2", "url3"], "owner": "2nd", "inspection_report": ...}'
 ```
 
-Compress `JSON` payload using GZip before storing the requests using [django-redis](https://github.com/jazzband/django-redis) config.
+Compress the `JSON` payload with gzip before storing it, using the [django-redis](https://github.com/jazzband/django-redis) config.
 
 ```py
-import gzip
+import os
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -259,7 +258,7 @@ We need to hear about every change to these tables. There are three places to ho
 2. **Domain layer.** Following Domain-Driven Design, send every write through a service that also updates the cache.
 3. **Binlog reader.** Attach a program that acts like a MySQL replica and receives every change.
 
-{{< viz kind="hook-sets" fig="2" title="Which writes does each hook see?" fallback="hook-sets.svg" alt="Three nested rings of writes: save() and create() inside all Django inventory app writes, inside every committed write to MySQL. post_save sees the inner ring, a domain layer the middle ring, the binlog reader all of them" caption="Each ring is one hook and holds the writes that hook sees. Place five sample writes to car 2323, one at a time. The signal results are Django behaviour: `QuerySet.update()` and `bulk_create()` send no `post_save`." >}}
+{{< viz kind="hook-sets" fig="1" title="Which writes does each hook see?" fallback="hook-sets.svg" alt="Three nested rings of writes: save() and create() inside all Django inventory app writes, inside every committed write to MySQL. post_save sees the inner ring, a domain layer the middle ring, the binlog reader all of them" caption="Each ring is one hook and holds the writes that hook sees. Place five sample writes to car 2323, one at a time. The signal results are Django behaviour: `QuerySet.update()` and `bulk_create()` send no `post_save`." >}}
 
 We went with the third approach. Many clients write to this database, and cache logic in each of them would be easy to get wrong and would mix with business logic. Every committed write passes through the binlog, whichever client made it.
 
@@ -268,19 +267,19 @@ We listen to changes on these three tables and rebuild the cached JSON for the a
 ## Reading the binlog
 
 In MySQL, we can listen to the binlog[^1] to get notifications about all changes to the database,
-including both DDL (Data Definition Language) and DML (Data Modification Language) operations.
+including both DDL (Data Definition Language) and DML (Data Manipulation Language) operations.
 
 ```txt
 # Data Definition Language
 
 - CREATE | ALTER | DROP TABLE
 
-# Data Modification Language
+# Data Manipulation Language
 
 - INSERT | UPDATE | DELETE | REPLACE FROM TABLE
 ```
 
-Using the [mysql-data-stream-kafka](https://github.com/pratikgajjar/mysql-data-stream-kafka) Python library, a program reads the MySQL binlog and sends each row change to Kafka. A Kafka topic works like a log.
+Using the [mysql-data-stream-kafka](https://github.com/pratikgajjar/mysql-data-stream-kafka) Python library, a program reads the MySQL binlog and sends each inserted or updated row to Kafka. A Kafka topic works like a log.
 
 > What Is a Log?
 > A log is perhaps the simplest possible storage abstraction. It is an append-only, totally-ordered sequence of records ordered by time. - [Jay Kreps, Linkedin](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)
@@ -297,7 +296,9 @@ An insert (`WriteRowsEvent`) carries `row.values` instead. A consumer reads the 
 
 ## One price change, end to end
 
-{{< viz kind="change-timeline" fig="3" title="One price change, in order" fallback="timeline.svg" alt="Swimlanes for the price script, MySQL, producer, Kafka, consumer, Valkey and buyer. A price UPDATE moves through each lane; Valkey serves the old price from the commit until the consumer SETs the new JSON" caption="Car 2323, prices, binlog positions and offsets are sample values. Producer calls follow mysql-data-stream-kafka and kafka-python 1.4.6, cache calls follow django-redis, and the consumer code is a sketch. Dots are in order; the spacing is not time." >}}
+A price script lowers car 2323 from ₹5,25,000 to ₹5,10,000. These are the steps until a buyer sees the new price.
+
+{{< viz kind="change-timeline" fig="2" title="One price change, in order" fallback="timeline.svg" alt="Swimlanes for the price script, MySQL, producer, Kafka, consumer, Valkey and buyer. A price UPDATE moves through each lane; Valkey serves the old price from the commit until the consumer SETs the new JSON" caption="Car 2323, prices, binlog positions and offsets are sample values. Producer calls follow mysql-data-stream-kafka and kafka-python 1.4.6, cache calls follow django-redis, and the consumer code is a sketch. Dots are in order; the spacing is not time." >}}
 
 # When a part fails
 
@@ -313,7 +314,7 @@ Each of them can fail on its own, and so can the network between them.
 
 > 1. The network is reliable; - [Wiki](https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing)
 
-{{< viz kind="outage-timeline" fig="4" title="The same change when one part fails" fallback="timeline.svg" alt="The price-change swimlanes with one component down: the change waits, resumes from a saved position or offset, and the stale stretch on the Valkey lane grows" caption="Numbers match the sections below. Pick a failure, answer before the rest of the timeline appears, then step through it. For the Kafka broker, compare the producer settings `acks=1` and `acks='all'`." >}}
+{{< viz kind="outage-timeline" fig="3" title="The same change when one part fails" fallback="timeline.svg" alt="The price-change swimlanes with one component down: the change waits, resumes from a saved position or offset, and the stretch where Valkey serves the old price grows" caption="Numbers match the sections below. Pick a failure and say whether the change is delayed or lost before the rest of the timeline appears. For Kafka, compare the producer settings `acks=1` and `acks='all'`." >}}
 
 ## 1. Consumer node fails
 

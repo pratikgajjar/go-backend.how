@@ -16,9 +16,7 @@
 <text x="8" y="247.0" font-weight="700" fill="#211a14">Valkey</text>
 <rect x="0" y="262" width="720" height="38" fill="#fafaf7"/>
 <text x="8" y="285.0" font-weight="700" fill="#211a14">buyer</text>
-<rect x="114.0" y="253.0" width="74.9" height="6" fill="#1e6a3c"/>
 <rect x="188.9" y="253.0" width="299.7" height="6" fill="#b42a24"/>
-<rect x="488.7" y="253.0" width="217.3" height="6" fill="#1e6a3c"/>
 <circle cx="140.2" cy="53.0" r="3.2" fill="#fafaf7" stroke="#211a14" stroke-width="1.5"/>
 <path d="M140.2,53.0 C164.6,53.0 164.6,91.0 177.9,91.0" fill="none" stroke="#211a14" stroke-width="1.6" marker-end="url(#t-a)"/>
 <path d="M188.9,91.0 C226.4,91.0 226.4,129.0 252.9,129.0" fill="none" stroke="#211a14" stroke-width="1.6" marker-end="url(#t-a)"/>
@@ -29,19 +27,19 @@
 <circle cx="593.6" cy="281.0" r="3.2" fill="#fafaf7" stroke="#211a14" stroke-width="1.5"/>
 <path d="M593.6,281.0 C616.1,281.0 616.1,243.0 627.6,243.0" fill="none" stroke="#211a14" stroke-width="1.6" marker-end="url(#t-a)"/>
 <circle cx="188.9" cy="91.0" r="10" fill="#211a14"/><text x="188.9" y="95.0" text-anchor="middle" font-size="10" font-weight="800" fill="#fafaf7">1</text>
-<text x="188.9" y="76.0" text-anchor="middle" font-size="10" font-weight="700" fill="#6f4a1f" stroke="#fafaf7" stroke-width="3" paint-order="stroke">commit</text>
+<text x="188.9" y="76.0" text-anchor="middle" font-size="10" font-weight="700" fill="#211a14" stroke="#fafaf7" stroke-width="3" paint-order="stroke">commit</text>
 <circle cx="263.9" cy="129.0" r="10" fill="#211a14"/><text x="263.9" y="133.0" text-anchor="middle" font-size="10" font-weight="800" fill="#fafaf7">2</text>
-<text x="263.9" y="114.0" text-anchor="middle" font-size="10" font-weight="700" fill="#6f4a1f" stroke="#fafaf7" stroke-width="3" paint-order="stroke">row event</text>
+<text x="263.9" y="114.0" text-anchor="middle" font-size="10" font-weight="700" fill="#211a14" stroke="#fafaf7" stroke-width="3" paint-order="stroke">row event</text>
 <circle cx="338.8" cy="167.0" r="10" fill="#211a14"/><text x="338.8" y="171.0" text-anchor="middle" font-size="10" font-weight="800" fill="#fafaf7">3</text>
-<text x="338.8" y="152.0" text-anchor="middle" font-size="10" font-weight="700" fill="#6f4a1f" stroke="#fafaf7" stroke-width="3" paint-order="stroke">p2 · 88,120</text>
+<text x="338.8" y="152.0" text-anchor="middle" font-size="10" font-weight="700" fill="#211a14" stroke="#fafaf7" stroke-width="3" paint-order="stroke">p2 · 88,120</text>
 <circle cx="413.7" cy="205.0" r="10" fill="#211a14"/><text x="413.7" y="209.0" text-anchor="middle" font-size="10" font-weight="800" fill="#fafaf7">4</text>
-<text x="413.7" y="190.0" text-anchor="middle" font-size="10" font-weight="700" fill="#6f4a1f" stroke="#fafaf7" stroke-width="3" paint-order="stroke">car 2323</text>
+<text x="413.7" y="190.0" text-anchor="middle" font-size="10" font-weight="700" fill="#211a14" stroke="#fafaf7" stroke-width="3" paint-order="stroke">car 2323</text>
 <circle cx="488.7" cy="243.0" r="10" fill="#211a14"/><text x="488.7" y="247.0" text-anchor="middle" font-size="10" font-weight="800" fill="#fafaf7">5</text>
-<text x="488.7" y="228.0" text-anchor="middle" font-size="10" font-weight="700" fill="#6f4a1f" stroke="#fafaf7" stroke-width="3" paint-order="stroke">SET</text>
+<text x="488.7" y="228.0" text-anchor="middle" font-size="10" font-weight="700" fill="#211a14" stroke="#fafaf7" stroke-width="3" paint-order="stroke">SET</text>
 <circle cx="563.6" cy="167.0" r="10" fill="#211a14"/><text x="563.6" y="171.0" text-anchor="middle" font-size="10" font-weight="800" fill="#fafaf7">6</text>
-<text x="563.6" y="152.0" text-anchor="middle" font-size="10" font-weight="700" fill="#6f4a1f" stroke="#fafaf7" stroke-width="3" paint-order="stroke">88,121</text>
+<text x="563.6" y="152.0" text-anchor="middle" font-size="10" font-weight="700" fill="#211a14" stroke="#fafaf7" stroke-width="3" paint-order="stroke">88,121</text>
 <circle cx="638.6" cy="243.0" r="10" fill="#211a14"/><text x="638.6" y="247.0" text-anchor="middle" font-size="10" font-weight="800" fill="#fafaf7">7</text>
-<text x="638.6" y="228.0" text-anchor="middle" font-size="10" font-weight="700" fill="#6f4a1f" stroke="#fafaf7" stroke-width="3" paint-order="stroke">GET</text>
+<text x="638.6" y="228.0" text-anchor="middle" font-size="10" font-weight="700" fill="#211a14" stroke="#fafaf7" stroke-width="3" paint-order="stroke">GET</text>
 <rect x="8" y="315" width="18" height="6" fill="#b42a24"/><text x="32" y="322" fill="#211a14">Valkey serves ₹5,25,000 (stale) from step 1 to 5</text>
-<rect x="400" y="315" width="18" height="6" fill="#1e6a3c"/><text x="424" y="322" fill="#211a14">matches MySQL · order, not to scale</text>
+<text x="400" y="322" fill="#211a14">dots in order, not to scale</text>
 </svg>

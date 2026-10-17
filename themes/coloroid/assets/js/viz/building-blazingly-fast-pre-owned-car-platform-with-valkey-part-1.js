@@ -3,10 +3,9 @@
  * House look (walviz.css + lib.js components). What is specific to this post is
  * the drawing and the interaction, not the chrome.
  *
- *   card-once         one card, built once, read by every ad click, rebuilt on change
  *   hook-sets         place each write in the smallest hook ring that sees it
  *   change-timeline   swimlanes: guess when the buyer sees the new price, then scrub
- *   outage-timeline   the same lanes: predict what a failure does, then see it
+ *   outage-timeline   the same lanes: predict delayed or lost, then see where it resumes
  *
  * Checked against:
  *   - pratikgajjar/mysql-data-stream-kafka @ ea9296b (main.py): only_events,
@@ -14,6 +13,7 @@
  *   - kafka-python 1.4.6: acks=1 default, random partition when key is None
  *   - mysql-replication 0.19: before_values / after_values / values
  *   - django-redis 6.0: key ":1:<key>", pickle then gzip, SET … PX <ms>
+ *   - MySQL 8.0 docs: sync_binlog=1 and binlog_format=ROW are defaults since 5.7.7
  *   - Django 6.1: QuerySet.update(), bulk_create(), bulk_update() send no post_save
  * Car, prices, binlog positions and offsets are sample values.
  */
@@ -26,7 +26,7 @@ const NEW = 510000;
 
 /* ------------------------------------------------------------ helpers */
 
-function onLayout(el, rebuild, at = 560) {
+function onLayout(el, rebuild, at) {
   let cur = null;
   const check = () => {
     const k = el.clientWidth < at ? 'tall' : 'wide';
@@ -41,40 +41,7 @@ const KEYCLS = { pick: 'k-pick', data: 'k-data', safe: 'k-safe', look: 'k-look',
 const key = (items) => colorKey(items.map(([k, label]) => [KEYCLS[k], label]));
 
 /** Code lines: «x» data, ⟪x⟫ good, ⟦x⟧ bad, // comment. */
-const code = (lines) => codeBlock(lines);
-
-const CAR_PATH = 'M12,62 L14,50 Q16,44 26,42 L44,40 L62,24 Q68,20 80,20 L112,20 Q122,20 128,26 L144,40 Q158,42 162,50 L164,62 Z';
-const CAR_WIN = 'M68,27 L80,24 L100,24 L100,40 L54,40 Z M106,24 L114,24 Q120,24 124,29 L134,40 L106,40 Z';
-function carIcon() {
-  return s('svg', { viewBox: '0 0 176 80', class: `${P}caricon`, 'aria-hidden': 'true' },
-    s('path', { d: CAR_PATH, class: 'body' }), s('path', { d: CAR_WIN, class: 'win' }),
-    s('circle', { cx: 44, cy: 62, r: 12, class: 'tyre' }), s('circle', { cx: 134, cy: 62, r: 12, class: 'tyre' }),
-    s('circle', { cx: 44, cy: 62, r: 4.5, class: 'hub' }), s('circle', { cx: 134, cy: 62, r: 4.5, class: 'hub' }));
-}
-
-/* =========================================================== CARD ONCE */
-
-function initCardOnce(fig, app) {
-  const img = fig.querySelector('.wv-fallback');
-  const base = img ? img.getAttribute('src').replace(/[^/]*$/, '') : '';
-  const stage = h('div', { class: `${P}card1` });
-  app.append(stage, key([['pick', 'the pre-computed card (our choice)'], ['data', 'data'], ['safe', 'the path that keeps it fresh']]));
-  const cache = {};
-  onLayout(app, async (kind) => {
-    const file = kind === 'tall' ? 'card-once-tall.svg' : 'card-once.svg';
-    try {
-      cache[file] ??= await fetch(base + file).then((r) => (r.ok ? r.text() : Promise.reject(r.status)));
-      stage.innerHTML = cache[file];
-      const svg = stage.querySelector('svg');
-      svg.setAttribute('role', 'img');
-      svg.setAttribute('aria-label', fig.getAttribute('aria-label') || '');
-      svg.querySelector('title')?.remove();
-      svg.querySelectorAll('.fb-only').forEach((n) => n.remove()); // the HTML key replaces it
-    } catch (e) {
-      fig.classList.remove('wv-live');
-    }
-  }, 600);
-}
+const code = (lines) => codeBlock(lines.map((l) => l.replace(/[«»]/g, '')));
 
 /* ========================================================== HOOK RINGS */
 
@@ -131,7 +98,7 @@ function initHookSets(fig, app) {
 
   const ring = (id, inner) => {
     const r = h('div', { class: `wv-card ${P}ring ${P}ring--${id}`, role: 'button', tabindex: 0, 'aria-label': `${RINGS[id].title}, seen by ${RINGS[id].hook}` },
-      h('h5', null, RINGS[id].title), h('div', { class: `${P}ringsub` }, h('span', { class: 'c-opt' }, `seen by ${RINGS[id].hook}`), counts[id] = h('span', { class: 'c-data' })),
+      h('h5', null, RINGS[id].title), h('p', { class: `${P}ringsub` }, `seen by ${RINGS[id].hook}`, counts[id] = h('b')),
       chipsIn[id] = h('div', { class: `wv-chips ${P}placed` }), inner);
     const pick = (e) => { e.stopPropagation(); if (!answered && k < WRITES.length) choose(id); };
     r.addEventListener('click', pick);
@@ -144,14 +111,14 @@ function initHookSets(fig, app) {
 
   tree.classList.add(`${P}tree`);
   app.append(h('div', { class: `${P}hookgrid` }, q, wcard, tree, fb, h('div', { class: 'wv-bar' }, show, next, restart)),
-  key([['look', 'the write in your hand'], ['opt', 'a hook'], ['safe', 'the ring it lands in'], ['gap', 'a wrong guess'], ['pick', 'the ring we chose']]));
+  key([['look', 'the write in your hand'], ['safe', 'the smallest ring that sees it'], ['gap', 'your guess, when wrong'], ['pick', 'the hook we chose']]));
 
   function load(i) {
     k = i; answered = false;
     const w = WRITES[i];
     q.innerHTML = `Write <b>${i + 1} of ${WRITES.length}</b>. Tap the smallest ring that sees it.`;
     wcard.innerHTML = `<h5>${w.label}</h5><p class="t-s">${w.who}</p>${code(w.code)}`;
-    wcard.hidden = false;
+    wcard.hidden = false; wcard.classList.add('is-look');
     fb.className = 'wv-note'; fb.hidden = true;
     next.hidden = true; show.hidden = false; restart.hidden = true;
     Object.values(rings).forEach((r) => r.classList.remove('is-good', 'is-bad', 'is-pick'));
@@ -168,6 +135,7 @@ function initHookSets(fig, app) {
     const w = WRITES[k];
     answered = true;
     tree.classList.remove('is-asking');
+    wcard.classList.remove('is-look');
     const ok = id === w.set;
     if (ok) right++;
     if (id && !ok) rings[id].classList.add('is-bad');
@@ -198,7 +166,7 @@ function initHookSets(fig, app) {
     q.innerHTML = `You placed <b>${right} of ${WRITES.length}</b> in the right ring.`;
     wcard.hidden = true;
     fb.hidden = false;
-    fb.className = 'wv-note is-good';
+    fb.className = 'wv-note';
     fb.innerHTML = '<b>Only the outer ring holds every write.</b> A hook sees the writes inside its ring. The binlog reader is the only hook every writer passes, so that is where we put it. Tap a placed write to read why it sits there.';
     next.hidden = true; show.hidden = true; restart.hidden = false;
   }
@@ -294,7 +262,7 @@ const NORMAL = {
 
 const FAULTS = [
   {
-    id: 1, name: 'Consumer', resume: 'The consumer resumes at the last committed offset.', ask: 3.4, answer: 'longer',
+    key: '1', name: '1 · Consumer', resume: 'The consumer resumes at the last committed offset.', ask: 3.4, answer: 'delayed',
     intro: 'The consumer node dies right after the change reaches Kafka.',
     why: 'Kafka keeps the message, and the consumer never committed its offset, so it reads the change after it restarts. Until then the page shows the old price.',
     events: [E.commit(1), E.read(2), E.send(3),
@@ -305,7 +273,7 @@ const FAULTS = [
     bands: [[0, 1, 'ok'], [1, 8, 'stale'], [8, 99, 'ok']],
   },
   {
-    id: 2, name: 'Producer', resume: 'The producer resumes at its saved binlog position.', ask: 1.4, answer: 'longer',
+    key: '2', name: '2 · Producer', resume: 'The producer resumes at its saved binlog position.', ask: 1.4, answer: 'delayed',
     intro: 'The producer node dies right after the UPDATE commits.',
     why: 'The change waits in the binlog on the MySQL disk, and the producer resumes from its saved position.',
     events: [E.commit(1),
@@ -317,7 +285,7 @@ const FAULTS = [
     extra: 'Events after the saved position that were already sent go to Kafka a second time, and the consumer rebuilds those cars twice. The public library saves its position to a local file when it stops on a signal or an error.',
   },
   {
-    id: 3, name: 'Valkey', resume: 'The offset was never committed, so the consumer retries the same message.', ask: 4.4, answer: 'longer',
+    key: '3', name: '3 · Valkey', resume: 'The offset was never committed, so the consumer retries the same message.', ask: 4.4, answer: 'delayed',
     intro: 'Valkey goes down just as the consumer is ready to write.',
     why: 'The SET fails, so the consumer does not commit the offset. It retries until Valkey is back.',
     events: [E.commit(1), E.read(2), E.send(3), E.map(4),
@@ -329,43 +297,39 @@ const FAULTS = [
     bands: [[0, 1, 'ok'], [1, 4.4, 'stale'], [4.4, 7.6, 'down'], [7.6, 8, 'stale'], [8, 99, 'ok']],
   },
   {
-    id: 4, name: 'Kafka broker', ask: 3.5,
-    variants: {
-      one: {
-        label: 'acks=1 (default)', resume: 'Nothing resumes: no component still has the change.',
-        intro: 'The partition leader dies right after it confirms the message. The producer uses the kafka-python default, acks=1.', answer: 'lost',
-        why: 'The leader confirmed before any follower copied the message, then died. The producer does not resend it, so car 2323 keeps the old price until its 12-hour TTL ends.',
-        events: [E.commit(1), E.read(2),
-          E.send(3, { tag: 'leader ack', title: 'The leader confirms alone', body: `${code(['KafkaProducer(bootstrap_servers=…)   // acks=«1» by default'])}<p>With <code>acks=1</code> the leader confirms before any follower has copied the message.</p>` }),
-          { x: 5.2, lane: 'Kafka', tag: 'lost', kind: 'lost', title: 'The new leader never had the message', body: '<p>A follower becomes leader without the message. The producer already has its ack, so it does not resend. Nothing tells the consumer about the price change.</p>' },
-          { x: 8, lane: 'Valkey', tag: 'TTL ends', kind: 'expire', src: null, title: 'The key expires 12 hours after its last SET', body: '<p>Car 2323 keeps the old price until its 12-hour TTL removes the key.</p>' }],
-        blocks: [['Kafka', 3.5, 4.8]],
-        bands: [[0, 1, 'ok'], [1, 8, 'stale'], [8, 99, 'gone']],
-      },
-      all: {
-        label: "acks='all'", resume: 'The new leader already has the message, so the consumer reads it as usual.',
-        intro: "The partition leader dies right after it confirms the message. The producer uses acks='all', and the topic has replication factor 3 and min.insync.replicas=2.", answer: 'longer',
-        why: 'An in-sync follower already had the message, so it becomes leader and the consumer reads the change a little later.',
-        events: [E.commit(1), E.read(2),
-          E.send(3, { tag: 'leader + follower', title: 'The leader confirms after a follower has it', body: `${code(["KafkaProducer(bootstrap_servers=…, acks=«'all'»)", '// topic: replication.factor=«3», min.insync.replicas=«2»'])}<p>The leader answers only after an in-sync follower has the message.</p>` }),
-          { x: 5, lane: 'Kafka', tag: 'new leader', kind: 'resume', src: [3, 'Kafka'], title: 'A follower with the message takes over', body: '<p>The new leader has offset 88,120, so the consumer reads it as usual.</p>' },
-          E.map(6), E.set(7), E.ack(8)],
-        blocks: [['Kafka', 3.5, 4.8]],
-        bands: [[0, 1, 'ok'], [1, 7, 'stale'], [7, 99, 'ok']],
-      },
-    },
+    key: '4a', name: "4 · Kafka, acks=1", ask: 3.5,
+    resume: 'Nothing resumes: no part still has the change.',
+    intro: 'The partition leader dies right after it confirms the message. The producer uses the kafka-python default, acks=1.', answer: 'lost',
+    why: 'The leader confirmed before any follower copied the message, then died. The producer does not resend it, so car 2323 keeps the old price until its 12-hour TTL ends.',
+    events: [E.commit(1), E.read(2),
+      E.send(3, { tag: 'leader ack', title: 'The leader confirms alone', body: `${code(['KafkaProducer(bootstrap_servers=…)   // acks=«1» by default'])}<p>With <code>acks=1</code> the leader confirms before any follower has copied the message.</p>` }),
+      { x: 5.2, lane: 'Kafka', tag: 'lost', kind: 'lost', title: 'The new leader never had the message', body: '<p>A follower becomes leader without the message. The producer already has its ack, so it does not resend. Nothing tells the consumer about the price change.</p>' },
+      { x: 8, lane: 'Valkey', tag: 'TTL ends', kind: 'expire', src: null, title: 'The key expires 12 hours after its last SET', body: '<p>Car 2323 keeps the old price until its 12-hour TTL removes the key.</p>' }],
+    blocks: [['Kafka', 3.5, 4.8]],
+    bands: [[0, 1, 'ok'], [1, 8, 'stale'], [8, 99, 'gone']],
   },
   {
-    id: 5, name: 'MySQL', resume: 'The producer reconnects at its binlog position.', ask: 0.6, answer: 'usual',
-    intro: 'MySQL restarts just before the price script runs its UPDATE.',
-    why: 'While MySQL is down the UPDATE itself fails, so the cache still matches the database. After the restart the script retries and the change flows with the usual lag.',
-    events: [
-      { x: 1.6, lane: 'script', tag: 'UPDATE ✗', kind: 'fail', src: null, title: 'The UPDATE fails', body: '<p>MySQL is down, so nothing changes. The cache still matches the database.</p>' },
-      E.commit(3.4),
-      E.read(4.4, { kind: 'resume', tag: 'reconnect', title: 'The producer reconnects at its position' }),
-      E.send(5.4), E.map(6.4), E.set(7.4), E.ack(8.4)],
-    blocks: [['MySQL', 0.6, 2.6]],
-    bands: [[0, 3.4, 'ok'], [3.4, 7.4, 'stale'], [7.4, 99, 'ok']],
+    key: '4b', name: "4 · Kafka, acks='all'", ask: 3.5,
+    resume: 'The new leader already has the message, so the consumer reads it as usual.',
+    intro: "The partition leader dies right after it confirms the message. The producer uses acks='all', and the topic has replication factor 3 and min.insync.replicas=2.", answer: 'delayed',
+    why: 'An in-sync follower already had the message, so it becomes leader and the consumer reads the change a little later.',
+    events: [E.commit(1), E.read(2),
+      E.send(3, { tag: 'leader + follower', title: 'The leader confirms after a follower has it', body: `${code(["KafkaProducer(bootstrap_servers=…, acks=«'all'»)", '// topic: replication.factor=«3», min.insync.replicas=«2»'])}<p>The leader answers only after an in-sync follower has the message.</p>` }),
+      { x: 5, lane: 'Kafka', tag: 'new leader', kind: 'resume', src: [3, 'Kafka'], title: 'A follower with the message takes over', body: '<p>The new leader has offset 88,120, so the consumer reads it as usual.</p>' },
+      E.map(6), E.set(7), E.ack(8)],
+    blocks: [['Kafka', 3.5, 4.8]],
+    bands: [[0, 1, 'ok'], [1, 7, 'stale'], [7, 99, 'ok']],
+  },
+  {
+    key: '5', name: '5 · MySQL', resume: 'The producer reconnects at its saved binlog position.', ask: 1.4, answer: 'delayed',
+    intro: 'MySQL restarts right after the price UPDATE commits, before the producer reads it.',
+    why: 'MySQL writes the commit to the binlog on disk before it confirms it (sync_binlog=1, the default since MySQL 5.7.7), so the restart keeps the change.',
+    events: [E.commit(1),
+      { x: 3, lane: 'MySQL', tag: 'in binlog', kind: 'wait', src: null, title: 'The event is on disk in the binlog', body: '<p>The restart drops the producer\'s connection. The binlog file with the UPDATE is still on the MySQL disk.</p>' },
+      E.read(5, { kind: 'resume', tag: 'from 18411', title: 'The producer reconnects at its saved position', src: [3, 'MySQL'] }),
+      E.send(6), E.map(7), E.set(8), E.ack(9)],
+    blocks: [['MySQL', 1.4, 4.6]],
+    bands: [[0, 1, 'ok'], [1, 8, 'stale'], [8, 99, 'ok']],
     extra: 'Binlog files survive a restart. If a file is purged before the producer reads it, those changes never reach Kafka: rebuild every active car with the management command.',
   },
 ];
@@ -391,11 +355,10 @@ function timeline(fig, app, opts = {}) {
   let sc = null; let now = 0; let L = null; let kind = 'wide'; let playing = null;
   let revealTo = Infinity; let prompt = null; let guess = -1;
   const refs = {};
-  const stage = h('div', { class: `${P}tl` });
+  const timed = opts.time !== false;
+  const stage = h('div', { class: `${P}tl${timed ? '' : ' is-still'}` });
   const card = h('div', { class: `wv-card ${P}buyer`, 'aria-live': 'polite' },
-    h('p', { class: 't-s' }, 'A buyer opening car 2323 now sees'),
-    h('div', { class: `${P}photo` }, carIcon()),
-    h('h5', null, 'Tata Nexon XZ+'), h('p', { class: 't-s' }, '2nd owner · Mumbai · sample'),
+    h('p', null, 'A buyer opening car 2323 now sees'),
     h('dl', { class: 'wv-kv' }, h('dt', null, 'price'), refs.price = h('dd'), h('dt', null, 'cache'), refs.cnote = h('dd')));
   const detail = h('div', { class: 'wv-insp', 'aria-live': 'polite' });
   const stepOf = (v) => { const n = sc ? sc.events.filter((e) => e.x <= v + 1e-6).length : 0; return n ? `step ${n}` : 'start'; };
@@ -406,7 +369,8 @@ function timeline(fig, app, opts = {}) {
 
   play.addEventListener('click', () => { moved(); if (playing) stop(); else start(); });
 
-  app.append(...(opts.top ? [opts.top] : []), ctrl, h('div', { class: `${P}tlgrid` }, stage, card), ...(opts.below ? [opts.below] : []), detail);
+  app.append(...(opts.top ? [opts.top] : []), ...(timed ? [ctrl] : []),
+    timed ? h('div', { class: `${P}tlgrid` }, stage, card) : stage, ...(opts.below ? [opts.below] : []), detail);
 
   const moved = () => opts.onMove?.();
   const xmax = () => Math.max(...sc.events.map((e) => e.x)) + 0.9;
@@ -446,11 +410,12 @@ function timeline(fig, app, opts = {}) {
     // cache bands on the Valkey lane, clipped at what the reader may see
     const by = Y('Valkey') + 13;
     for (const [a, b, st] of sc.bands) {
+      if (st === 'ok') continue; // fresh is the normal state: no mark
       const xa = X(clamp(a, 0, limit())); const xb = X(clamp(b, 0, limit()));
       if (xb - xa < 1) continue;
       svg.append(s('rect', { x: xa, y: by, width: xb - xa, height: 6, rx: 2, class: `${P}band ${P}band--${st}`, fill: st === 'down' ? `url(#${id}-hatch)` : null }));
-      const lbl = st === 'ok' ? (a > 0 ? 'new price' : 'matches MySQL') : BAND_LABEL[st];
-      if (wide && xb - xa > lbl.length * 6.2 + 10) svg.append(s('text', { x: xa + 4, y: by + 17, class: `t-xs t-b ${st === 'ok' ? 't-safe' : st === 'gone' ? 't-mute' : 't-bad'}` }, lbl));
+      const lbl = BAND_LABEL[st];
+      if (wide && xb - xa > lbl.length * 6.2 + 10) svg.append(s('text', { x: xa + 4, y: by + 17, class: `t-xs t-b ${st === 'gone' ? '' : 't-bad'}` }, lbl));
     }
     const hidden = (x) => x > revealTo + 1e-6;
     // connectors
@@ -470,7 +435,7 @@ function timeline(fig, app, opts = {}) {
     if (revealTo < xmax()) {
       const fx = X(revealTo) + 6;
       svg.append(s('rect', { x: fx, y: top, width: W - fx, height: H - top - 6, class: `${P}fog` }));
-      svg.append(s('text', { x: (fx + W) / 2, y: (top + H) / 2 + 12, 'text-anchor': 'middle', class: 't-xl t-b t-look' }, '?'));
+      svg.append(s('text', { x: (fx + W) / 2, y: (top + H) / 2 + 12, 'text-anchor': 'middle', class: 't-xl t-b' }, '?'));
     }
     // outage blocks: the given in a question, so drawn above the fog
     for (const [ln, a, b] of sc.blocks) {
@@ -493,11 +458,11 @@ function timeline(fig, app, opts = {}) {
       svg.append(g);
       return g;
     });
-    refs.cursor = s('g', { class: `${P}cursor` },
+    refs.cursor = s('g', { class: `${P}cursor`, display: timed ? null : 'none' },
       s('line', { x1: 0, x2: 0, y1: top - (wide ? 24 : 12), y2: H - 4 }),
       s('rect', { x: -5, y: top - (wide ? 28 : 16), width: 10, height: 10, rx: 2 }));
     svg.append(refs.cursor);
-    svg.addEventListener('pointerdown', (ev) => {
+    if (timed) svg.addEventListener('pointerdown', (ev) => {
       if (ev.target.closest(`.${P}ev`)) return;
       stop(); moved();
       const move = (e2) => {
@@ -549,9 +514,9 @@ function timeline(fig, app, opts = {}) {
     const [a, , st] = bandAt(now);
     const c = BAND_CARD[st](a > 0);
     refs.price.textContent = c.price == null ? '—' : inr(c.price);
-    refs.price.className = c.cls === 'is-stale' ? 'c-bad' : c.cls === 'is-ok' ? 'c-safe' : '';
+    refs.price.className = c.cls === 'is-stale' ? 'c-bad' : '';
     refs.cnote.textContent = c.note;
-    card.className = `wv-card ${P}buyer ${c.cls === 'is-stale' || c.cls === 'is-down' ? 'is-bad' : c.cls === 'is-ok' ? 'is-good' : ''}`;
+    card.className = `wv-card ${P}buyer${c.cls === 'is-stale' || c.cls === 'is-down' ? ' is-bad' : ''}`;
     rg.el.querySelector('output').textContent = stepOf(now);
     renderDetail(cur);
   }
@@ -593,7 +558,7 @@ function timeline(fig, app, opts = {}) {
   };
 }
 
-/* ------------------------------------------ Fig. 3: guess, then scrub */
+/* ------------------------------------------ Fig. 2: guess, then scrub */
 
 function initChange(fig, app) {
   const SET = NORMAL.events.findIndex((e) => e.tag === 'SET');
@@ -613,48 +578,41 @@ function initChange(fig, app) {
     extra(k) {
       if (k !== SET || guess < 0) return '';
       return guess === SET
-        ? `<div class="wv-note is-good"><b>You guessed step ${SET + 1}.</b> The card changes only when the consumer writes the new JSON.</div>`
+        ? `<div class="wv-note"><b>You guessed step ${SET + 1}.</b> The card changes only when the consumer writes the new JSON.</div>`
         : `<div class="wv-note is-bad"><b>You guessed step ${guess + 1}.</b> The card changes only here, at step ${SET + 1}, when the consumer writes the new JSON. Until then Valkey serves the old one.</div>`;
     },
   });
   t.load(NORMAL);
   t.prompt(askEl);
-  app.append(key([['look', 'now, and your guess'], ['data', 'sample values'], ['safe', 'cache matches MySQL'], ['gap', 'cache serves the old price']]));
+  app.append(key([['look', 'now, and your guess'], ['gap', 'Valkey serves the old price']]));
 }
 
-/* ------------------------------------------------ Fig. 4: what if … */
+/* ----------------------------------- Fig. 3: delayed or lost? */
 
-const OUTCOMES = [['lost', 'The change is lost'], ['longer', 'The page stays stale longer'], ['usual', 'Only the usual lag']];
+const OUTCOMES = [['delayed', 'Delayed: buyers see the old price longer'], ['lost', 'Lost: no part still has the change']];
 
 function initOutage(fig, app) {
-  let cur = FAULTS[0]; let variant = 'one';
-  const faultChips = chips(FAULTS.map((f) => [f.id, `${f.id} · ${f.name}`]), (id) => pick(FAULTS.find((f) => f.id === id)), { value: 1, label: 'Failure' });
-  const vnames = Object.keys(FAULTS[3].variants);
-  const vChips = chips(vnames.map((k) => [k, FAULTS[3].variants[k].label]), (k) => { variant = k; pick(cur); }, { value: variant, label: 'Producer acks setting' });
-  const vbar = h('div', { class: 'wv-field' }, h('label', null, 'producer setting'), vChips.el);
-  const slot = h('div', { 'aria-live': 'polite' });
-  const top = h('div', null, faultChips.el, vbar);
+  const faultChips = chips(FAULTS.map((f) => [f.key, f.name]), (k) => pick(FAULTS.find((f) => f.key === k)), { value: FAULTS[0].key, label: 'Failure' });
+  const slot = h('div');
   let answered = false;
-  const t = timeline(fig, app, { top, below: slot, onMove() { if (answered) t.prompt(null); } });
+  const t = timeline(fig, app, { top: faultChips.el, below: slot, time: false, onMove() { if (answered) t.prompt(null); } });
 
   function pick(f) {
-    cur = f; answered = false;
-    vbar.hidden = !f.variants;
-    const sc = f.variants ? { ...f.variants[variant], ask: f.ask } : f;
-    const rs = f.variants ? f.variants[variant].resume : f.resume;
-    t.load(sc, { at: sc.ask, reveal: sc.ask });
-    t.prompt(h('p', null, 'Answer above to see the rest of the timeline.'));
-    const q = ask(`What happens to the price change? ${sc.intro}`, OUTCOMES, sc.answer, (v, right) => {
+    answered = false;
+    t.load(f, { at: f.ask, reveal: f.ask });
+    t.prompt(h('p', null, 'Answer to see the rest of the timeline.'));
+    const q = ask(`${f.intro} What happens to the price change?`, OUTCOMES, f.answer, (v, right) => {
       answered = true;
       t.reveal(Infinity);
-      t.prompt(h('p', null, 'Press Play, or tap a dot, to walk through what happened.'));
-      const said = OUTCOMES.find((o) => o[0] === sc.answer)[1].toLowerCase();
-      return `<b>${right ? 'Right.' : `Not quite: ${said}.`}</b> ${sc.why}<br><span class="c-look">↺ ${rs}</span>`;
+      t.setNow(Infinity);
+      t.prompt(h('p', null, 'Tap a dot to read that step.'));
+      const said = OUTCOMES.find((o) => o[0] === f.answer)[1].split(':')[0].toLowerCase();
+      return `<b>${right ? 'Right.' : `It is ${said}.`}</b> ${f.why} ${f.resume}`;
     });
     slot.replaceChildren(q.el);
   }
-  pick(cur);
-  app.append(key([['look', 'now, and where it resumes'], ['data', 'sample values'], ['safe', 'cache matches MySQL'], ['gap', 'part down, stale price, or change lost']]));
+  pick(FAULTS[0]);
+  app.append(key([['gap', 'part down, old price served, or change lost']]));
 }
 
-register({ 'card-once': initCardOnce, 'hook-sets': initHookSets, 'change-timeline': initChange, 'outage-timeline': initOutage });
+register({ 'hook-sets': initHookSets, 'change-timeline': initChange, 'outage-timeline': initOutage });
