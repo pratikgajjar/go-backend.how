@@ -115,7 +115,7 @@ This is the SQL Django generates for the filter set above. It joins only the
 tables a filter needs: `city_id` is already a column on `locality`, and
 `make_id` a column on `model`, so `city` and `make` are never joined.
 
-The response carries one page of cars and the total count:
+The response contains one page of cars and the total count:
 
 ```json
 HTTP 200 OK
@@ -147,7 +147,7 @@ HTTP 200 OK
 ## Slugs for search pages
 
 For SEO, a listing page can also have a readable URL. A Google search for
-"used Nexon cars in Mumbai" lands on a page with that phrase in its path:
+"used Nexon cars in Mumbai" opens a page with that phrase in its path:
 
 ```sql
 🌐 https://car.com/used-nexon-cars-in-mumbai
@@ -171,12 +171,12 @@ used-nexon-cars-in-mumbai => model=121&city_id=1
 | 4   | tata   | make      | 2      |
 | 5   | petrol | fuel_type | 1      |
 
-## Why this falls short
+## Problems with this approach {#why-this-falls-short}
 
 Every request does the same work again. The filter query joins up to four
 tables. Pagination runs a second query, `COUNT(*)` with the same joins. The
 serializer then reads `model_name`, `varient_name` and `city_name`, which
-costs more joins with `select_related`, or one query per car without it.
+needs more joins with `select_related`, or one query per car without it.
 Many buyers ask for the same popular filter combinations, such as all cars in
 Mumbai, and the database answers each one from scratch.
 
@@ -184,20 +184,20 @@ Two simpler fixes do not work well here:
 
 - **Cache each response by URL.** Page number, ordering, and the order of the
   query parameters all make new keys for the same result. One sold car makes
-  every cached page that contains it wrong, and there is no cheap way to find
+  every cached page that contains it wrong, and there is no fast way to find
   those pages.
 - **Precompute every page, as Part 1 did for car pages.** A car page has one
   key per car. A listing page has one per combination of filters, and the
   number of combinations can be far larger than the number of cars.
 
-What stays small is the set of cars that match each single filter value.
+The set of cars that match one filter value stays small.
 
 # Filters are sets
 
 Each filter value picks a set of car ids: the cars in Mumbai, the cars priced
 ₹4–8 L, the cars with AMT. A page is the cars that are in every set the buyer
 asked for, which is an intersection. A filter with several values, such as
-`make=10,12`, is a union. Try it:
+`make=10,12`, is a union. In Figure 1, switch the filters on and off:
 
 {{< viz kind="filter-sets" fig="1" title="Filters are sets" fallback="filter-sets.svg" alt="A listing request's four filters drawn as rows of car ids; the cars filled in every row are the page" caption="Sample data: 12 cars. Each filter you switch on is one sorted set in Valkey, one row here. A car is on the page when its column is full in every row." >}}
 
@@ -312,7 +312,7 @@ and what a sale does to a stored result.
 When the order comes from the recommendation model, it depends on the buyer,
 and it changes every 45 minutes when we retrain the model. So we do not store
 the order. The key hashes only the car-related filters, and the value is the
-unordered set of matching car ids, written with `SADD`. This pays off most on
+unordered set of matching car ids, written with `SADD`. This helps most on
 popular base pages, such as all cars in Mumbai.
 
 On each request, the web server reads the set, ranks the ids with the LightFM
@@ -321,11 +321,11 @@ those cards with `HMGET`.
 
 A stored order would have to exist once per buyer, or buyer group, and be
 rewritten after every retrain. The set is one key per query, and a retrain
-writes nothing to Valkey. The cost moves to the web server CPU.
+writes nothing to Valkey. The web server uses more CPU instead.
 
 {{< viz kind="reco-order" fig="3" title="One set, ranked per buyer" fallback="reco-order.svg" alt="One unordered set of nine car ids in Valkey, ranked differently for two buyers and two model versions by LightFM in the web server" caption="Sample scores. The set in Valkey is the same for both buyers and both model versions; only the order in the web server changes." >}}
 
-# Where this hurts
+# Limits {#where-this-hurts}
 
 - **Stale ids until the TTL ends.** A stored result is not an index, so the
   change-log consumer does not update it. A sold car stays in it, `HMGET`

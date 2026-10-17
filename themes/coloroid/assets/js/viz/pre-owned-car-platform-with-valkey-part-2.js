@@ -194,7 +194,7 @@ const STEPS = [
   },
   {
     label: 'Lookup', who: 'request 1', rt: 1, cmds: 2,
-    title: 'Round trip 1: is the result cached?',
+    title: 'Round trip 1: check for a cached result',
     text: 'Both commands go in one pipeline. The key does not exist, so this is a miss. <code>ZINTERSTORE</code> never stores an empty result, so a filter that matches no car misses on every request.',
     term: [['c', `ZCARD ${K}`], ['n', '(integer) 0'], ['c', `ZRANGE ${K} 0 2`], ['n', '(empty array)']],
     strip: { read: 0, res: 'nil' }, tone: 'bad',
@@ -234,7 +234,7 @@ const STEPS = [
   },
   {
     label: 'Page 2', who: 'request 2', rt: 2, cmds: 3,
-    title: 'Page 2, filters in another order: a hit',
+    title: 'Page 2, filters in another order, is a hit',
     text: 'No index is read. Page <i>n</i> is <code>ZRANGE key (n−1)×size n×size−1</code>.',
     term: [['m', '# GET /listing/?city_id=1&features=20&make=10,12&price_min=400000&price_max=800000&ordering=price&page=2'], ['c', `ZCARD ${K}`], ['r', '(integer) 5'], ['c', `ZRANGE ${K} 3 5`], ['r', '1) "104"  2) "101"'], ['c', 'HMGET car: 104 101'], ['r', '1) "{\\"id\\":104,…}"  2) "{\\"id\\":101,…}"']],
     phone: [104, 101], pageNo: 2,
@@ -254,7 +254,7 @@ const STEPS = [
     text: 'Until the key expires, page 1 has 2 cars and the count says 5. A new query builds from the indexes, which no longer hold 111.',
     term: [['c', `ZCARD ${K}`], ['r', '(integer) 5'], ['c', `ZRANGE ${K} 0 2`], ['r', '1) "109"  2) "102"  3) "111"'], ['c', 'HMGET car: 109 102 111'], ['r', '1) "{\\"id\\":109,…}"  2) "{\\"id\\":102,…}"'], ['n', '3) (nil)']],
     phone: [109, 102], pageNo: 1, stale: true, strip: { read: 4, res: 'ttl', ttl: 480, sold: true }, tone: 'bad',
-    ask: { q: 'Car 111 was just sold. The buyer opens page 1 again. How many cars does it show?', opts: ['3', '2', 'an error'], right: '2', why: 'The stored result still holds 111. HMGET returns nil for it, and the view skips it.' },
+    ask: { q: 'Car 111 is now sold. The buyer opens page 1 again. How many cars does it show?', opts: ['3', '2', 'an error'], right: '2', why: 'The stored result still holds 111. HMGET returns nil for it, and the view skips it.' },
   },
 ];
 
@@ -288,7 +288,7 @@ function initListing(fig, app) {
   function renderStrip(st) {
     const { read, res, ttl, sold } = st.strip;
     const rows = [...ROWS, { id: 'res', key: 'page:price:6d53…', f: res === 'new' || res === 'ttl' ? `zset · TTL ${ttl || 600} s${sold ? ' · still holds 111' : ''}` : 'not stored' }];
-    stripBox.replaceChildren(label(sold ? 'Valkey: 111 is gone from the four indexes, not from the stored result' : 'Valkey: the four indexes and the stored result'),
+    stripBox.replaceChildren(label(sold ? 'Valkey: 111 is removed from the four indexes but is still in the stored result' : 'Valkey: the four indexes and the stored result'),
       strip({
         rows, cols: CARS,
         rowCls: (r) => (r.id === 'res' ? `is-res${res === 'nil' ? ' is-miss' : ''}` : ''),
