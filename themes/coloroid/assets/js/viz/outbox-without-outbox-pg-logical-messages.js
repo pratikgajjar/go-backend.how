@@ -1,51 +1,24 @@
 /*
  * Figures for "The Outbox Without an Outbox".
  *
- * Visual language: the WAL is a strip of append-only tape. Records sit on
- * it at their LSN, to scale where the figure says so; the replication slot
- * is a green bookmark clipped to the tape. Figures render without the shared
- * whiteboard sheet (frame="none") and are styled in
- * css/viz/outbox-without-outbox-pg-logical-messages.css.
+ * The WAL is a band; records sit on it at their LSN; the replication slot is
+ * a green bookmark. Green means safe, red means lost; everything else is ink.
  *
- *   oxb-commit   end one transaction with COMMIT or ROLLBACK; see where the event goes
  *   oxb-ack-lsn  drag the slot along a real WAL layout; the restart rule decides each fate
- *   oxb-follow   one event, five envelopes: the same 225 bytes wrapped at each stop
  *   oxb-race     the reader plays Kafka, acking partitions in any order; two slot rules react
- *   oxb-replay   drag a crash onto the status-update timeline; count the duplicates
- *   oxb-backlog  your workload in, your outage budget out
- *
- * Design: one new idea per view, labels next to the things they name,
- * prediction or a reader action before each answer, detail on demand.
+ *   oxb-backlog  your write rate in, your outage budget out
  *
  * LSNs, record sizes and frame bytes come from one run on PostgreSQL 17.7
- * (wal_level = logical, pgoutput proto_version 1, messages 'true'), read with
- * pg_waldump and a replication connection. The restart outcome of each ACK
- * choice, the backward-confirm behaviour, and slot invalidation under
- * max_slot_wal_keep_size were checked on the same server. Code refers to
- * github.com/fampay-inc/factlib at cd2934e.
+ * (wal_level = logical, pgoutput proto_version 1, messages 'true'). The
+ * restart outcome of each ACK choice, the backward-confirm behaviour, and
+ * slot invalidation under max_slot_wal_keep_size were checked on the same
+ * server. Code refers to github.com/fampay-inc/factlib at cd2934e.
  */
-import { h, s, colorKey, codeBlock, register, esc, lsn, tween, ease, btn, uid, range, clamp, fmt, stepper, chips, hatchDefs } from './lib.js';
+import { h, s, colorKey, codeBlock, register, esc, lsn, btn, range, clamp, fmt, chips } from './lib.js';
 
-const hex2 = (b) => b.toString(16).padStart(2, '0');
-const hexOf = (str) => str.match(/../g);
-const utf8 = (t) => [...new TextEncoder().encode(t)].map(hex2);
-const be = (n, bytes) => { const out = []; let v = BigInt(n); for (let i = 0; i < bytes; i++) { out.unshift(hex2(Number(v & 0xffn))); v >>= 8n; } return out; };
 const T = (x, y, cls, text, anchor = 'start') => s('text', { x, y, class: cls, 'text-anchor': anchor }, text);
-const arrowDefs = (id) => `<defs>
-  <marker id="${id}-i" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink)"/></marker>
-  <marker id="${id}-g" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker>
-  <marker id="${id}-p" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--purple)"/></marker>
-  <pattern id="${id}-h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" style="fill:var(--paper)"/><line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--ink);stroke-width:1.4"/></pattern>
-</defs>`;
-/** Holes along both edges of a tape band. */
-function tapeBand(x0, x1, y, hgt) {
-  const g = s('g');
-  g.append(s('rect', { x: x0, y, width: x1 - x0, height: hgt, class: 'v-oxb-tape' }));
-  for (let x = x0 + 7; x < x1 - 3; x += 14) {
-    g.append(s('circle', { cx: x, cy: y + 4.5, r: 1.8, class: 'v-oxb-hole' }), s('circle', { cx: x, cy: y + hgt - 4.5, r: 1.8, class: 'v-oxb-hole' }));
-  }
-  return g;
-}
+/** The WAL band records sit on. */
+const tapeBand = (x0, x1, y, hgt) => s('rect', { x: x0, y, width: x1 - x0, height: hgt, class: 'v-oxb-tape' });
 /** Re-render on width class changes (phone vs desktop). */
 function responsive(app, draw) {
   let V = null;
@@ -89,156 +62,13 @@ function svgPt(svg, e) {
   return p.matrixTransform(svg.getScreenCTM().inverse());
 }
 const details = (summary, ...kids) => h('details', null, h('summary', null, summary), ...kids);
-const bookmark = (y0, y1, label = 'slot') => {
-  const g = s('g', { class: 'v-oxb-slot' });
-  g.append(s('line', { x1: 0, x2: 0, y1: y0, y2: y1, class: 'v-oxb-slot-line' }),
-    s('path', { d: `M0,${y0} l36,0 l-6,7 l6,7 l-36,0 z`, class: 'v-oxb-slot-flag' }),
-    T(4, y0 + 10.5, 't-xs t-b t-board', label));
-  return g;
-};
-
-/* ================================================================ COMMIT */
-
-/* The reader ends one transaction with COMMIT or ROLLBACK and sees where
-   the event goes. Both are true on Postgres 17.7: the message record is in
-   WAL before COMMIT; ROLLBACK adds a 34-byte ABORT record, and decoding
-   drops the transaction. */
-const TXN = {
-  wide: {
-    vb: [960, 318], tape: [16, 944, 168, 50], rec: [178, 208],
-    old: [['o', 30, 130], ['m', 130, 263, 'event'], ['c', 263, 285], ['o', 285, 400]],
-    fresh: [['o', 400, 440, 'row'], ['o', 440, 472, 'idx'], ['m', 472, 605, 'event']],
-    end: 605, commitW: 22, abortW: 18, slot0: 285,
-    card: [330, 12, 420, 104],
-    owl: [300, 252, 210, 50], kafka: [700, 252, 220, 50],
-    ackPath: [[740, 252], [740, 238], [627, 238], [627, 224]],
-  },
-  tall: {
-    vb: [360, 400], tape: [8, 352, 206, 46], rec: [214, 244],
-    old: [['o', 14, 40], ['m', 40, 94, 'event'], ['c', 94, 104], ['o', 104, 150]],
-    fresh: [['o', 150, 172, ''], ['o', 172, 190, ''], ['m', 190, 272, 'event']],
-    end: 272, commitW: 12, abortW: 10, slot0: 104,
-    card: [16, 12, 328, 104],
-    owl: [16, 330, 152, 52], kafka: [192, 330, 152, 52],
-    ackPath: [[284, 330], [284, 262]],
-  },
-};
-
-function initCommit(fig, app) {
-  const aid = uid('oxh');
-  let state = 'open'; let L = null; let el = null; let cancel = () => {};
-  const stage = h('div');
-  const ask = h('p', { class: 'wv-q' }, 'The row and the event are already in the WAL. End the transaction. Does the event reach Kafka?');
-  const bC = btn('COMMIT', () => end('commit'));
-  const bR = btn('ROLLBACK', () => end('rollback'));
-  const bAgain = btn('↺ again', () => { state = 'open'; draw(L === TXN.tall); }, { class: 'wv-btn wv-btn--ghost' });
-  const say = h('div', { class: 'wv-note', 'aria-live': 'polite' });
-  app.append(ask, h('div', { class: 'wv-bar' }, bC, bR, bAgain), stage, say,
-    colorKey([['k-data', 'event'], ['k-free', 'other WAL'], ['k-safe', 'slot, ack'], ['k-look', 'your transaction']]));
-
-  function draw(vertical) {
-    cancel();
-    L = vertical ? TXN.tall : TXN.wide;
-    const [W, H] = L.vb;
-    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': fig.getAttribute('aria-label') || '' });
-    svg.innerHTML = arrowDefs(aid);
-    const [tx0, tx1, ty, th] = L.tape; const [ry0, ry1] = L.rec;
-    svg.append(T(tx0 + 4, ty - 8, 't-s t-b', 'WAL'), T(tx1, ty - 8, 't-xs t-mute', vertical ? 'LSN →' : 'append-only · LSN →', 'end'));
-    svg.append(tapeBand(tx0, tx1, ty, th));
-    const rec = ([k, x0, x1, label], extra = '') => {
-      const g = s('g', { class: extra });
-      g.append(s('rect', { x: x0, y: ry0, width: x1 - x0, height: ry1 - ry0, class: k === 'm' ? 'v-oxb-rec v-oxb-rec-msg' : k === 'c' ? 'v-oxb-rec v-oxb-rec-c' : 'v-oxb-rec' }));
-      if (label) g.append(T((x0 + x1) / 2, (ry0 + ry1) / 2 + 4, `t-xs t-b${k === 'm' ? ' t-data' : ''}`, label, 'middle'));
-      svg.append(g); return g;
-    };
-    L.old.forEach((r) => rec(r));
-    const recyc = s('rect', { x: tx0, y: ty, width: 0, height: th, class: 'v-oxb-recyc' }); svg.append(recyc);
-    const fresh = L.fresh.map((r) => rec(r, 'v-oxb-fresh'));
-    const endRec = s('g'); svg.append(endRec);
-    const ev = L.fresh[2];
-    const evTag = T((ev[1] + ev[2]) / 2, ry1 + 16, 't-xs t-b t-look', 'waits for COMMIT', 'middle'); svg.append(evTag);
-    // the transaction card
-    const [cx, cy, cw, ch] = L.card;
-    svg.append(s('rect', { x: cx, y: cy, width: cw, height: ch, class: 'box v-oxb-look-box' }));
-    const lines = ['BEGIN;', 'INSERT INTO users …;', 'SELECT pg_logical_emit_message(', "    true, 'payments-user', event);"];
-    lines.forEach((ln, k) => svg.append(s('text', { x: cx + 12, y: cy + 22 + k * 19, class: `t-s v-oxb-pre${k >= 2 ? ' t-data t-b' : ''}` }, ln)));
-    const last = s('text', { x: cx + 12, y: cy + 22 + 4 * 19, class: 't-s t-b t-look' }, '▢ COMMIT or ROLLBACK?'); svg.append(last);
-    for (const r of L.fresh.filter((x) => x[3] !== '' || true)) {
-      const x = (r[1] + r[2]) / 2;
-      if (r[3] === 'idx' || (vertical && r !== ev)) continue;
-      svg.append(s('path', { d: `M${x},${cy + ch} L${x},${ry0 - 3}`, class: 'v-oxb-drop', 'marker-end': `url(#${aid}-p)` }));
-    }
-    // OwlPost and Kafka
-    const box = ([x, y, w, hh], t1, cls) => {
-      svg.append(s('rect', { x, y, width: w, height: hh, class: cls }), T(x + w / 2, y + 21, 't-m t-b', t1, 'middle'));
-      const sub = T(x + w / 2, y + 38, 't-xs t-mute', '', 'middle'); svg.append(sub); return sub;
-    };
-    const owlSub = box(L.owl, 'OwlPost', 'box');
-    const kafSub = box(L.kafka, 'Kafka', 'box dash');
-    const [ox, oy, ow, oh] = L.owl; const [kx, ky, , kh] = L.kafka;
-    const evx = (ev[1] + ev[2]) / 2;
-    const read = s('path', { d: `M${evx},${ry1 + 22} L${clamp(evx, ox + 20, ox + ow - 20)},${oy}`, class: 'edge', 'marker-end': `url(#${aid}-i)` });
-    const prod = s('path', { d: vertical ? `M${ox + ow},${oy + oh / 2} L${kx},${ky + kh / 2}` : `M${ox + ow},${oy + oh / 2} L${kx},${ky + kh / 2}`, class: 'edge', 'marker-end': `url(#${aid}-i)` });
-    const ack = s('path', { d: `M${L.ackPath.map((q) => q.join(',')).join(' L')}`, class: 'edge-ack', 'marker-end': `url(#${aid}-g)` });
-    const ackLab = vertical ? T(278, 300, 't-xs t-safe t-b', 'ack → slot', 'end') : T(746, 246, 't-xs t-safe t-b', 'ack → status update');
-    [read, prod, ack, ackLab].forEach((x) => { x.style.opacity = 0; svg.append(x); });
-    const slot = bookmark(ty - 16, ty + th + 6); slot.setAttribute('transform', `translate(${L.slot0},0)`); svg.append(slot);
-    const recLab = T(tx0 + 4, ty + th + 16, 't-xs t-safe t-b', ''); svg.append(recLab);
-    stage.replaceChildren(svg);
-    el = { svg, fresh, endRec, evTag, last, owlSub, kafSub, read, prod, ack, ackLab, slot, recyc, recLab };
-    paint(state === 'open' ? 0 : 99);
-  }
-
-  function paint(t) {
-    const e = el; const on = (a, b) => clamp((t - a) / (b - a), 0, 1);
-    const open = state === 'open';
-    bC.disabled = !open && state !== 'commit'; bR.disabled = !open && state !== 'rollback'; bAgain.style.visibility = open ? 'hidden' : 'visible';
-    bC.setAttribute('aria-pressed', String(state === 'commit')); bR.setAttribute('aria-pressed', String(state === 'rollback'));
-    const [, , ty] = L.tape; const [ry0, ry1] = L.rec;
-    e.endRec.replaceChildren();
-    if (!open) {
-      const w = state === 'commit' ? L.commitW : L.abortW;
-      e.endRec.append(s('rect', { x: L.end, y: ry0, width: w, height: ry1 - ry0, class: state === 'commit' ? 'v-oxb-rec v-oxb-rec-c' : 'v-oxb-rec v-oxb-rec-abort' }));
-      e.endRec.append(T(L.end + w, ty - 21, `t-xs t-b ${state === 'commit' ? '' : 't-bad'}`, state === 'commit' ? 'COMMIT 46 B' : 'ABORT 34 B', 'end'));
-    }
-    e.last.textContent = open ? '▢ COMMIT or ROLLBACK?' : state === 'commit' ? 'COMMIT;' : 'ROLLBACK;';
-    e.fresh.forEach((g) => g.classList.toggle('is-void', state === 'rollback'));
-    e.evTag.textContent = open ? 'waits for COMMIT' : state === 'commit' ? 'decoded at COMMIT' : 'in WAL, never decoded';
-    e.evTag.setAttribute('class', `t-xs t-b ${open ? 't-look' : state === 'commit' ? 't-data' : 't-mute'}`);
-    const c = state === 'commit';
-    e.read.style.opacity = c ? on(0.2, 0.8) : 0;
-    e.prod.style.opacity = c ? on(0.8, 1.4) : 0;
-    e.ack.style.opacity = c ? on(1.4, 2.0) : 0; e.ackLab.style.opacity = e.ack.style.opacity;
-    e.owlSub.textContent = open ? 'sees nothing yet' : c ? 'prefix payments-user ✓' : 'sees nothing';
-    e.kafSub.textContent = open ? '' : c ? (on(0.8, 1.4) >= 1 ? '+1 record: user.created' : '') : 'nothing arrives';
-    e.kafSub.setAttribute('class', `t-xs t-b ${c ? 't-safe' : 't-mute'}`);
-    const slotTo = L.end + L.commitW;
-    const x = c ? L.slot0 + (slotTo - L.slot0) * ease(on(2.0, 2.6)) : L.slot0;
-    e.slot.setAttribute('transform', `translate(${x},0)`);
-    const rc = c ? on(2.6, 3.0) : 0;
-    e.recyc.setAttribute('width', Math.max(0, (x - L.tape[0]) * rc));
-    e.recLab.textContent = rc > 0 ? (L === TXN.tall ? 'may be recycled' : 'Postgres may recycle this WAL') : '';
-    say.innerHTML = open ? 'Both records were written when the statements ran. Nothing has been sent anywhere yet.'
-      : c ? 'The COMMIT record makes the transaction visible to decoding. OwlPost reads the event, Kafka stores it, and the ack moves the slot. No outbox table was written, polled, or vacuumed.'
-        : 'The event record stays in the WAL, but the ABORT record tells decoding to drop the whole transaction. OwlPost never sees it, and the WAL is recycled like any other.';
-  }
-
-  function end(which) {
-    if (state !== 'open') return;
-    state = which;
-    cancel();
-    cancel = tween(which === 'commit' ? 3000 : 400, (k) => paint(k * (which === 'commit' ? 3 : 1)));
-  }
-  responsive(app, draw);
-}
-
 /* =============================================================== ACK LSN */
 
 const CANDS = [
   { n: 1, at: A_MSG_LSN + M_FRAME, name: 'WALStart + len(WALData)', who: 'what factlib computes today',
     why: `<code>${lsn(A_MSG_LSN)}</code> + 253, the length of the pgoutput frame. <code>WALData</code> holds pgoutput bytes, not WAL bytes, so the sum is not a WAL position.` },
   { n: 2, at: A_MSG_LSN, name: 'WALStart', who: 'the message LSN',
-    why: 'For a transactional message, <code>WALStart</code> is the end of the message record, where the COMMIT record starts.' },
+    why: 'the end of A’s message record. A’s COMMIT starts at or after it, so a restart sends A again once.' },
   { n: 3, at: COMMIT_OF.A + 48, name: 'COMMIT end_lsn', who: 'after every message of A is acked',
     why: '<code>TransactionEndLSN</code> from A’s COMMIT frame. These rise in stream order.' },
 ];
@@ -249,7 +79,7 @@ function initAckLsn(fig, app) {
   const stage = h('div');
   const q = h('p', { class: 'wv-q' }, 'A is in Kafka. B is still in flight. Drag the green slot to where OwlPost should confirm, then look under each COMMIT.');
   const jump = chips(CANDS.map((c) => [c.at, `${c.n} · ${c.name}`]), (v) => set(v), { label: 'Jump to a mark' });
-  const verdict = h('div', { class: 'wv-verdict', 'aria-live': 'polite' });
+  const verdict = h('div', { class: 'wv-note', 'aria-live': 'polite' });
   const why = h('div', { class: 'wv-note' });
 
   function draw(vertical) {
@@ -261,7 +91,6 @@ function initAckLsn(fig, app) {
     const TR = vertical ? { A: [84, 168], B: [184, 268] } : { A: [66, 104], B: [154, 192] };
     const box = (l0, l1, c0, c1) => (vertical ? { x: c0, y: P(l0), width: c1 - c0, height: P(l1) - P(l0) } : { x: P(l0), y: c0, width: P(l1) - P(l0), height: c1 - c0 });
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'WAL records of transactions A and B with a movable slot' });
-    const aid = uid('oxa'); svg.innerHTML = arrowDefs(aid);
     for (const tx of ['A', 'B']) svg.append(s('rect', { ...box(L0, L1, TR[tx][0] - 7, TR[tx][1] + 7), class: 'v-oxb-tape' }));
     if (vertical) {
       svg.append(T(126, 24, 't-m t-b', 'A', 'middle'), T(126, 38, 't-xs t-mute', 'commits 1st', 'middle'), T(226, 24, 't-m t-b', 'B', 'middle'), T(226, 38, 't-xs t-mute', 'commits 2nd', 'middle'), T(4, 56, 't-xs t-mute', 'LSN ↓'));
@@ -274,9 +103,9 @@ function initAckLsn(fig, app) {
     svg.append(s('rect', { ...later, class: 'v-oxb-later' }), vertical ? T(later.x + later.width / 2, later.y + later.height - 8, 't-xs t-mute', 'later WAL', 'middle') : T(later.x + 6, TR.A[0] + 14, 't-xs t-mute', 'later WAL'));
     for (const r of WAL) {
       const b = box(r.at, r.at + Math.ceil(r.len / 8) * 8, ...TR[r.tx]);
-      svg.append(s('rect', { ...b, class: r.kind === 'MESSAGE' ? 'v-oxb-rec v-oxb-rec-msg' : r.kind === 'COMMIT' ? 'v-oxb-rec v-oxb-rec-c' : 'v-oxb-rec' }));
+      svg.append(s('rect', { ...b, class: r.kind === 'COMMIT' ? 'v-oxb-rec v-oxb-rec-c' : 'v-oxb-rec' }));
       const cx = b.x + b.width / 2; const cy = b.y + b.height / 2;
-      if (r.kind === 'MESSAGE') svg.append(T(cx, cy + 4, 't-xs t-data t-b', vertical ? 'event' : `event · ${r.len} B`, 'middle'));
+      if (r.kind === 'MESSAGE') svg.append(T(cx, cy + 4, 't-xs t-b', vertical ? 'event' : `event · ${r.len} B`, 'middle'));
       else if (r.kind !== 'COMMIT') svg.append(T(cx, cy + 3.5, 't-xs', vertical ? '' : r.kind, 'middle'));
     }
     // COMMIT labels and fates, right next to each COMMIT record
@@ -292,7 +121,7 @@ function initAckLsn(fig, app) {
       }
       svg.append(fates[tx]);
     }
-    // candidate marks: numbered purple ticks on the axis
+    // candidate marks: numbered ticks on the axis
     for (const c of CANDS) {
       const v = P(c.at);
       const g = s('g', { class: 'v-oxb-cand', role: 'button', tabindex: -1 });
@@ -338,14 +167,14 @@ function initAckLsn(fig, app) {
     else { const right = v > W * 0.8; lab.setAttribute('x', right ? v - 6 : v + 64); lab.setAttribute('y', 16); lab.setAttribute('text-anchor', right ? 'end' : 'start'); }
     // Postgres sends a transaction again iff its COMMIT starts at or after the slot.
     const againA = COMMIT_OF.A >= ack; const againB = COMMIT_OF.B >= ack;
-    const set1 = (t, txt, cls) => { t.textContent = moved ? txt : '?'; t.setAttribute('class', `t-s t-b ${moved ? cls : 't-look'}`); };
+    const set1 = (t, txt, cls) => { t.textContent = moved ? txt : '?'; t.setAttribute('class', `t-s t-b ${moved ? cls : ''}`); };
     set1(fates.A, againA ? 'sent again' : 'in Kafka ✓', againA ? '' : 't-safe');
     set1(fates.B, againB ? 'sent again ✓' : 'LOST', againB ? 't-safe' : 't-bad');
     const c = CANDS.find((x) => x.at === ack);
     jump.set(c ? c.at : null);
     verdict.hidden = !moved;
     if (!moved) { verdict.textContent = ''; why.innerHTML = 'The marks 1–3 are LSNs OwlPost can compute. Try each, or anywhere else.'; return; }
-    if (!againB) { verdict.className = 'wv-verdict is-bad'; verdict.textContent = 'B is lost. Its COMMIT is before the slot, so Postgres will not send B again, and Kafka never got it.'; }
+    if (!againB) { verdict.className = 'wv-note'; verdict.textContent = 'B is lost. Its COMMIT is before the slot, so Postgres will not send B again, and Kafka never got it.'; }
     else if (againA) { verdict.className = 'wv-verdict is-good'; verdict.textContent = 'Safe. Postgres sends A again once (consumers drop the copy by event.Id) and sends B.'; }
     else { verdict.className = 'wv-verdict is-good'; verdict.textContent = 'Safe and exact. A is not repeated; B’s COMMIT starts at or after the slot, so B is sent again.'; }
     why.innerHTML = c ? `<b>${c.n} · ${esc(c.name)}</b>, ${esc(c.who)}: ${c.why}` : 'Rule: after a restart, Postgres sends a transaction again only if its COMMIT record starts at or after <code>confirmed_flush_lsn</code>.';
@@ -358,168 +187,11 @@ function initAckLsn(fig, app) {
     `newXLogPos := xld.WALStart                                   // 2: «${lsn(A_MSG_LSN)}»`,
     `txEnd := commitMsg.TransactionEndLSN                         // 3: «${lsn(COMMIT_OF.A + 48)}»`,
   ], [1]) });
-  const stream = h('div', { class: 'wv-scroll', html: `<table class="wv-table"><thead><tr><th>#</th><th>frame</th><th>WALStart</th><th></th></tr></thead><tbody>${STREAM.map((r, j) => `<tr><td>${j + 1}</td><td><b>${r.tx}</b> ${r.f}</td><td class="c-data">${lsn(r.at)}</td><td>${esc(r.note)}</td></tr>`).join('')}</tbody></table><p>B arrives second, but its message LSN is lower than A’s: message LSNs follow write order, the stream follows commit order.</p>` });
+  const stream = h('div', { class: 'wv-scroll', html: `<table class="wv-table"><thead><tr><th>#</th><th>frame</th><th>WALStart</th><th></th></tr></thead><tbody>${STREAM.map((r, j) => `<tr><td>${j + 1}</td><td><b>${r.tx}</b> ${r.f}</td><td>${lsn(r.at)}</td><td>${esc(r.note)}</td></tr>`).join('')}</tbody></table><p>B arrives second, but its message LSN is lower than A’s: message LSNs follow write order, the stream follows commit order.</p>` });
   app.append(q, stage, verdict, why, h('div', { class: 'wv-title v-oxb-gap' }, 'Jump to a mark'), jump.el,
     details('The code behind 1–3, and the frames in stream order', code, stream),
-    colorKey([['k-data', 'event'], ['k-free', 'other WAL'], ['k-safe', 'slot / safe'], ['k-look', 'LSNs OwlPost can compute'], ['k-gap', 'lost'], ['k-opt', 'controls']]));
+    colorKey([['k-safe', 'slot, safe'], ['k-gap', 'lost']]));
   responsive(app, draw);
-}
-
-/* ================================================================ FOLLOW */
-
-/* One event, five envelopes. The 225 protobuf bytes stay in the same place
-   on screen; each stop wraps them differently. Sizes are exact for event A. */
-const EV = { id: '019e0b6e-6684-7b4d-9a61-2f8e4c0d5b17', payload: '{"id":"user-12345","email":"asha@example.com"}', ack: A_MSG_LSN + M_FRAME };
-const CORE = [['id', 38], ['aggregate_type', 6], ['aggregate_id', 12], ['event_type', 14], ['payload', 48], ['created_at', 10], ['trace_info', 97]];
-const PARTITION = 1; // murmur2("user-12345") % 6 (Kafka's default partitioner), sample 6-partition topic
-const FORMS = [
-  { stop: 'Emit', where: 'producer.go', wrap: [], coreFields: true,
-    say: 'Emit marshals the event into <b>225 bytes of protobuf</b>. From here on these bytes do not change. Only the envelope around them does.',
-    code: ['outboxEvent := &pb.OutboxEvent{Id: eventId.String(), AggregateType: "user", …}', 'protoBytes, _ := proto.Marshal(outboxEvent)   // «225 B»', 'a.conn.Exec(ctx, "SELECT pg_logical_emit_message(true, $1, $2::bytea)", a.prefix, protoBytes)'] },
-  { stop: 'WAL', where: 'pg_waldump', wrap: [['XLogRecord', 24], ['data header', 5], ['xl_logical_message', 24], ['prefix "payments-user\\0"', 14]],
-    total: 292, lsnFrom: 0x15A0960, lsnTo: A_MSG_LSN,
-    say: 'Inside the transaction, the <code>SELECT</code> writes one <b>292-byte</b> WAL record at <code>0/15A0960</code>. It returns <code>0/15A0A88</code>, the end of the record. COMMIT (46 B) follows right there.' },
-  { stop: 'pgoutput', where: 'walsender → OwlPost', wrap: [['XLogData header', 25], ["'M' + flags", 2], ['message LSN', 8], ['prefix', 14], ['length', 4]],
-    total: 253, frame: true,
-    say: 'At COMMIT, the walsender sends the record as a pgoutput MESSAGE. The frame after the XLogData header is <b>253 bytes</b>, and <code>WALStart</code> is <code>0/15A0A88</code>.' },
-  { stop: 'OwlPost', where: 'wal.go · handleMessage', wrap: [], tag: true,
-    say: `OwlPost keeps messages with prefix <code>payments-user</code>, unmarshals them, and tags the event with <code>WALStart + 253 = <span class="c-bad">${lsn(EV.ack)}</span></code>: a WAL position plus a frame length. Figure 3 shows why that is too far.`,
-    code: ['newXLogPos := xld.WALStart + pglogrepl.LSN(len(xld.WALData))', `// «0/15A0A88» + «253» = ⟦${lsn(EV.ack)}⟧`, 'if ldm.Prefix == w.cfg.OutboxPrefix { w.handleMessage(ctx, ldm.Content, newXLogPos) }'] },
-  { stop: 'Kafka', where: 'kafka.go · KafkaEventHandler', wrap: [['key "user-12345"', 10]], headers: true,
-    say: `One record on topic <code>payments-user.user</code>. The key <code>user-12345</code> hashes to partition ${PARTITION} (a sample 6-partition topic), so every event for this user keeps its order.`,
-    code: ['topic := fmt.Sprintf("%s.%s", event.OutboxPrefix, event.Outbox.AggregateType)', 'key := []byte(event.Outbox.AggregateId)', 'value, _ := proto.Marshal(&event.Outbox)   // «225 B» again'] },
-  { stop: 'Ack', where: 'kafka.go → wal.go', wrap: [], back: true,
-    say: `With <code>acks=all</code> stored, the callback hands back only the <code>LSN</code> header. Within a second a status update sets <code>confirmed_flush_lsn = ${lsn(EV.ack)}</code>, and Postgres may drop the WAL behind it.`,
-    code: ['a.Ack(pos)                    // pos = the "LSN" header', 'w.xLogPos = *ackPos           // listenEventAck', `SendStandbyStatusUpdate(…)    // every 1 s: «${lsn(EV.ack)}»`] },
-];
-
-function initFollow(fig, app) {
-  let i = 0; let V = false;
-  const stage = h('div');
-  const say = h('div', { class: 'wv-note', 'aria-live': 'polite' });
-  const more = h('div');
-  function draw(vertical = V) {
-    V = vertical;
-    const f = FORMS[i];
-    const W = vertical ? 360 : 960; const H = vertical ? 250 : 230;
-    const k = vertical ? 0.98 : 2.6;              // px per byte, the same at every stop
-    const c0 = vertical ? 100 : 250;              // the core starts here at every stop
-    const y0 = 92; const hh = 46;
-    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `The event at stop ${i + 1}: ${f.stop}` });
-    const aid = uid('oxe'); svg.innerHTML = arrowDefs(aid);
-    // the core
-    const coreW = 225 * k;
-    if (f.coreFields) {
-      let x = c0; const small = [];
-      CORE.forEach(([name, n]) => {
-        const w = n * k;
-        svg.append(s('rect', { x, y: y0, width: w, height: hh, class: 'v-oxb-rec v-oxb-rec-msg' }));
-        if (w >= name.length * 6.2 + 8) svg.append(T(x + w / 2, y0 + hh / 2 + 4, 't-xs t-data t-b', name, 'middle'));
-        else small.push([name, n, x + w / 2]);
-        x += w;
-      });
-      // labels sit left of their leader; leftmost on the top row, so no leader crosses a label
-      small.forEach(([name, n, lx], r) => {
-        const ly = y0 + hh + 14 + r * 12;
-        svg.append(s('line', { x1: lx, x2: lx, y1: y0 + hh, y2: ly - 9, class: 'v-oxb-leader' }), T(lx - 2, ly, 't-xs t-data', `${name} · ${n} B`, 'end'));
-      });
-      svg.append(s('path', { d: `M${c0},${y0 - 4} L${c0},${y0 - 12} L${c0 + coreW},${y0 - 12} L${c0 + coreW},${y0 - 4}`, class: 'v-oxb-brace' }),
-        T(c0 + coreW / 2, y0 - 18, 't-s t-b t-data', '225 B protobuf · OutboxEvent', 'middle'));
-    } else {
-      svg.append(s('rect', { x: c0, y: y0, width: coreW, height: hh, class: 'v-oxb-rec v-oxb-rec-msg' }));
-    }
-    if (!f.coreFields) svg.append(T(c0 + coreW / 2, y0 + hh / 2 + 5, 't-m t-b t-data', 'event · 225 B', 'middle'));
-    // the envelope, to the left of the core; labels climb a staircase so none overlap
-    const n = f.wrap.length;
-    let x = c0 - f.wrap.reduce((m, [, b]) => m + Math.max(b * k, 3), 0);
-    f.wrap.forEach(([name, b], j) => {
-      const w = Math.max(b * k, 3);
-      svg.append(s('rect', { x, y: y0, width: w, height: hh, class: 'v-oxb-rec v-oxb-env' }));
-      const lx = x + w / 2; const ly = y0 - 12 - (n - 1 - j) * 13;
-      svg.append(s('line', { x1: lx, x2: lx, y1: y0, y2: ly + 3, class: 'v-oxb-leader' }), T(lx - 2, ly, 't-xs', `${name} · ${b} B`));
-      x += w;
-    });
-    if (f.total) {
-      const start = c0 - (f.total - 225) * k; const by = y0 + hh + 8;
-      svg.append(s('path', { d: `M${start},${by - 4} L${start},${by + 4} L${c0 + coreW},${by + 4} L${c0 + coreW},${by - 4}`, class: 'v-oxb-brace' }),
-        T((start + c0 + coreW) / 2, by + 18, 't-s t-b', f.frame ? '253 B pgoutput MESSAGE' : '292 B WAL record', 'middle'));
-    }
-    if (f.lsnFrom) {
-      svg.append(T(c0 - 67 * k, y0 + hh + 46, 't-xs t-data t-b', `▲ ${lsn(f.lsnFrom)}`, 'start'), T(c0 + coreW, y0 + hh + 46, 't-xs t-data t-b', `${lsn(f.lsnTo)} ▲`, 'end'));
-    }
-    if (f.frame) {
-      const ws = c0 - 28 * k;
-      svg.append(T(ws, y0 + hh + 46, 't-xs t-data t-b', `▲ WALStart ${lsn(A_MSG_LSN)}`, 'start'));
-    }
-    if (f.tag) {
-      svg.append(s('rect', { x: c0 - (vertical ? 92 : 190), y: y0 + 6, width: vertical ? 86 : 180, height: hh - 12, class: 'v-oxb-rec v-oxb-tagbad' }),
-        T(c0 - (vertical ? 49 : 100), y0 + hh / 2 + 4, 't-xs t-b t-bad', vertical ? lsn(EV.ack) : `XLogPos ${lsn(EV.ack)}`, 'middle'),
-        T(c0 - (vertical ? 49 : 100), y0 - 10, 't-xs', vertical ? 'XLogPos' : 'WALStart + 253', 'middle'));
-    }
-    if (f.headers) {
-      const hs = ['event_id', 'event_type', `LSN ${lsn(EV.ack)}`, 'trace_id', 'span_id', 'parent_op', 'is_sampled'];
-      svg.append(T(c0 - 10 * k - 6, y0 + hh / 2 + 4, 't-xs t-mute', vertical ? '' : 'P1 ·', 'end'));
-      let hx = vertical ? 10 : c0 - 10 * k; let hy = y0 + hh + 36;
-      svg.append(T(hx, hy - 17, 't-xs t-mute', vertical ? `headers · partition ${PARTITION}` : `headers · topic payments-user.user · partition ${PARTITION}`));
-      for (const t of hs) {
-        const w = t.length * 6.2 + 12;
-        if (hx + w > W - 8) { hx = vertical ? 10 : c0 - 10 * k; hy += 20; }
-        svg.append(s('rect', { x: hx, y: hy - 11, width: w, height: 16, rx: 8, class: t.startsWith('LSN') ? 'v-oxb-hdr is-lsn' : 'v-oxb-hdr' }), T(hx + w / 2, hy + 1, `t-xs${t.startsWith('LSN') ? ' t-b' : ''}`, t, 'middle'));
-        hx += w + 5;
-      }
-    }
-    if (f.back) {
-      // only the LSN travels back; the slot jumps to it
-      const ty = y0 + hh + 34;
-      svg.append(tapeBand(c0 - 60 * k, c0 + coreW, ty, 30));
-      const b = bookmark(ty - 12, ty + 34);
-      b.setAttribute('transform', `translate(${c0 + coreW - 10},0)`);
-      svg.append(b, T(c0 + coreW - 16, ty + 20, 't-xs t-b t-safe', `confirmed_flush_lsn = ${lsn(EV.ack)}`, 'end'));
-      svg.append(s('rect', { x: c0 + coreW - 118, y: y0 - 30, width: 110, height: 18, rx: 9, class: 'v-oxb-hdr is-lsn' }), T(c0 + coreW - 63, y0 - 17, 't-xs t-b', `LSN ${lsn(EV.ack)}`, 'middle'),
-        s('path', { d: `M${c0 + coreW - 63},${y0 - 12} C${c0 + coreW - 63},${ty - 30} ${c0 + coreW - 10},${ty - 30} ${c0 + coreW - 10},${ty - 14}`, class: 'edge-ack', 'marker-end': `url(#${aid}-g)` }));
-      svg.querySelectorAll('.v-oxb-rec-msg').forEach((r) => r.classList.add('is-faded'));
-    }
-    stage.replaceChildren(svg);
-  }
-  function go(n) {
-    i = clamp(n, 0, FORMS.length - 1);
-    draw();
-    const f = FORMS[i];
-    say.innerHTML = `<span class="k">${String(i + 1).padStart(2, '0')} · ${esc(f.where)}</span>${f.say}`;
-    more.replaceChildren();
-    if (f.code) more.append(details('code', h('div', { html: codeBlock(f.code, [1]) })));
-    if (i === 2) more.append(details('the bytes of this frame', h('div', { html: hexDump() })));
-  }
-  const stp = stepper(fig, FORMS.map((f) => ({ label: f.stop })), (n) => go(n), { interval: 4200 });
-  app.append(stp.el, stage, colorKey([['k-data', 'the event’s 225 bytes'], ['k-free', 'envelope'], ['k-gap', 'the LSN from WALStart + 253'], ['k-safe', 'slot']]), say, more);
-  responsive(app, draw);
-  stp.go(0);
-  more.addEventListener('mouseover', (e) => { const fld = e.target.closest('.fld'); if (fld) hot(fld); });
-  more.addEventListener('focusin', (e) => { const fld = e.target.closest('.fld'); if (fld) hot(fld); });
-  function hot(fld) { more.querySelectorAll('.fld').forEach((o) => o.classList.toggle('is-hot', o === fld)); const l = more.querySelector('.hexlabel'); if (l) l.textContent = fld.dataset.l; }
-}
-
-/* The M frame exactly as received for event A, split into fields. */
-const M_FIELDS = [
-  ['p', "'M' logical message", ['4d']],
-  ['p', 'flags 1 = transactional', ['01']],
-  ['p', `message LSN ${lsn(A_MSG_LSN)}`, be(A_MSG_LSN, 8)],
-  ['p', 'prefix "payments-user\\0"', [...utf8('payments-user'), '00']],
-  ['p', 'content length 225', be(225, 4)],
-  ['v', `field 1 id "${EV.id}"`, ['0a', '24', ...utf8(EV.id)]],
-  ['v', 'field 2 aggregate_type "user"', ['12', '04', ...utf8('user')]],
-  ['v', 'field 3 aggregate_id "user-12345"', ['1a', '0a', ...utf8('user-12345')]],
-  ['v', 'field 4 event_type "user.created"', ['22', '0c', ...utf8('user.created')]],
-  ['v', `field 5 payload ${EV.payload}`, ['2a', '2e', ...utf8(EV.payload)]],
-  ['v', 'field 6 created_at 1778308245124811000 ns', hexOf('30f891c09ed5bdf4d618')],
-  ['v', 'field 8 trace_info', hexOf('425f0a2034626639326633353737623334646136613363653932396430653065343733361210303066303637616130626139303262371a0f0a0a69735f73616d706c65641201311a180a09706172656e745f6f70120b687474702e736572766572')],
-];
-function hexDump() {
-  const spans = M_FIELDS.map(([cls, label, bytes]) => {
-    const shown = bytes.length > 20 ? `${bytes.slice(0, 10).join(' ')} … ${bytes.slice(-3).join(' ')}` : bytes.join(' ');
-    return `<span class="fld ${cls}" tabindex="0" data-l="${esc(label)} · ${bytes.length} B">${shown}</span>`;
-  }).join(' ');
-  return `<div class="wv-hex"><div class="row">${spans}</div></div><div class="wv-legend"><span><i style="background:var(--board)"></i>pgoutput header</span><span><i style="background:var(--brown-l);border-color:var(--brown)"></i>protobuf</span><span class="hexlabel">Hover or focus a field.</span></div>`;
 }
 
 /* ================================================================== RACE */
@@ -536,12 +208,10 @@ const RACE = [
 
 function initRace(fig, app) {
   let acked = []; let crashed = false; let V = false;
-  const hid = uid('oxq');
   const partBtns = [0, 1, 2].map((p) => btn('', () => ackNext(p)));
   const stage = h('div');
   const say = h('div', { class: 'wv-note', 'aria-live': 'polite' });
-  const kill = btn('kill -9', () => { crashed = true; render(); }, { class: 'wv-btn wv-btn--bad' });
-  const reset = btn('↺ start over', () => { acked = []; crashed = false; render(); }, { class: 'wv-btn wv-btn--ghost' });
+  const kill = btn('kill -9', () => { if (crashed) { acked = []; crashed = false; } else crashed = true; render(); });
   function ackNext(p) {
     if (crashed) return;
     const k = RACE.findIndex((x, j) => x.p === p && !acked.includes(j));
@@ -559,9 +229,7 @@ function initRace(fig, app) {
     const cw = (x1 - x0 - gap - 5 * 6) / 6;
     const behind = (k) => RACE[k].lsn < slot;
     const idx = RACE.filter((_, k) => behind(k)).length;
-    const lost = RACE.some((x, k) => !acked.includes(k) && x.lsn < slot);
-    if (crashed && lost) svg.append(s('rect', { x: 0, y: y - 18, width: W, height: 92, class: 'v-oxb-lanebad' }));
-    svg.append(T(x0, y - 4, 't-s t-b', title));
+    svg.append(T(x0, y - 13, 't-s t-b', title));
     svg.append(tapeBand(x0, x1, y, 66));
     let x = x0 + 4;
     RACE.forEach((ev, k) => {
@@ -571,13 +239,12 @@ function initRace(fig, app) {
         x += gap;
       }
       const inK = acked.includes(k); const gapCell = behind(k) && !inK;
-      const cell = s('rect', { x, y: y + 9, width: cw, height: 48, class: `v-oxb-cell${inK ? ' is-ok' : ''}${gapCell ? ' is-gap' : ''}${acked[acked.length - 1] === k && !crashed ? ' is-now' : ''}` });
-      if (!inK && !gapCell) cell.style.fill = `url(#${hid})`;
-      svg.append(cell, T(x + cw / 2, y + 25, `t-s t-b halo${gapCell ? ' t-bad' : ''}`, ev.e, 'middle'), T(x + cw / 2, y + 38, 't-xs halo', `P${ev.p}`, 'middle'));
+      const cell = s('rect', { x, y: y + 9, width: cw, height: 48, class: `v-oxb-cell${inK ? ' is-ok' : ''}${gapCell ? ' is-gap' : ''}` });
+      svg.append(cell, T(x + cw / 2, y + 25, `t-s t-b${gapCell ? ' t-bad' : ''}`, ev.e, 'middle'), T(x + cw / 2, y + 38, 't-xs', `P${ev.p}`, 'middle'));
       if (crashed) {
         const again = ev.lsn >= slot;
-        const r = inK && again ? ['twice', ''] : inK || again ? ['once', ' t-safe'] : ['LOST', ' t-bad'];
-        svg.append(T(x + cw / 2, y + 51, `t-xs t-b halo${r[1]}`, r[0], 'middle'));
+        const r = inK && again ? ['twice', ''] : inK || again ? ['once', ''] : ['LOST', ' t-bad'];
+        svg.append(T(x + cw / 2, y + 51, `t-xs t-b${r[1]}`, r[0], 'middle'));
       }
       x += cw + 6;
     });
@@ -588,7 +255,6 @@ function initRace(fig, app) {
     const W = vertical ? 360 : 960; const H = 214;
     const { latest, prefix } = slots();
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Two slots over the same six events' });
-    svg.innerHTML = `<defs>${hatchDefs(hid)}</defs>`;
     lane(svg, 26, W, vertical ? 'Latest ack (factlib main)' : 'Slot follows the latest ack · factlib main', latest);
     lane(svg, 132, W, vertical ? 'Contiguous prefix (the fix)' : 'Slot follows the contiguous acked prefix · the fix', prefix);
     stage.replaceChildren(svg);
@@ -602,7 +268,8 @@ function initRace(fig, app) {
       b.disabled = crashed || done;
     });
     draw();
-    kill.disabled = crashed;
+    kill.textContent = crashed ? '↺ start over' : 'kill -9';
+    kill.className = crashed ? 'wv-btn wv-btn--ghost' : 'wv-btn wv-btn--bad';
     const lostLatest = RACE.some((x, k) => !acked.includes(k) && x.lsn < latest);
     say.className = 'wv-note';
     if (!acked.length && !crashed) say.innerHTML = 'You are Kafka. Each partition acks its own records in order; the partitions finish in any order. Click a partition to ack its next record, then press <b>kill -9</b>. Can you make an event disappear?';
@@ -614,82 +281,9 @@ function initRace(fig, app) {
         : 'Nothing is lost this time, because the acks you gave left no gap behind the latest ack. Start over and ack P1 or P2 first.';
     }
   }
-  app.append(say, h('div', { class: 'wv-bar' }, ...partBtns), stage, h('div', { class: 'wv-bar' }, kill, reset),
-    colorKey([['k-run', 'in flight'], ['k-held', 'in Kafka'], ['k-safe', 'slot'], ['k-gap', 'behind the slot, not in Kafka'], ['k-look', 'last ack'], ['k-opt', 'your moves']]),
-    details('The code of each rule', h('div', { class: 'wv-split' },
-      h('div', { html: codeBlock(['// factlib main · listenEventAck', 'case ackPos := <-w.AckXLogPos:', '    w.xLogPos = *ackPos      // the latest ack wins', 'case <-ticker.C:             // every 1 s', '    w.SendStandbyStatusUpdate()'], [2]) }),
-      h('div', { html: codeBlock(['// contiguous acked prefix', 'w.acked[lsn] = true', 'for len(w.pending) > 0 && w.acked[w.pending[0]] {', '    w.safe = w.pending[0]', '    delete(w.acked, w.pending[0])', '    w.pending = w.pending[1:]', '}'], [2, 3]) }))));
+  app.append(say, h('div', { class: 'wv-bar' }, ...partBtns), stage, h('div', { class: 'wv-bar' }, kill),
+    colorKey([['k-free', 'in flight'], ['k-held', 'in Kafka'], ['k-safe', 'slot'], ['k-gap', 'passed by the slot, not in Kafka']]));
   responsive(app, (v) => { V = v; render(); });
-}
-
-/* ================================================================ REPLAY */
-
-/* Status updates go out every second (listenEventAck's ticker). A crash at
-   time c, after the tick at k = floor(c), resends everything acked after k:
-   events read in (k − d, c − d]. Events read in (c − d, c] were in flight. */
-function initReplay(fig, app) {
-  const P = { c: 2.42, R: 10000 }; const d = 0.02;
-  let V = false; let G = null;
-  const stage = h('div');
-  const stats = h('div', { class: 'wv-stats', 'aria-live': 'polite' });
-  const rate = range('your events/sec', { min: 500, max: 50000, step: 500, value: P.R, fmt, oninput: (v) => { P.R = v; paint(); } });
-  function draw(vertical) {
-    V = vertical;
-    const W = vertical ? 360 : 960; const H = vertical ? 170 : 150;
-    const x0 = vertical ? 14 : 40; const x1 = W - (vertical ? 14 : 40);
-    const X = (t) => x0 + (t / 3) * (x1 - x0); const inv = (x) => ((x - x0) / (x1 - x0)) * 3;
-    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Timeline of status updates and a crash you can drag' });
-    const aid = uid('oxr'); svg.innerHTML = arrowDefs(aid);
-    const ty = 50; const th = 44;
-    svg.append(T(x0, 18, 't-xs t-mute', 'events read from the WAL, by time →'), tapeBand(x0, x1, ty, th));
-    const segs = s('g'); svg.append(segs);
-    for (let t = 0; t <= 3; t++) svg.append(T(X(t), ty + th + 20, 't-xs t-b t-safe', t === 0 ? '0 s' : `${t} s`, 'middle'));
-    const ticks = s('g'); svg.append(ticks);
-    const last = T(0, ty - 10, 't-xs t-safe t-b', ''); svg.append(last);
-    const crash = s('g', { class: 'v-oxb-drag', tabindex: 0, role: 'slider', 'aria-label': 'Crash time', 'aria-valuemin': 0.05, 'aria-valuemax': 2.95 });
-    crash.append(s('rect', { x: -12, y: ty - 26, width: 24, height: th + 60, class: 'v-oxb-hit' }), s('line', { x1: 0, x2: 0, y1: ty - 20, y2: ty + th + 26, class: 'v-oxb-crashline' }),
-      s('path', { d: `M-9,${ty + th + 26} l18,0 l-9,-10 z`, class: 'v-oxb-grip' }));
-    const clab = T(0, ty + th + 44, 't-s t-bad t-b', ''); crash.append(clab);
-    svg.append(crash);
-    let drag = false;
-    const setc = (v) => { P.c = clamp(Math.round(v * 100) / 100, 0.05, 2.95); paint(); };
-    svg.addEventListener('pointerdown', (e) => { drag = true; svg.setPointerCapture(e.pointerId); setc(inv(svgPt(svg, e).x)); e.preventDefault(); });
-    svg.addEventListener('pointermove', (e) => { if (drag) setc(inv(svgPt(svg, e).x)); });
-    svg.addEventListener('pointerup', () => { drag = false; });
-    crash.addEventListener('keydown', (e) => { const k = { ArrowRight: 0.05, ArrowLeft: -0.05 }[e.key]; if (k) { setc(P.c + k); e.preventDefault(); e.stopPropagation(); } });
-    stage.replaceChildren(svg);
-    G = { X, segs, ticks, last, crash, clab, ty, th, W };
-    paint();
-  }
-  function paint() {
-    const { X, segs, ticks, last, crash, clab, ty, th, W } = G;
-    const { c, R } = P; const k = Math.floor(c);
-    segs.replaceChildren();
-    const seg = (a, b, cls) => { if (b > a) segs.append(s('rect', { x: X(a), y: ty + 10, width: X(b) - X(a), height: th - 20, class: cls })); };
-    seg(0, Math.max(0, k - d), 'v-oxb-seg-safe'); seg(Math.max(0, k - d), Math.max(0, c - d), 'v-oxb-seg-dup'); seg(Math.max(0, c - d), c, 'v-oxb-seg-fly');
-    ticks.replaceChildren();
-    for (let t = 0; t <= 3; t++) ticks.append(s('line', { x1: X(t), x2: X(t), y1: ty - 4, y2: ty + th + 4, class: t <= k ? 'v-oxb-tickline is-sent' : 'v-oxb-tickline' }));
-    last.setAttribute('x', X(k) + 4); last.textContent = V ? `update · ${k} s` : `last status update · ${k} s`;
-    crash.setAttribute('transform', `translate(${X(c)},0)`);
-    crash.setAttribute('aria-valuenow', c); crash.setAttribute('aria-valuetext', `${c.toFixed(2)} seconds`);
-    const right = X(c) > W * 0.7;
-    clab.setAttribute('x', right ? -6 : 6); clab.setAttribute('text-anchor', right ? 'end' : 'start');
-    clab.textContent = `kill -9 · ${c.toFixed(2)} s  (drag)`;
-    const dup = Math.round(R * (c - k));
-    stats.innerHTML = `<div class="wv-stat is-bad"><span class="k">sent twice</span><span class="v">≈ ${fmt(dup)}</span><span class="k">${fmt(R)}/s × ${(c - k).toFixed(2)} s since the last update</span></div>
-      <div class="wv-stat is-good"><span class="k">lost</span><span class="v">0</span><span class="k">the slot never passed an event Kafka did not store</span></div>`;
-  }
-  const dedupe = codeBlock([
-    'INSERT INTO processed_events (id, processed_at)',
-    `VALUES («'${EV.id}'», now())`,
-    'ON CONFLICT (id) DO NOTHING;',
-    '⟪INSERT 0 1⟫   -- first copy: handle it',
-    '⟦INSERT 0 0⟧   -- second copy: skip it',
-  ], [3, 4]);
-  app.append(h('div', { class: 'wv-grid-ctrl' }, rate.el), stage, stats,
-    h('div', { class: 'wv-title v-oxb-gap' }, 'The consumer drops the second copy by event.Id, in the same transaction as its side effect'), h('div', { html: dedupe }),
-    colorKey([['k-safe', 'confirmed'], ['k-gap', 'in Kafka, not confirmed'], ['k-run', 'in flight (20 ms)'], ['k-opt', 'drag / set']]));
-  responsive(app, draw);
 }
 
 /* =============================================================== BACKLOG */
@@ -704,15 +298,13 @@ function eventBytes(payload) {
   return Math.ceil(rec / 8) * 8 + 48;            // aligned, plus a 46 B COMMIT (aligned 48)
 }
 function initBacklog(fig, app) {
-  const P = { eps: 10000, payload: 500, other: 5, cap: 1, disk: 500 };
+  const P = { eps: 10000, payload: 500, other: 5, cap: 1, disk: 500 }; // payload and free disk are fixed samples
   let V = false;
   const stage = h('div'); const verdict = h('div', { class: 'wv-verdict', 'aria-live': 'polite' }); const math = h('p', { class: 'v-oxb-gap' });
   const cap = chips(CAPS.map(([, lab], k) => [k, lab]), (k) => { P.cap = k; draw(V); }, { value: P.cap, label: 'max_slot_wal_keep_size' });
   const sl = [
     range('events/sec', { min: 500, max: 50000, step: 500, value: P.eps, fmt, oninput: (v) => { P.eps = v; draw(V); } }),
-    range('payload', { min: 100, max: 10000, step: 100, value: P.payload, fmt: (v) => `${fmt(v)} B`, oninput: (v) => { P.payload = v; draw(V); } }),
     range('other WAL', { min: 0, max: 50, step: 1, value: P.other, fmt: (v) => `${v} MB/s`, oninput: (v) => { P.other = v; draw(V); } }),
-    range('free disk', { min: 50, max: 2000, step: 50, value: P.disk, fmt: (v) => `${fmt(v)} GiB`, oninput: (v) => { P.disk = v; draw(V); } }),
   ];
   function draw(vertical) {
     V = vertical;
@@ -720,9 +312,9 @@ function initBacklog(fig, app) {
     const rate = P.eps * bpe + P.other * 1e6; // bytes per second
     const at = (gib) => (gib * 2 ** 30) / rate; // seconds until that much WAL is kept
     const cap = CAPS[P.cap][0];
-    const marks = [[1, 'alert', 'look'], [5, 'page', 'look']];
+    const marks = [[1, 'alert', 'ink'], [5, 'page', 'ink']];
     if (cap) marks.push([cap, `cap ${cap}GB`, 'bad']);
-    marks.push([P.disk, 'disk full', 'bad']);
+    marks.push([P.disk, vertical ? 'disk full' : `disk full (${P.disk} GiB free)`, 'bad']);
     const fail = Math.min(cap ? at(cap) : Infinity, at(P.disk));
     const W = vertical ? 360 : 960; const H = vertical ? 150 : 128;
     const x0 = vertical ? 12 : 30; const x1 = W - (vertical ? 12 : 30);
@@ -743,27 +335,24 @@ function initBacklog(fig, app) {
       const x = X(sec); row = x - prevX < (vertical ? 70 : 110) ? row + 1 : 0; prevX = x;
       const y = ty - 8 - row * 12;
       svg.append(s('line', { x1: x, x2: x, y1: y + 2, y2: ty + th, class: kind === 'bad' ? 'v-oxb-crashline' : 'v-oxb-markline' }),
-        T(x, y, `t-xs t-b ${kind === 'bad' ? 't-bad' : 't-look'}`, `${lab} · ${human(sec)}`, x > W * 0.8 ? 'end' : x < W * 0.15 ? 'start' : 'middle'));
+        T(x, y, `t-xs t-b${kind === 'bad' ? ' t-bad' : ''}`, `${lab} · ${human(sec)}`, x > W * 0.8 ? 'end' : x < W * 0.15 ? 'start' : 'middle'));
     });
     svg.append(T(x0, H - 6, 't-xs t-safe t-b', `Kafka can be down for ${human(fail)} before something breaks`));
     stage.replaceChildren(svg);
-    math.innerHTML = `${fmt(bpe)} B of WAL per event (record + COMMIT) × ${fmt(P.eps)}/s + ${P.other} MB/s other WAL = <b>${(rate / 1e6).toFixed(1)} MB/s</b> kept behind the slot.`;
+    math.innerHTML = `${fmt(bpe)} B of WAL per 500-byte event (record + COMMIT) × ${fmt(P.eps)}/s + ${P.other} MB/s other WAL = <b>${(rate / 1e6).toFixed(1)} MB/s</b> kept behind the slot.`;
     if (cap && at(cap) <= at(P.disk)) {
-      verdict.className = 'wv-verdict is-bad';
+      verdict.className = 'wv-note';
       verdict.textContent = `After ${human(at(cap))} the slot passes max_slot_wal_keep_size. At the next checkpoint Postgres invalidates it and removes the WAL; OwlPost can no longer stream, and those events need a backfill. Postgres keeps running.`;
     } else {
-      verdict.className = 'wv-verdict is-bad';
+      verdict.className = 'wv-note';
       verdict.textContent = `After ${human(at(P.disk))} pg_wal fills the disk. Postgres cannot write WAL and stops, and every writer on the cluster stops with it.`;
     }
   }
-  app.append(h('div', { class: 'wv-title' }, 'Your workload'), h('div', { class: 'wv-grid-ctrl' }, ...sl.slice(0, 3).map((x) => x.el)),
-    h('div', { class: 'wv-title' }, 'Your settings: max_slot_wal_keep_size'), cap.el, h('div', { class: 'wv-grid-ctrl' }, sl[3].el),
+  app.append(h('div', { class: 'wv-grid-ctrl' }, ...sl.map((x) => x.el)),
+    h('div', { class: 'wv-title v-oxb-gap' }, 'max_slot_wal_keep_size'), cap.el,
     stage, verdict, math,
-    colorKey([['k-held', 'safe to wait'], ['k-gap', 'past the first failure'], ['k-look', 'alert / page'], ['k-opt', 'your inputs']]));
+    colorKey([['k-held', 'safe to wait'], ['k-gap', 'past the first failure']]));
   responsive(app, draw);
 }
 
-register({
-  'oxb-commit': initCommit, 'oxb-ack-lsn': initAckLsn, 'oxb-follow': initFollow,
-  'oxb-race': initRace, 'oxb-replay': initReplay, 'oxb-backlog': initBacklog,
-});
+register({ 'oxb-ack-lsn': initAckLsn, 'oxb-race': initRace, 'oxb-backlog': initBacklog });

@@ -1,64 +1,40 @@
 /* "The Outbox Without an Outbox": drawing and layout only.
  * The figure frame, type, controls and colours come from walviz.css.
- * Drawing: the WAL is a tape, records sit on it, the slot is a green bookmark. */
+ * The WAL is a band, records sit on it, the slot is a green bookmark.
+ * Green means safe, red means lost; everything else is ink. */
 
 /* spacing */
 .v-oxb-gap { margin-top: 0.8rem; }
 
-/* WAL tape and records */
+/* WAL band and records */
 .wv .v-oxb-tape { fill: var(--tint); stroke: var(--line); stroke-width: 1; }
-.wv .v-oxb-hole { fill: var(--board); }
 .wv .v-oxb-rec { fill: var(--board); stroke: var(--ink); stroke-width: 1.1; }
-.wv .v-oxb-rec-msg { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.6; }
-.wv .v-oxb-rec-c { fill: var(--tint2); stroke: var(--ink); stroke-width: 1.8; }
-.wv .v-oxb-rec-abort { fill: var(--red-l); stroke: var(--red); stroke-width: 1.6; }
-.wv .v-oxb-rec-msg.is-faded { opacity: 0.35; }
-.wv .v-oxb-env { fill: var(--board); stroke: var(--ink); stroke-width: 1.3; }
+.wv .v-oxb-rec-c { stroke-width: 2.2; }
 .wv .v-oxb-later { fill: none; stroke: var(--line); stroke-dasharray: 4 4; }
-.wv .v-oxb-recyc { fill: var(--board); opacity: 0.62; }
-.wv .v-oxb-fresh { transition: opacity 0.3s; }
-.wv .v-oxb-fresh.is-void { opacity: 0.4; }
-.wv .v-oxb-fresh.is-void rect { stroke-dasharray: 4 3; }
-.wv .v-oxb-look-box { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.8; }
-.wv .v-oxb-tagbad { fill: var(--red-l); stroke: var(--red); stroke-width: 1.6; }
-.wv .v-oxb-pre { white-space: pre; }
-
-/* lines and marks */
 .wv .v-oxb-tick { stroke: var(--mute); stroke-width: 1; }
-.wv .v-oxb-leader { stroke: var(--mute); stroke-width: 1; }
-.wv .v-oxb-brace { fill: none; stroke: var(--ink); stroke-width: 1.4; }
-.wv .v-oxb-drop, .wv .v-oxb-over { fill: none; stroke: var(--purple); stroke-width: 1.6; stroke-dasharray: 3 3; }
-.wv .v-oxb-ack { stroke: var(--purple); stroke-width: 3; }
+
+/* candidate marks */
 .wv .v-oxb-cand { cursor: pointer; }
-.wv .v-oxb-cand circle { fill: var(--purple); }
-.wv .v-oxb-candline { stroke: var(--purple); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.7; }
-.wv .v-oxb-hdr { fill: var(--board); stroke: var(--mute); stroke-width: 1; }
-.wv .v-oxb-hdr.is-lsn { fill: var(--green-l); stroke: var(--green); stroke-width: 1.8; }
+.wv .v-oxb-cand circle { fill: var(--ink); }
+.wv .v-oxb-candline { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.45; }
 
 /* the slot bookmark */
 .wv .v-oxb-slot-line { stroke: var(--green); stroke-width: 3; }
 .wv .v-oxb-slot-flag { fill: var(--green); }
-.wv .v-oxb-slot { transition: transform 0.5s cubic-bezier(.3, 1.3, .5, 1); }
 
-/* draggable handles */
+/* draggable slot */
 .wv .v-oxb-drag { cursor: grab; outline: none; }
-.wv .v-oxb-drag:focus-visible .v-oxb-slot-flag, .wv .v-oxb-drag:focus-visible .v-oxb-grip { stroke: var(--purple); stroke-width: 2.5; }
+.wv .v-oxb-drag:focus-visible .v-oxb-slot-flag { stroke: var(--ink); stroke-width: 2.5; }
 .wv .v-oxb-hit { fill: transparent; }
-.wv .v-oxb-grip { fill: var(--red); }
 .wv svg:has(.v-oxb-drag) { touch-action: none; user-select: none; -webkit-user-select: none; }
 
-/* timelines */
+/* outage timeline */
 .wv .v-oxb-seg-safe { fill: var(--green-l); stroke: var(--green); }
 .wv .v-oxb-seg-dup { fill: var(--red-l); stroke: var(--red); stroke-width: 1.4; }
-.wv .v-oxb-seg-fly { fill: var(--tint2); stroke: var(--ink); }
-.wv .v-oxb-tickline { stroke: var(--line); stroke-width: 1.5; }
-.wv .v-oxb-tickline.is-sent { stroke: var(--green); stroke-width: 2.5; }
 .wv .v-oxb-crashline { stroke: var(--red); stroke-width: 2.5; stroke-dasharray: 5 3; }
-.wv .v-oxb-markline { stroke: var(--purple); stroke-width: 2; }
+.wv .v-oxb-markline { stroke: var(--ink); stroke-width: 2; }
 
 /* race lanes */
-.wv .v-oxb-cell { fill: var(--board); stroke: var(--brown); stroke-width: 1.4; }
+.wv .v-oxb-cell { fill: var(--board); stroke: var(--ink); stroke-width: 1.2; }
 .wv .v-oxb-cell.is-ok { fill: var(--green-l); stroke: var(--green); }
 .wv .v-oxb-cell.is-gap { fill: var(--red-l); stroke: var(--red); stroke-dasharray: 4 3; stroke-width: 1.8; }
-.wv .v-oxb-cell.is-now { stroke: var(--purple); stroke-width: 3; }
-.wv .v-oxb-lanebad { fill: var(--red-l); }
