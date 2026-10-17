@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" width="900" height="400" role="img" aria-label="Per-transfer cost of network, disk, memory and CPU as the batch grows from 1 to 8,189. At 8,189 per batch memory costs the most, 406 ns of 856 ns; disk and memory cross at 2,921." font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
 <rect width="900" height="400" fill="#fbfbf8"/>
-<text x="20.0" y="28.0" font-size="13" fill="#15181d" text-anchor="start" font-weight="400">At 8,189 transfers per batch, the 500 µs round trip and the 1 ms fsync are shared;</text>
-<text x="20.0" y="48.0" font-size="13" fill="#15181d" text-anchor="start" font-weight="400">the 4 cache misses of 100 ns are paid by each transfer. <tspan fill="#6f2fb0" font-weight="700">Memory</tspan> costs the most.</text>
+<text x="20.0" y="28.0" font-size="13" fill="#15181d" text-anchor="start" font-weight="400">At 8,189 per batch, the transfers share one 500 µs round trip and one 1 ms fsync.</text>
+<text x="20.0" y="48.0" font-size="13" fill="#15181d" text-anchor="start" font-weight="400">Each transfer has its own 4 cache misses of 100 ns. <tspan fill="#6f2fb0" font-weight="700">Memory</tspan> costs the most.</text>
 <line x1="70" x2="760" y1="350.0" y2="350.0" stroke="#c8cbd0"/>
 <text x="64.0" y="353.5" font-size="10.5" fill="#565b64" text-anchor="end" font-weight="400">10 ns</text>
 <line x1="70" x2="760" y1="305.0" y2="305.0" stroke="#c8cbd0"/>

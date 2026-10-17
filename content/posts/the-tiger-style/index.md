@@ -1,6 +1,6 @@
 +++
 title = "🪲 The Tiger Style"
-description = "TigerBeetle's coding guide, reposted: safety, then performance, then developer experience, turned into rules for assertions, limits, static memory, batching, and naming."
+description = "A repost of TigerBeetle's coding guide. It ranks safety, then performance, then developer experience, and gives rules for assertions, limits, static memory, batching, and naming."
 date = 2024-06-29T18:34:30+05:30
 lastmod = 2024-06-29T18:34:30+05:30
 publishDate = 2024-06-29T18:34:30+05:30
@@ -11,13 +11,13 @@ images = ["og-a635eef8.png"]
 theme = "tiger"
 +++
 
-TigerBeetle is a database for financial transactions. TigerStyle is the guide its team writes code
-by. It ranks three goals: safety, then performance, then developer experience. Each goal becomes
-rules: assert what every function expects, limit every loop and queue, allocate all memory at
-startup, batch the work, and name things well.
+TigerBeetle is a database for financial transactions. TigerStyle is the coding guide its team
+follows. It ranks three goals in this order: safety, performance, and developer experience. The
+guide gives rules for each goal: assert what every function expects, limit every loop and queue,
+allocate all memory at startup, batch the work, and name things well.
 
-This post reposts the guide under its Apache 2.0 license and adds two figures. By the end you will
-know what compile-time assertions catch in TigerBeetle's 128-byte `Transfer` struct, and why
+This post reposts the guide under its Apache 2.0 license and adds two figures. Figure 1 shows what
+compile-time assertions catch in TigerBeetle's 128-byte `Transfer` struct. Figure 2 shows why
 batching changes which cost to cut first. The latest version of the guide is in the [TigerBeetle
 repository](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md).
 
@@ -153,7 +153,7 @@ force multiplier for discovering bugs by fuzzing.**
   Compile-time assertions are extremely powerful because they are able to check a program's design
   integrity _before_ the program even executes.
 
-{{< viz kind="ts-struct" fig="1" title="Edit the 128-byte Transfer" fallback="ts-struct.svg" alt="Byte map of TigerBeetle's 128-byte Transfer, 16 bytes per row, and the three compile-time assertions that guard it; with amount as u64, 8 bytes of padding follow it and only no_padding fails" caption="Fields and assertions from [`src/tigerbeetle.zig`](https://github.com/tigerbeetle/tigerbeetle/blob/47aeb2212a255273dda508288412e537d11e4b7c/src/tigerbeetle.zig#L85-L116), abridged. Predict which assertion stops the build, then switch `amount` between `u128` and `u64` to compare the bytes. Offsets and the `zig build` output are from Zig 0.16 compiling a copy of the struct, with paths shortened." >}}
+{{< viz kind="ts-struct" fig="1" title="Edit the 128-byte Transfer" fallback="ts-struct.svg" alt="Byte map of TigerBeetle's 128-byte Transfer, 16 bytes per row, and the three compile-time assertions that check it; with amount as u64, 8 bytes of padding follow it and only no_padding fails" caption="Fields and assertions from [`src/tigerbeetle.zig`](https://github.com/tigerbeetle/tigerbeetle/blob/47aeb2212a255273dda508288412e537d11e4b7c/src/tigerbeetle.zig#L85-L116), abridged. Predict which assertion fails, then switch `amount` between `u128` and `u64` to compare the bytes. Offsets and the `zig build` output are from Zig 0.16 compiling a copy of the struct, with paths shortened." >}}
 
 - **The golden rule of assertions is to assert the _positive space_ that you do expect AND to
   assert the _negative space_ that you do not expect** because where data moves across the
@@ -248,7 +248,7 @@ force multiplier for discovering bugs by fuzzing.**
   compensating for the frequency of usage, because faster resources may be used many times more. For
   example, a memory cache miss may be as expensive as a disk fsync, if it happens many times more.
 
-{{< viz kind="ts-napkin" fig="2" title="A napkin sketch: which cost wins as the batch grows" fallback="ts-napkin.svg" alt="Per-transfer cost of network, disk, memory, and CPU as the batch grows from 1 to 8,189 transfers" caption="A sketch, not a benchmark: one batch at a time, no overlap. Sample costs: a 500 µs round trip and 100 ns per cache miss ([latency numbers](https://gist.github.com/jboner/2841832)), 10 Gbit/s network, 2 GB/s disk and 20 GB/s memory bandwidth, and 100 ns of CPU per transfer. 8,189 is the default `create_transfers` batch limit ([requests](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/coding/requests.md#batching-events))." >}}
+{{< viz kind="ts-napkin" fig="2" title="Napkin sketch of the largest cost as the batch grows" fallback="ts-napkin.svg" alt="Per-transfer cost of network, disk, memory, and CPU as the batch grows from 1 to 8,189 transfers" caption="Estimated costs for one batch at a time, with no overlap. Sample costs: a 500 µs round trip and 100 ns per cache miss ([latency numbers](https://gist.github.com/jboner/2841832)), 10 Gbit/s network, 2 GB/s disk and 20 GB/s memory bandwidth, and 100 ns of CPU per transfer. 8,189 is the default `create_transfers` batch limit ([requests](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/coding/requests.md#batching-events))." >}}
 
 - Distinguish between the control plane and data plane. A clear delineation between control plane
   and data plane through the use of batching enables a high level of assertion safety without losing

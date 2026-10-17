@@ -59,11 +59,11 @@ function initStruct(fig, app) {
   const outBox = h('div');
   const toggle = chips([['u128', 'amount: u128, as shipped'], ['u64', 'amount: u64']], (v) => show(v === 'u64'), { value: 'u128', label: 'Type of amount' });
   toggle.el.hidden = true;
-  const q = ask('Change amount from u128 to u64. Which assertion stops zig build?',
+  const q = ask('Change amount from u128 to u64. Which assertion makes zig build fail?',
     [['none', 'none, it builds'], ['pad', 'no_padding'], ['size', '@sizeOf == 128'], ['align', '@alignOf == 16']], 'pad',
     (v, right) => {
       toggle.el.hidden = false; toggle.set('u64'); show(true);
-      return `${right ? '<b>Right.</b>' : '<b>It is no_padding.</b>'} <code>pending_id</code> must start at a multiple of 16, so 8 bytes of padding follow <code>amount</code>. The size is still 128 and the alignment still 16, so only <code>no_padding</code> catches it. No field sets those 8 bytes, so they can carry old memory into a checksum or onto the network: a buffer bleed.`;
+      return `${right ? '<b>Right.</b>' : '<b>It is no_padding.</b>'} <code>pending_id</code> must start at a multiple of 16, so 8 bytes of padding follow <code>amount</code>. The size is still 128 and the alignment still 16, so only <code>no_padding</code> fails. No field sets those 8 bytes, so they can hold old memory, and that old memory can go into a checksum or onto the network. This is a buffer bleed.`;
     });
   app.append(q.el, toggle.el,
     h('div', { class: 'wv-split' },
@@ -113,9 +113,9 @@ function initNapkin(fig, app) {
   const logv = (t, lo, hi) => lo * (hi / lo) ** (t / 1000);
   const nOf = (t) => clamp(Math.round(logv(t, 1, NMAX)), 1, NMAX);
   const rn = range('transfers per batch', { min: 0, max: 1000, value: 1000, fmt: (t) => fmt(nOf(t)), oninput: (t) => { S.n = nOf(t); draw(); } });
-  const q = ask('A batch of 8,189 transfers pays one 500 µs round trip and one 1 ms fsync, shared by every transfer in it. Each transfer also pays 4 cache misses of 100 ns and 100 ns of CPU. Which costs the most per transfer?',
+  const q = ask('A batch of 8,189 transfers has one 500 µs round trip and one 1 ms fsync, shared by every transfer in it. Each transfer also takes 4 cache misses of 100 ns and 100 ns of CPU. Which costs the most per transfer?',
     RES.map((r) => [r, r]), 'memory',
-    (v, right) => { shown = true; controls.hidden = false; draw(); return right ? '<b>Right.</b> The fsync and the round trip are shared by 8,189 transfers; the cache misses are paid by each one.' : `<b>It is memory</b>, not ${v}. The fsync and the round trip are shared by 8,189 transfers; the cache misses are paid by each one.`; });
+    (v, right) => { shown = true; controls.hidden = false; draw(); return right ? '<b>Right.</b> The fsync and the round trip are shared by 8,189 transfers. Each transfer has its own cache misses.' : '<b>It is memory.</b> The fsync and the round trip are shared by 8,189 transfers. Each transfer has its own cache misses.'; });
   const controls = h('div', null, rn.el);
   controls.hidden = true;
   const svg = s('svg', { class: `${P}chart`, role: 'img', 'aria-label': 'Per-transfer cost of each resource as the batch grows' });
@@ -174,7 +174,7 @@ function initNapkin(fig, app) {
     svg.innerHTML = o;
     const total = cs.reduce((a, c) => a + c.t, 0);
     read.hidden = false;
-    read.innerHTML = `At <b>${fmt(S.n)}</b> per batch, <b class="c-look">${top.id}</b> costs the most: <b>${tfmt(top.t)}</b> of <b>${tfmt(total)}</b> per transfer, about <b>${fmt(+(1 / total).toPrecision(2))}</b> transfers/s one batch at a time. One fsync costs as much as <b>${fmt(S.fs / MISS)}</b> cache misses${dm <= NMAX ? `, but the batch shares it, so from about <b>${fmt(dm)}</b> per batch the ${S.m} miss${S.m > 1 ? 'es' : ''} per transfer cost more.` : `. Even at ${fmt(NMAX)} per batch, the fsync share costs more than the misses.`}`;
+    read.innerHTML = `At <b>${fmt(S.n)}</b> per batch, <b class="c-look">${top.id}</b> costs the most, <b>${tfmt(top.t)}</b> of <b>${tfmt(total)}</b> per transfer. That is about <b>${fmt(+(1 / total).toPrecision(2))}</b> transfers/s one batch at a time. One fsync costs as much as <b>${fmt(S.fs / MISS)}</b> cache misses${dm <= NMAX ? `, but the batch shares it, so from about <b>${fmt(dm)}</b> per batch the ${S.m} miss${S.m > 1 ? 'es' : ''} per transfer cost more.` : `. Even at ${fmt(NMAX)} per batch, the fsync share costs more than the misses.`}`;
   }
 
   let dragging = false;
