@@ -1,12 +1,13 @@
 +++
-title = "🚗 Building blazingly fast pre-owned car platform with Valkey - Part 1"
+title = "🚗 Pre-owned Car Platform with Valkey - Part 1"
 description = "How we served a pre-owned car page in 60 ms from one pre-computed JSON in Valkey, kept it fresh by reading the MySQL binlog through Kafka, and what happens to a price change when each part of that pipeline fails."
 date = 2024-06-16T23:27:27+05:30
 lastmod = 2024-06-16T23:27:27+05:30
 tags = ['django', 'redis', 'drf', 'cdc', 'valkey']
 series = ['valkey-car-platform']
+aliases = ["/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1/"]
 draft = false
-images = ["og-2ae96790.png"]
+images = ["og-e8888238.png"]
 theme = "tangerine"
 +++
 

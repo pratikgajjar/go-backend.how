@@ -16,8 +16,8 @@
   <rect x="48" y="48" width="1096" height="526" class="box"/>
 
   <text x="96" y="112" font-size="24" class="mute">backend.how</text>
-  <text x="96" y="182" font-size="58" font-weight="800" class="ink">Building blazingly fast</text>
-  <text x="96" y="234" font-size="34" font-weight="600" class="ink">pre-owned car platform with Valkey - Part 1</text>
+  <text x="96" y="182" font-size="58" font-weight="800" class="ink">Pre-owned car platform</text>
+  <text x="96" y="234" font-size="34" font-weight="600" class="ink">with Valkey - Part 1</text>
 
   <g font-size="22" text-anchor="middle">
     <!-- three apps write to MySQL directly -->

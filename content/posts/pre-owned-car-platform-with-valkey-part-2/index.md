@@ -22,7 +22,7 @@ sets, one `HMGET` fetches the cards, and a personalised order is computed in
 the web server from one unordered set. The list API got 4x faster, and a `wrk`
 benchmark served 6x more requests.
 
-We built this in 2021. [Part 1](/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1)
+We built this in 2021. [Part 1](/posts/pre-owned-car-platform-with-valkey-part-1/)
 covers the business, the user flow, and how we made the individual car page
 fast.
 

@@ -1,0 +1,4 @@
+# Cloudflare Pages redirects: https://developers.cloudflare.com/pages/configuration/redirects/
+# Renamed posts. Hugo `aliases` in the post front matter is the fallback.
+/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1 /posts/pre-owned-car-platform-with-valkey-part-1/ 301
+/posts/building-blazingly-fast-pre-owned-car-platform-with-valkey-part-1/* /posts/pre-owned-car-platform-with-valkey-part-1/:splat 301
