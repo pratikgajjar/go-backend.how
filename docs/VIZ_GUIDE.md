@@ -164,8 +164,15 @@ behave differently.
 
 A busy figure costs the reader attention before it teaches anything.
 
+- No figure for its own sake. A figure must do something the prose cannot:
+  show a shape, a change over time, a trade-off the reader can feel, or
+  let the reader try the idea. If you are adding it because a figure is
+  possible, delete it.
+- Zero figures is a valid result for a post. So is one. Do not hit a count.
 - Fewer figures, each one earned. Two strong figures beat five average ones.
   Delete a figure whose idea the prose already lands.
+- Test each figure: remove it and read the section. If the reader loses
+  nothing, it goes.
 - At most two accent colours in any one view, plus ink. Most of the figure
   is black on white; colour marks only the thing that matters right now.
 - Few marks: no decorative icons, gradients, shadows inside the figure,
