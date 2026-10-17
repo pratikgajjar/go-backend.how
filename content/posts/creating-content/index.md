@@ -17,10 +17,10 @@ At the end of this, you'll know what stops people from sharing what they know, w
 Writing your thoughts down:
 
 1. Brings clarity to your thoughts.
-2. Provides a deeper understanding of the subject.
+2. Deepens your understanding of the subject.
 3. Builds your personal brand.
-4. Contributes back to society. (Think about how many blogs, videos, and other content you have consumed.)
-5. Helps you develop concise and coherent writing and thinking skills.
+4. Gives back. (Think of how many blogs and videos you have learned from.)
+5. Trains you to write and think in a concise, coherent way.
 
 Patrick Winston opens his *How to Speak* lecture with this[^2]:
 
@@ -28,13 +28,13 @@ Patrick Winston opens his *How to Speak* lecture with this[^2]:
 
 # What stops people {#not-to-do}
 
-I've encountered many talented people who don't share their knowledge. The reasons are usually one of these:
+I know many talented people who do not share what they know. Their reasons are usually these:
 
-1. "I don't have enough time." This is something you can always make time for.
+1. "I don't have enough time." You can make time for this.
 2. "It isn't perfect yet." It won't be. Publish and work on feedback.
 3. Discomfort with feedback, or fear of trolls. Don't let either stop you.
-4. Keeping knowledge to yourself as a competitive advantage. Don't withhold it.
-5. "I'm not as talented as the people who already write." Talent matters less than you think. That is the next section.
+4. Keeping knowledge to yourself as a competitive advantage.
+5. "I'm not as talented as the people who already write." Talent matters less than you think.
 
 # Talent is the small term {#quality}
 
@@ -46,25 +46,25 @@ He tells a story about it. Guess before you read his answer.
 
 ## Knowledge
 
-With the right amount of knowledge, you can surpass those with natural talent. Curiosity drives knowledge, so always ask questions.
+With enough knowledge, you can surpass people with natural talent. Curiosity drives knowledge, so ask questions.
 
-_Note:_ Having knowledge and knowing when it becomes useful is a non-linear process—you never know when it might come in handy.
+_Note:_ You cannot predict when a piece of knowledge will become useful.
 
 ## Practice
 
-Practice is the bridge between talent and knowledge. Given your talent, practice leads to growth.
+Practice is the bridge between talent and knowledge. Whatever your talent, practice makes you grow.
 
 ## Talent
 
 Consider it a gift.
 
-"I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right; he's doing very well now.
+"I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right. He is doing well now.
 
 > Nothing in this world can take the place of persistence. Talent will not; nothing is more common than unsuccessful men with talent. Genius will not; unrewarded genius is almost a proverb. Education will not; the world is full of educated derelicts. Persistence and determination alone are omnipotent. The slogan 'Press On!' has solved and always will solve the problems of the human race. ― Calvin Coolidge
 
 # When to start {#when}
 
-There's no ideal time; start as soon as possible. Start NOW!
+There is no ideal time. Start now.
 
 This post is an example. I set `draft = false` nine minutes after the first commit[^3]. The next section read like this:
 
@@ -83,12 +83,10 @@ I rewrote it five days later. The Calvin Coolidge quote above came from a Hacker
 
 # What to write about {#what}
 
-Here are several options:
-
-1. Pick a topic that interests you.
-2. Choose something you find easy but that others might find challenging.
-3. Teach a skill you've put a lot of effort into learning.
-4. Write about anything out of the ordinary[^1] or even simple topics.
+1. A topic that interests you.
+2. Something you find easy and others find hard.
+3. A skill that took you a lot of effort to learn.
+4. Anything out of the ordinary[^1], or a simple topic.
 
 # Where to publish {#where}
 
@@ -96,45 +94,36 @@ Pick one format to start with.
 
 ## Text
 
-1. Website - like this one :)
-2. Newsletter
-3. Book
+A website (like this one :)), a newsletter, or a book.
 
 ## Audio
 
-1. Podcasts - Spotify, YouTube
-2. Twitter - Audio group calls
-3. WhatsApp community
+Podcasts on Spotify or YouTube, Twitter audio group calls, or a WhatsApp community.
 
 ## Video
 
-1. Short form - Reels, TikTok
-2. Long form - YouTube, Coursera, educational sites
-3. Live - Twitch, YouTube
+Short form (Reels, TikTok), long form (YouTube, Coursera, educational sites), or live (Twitch, YouTube).
 
 ## AR/VR
 
-1. Games
-2. Commenting on posts with ideas
-
-May the force be with you 🧙
+Games, or comments with ideas on posts.
 
 # FAQ {#faq}
 
 {{< details "Making it perfect?" >}}
-No, you can always improve upon it. It takes time. Don't wait for it to be perfect—publish and work on feedback. Iterate, iterate, iterate.
+No. Publish, then improve it from feedback. Iterate.
 {{</details>}}
 
 {{< details "How long should it be?" >}}
-As long as necessary to cover your content. Have someone pre-read or consume it before publishing.
+As long as the content needs. Have someone read or watch it before you publish.
 {{</details>}}
 
 **Thank you** Vaibhav for reading drafts and suggestions.
 
 [^1]:
-    Everyday moments hold stories. Say you chat with an Uber driver who owns an iPhone 13. Why would someone in a gig economy job have such an expensive phone? Perhaps they bought it through a financing scheme without understanding the interest rate. Now they pay double the phone's price and work 10-hour shifts to keep up.
+    Everyday moments hold stories. Say you chat with an Uber driver who owns an iPhone 13, an expensive phone for gig work. Perhaps they bought it through a financing scheme without understanding the interest rate. Now they pay double the phone's price and work 10-hour shifts to keep up.
 
-    That is a post about financial literacy and debt, and it started with a ride. Don't wait for the perfect topic or the perfect time. Observe the world, and write about what you find.
+    That is a post about financial literacy and debt, and it started with a ride. Observe the world, and write about what you find.
 
 [^2]: [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/), MIT OpenCourseWare, 2018.
 [^3]: [Commit d82539a](https://github.com/pratikgajjar/go-backend.how/commit/d82539a), 11 June 2024, 02:15 IST.
