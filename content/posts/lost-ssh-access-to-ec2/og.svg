@@ -14,38 +14,32 @@
   <rect x="56" y="56" width="1104" height="526" class="ink"/>
   <rect x="48" y="48" width="1104" height="526" class="box"/>
 
-  <text x="96" y="112" font-size="24" class="mute">backend.how</text>
+  <text x="96" y="116" font-size="28" class="mute">backend.how</text>
   <text x="96" y="186" font-size="58" font-weight="800" class="ink">Lost SSH Access to Ec2 ?</text>
   <text x="96" y="240" font-size="34" font-weight="600" class="ink">Add a new key through EC2 user data</text>
 
-  <!-- column heads -->
-  <g font-size="22" class="mute">
-    <text x="96" y="300">user data</text>
-    <text x="456" y="300">marker on disk</text>
-    <text x="872" y="300">authorized_keys</text>
+  <g font-size="28">
+    <!-- row 1: key alone, init marker exists since launch, module skips -->
+    <rect x="96" y="284" width="372" height="104" class="mark"/>
+    <text x="116" y="346" class="ink">users: new key</text>
+    <path d="M468 336 h34" class="arr"/><path d="M514 336 l-12 -7 v14 z" class="ink"/>
+    <rect x="516" y="284" width="300" height="104" class="hit"/>
+    <text x="536" y="328" class="ink">marker exists</text>
+    <text x="536" y="366" font-weight="700" class="red">→ skip</text>
+    <path d="M816 336 h34" class="arr"/><path d="M862 336 l-12 -7 v14 z" class="ink"/>
+    <rect x="864" y="284" width="240" height="104" class="nokey"/>
+    <text x="984" y="346" font-weight="700" text-anchor="middle" class="red">no new key</text>
+
+    <!-- row 2: with cloud_final_modules [users-groups, once], new marker missing, module runs -->
+    <rect x="96" y="408" width="372" height="104" class="mark"/>
+    <text x="116" y="452" class="ink">users: new key</text>
+    <text x="116" y="490" font-weight="700" class="ink">[users-groups, once]</text>
+    <path d="M468 460 h34" class="arr"/><path d="M514 460 l-12 -7 v14 z" class="ink"/>
+    <rect x="516" y="408" width="300" height="104" class="mark"/>
+    <text x="536" y="452" class="ink">marker missing</text>
+    <text x="536" y="490" font-weight="700" class="ink">→ run</text>
+    <path d="M816 460 h34" class="arr"/><path d="M862 460 l-12 -7 v14 z" class="ink"/>
+    <rect x="864" y="408" width="240" height="104" class="key"/>
+    <text x="984" y="470" font-weight="700" text-anchor="middle" class="green">+ new key</text>
   </g>
-
-  <!-- row 1: key alone, init marker exists since launch, module skips -->
-  <rect x="96" y="318" width="300" height="86" class="mark"/>
-  <text x="114" y="354" font-size="22" class="ink">users: new key</text>
-  <text x="114" y="386" font-size="22" class="mute">(nothing else)</text>
-  <path d="M396 361 h44" class="arr"/><path d="M448 361 l-12 -7 v14 z" class="ink"/>
-  <rect x="456" y="318" width="360" height="86" class="hit"/>
-  <text x="474" y="354" font-size="22" class="ink">config_users_groups</text>
-  <text x="474" y="386" font-size="22" font-weight="700" class="red">exists → skip</text>
-  <path d="M816 361 h40" class="arr"/><path d="M864 361 l-12 -7 v14 z" class="ink"/>
-  <rect x="872" y="318" width="232" height="86" class="nokey"/>
-  <text x="988" y="368" font-size="22" font-weight="700" text-anchor="middle" class="red">no new key</text>
-
-  <!-- row 2: with cloud_final_modules [users-groups, once], new marker missing, module runs -->
-  <rect x="96" y="424" width="300" height="86" class="mark"/>
-  <text x="114" y="460" font-size="22" class="ink">users: new key</text>
-  <text x="114" y="492" font-size="22" font-weight="700" class="ink">[users-groups, once]</text>
-  <path d="M396 467 h44" class="arr"/><path d="M448 467 l-12 -7 v14 z" class="ink"/>
-  <rect x="456" y="424" width="360" height="86" class="mark"/>
-  <text x="474" y="460" font-size="22" class="ink">config_users_groups.once</text>
-  <text x="474" y="492" font-size="22" font-weight="700" class="mute">missing → run</text>
-  <path d="M816 467 h40" class="arr"/><path d="M864 467 l-12 -7 v14 z" class="ink"/>
-  <rect x="872" y="424" width="232" height="86" class="key"/>
-  <text x="988" y="474" font-size="22" font-weight="700" text-anchor="middle" class="green">+ new key</text>
 </svg>
