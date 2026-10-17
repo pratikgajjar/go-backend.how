@@ -1,6 +1,6 @@
 +++
 title = "🧿 Creating Content"
-description = "At the end of this, you'll know what stops people from sharing, why talent matters less than you think, and when, what, and where to start."
+description = "At the end of this, you'll know what stops people from sharing, why talent matters less than knowledge and practice, and when, what, and where to start."
 date = 2024-06-11T00:01:52+05:30
 lastmod = 2024-06-11T00:01:52+05:30
 tags = ['gyan']
@@ -10,7 +10,7 @@ hnItemId = 40781712
 theme = "vanilla"
 +++
 
-At the end of this, you'll know what stops people from sharing what they know, why talent matters less than you think, and when, what, and where to start.
+At the end of this, you'll know what stops people from sharing what they know, why talent matters less than knowledge and practice, and when, what, and where to start.
 
 # Why it is worth it {#why}
 
@@ -34,7 +34,7 @@ I know many talented people who do not share what they know. Their reasons are u
 2. "It isn't perfect yet." It won't be. Publish and work on feedback.
 3. Discomfort with feedback, or fear of trolls. Don't let either stop you.
 4. Keeping knowledge to yourself as a competitive advantage.
-5. "I'm not as talented as the people who already write." Talent matters less than you think.
+5. "I'm not as talented as the people who already write." Talent matters less than knowledge and practice.
 
 # Talent is the small term {#quality}
 
@@ -42,11 +42,11 @@ The quality of what you create depends on three things: knowledge (K), practice 
 
 He tells a story about it. Guess before you read his answer.
 
-{{< viz kind="who-gets-better" fig="1" title="Talent, knowledge, practice" fallback="who-gets-better.svg" alt="Talent, knowledge and practice at skiing for Mary Lou Retton and Patrick Winston. Retton has a long talent bar and short knowledge and practice bars. Winston does not state his talent; his knowledge and practice bars are long. Winston skis better." caption="Story and quote from Winston's *How to Speak* lecture. Bar lengths show more or less, not measurements." >}}
+{{< viz kind="who-gets-better" fig="1" title="Talent, knowledge, practice" fallback="who-gets-better.svg" alt="Talent, knowledge and practice at skiing for Mary Lou Retton and Patrick Winston. Retton has a long talent bar and short knowledge and practice bars. Winston does not state his talent; his knowledge and practice bars are long. Winston skis better." caption="Story and quote from Winston's *How to Speak* lecture. Bar lengths are rough comparisons." >}}
 
 ## Knowledge
 
-With enough knowledge, you can surpass people with natural talent. Curiosity drives knowledge, so ask questions.
+With enough knowledge, you can surpass people with natural talent. You gain knowledge by being curious, so ask questions.
 
 _Note:_ You cannot predict when a piece of knowledge will become useful.
 
@@ -58,7 +58,7 @@ Practice is the bridge between talent and knowledge. Whatever your talent, pract
 
 Consider it a gift.
 
-"I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right. He is doing well now.
+"I'm not as talented as others, so I'll put in more effort to learn." — My university project partner on why he works so hard. He was right, and he is doing well now.
 
 > Nothing in this world can take the place of persistence. Talent will not; nothing is more common than unsuccessful men with talent. Genius will not; unrewarded genius is almost a proverb. Education will not; the world is full of educated derelicts. Persistence and determination alone are omnipotent. The slogan 'Press On!' has solved and always will solve the problems of the human race. ― Calvin Coolidge
 
@@ -113,7 +113,7 @@ May the force be with you 🧙
 # FAQ {#faq}
 
 {{< details "Making it perfect?" >}}
-No. Publish, then improve it from feedback. Iterate.
+No. Publish it, then improve it after each round of feedback.
 {{</details>}}
 
 {{< details "How long should it be?" >}}
@@ -123,9 +123,9 @@ As long as the content needs. Have someone read or watch it before you publish.
 **Thank you** Vaibhav for reading drafts and suggestions.
 
 [^1]:
-    Everyday moments hold stories. Say you chat with an Uber driver who owns an iPhone 13, an expensive phone for gig work. Perhaps they bought it through a financing scheme without understanding the interest rate. Now they pay double the phone's price and work 10-hour shifts to keep up.
+    Everyday events give you topics. Say you chat with an Uber driver who owns an iPhone 13, an expensive phone for gig work. Perhaps they bought it through a financing scheme without understanding the interest rate. Now they pay double the phone's price and work 10-hour shifts to keep up.
 
-    That is a post about financial literacy and debt, and it started with a ride. Observe the world, and write about what you find.
+    You can write a post about financial literacy and debt from that one ride. Observe the world, and write about what you find.
 
 [^2]: [How to Speak](https://ocw.mit.edu/courses/res-tll-005-how-to-speak-january-iap-2018/), MIT OpenCourseWare, 2018.
 [^3]: [Commit d82539a](https://github.com/pratikgajjar/go-backend.how/commit/d82539a), 11 June 2024, 02:15 IST.
