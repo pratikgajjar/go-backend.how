@@ -33,108 +33,75 @@ ready.
 
 # Terms
 
-If you know FoundationDB and DynamoDB, skip to [the reliability
-goal](#what-dynamodb-level-reliability-means).
+If you know FoundationDB and DynamoDB, skip to [the comparison](#dynamo-dynamodb-and-foundationdb).
 
 - **Partition key, sort key**: a DynamoDB primary key. All items with the same
   partition key form an **item collection**, stored in sort-key order.
-- **`Query`**: reads items from one item collection (or one index
-  partition), optionally within a sort-key range. **`Scan`** reads the whole
-  table.
-- **GSI / LSI**: DynamoDB global and local secondary indexes. An index is a
-  second copy of the items, keyed by other attributes.
-- **Stream**: DynamoDB's change log for a table. A consumer reads one record
-  per change.
+- **`Query`** reads one item collection (or one index partition), optionally
+  within a sort-key range. **`Scan`** reads the whole table.
+- **GSI / LSI**: DynamoDB secondary indexes. An index is a second copy of the
+  items, keyed by other attributes.
 - **FoundationDB (FDB)**: an ordered key-value store with ACID transactions
-  across the whole key space[^fdb-paper].
-- **Range read**: an FDB read of all keys between two keys, in order.
+  across the whole key space.
 - **Read version**: the version a transaction reads at. All reads in one
   transaction see the database as it was at that version.
-- **Conflict**: a commit fails with error `1020` if another transaction
-  changed a key it read after its read version. The client then runs the
-  transaction again.
+- **Conflict** (error `1020`): another transaction changed a key this one read.
+  The client runs the transaction again.
 - **`commit_unknown_result`** (error `1021`): the commit was sent but the
   result was lost. The write may or may not have happened[^fdb-errors].
-- **Versionstamp**: a 10-byte value that FDB fills in at commit time, built
-  from the commit version. A key that contains it sorts in commit order.
-- **SigV4**: the AWS request-signing scheme. Every SDK request includes it.
+- **Versionstamp**: a 10-byte value that FDB fills in at commit time from the
+  commit version. A key that contains it sorts in commit order.
 
-# What DynamoDB-level reliability means
+# Dynamo, DynamoDB, and FoundationDB
 
-DynamoDB's reliability comes from two parts: the storage under it, and the API
-on top of it.
+DynamoDB is not the Dynamo of the 2007 paper[^dynamo]. Dynamo had no leader:
+any of N replicas could accept a write, a "sloppy" quorum kept writes
+available during failures, and vector clocks let the application merge
+conflicting versions of an item. It updated one key at a time, with no
+isolation. DynamoDB kept Dynamo's hash partitioning and its incremental
+scaling, and replaced the rest. Each partition has a leader chosen by
+Multi-Paxos, reads can be strongly consistent, and transactions are
+ACID[^ddb-paper]. The reliability fdyno aims for is DynamoDB's.
 
-**The storage.** DynamoDB splits a table into partitions. Each partition has
-replicas in different Availability Zones. A leader writes each change to a
-log, and the write is acknowledged after a quorum of replicas has made that
-log record durable. When a node fails, the replicas elect a new leader, and
-lost replicas are rebuilt from the others[^ddb-paper].
+The table below compares how each system stores and protects a write. It is
+taken from the three papers[^dynamo][^ddb-paper][^fdb-paper].
 
-**The API.** DynamoDB has no joins and no query planner. Every `GetItem` reads
-one key. Every `Query` reads one item collection, in order, up to 1 MiB per
-page. A request cannot ask for unbounded work, so its cost does not change as
-the table grows. You get this only if you design the keys for your access
-patterns, and the API pushes you to do that.
+| | Dynamo (2007) | DynamoDB (2022) | FoundationDB (2021) |
+|---|---|---|---|
+| Data split by | consistent-hashing ring with virtual nodes | contiguous ranges of hash(pk), then sk | contiguous ranges of the key bytes |
+| Copies | N per key, usually 3 | 3, one per Availability Zone | f + 1: 2 in `double` mode, 3 in `triple` |
+| Write acknowledged after | W replicas (usually 2), possibly stand-ins | the leader and a quorum (2 of 3) persist the log record | all f + 1 log servers persist the log record |
+| When a replica fails | another node takes the write and hands it back later | the quorum still works; the leader adds a log replica | the transaction system recovers with new processes, usually in under five seconds |
+| Concurrent writes | vector clocks; the application merges | the partition leader orders them | resolvers reject the later conflicting transaction; it runs again |
+| Atomic multi-key writes | none | transactions of up to 100 items | any keys in one transaction |
+| Reads | eventually consistent | strong or eventual | strictly serializable |
 
-To get the same reliability on your own hardware, you need both parts. The API
-part is easy to keep: fdyno implements the same API, so applications keep the
-same key design. The storage part is the hard one. You need a store that:
+Two points from this table matter for fdyno.
 
-1. replicates every commit before it acknowledges it;
-2. recovers from a lost process or machine without an operator;
-3. splits the key space into ranges and moves them as data grows;
-4. can change several keys atomically, so an item and its index entries never
-   disagree;
-5. has a test record you can trust.
+First, FDB keeps f + 1 copies to survive f failures, where a quorum system
+needs 2f + 1. It can do that because it does not mask a failure with a
+quorum. It detects the failure and rebuilds the transaction system. The cost is
+a short pause: while FDB recovers, commits wait. A DynamoDB partition keeps
+accepting writes while two of its three replicas are healthy. Only FDB's
+small metadata store (the coordinators) uses a majority quorum.
 
-FoundationDB has all five:
+Second, DynamoDB's guarantees stop at one item or one transaction of up to 100
+items. FoundationDB's transaction covers any set of keys. fdyno uses that to
+write an item and its index entries and stream record together, which
+DynamoDB does not do.
 
-1. In `double` or `triple` redundancy mode, FDB keeps two or three copies of
-   the data on different machines. A commit is acknowledged only after the
-   transaction logs that must hold it have written it to disk[^fdb-config].
-2. When a process fails, the cluster recruits a new one and recovers by
-   itself.
-3. Data distribution splits the key space into shards and moves them between
-   storage servers.
-4. A transaction can read and write any keys in the cluster atomically.
-5. FDB's developers test it in a deterministic simulator that injects network,
-   disk, and machine faults. Apple runs it under CloudKit[^record-layer].
-
-fdyno's job is to keep the DynamoDB API exact, and to put every key that must
-change together into one FDB transaction.
-
-Other projects serve the same API on other engines:
-
-- **DynamoDB Local** is AWS's downloadable version for development and
-  tests[^ddb-local]. It is not built for production.
-- **ScyllaDB Alternator** serves the DynamoDB API from ScyllaDB[^alternator].
-  It is a good fit if you already run Scylla.
-- **ExtendDB** is a DynamoDB-compatible adapter with pluggable storage, for
-  example Postgres[^extenddb]. It is a good fit if Postgres is already your
-  system of record.
+The other half of DynamoDB's reliability is its API. There are no joins and no
+query planner. A `GetItem` reads one key, and a `Query` reads one item
+collection, in order, up to 1 MiB per page. A request cannot ask for unbounded
+work, so its cost does not change as the table grows. fdyno keeps the same
+API, so applications keep the same key design.
 
 # Two sorted key spaces
 
-DynamoDB and FoundationDB look different from the outside. One is a managed
-document database, and the other is a key-value library with a cluster behind
-it. Their storage is built on the same idea: keys kept in sorted order, split
-into ranges, each range replicated.
-
-```txt
-DynamoDB table                          FoundationDB key space
-──────────────                          ──────────────────────
-partition (hash of pk)                  shard (a key range)
- ┌─────────────────────────┐             ┌─────────────────────────┐
- │ pk=CUST#42              │             │ Shop/i/CUST#42/ORDER#…  │
- │   sk=ORDER#2026-10-01#7 │   ───────▶  │ Shop/i/CUST#42/ORDER#…  │
- │   sk=ORDER#2026-10-17#9 │             │ Shop/i/CUST#42/PROFILE  │
- │   sk=PROFILE            │             │ Shop/i/CUST#43/…        │
- └─────────────────────────┘             └─────────────────────────┘
- one item collection, sorted by sk       one key prefix, sorted by bytes
- replicas in several AZs, quorum log      2 or 3 copies, log fsync on commit
-```
-
-So the translation is short:
+Both stores split data into contiguous key ranges. DynamoDB's key starts with
+a hash of the partition key, followed by the sort key. FoundationDB's key is
+whatever bytes the layer chooses. fdyno chooses `(table, pk, sk)`, so a
+DynamoDB item collection becomes one FDB key prefix:
 
 | DynamoDB | FoundationDB in fdyno |
 |---|---|
@@ -146,20 +113,13 @@ So the translation is short:
 | `ScanIndexForward=false` | The same range read in reverse |
 | GSI / LSI | A second sorted copy under `<table>/x/<index>/` |
 | Partition split | Shard split by data distribution |
-| `TransactWriteItems` (up to 100 items) | One FDB transaction |
+| `TransactWriteItems` | One FDB transaction |
 
 The tuple layer encodes `(pk, sk)` so that byte order matches DynamoDB's
 order. Strings and binary values sort by bytes, as in DynamoDB. Numbers need
 more work, because the text `"100"` sorts before `"2"`. fdyno encodes each
 number as a sign, an exponent, and its digits, so byte order equals numeric
-order for negatives, zero, and decimals. It never converts to `float64`, so
-all 38 digits stay exact.
-
-There are two differences. DynamoDB hashes the partition key and fdyno does
-not; the [next section](#hash-versus-range) shows what that changes. And
-DynamoDB updates GSIs and streams after the write returns[^gsi][^streams],
-while fdyno writes them in the same FDB transaction as the item; the [write
-set](#the-write-set) section shows how.
+order. It never converts to `float64`, so all 38 digits stay exact.
 
 # Design keys for the queries
 
@@ -198,9 +158,9 @@ a stable order for pagination.
 ## What one range read costs
 
 Reading ten items with one `Query` costs much less than ten `GetItem` calls.
-Each call pays a read-version round trip, a storage round trip, HTTP, SigV4,
-and JSON. A `Query` pays these once and reads ten adjacent keys from one
-storage server.
+Each call pays a read-version round trip, a storage round trip, HTTP, SigV4
+signing, and JSON. A `Query` pays these once and reads ten adjacent keys from
+one storage server.
 
 On my laptop (Apple M3 Max, one local FDB 7.3.51 process, signed AWS SDK
 requests, 1 KiB items, 32 concurrent clients, every response checked):
@@ -212,41 +172,36 @@ requests, 1 KiB items, 32 concurrent clients, every response checked):
 
 These two runs were made two days apart on code that differed by a few
 commits, so read the ratio, not the exact numbers. A query that returns ten
-items costs about 1.7 times one `GetItem` and returns ten times as much data:
-about **5.9 times** more items per second.
+items costs about 1.7 times one `GetItem` and returns about **5.9 times** more
+items per second.
 
 DynamoDB prices it the same way. A strong `GetItem` of a 1 KiB item costs one
-read unit. A `Query` adds up the sizes of all items it returns and then rounds
-up to 4 KB, so ten 1 KiB items cost three read units, not ten[^rcu].
+read unit. A `Query` adds up the sizes of all items it returns and rounds up to
+4 KB, so ten 1 KiB items cost three read units, not ten[^rcu].
 
-The opposite case is a `Scan` with a filter. The filter runs after the read,
-so the request reads every item in the table and returns a few. DynamoDB
-charges for every item read[^rcu]. fdyno stops a page after about 10,000
-examined rows or 1 MiB and returns a `LastEvaluatedKey`, so one request stays
-bounded, but the client still pages through the whole table. On both systems,
-the fix is an index whose key is the thing you filter on.
+A `Scan` with a filter is the opposite case. The filter runs after the read,
+so the request reads every item and returns a few. DynamoDB charges for every
+item read[^rcu]. fdyno stops a page after about 10,000 examined rows or 1 MiB,
+so one request stays bounded, but the client still pages through the whole
+table. On both systems, the fix is an index on the attribute you filter on.
 
 ## Hash versus range
 
-DynamoDB hashes the partition key to choose a partition, so neighbouring
-partition keys end up far apart. fdyno stores the partition key as it is, so
-neighbouring keys are neighbours in FDB. That keeps the layout simple, and a
-`Scan` returns items in key order. It also changes which keys are safe for
-writes.
-
-A partition key with many values, written evenly, such as a customer ID,
-spreads writes over all shards on both systems. A partition key that always
-grows, such as a timestamp, behaves differently. On DynamoDB, the hash still
-spreads it. On fdyno, every new key is larger than every existing key, so
-every write goes to the last shard. Try to fix it in Figure 2 by splitting
-that shard.
+fdyno does not hash the partition key, so neighbouring partition keys are
+neighbours in FDB. A partition key with many values written evenly, such as a
+customer ID, spreads writes over all shards on both systems. A partition key
+that always grows, such as a timestamp, does not. DynamoDB's hash still
+spreads it across partitions. In fdyno, every new key is larger than every
+existing key, so every write goes to the last shard. Try to fix it in Figure 2
+by splitting that shard.
 
 {{< viz kind="fdy-hot" fig="2" title="Where new writes go" fallback="fdy-hot.svg" alt="Twenty-four new writes placed into four FoundationDB shards by key range and four DynamoDB partitions by hash, for a customer-ID key and a timestamp key, with a button that splits the busiest shard" caption="Sample keys and boundaries. The DynamoDB side uses a stand-in hash (FNV-1a), not DynamoDB's real one. FDB's data distribution splits shards by size and write traffic; the split point here is the middle key of the busy shard." >}}
 
-Splitting does not help, because the next write goes to the new end. Choose
-partition keys with many values that are written evenly, as the DynamoDB
-guidance already says[^partitions]. On fdyno, avoid a partition key that
-only grows.
+A split does not help, because the next write goes to the new end. The
+DynamoDB paper says the same about its own splits: a partition whose key
+range is accessed in order does not benefit from a split[^ddb-paper]. In
+DynamoDB that happens inside one item collection. In fdyno it also happens
+across partition keys. So on fdyno, avoid a partition key that only grows.
 
 # FoundationDB in five minutes
 
@@ -370,11 +325,6 @@ revision also adds `mr` to its conflict set, so a schema change still conflicts
 with it. At 32 clients, 99.95% of `GetItem` calls used the cache, and storage
 reads per `GetItem` were 1.0 instead of 2.0.
 
-A bounded `Query` on a table whose schema is cached starts the `mr` read and
-the item range read at the same time, at the same read version. fdyno returns
-the rows only after the revision matches. If it does not match, fdyno discards
-the rows and reads again with the new schema, at the same version.
-
 Every read uses a current FDB transaction, even when `ConsistentRead` is
 false. There is no cheaper eventual path. For API compatibility, fdyno still
 rejects `ConsistentRead=true` on a GSI, although the GSI is current.
@@ -431,7 +381,7 @@ anything is buffered, so nothing commits.
 ## What the shared commit changes
 
 In DynamoDB, the base write returns to the caller first. The GSI and the
-stream are updated after that. A query on the GSI right after a successful
+stream are updated after that[^gsi]. A query on the GSI right after a successful
 write can miss the change. A stream consumer sees the record a little later.
 
 In fdyno, the index entries and the stream record are in the write set. A
@@ -715,20 +665,11 @@ two only.
 
 ## Where `GetItem` time goes
 
-To split the remaining gap, I ran three clients against one local FDB on my
-laptop (Apple M3 Max, FDB 7.3.51, 32 concurrent clients):
-
-| Path | ops/s | p50 |
-|---|---:|---:|
-| Raw Go FDB binding, two reads per transaction (revision + item) | 39,338 | 0.75 ms |
-| fdyno's `Service.GetItem` called in process: no HTTP, no SigV4, no JSON | 34,133 | 0.83 ms |
-| Full API: SDK client, HTTP, SigV4, JSON | 19,000–20,900 | 1.5 ms |
-
-fdyno's own logic runs at 87% of the raw binding. Most of the remaining gap is
-HTTP, signing, JSON, and an SDK client on the same machine. At 128 clients,
-the in-process path reached 49,576 ops/s, above a raw two-read program at
-45,400, because the revision cache removes the second read. The cgo calls into
-the FDB client are part of the floor: a raw Go client makes the same calls.
+On my laptop (Apple M3 Max, FDB 7.3.51, 32 concurrent clients), a raw Go
+program that reads the same two keys per transaction ran 39,338 ops/s. fdyno's
+`GetItem` called in process, with no HTTP, SigV4, or JSON, ran 34,133 ops/s:
+87% of raw. The full API path ran about 20,000 ops/s. Most of the gap is HTTP,
+signing, JSON, and an SDK client on the same machine.
 
 ## How big can one write be
 
@@ -743,87 +684,48 @@ $$
 
 So a valid DynamoDB item can be too large to write in fdyno. Two stream images
 make the limit lower. fdyno returns a `ValidationException` for such a write
-and commits nothing. Project only the attributes a query needs. On a normal
-table with small items this limit is far away: a 1 KiB item with three indexes
-and both stream images is about 6 KiB per write.
+and commits nothing. On a normal table with small items this limit is far
+away: a 1 KiB item with three indexes and both stream images is about 6 KiB
+per write.
 
 # What DynamoDB does better
 
-DynamoDB is a managed service with more than ten years of production use. Much
-of its value is outside the API that fdyno copies:
+Much of DynamoDB's value is outside the API that fdyno copies:
 
-- **Reliability you do not have to build.** fdyno gets its reliability from
-  how you run FDB: `triple` mode across enough machines, coordinators in
+- **Reliability you do not have to build.** fdyno is as reliable as the FDB
+  cluster you run: `triple` mode across enough machines, coordinators in
   separate failure domains, backups to another place, and monitoring. With
   DynamoDB, AWS does that work.
-- **Scale without planning.** DynamoDB splits partitions and adds capacity for
-  you. An fdyno deployment is as large as the FDB cluster you build.
-- **Global tables.** Multi-Region tables are a feature you turn on. fdyno has
-  one FDB cluster as its consistency domain.
-- **Point-in-time recovery** for 35 days. fdyno rejects it, because it keeps
-  no history.
+- **No pause on failure.** A DynamoDB partition keeps writing while two of
+  three replicas are healthy. FDB pauses commits for its recovery, usually a
+  few seconds.
+- **Global tables and point-in-time recovery.** fdyno has one FDB cluster as
+  its consistency domain, keeps no history, and rejects point-in-time restore.
 - **IAM, KMS, VPC endpoints, CloudWatch.** fdyno checks SigV4 against static
   keys. Every valid key can read every table.
 - **Cheaper eventual reads.** DynamoDB charges half for an eventually
-  consistent read. fdyno has only one read path.
-- **Integrations** such as Lambda triggers on streams, S3 export and import,
-  and Kinesis.
+  consistent read. fdyno has one read path.
 
-If any of these matter, use DynamoDB.
-
-# Limitations
-
-- Not production ready. No external review, no Jepsen run, and no multi-host
-  failure test yet.
-- No published capacity number for the current code.
-- Authentication is static SigV4 keys. There is no IAM, no per-table access,
-  and no built-in TLS. Keys reload on `SIGHUP`.
-- Table backups stay in the same FDB cluster. Disaster recovery needs FDB's
-  own backup to another place.
-- A stream has a fixed number of shards (1 to 100), chosen when you enable it.
-  Shards do not split.
-- `BatchWriteItem` is not atomic, as in DynamoDB. `Query` and `Scan` pages are
-  separate snapshots.
-- The 10 GB LSI item-collection limit is not enforced.
-
-# When this fits
-
-fdyno makes sense if one of these is true:
-
-- You want the DynamoDB API and its data model on infrastructure you control,
-  for cost, data location, or to run the same code outside AWS.
-- You need a GSI query to see a write as soon as the write returns.
-- You need the stream record and the item to commit together, for example to
-  feed an outbox.
-- You already run FoundationDB, or you want to.
-
-It is the wrong choice if you want a managed service, if eventual indexes are
-fine for you, or if you depend on IAM, global tables, or point-in-time
-recovery.
+fdyno also has its own limits. It is not production ready: there is no
+external review, no Jepsen run, and no test of FDB on several hosts yet. Table
+backups stay in the same FDB cluster. A stream has a fixed number of shards,
+chosen when you enable it.
 
 # What this post added
 
-1. DynamoDB and FoundationDB store data the same way: sorted keys, split into
-   replicated ranges. A DynamoDB item collection is an FDB key prefix.
-2. A schema designed for its access patterns turns each request into one
-   point read or one range read. Ten items from one `Query` returned about 5.9
-   times more items per second than `GetItem`.
-3. fdyno does not hash partition keys, so a partition key that only grows
+1. DynamoDB and FoundationDB both split a sorted key space into replicated
+   ranges. A DynamoDB item collection is an FDB key prefix.
+2. FDB survives f failures with f + 1 copies, because it recovers instead of
+   using a quorum. The cost is a short pause while it recovers.
+3. Keys designed for the access patterns turn each request into one point read
+   or one range read. A ten-item `Query` returned about 5.9 times more items
+   per second than `GetItem`.
+4. fdyno does not hash partition keys, so a partition key that only grows
    sends every write to one shard.
-4. FDB provides the storage half of DynamoDB's reliability: replicated
-   commits, automatic recovery, and range splitting. fdyno provides the API
-   half.
-5. A DynamoDB write maps to one FoundationDB transaction whose write set holds
-   the item, the changed index entries, the stream record, and a retry receipt.
-6. MVCC makes a cache keyed by (key, read version) always correct. That
-   removes one storage read from every request.
-7. FDB's retry loop is unsafe for non-idempotent writes after
-   `commit_unknown_result`. A receipt in the same commit fixes this inside one
-   request, and `ClientRequestToken` fixes it across requests.
-8. Work that spans many transactions uses a job record, a cursor, and a
-   lease with an epoch key, so a stale owner's commit conflicts.
-9. Synchronous indexes and streams have a size limit: a maximum DynamoDB item
-   with all indexes projecting `ALL` does not fit in one FDB transaction.
+5. One DynamoDB write is one FDB transaction that holds the item, its changed
+   index entries, its stream record, and a retry receipt.
+6. After `commit_unknown_result`, a receipt in the same commit stops a retry
+   from applying a write twice.
 
 FoundationDB does the hard part: replicated, atomic commits across any keys.
 fdyno's work is to keep the DynamoDB API exact and to decide which keys go
@@ -831,21 +733,17 @@ into each commit.
 
 ---
 
+[^dynamo]: [Dynamo: Amazon's Highly Available Key-value Store (SOSP 2007)](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf)
+[^ddb-paper]: [Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service (USENIX ATC 2022)](https://www.usenix.org/conference/atc22/presentation/elhemali)
 [^fdb-paper]: [FoundationDB: A Distributed Unbundled Transactional Key Value Store (SIGMOD 2021)](https://www.foundationdb.org/files/fdb-paper.pdf)
 [^fdb-errors]: [FoundationDB error codes](https://apple.github.io/foundationdb/api-error-codes.html)
-[^ddb-paper]: [Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service (USENIX ATC 2022)](https://www.usenix.org/conference/atc22/presentation/elhemali)
-[^fdb-config]: [FoundationDB configuration: redundancy modes](https://apple.github.io/foundationdb/configuration.html)
-[^record-layer]: [FoundationDB Record Layer (SIGMOD 2019)](https://www.foundationdb.org/files/record-layer-paper.pdf), which describes its use in CloudKit.
-[^ddb-local]: [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html)
-[^alternator]: [ScyllaDB Alternator tests](https://github.com/scylladb/scylladb/tree/master/test/alternator)
-[^extenddb]: [ExtendDB](https://extenddb.org)
 [^gsi]: [DynamoDB global secondary indexes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.html)
-[^streams]: [DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html)
+[^fdb-limits]: [FoundationDB known limitations](https://apple.github.io/foundationdb/known-limitations.html)
 [^nosql-design]: [DynamoDB: NoSQL design](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-general-nosql-design.html)
 [^rcu]: [DynamoDB read and write operations](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html)
-[^partitions]: [DynamoDB partition key design](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html)
-[^fdb-limits]: [FoundationDB known limitations](https://apple.github.io/foundationdb/known-limitations.html)
+[^alternator]: [ScyllaDB Alternator tests](https://github.com/scylladb/scylladb/tree/master/test/alternator)
 [^nubo]: [nubo-db/dynamodb-conformance](https://github.com/nubo-db/dynamodb-conformance)
+[^extenddb]: [ExtendDB](https://extenddb.org)
 
 _DynamoDB® is a trademark of Amazon Web Services. FoundationDB® is a trademark
 of Apple Inc. fdyno is an independent project. It is not affiliated with,
