@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" font-family="ui-monospace,Menlo,monospace" font-size="12">
+<rect width="640" height="230" fill="#fbfbf8"/>
+<text x="16" y="24" font-weight="700">ADD n 1, n = 5, the first commit reached the logs, the reply was lost</text>
+<rect x="10" y="40" width="300" height="120" fill="none" stroke="#222"/>
+<text x="20" y="60" font-weight="700">Attempt 1</text>
+<text x="20" y="82">read n = 5, write n = 6</text>
+<text x="20" y="100">write receipt 7f3c…e1</text>
+<text x="20" y="118" fill="#b3261e">commit → reply lost (1021)</text>
+<text x="20" y="136">committed</text>
+<rect x="330" y="40" width="300" height="120" fill="none" stroke="#222"/>
+<text x="340" y="60" font-weight="700">Attempt 2</text>
+<text x="340" y="82">no receipt:   read 6, write 7</text>
+<text x="340" y="100" fill="#b3261e">→ applied twice</text>
+<text x="340" y="124">with receipt: found,</text>
+<text x="340" y="142" fill="#1e7a46">→ return n = 6, write nothing</text>
+<text x="16" y="200" fill="#555">The receipt commits in the same transaction as the item.</text>
+</svg>

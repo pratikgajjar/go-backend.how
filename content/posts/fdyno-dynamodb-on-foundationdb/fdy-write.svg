@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" font-family="ui-monospace,Menlo,monospace" font-size="12">
+<rect width="640" height="300" fill="#fbfbf8"/>
+<text x="16" y="24" font-weight="700">One UpdateItem = one FDB transaction (read version V, commit version V')</text>
+<text x="16" y="54">read   Shop/mr                                  schema revision</text>
+<text x="16" y="74">read   Shop/i/CUST#42/ORDER#2026-10-17#9        status = OPEN</text>
+<text x="16" y="94">set    Shop/i/CUST#42/ORDER#2026-10-17#9        status = PAID</text>
+<text x="16" y="114">clear  Shop/x/ByStatus/OPEN/1792229400/CUST#42/ORDER#2026-10-17#9</text>
+<text x="16" y="134">set    Shop/x/ByStatus/PAID/1792229400/CUST#42/ORDER#2026-10-17#9</text>
+<text x="16" y="154">set    Shop/v/&lt;versionstamp&gt;                     MODIFY, old + new image</text>
+<text x="16" y="174">set    receipts/m/&lt;operation id&gt;               typed result</text>
+<text x="16" y="194">set    receipts/x/&lt;minute&gt;/&lt;operation id&gt;      expiry index</text>
+<rect x="10" y="212" width="620" height="28" fill="#dff3e6" stroke="#1e7a46"/>
+<text x="16" y="231" fill="#1e7a46" font-weight="700">commit: resolvers check the reads, logs fsync, all of it visible at V' or none</text>
+<text x="16" y="270" fill="#555">Sample versions and IDs.</text>
+</svg>

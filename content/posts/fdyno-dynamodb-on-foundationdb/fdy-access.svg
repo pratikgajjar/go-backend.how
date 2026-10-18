@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" font-family="ui-monospace,Menlo,monospace" font-size="12">
+<rect width="640" height="300" fill="#fbfbf8"/>
+<text x="16" y="24" font-weight="700">FoundationDB: one sorted key space (pattern B: last orders of CUST#42)</text>
+<g>
+<text x="16" y="54">Shop/i/CUST#41/PROFILE</text>
+<rect x="10" y="64" width="420" height="20" fill="#ece0f7" stroke="#6b2fa0"/><text x="16" y="78">Shop/i/CUST#42/ORDER#2026-09-12#3   3</text>
+<rect x="10" y="86" width="420" height="20" fill="#ece0f7" stroke="#6b2fa0"/><text x="16" y="100">Shop/i/CUST#42/ORDER#2026-10-01#7   2</text>
+<rect x="10" y="108" width="420" height="20" fill="#ece0f7" stroke="#6b2fa0"/><text x="16" y="122">Shop/i/CUST#42/ORDER#2026-10-17#9   1</text>
+<text x="16" y="144">Shop/i/CUST#42/PROFILE</text>
+<text x="16" y="164">Shop/i/CUST#43/ORDER#2026-10-05#8</text>
+<text x="16" y="184">Shop/i/CUST#43/PROFILE</text>
+<text x="16" y="204">Shop/i/ORDER#9/LINE#1</text>
+<text x="16" y="224">Shop/i/ORDER#9/LINE#2</text>
+<text x="16" y="244">Shop/x/ByStatus/OPEN/1790847000/CUST#42/ORDER#2026-10-01#7</text>
+<text x="16" y="264">Shop/x/ByStatus/OPEN/1792229400/CUST#42/ORDER#2026-10-17#9</text>
+</g>
+<text x="450" y="100" fill="#6b2fa0" font-weight="700">one reverse</text>
+<text x="450" y="116" fill="#6b2fa0" font-weight="700">range read</text>
+<text x="16" y="290" fill="#555">Numbers show read order. Sample data.</text>
+</svg>

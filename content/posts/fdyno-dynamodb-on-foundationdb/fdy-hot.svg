@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" font-family="ui-monospace,Menlo,monospace" font-size="12">
+<rect width="640" height="220" fill="#fbfbf8"/>
+<text x="16" y="24" font-weight="700">24 new writes with pk = order time</text>
+<text x="16" y="52">fdyno, by key range</text>
+<text x="16" y="76">shard 1</text><rect x="120" y="66" width="300" height="12" fill="none" stroke="#bbb"/><text x="430" y="76">0</text>
+<text x="16" y="96">shard 2</text><rect x="120" y="86" width="300" height="12" fill="none" stroke="#bbb"/><text x="430" y="96">0</text>
+<text x="16" y="116">shard 3</text><rect x="120" y="106" width="300" height="12" fill="none" stroke="#bbb"/><text x="430" y="116">0</text>
+<text x="16" y="136" fill="#b3261e">shard 4</text><rect x="120" y="126" width="300" height="12" fill="#b3261e"/><text x="430" y="136" fill="#b3261e" font-weight="700">24</text>
+<text x="16" y="170">DynamoDB, by hash of pk: the same 24 keys spread over all partitions.</text>
+<text x="16" y="200" fill="#555">A key that only grows always lands in the last shard, even after splits.</text>
+</svg>

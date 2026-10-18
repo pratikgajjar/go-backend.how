@@ -1,0 +1,63 @@
+/* fdyno-dynamodb-on-foundationdb: layout and drawing only.
+ * Frame, type, controls and colours come from walviz.css. */
+
+/* labelled chip rows */
+.v-fdy-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.7rem; }
+.v-fdy-row .wv-chips { margin-bottom: 0.45rem; }
+.v-fdy-lab { font-size: 11.5px; min-width: 9.5em; }
+.v-fdy-ctl { margin: 0.4rem 0 0.6rem; }
+
+/* fdy-access: two stores side by side, stacked on phones */
+.v-fdy-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; margin: 0.8rem 0; }
+@media (min-width: 900px) { .v-fdy-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.v-fdy-panel h5, .v-fdy-bg h5 { margin: 0 0 0.45rem; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; display: flex; flex-wrap: wrap; gap: 0.2rem 0.7rem; align-items: baseline; }
+.v-fdy-panel h5 span, .v-fdy-bg h5 span { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--mute); }
+.v-fdy-grp { border: 1.25px dashed var(--line); padding: 0.3rem 0.4rem 0.35rem; margin-bottom: 0.45rem; }
+.v-fdy-grp.is-hot { border-color: var(--ink); border-style: dashed; }
+.v-fdy-gh { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.2rem; }
+.v-fdy-sub { font-size: 11px; color: var(--mute); margin: 0.55rem 0 0.35rem; }
+.v-fdy-key { display: grid; grid-template-columns: 1.4em minmax(0, 1fr) auto; gap: 0 0.5rem; align-items: baseline; font-size: 11.5px; padding: 0.12rem 0.3rem; border-left: 3px solid transparent; transition: background-color 0.25s; }
+.v-fdy-k { overflow-wrap: anywhere; }
+.v-fdy-a { font-size: 10.5px; color: var(--mute); white-space: nowrap; }
+.v-fdy-n { font-size: 10.5px; font-weight: 800; text-align: right; }
+.v-fdy-key.is-read { background: var(--purple-l); border-left-color: var(--purple); }
+.v-fdy-key.is-read .v-fdy-n { color: var(--purple); }
+.v-fdy-key.is-waste { background: var(--red-l); border-left-color: var(--red); }
+.v-fdy-key.is-waste .v-fdy-n { color: var(--red); }
+@media (max-width: 520px) { .v-fdy-key { grid-template-columns: 1.4em minmax(0, 1fr); } .v-fdy-a { grid-column: 2; } }
+
+/* fdy-hot: bar groups */
+.v-fdy-bars { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin: 0.6rem 0 0.8rem; }
+@media (min-width: 900px) { .v-fdy-bars { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+.v-fdy-bar { display: grid; grid-template-columns: minmax(0, 19em) minmax(0, 1fr) 2.2em; gap: 0.5rem; align-items: center; font-size: 11.5px; margin-bottom: 0.3rem; }
+.v-fdy-bl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v-fdy-bt { height: 12px; border: 1px solid var(--line); background: var(--board); }
+.v-fdy-bt i { display: block; height: 100%; background: var(--ink); transition: width 0.35s ease; }
+.v-fdy-bc { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.v-fdy-bar.is-hot .v-fdy-bt { border-color: var(--red); }
+.v-fdy-bar.is-hot .v-fdy-bt i { background: var(--red); }
+.v-fdy-bar.is-hot .v-fdy-bc { color: var(--red); }
+@media (max-width: 520px) { .v-fdy-bar { grid-template-columns: minmax(0, 1fr) 2.2em; } .v-fdy-bl { grid-column: 1 / -1; } }
+.v-fdy-keys { font-size: 11px; color: var(--mute); overflow-wrap: anywhere; margin-top: 0.3rem; }
+
+/* fdy-write: diagram, notes, write set */
+.wv .v-fdy-disk { fill: var(--board); stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; }
+.wv .edge.v-fdy-on { stroke: var(--purple); stroke-width: 2.2; }
+.v-fdy-fail { font-size: 12px; margin: 0.45rem 0 0.2rem; padding-left: 0.6rem; border-left: 3px solid var(--line); }
+.v-fdy-wsh { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; margin: 0.8rem 0 0.3rem; }
+.v-fdy-ws { border-top: 1.25px solid var(--ink); }
+.v-fdy-wr { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 0.05rem 0.5rem; font-size: 11.5px; padding: 0.28rem 0.35rem; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; }
+.v-fdy-op { font-weight: 800; }
+.v-fdy-tk { overflow-wrap: anywhere; }
+.v-fdy-wv { grid-column: 2; color: var(--mute); }
+.v-fdy-wv b { color: var(--ink); font-weight: 700; }
+.v-fdy-wr.v-fdy-new { background: var(--purple-l); border-left-color: var(--purple); }
+.v-fdy-wr.is-held { border-left-color: var(--green); }
+.v-fdy-wr.is-held .v-fdy-wv b { color: var(--green); }
+
+/* fdy-retry: two attempts */
+.v-fdy-att { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.7rem; margin: 0.4rem 0 0.7rem; }
+@media (min-width: 700px) { .v-fdy-att { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.v-fdy-ul { list-style: none; margin: 0; padding: 0; font-size: 12px; line-height: 1.5; display: grid; gap: 0.2rem; }
+.v-fdy-ul li { padding-left: 1em; text-indent: -1em; }
+.v-fdy-ul li::before { content: "· "; }
