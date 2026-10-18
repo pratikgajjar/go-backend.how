@@ -489,6 +489,30 @@ ul ul {
 /* Code block mobile styles handled in the 820px media query below */
 
 .mermaid {
+    --pele-bg: oklch(18% 0.01 250);
+    --pele-fg: oklch(95% 0 0);
+    --pele-muted: oklch(72% 0.015 250);
+    --pele-line: oklch(68% 0.02 250);
+    --pele-surface: oklch(24% 0.015 250);
+    --pele-surface-alt: oklch(29% 0.02 250);
+    --pele-border: oklch(55% 0.02 250);
+    --pele-accent: oklch(75% 0.14 220);
+    --pele-critical: oklch(76% 0.16 70);
+    --pele-error: oklch(70% 0.2 25);
+    --pele-font: "JetBrains Mono", monospace;
+    --pele-font-mono: "JetBrains Mono", monospace;
+    --pele-title-weight: 700;
+    --pele-heading-weight: 600;
+    --pele-bold-weight: 700;
+    --pele-radius: 4px;
+    --pele-series-1: oklch(75% 0.14 220);
+    --pele-series-2: oklch(75% 0.15 145);
+    --pele-series-3: oklch(80% 0.15 85);
+    --pele-series-4: oklch(72% 0.17 25);
+    --pele-series-5: oklch(72% 0.16 320);
+    --pele-series-6: oklch(76% 0.12 185);
+    --pele-series-7: oklch(72% 0.12 270);
+    --pele-series-8: oklch(78% 0.12 55);
     max-width: 100%;
     overflow-x: auto;
     box-sizing: border-box;
@@ -498,15 +522,9 @@ ul ul {
     margin: 1.5em 0;
 }
 
-/* Mermaid renders edge/node labels via <foreignObject><div><span><p>;
-   force a high-contrast backdrop and text color against the dark
-   .mermaid container (axe-core flags low contrast on the auto-styled
-   span.edgeLabel labels). */
-.mermaid foreignObject .labelBkg,
-.mermaid foreignObject .edgeLabel,
-.mermaid foreignObject .edgeLabel p {
-    color: oklch(95% 0 0);
-    background-color: oklch(18% 0.01 250);
+.mermaid > svg {
+    display: block;
+    margin-inline: auto;
 }
 
 .highlight pre code {

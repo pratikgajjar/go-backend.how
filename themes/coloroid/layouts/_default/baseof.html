@@ -14,7 +14,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {{- if $theme }}
-    <script>if(localStorage.getItem('backend-theme')==='dark')document.documentElement.setAttribute('data-force-dark','');</script>
+    <script nonce="mermaid">if(localStorage.getItem('backend-theme')==='dark')document.documentElement.setAttribute('data-force-dark','');</script>
     {{- /* Inline only the active theme's CSS variables. The full 51-theme
            palette would be ~10 KB of dead bytes for any page that uses
            a single theme; loading them on demand keeps main.css lean. */ -}}
@@ -66,13 +66,19 @@
     </main>
     {{ if .Store.Get "hasMermaid" }}
     <script nonce="mermaid" type="module" defer>
-    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs';
-    mermaid.initialize({ 
-      startOnLoad: true, 
-      theme: 'dark',
-      themeVariables: {
-        fontFamily: "JetBrains Mono",
-        fontSize: "16px",
+    import { render } from 'https://cdn.jsdelivr.net/npm/pele@1.6.0/dist/pele.js';
+
+    document.querySelectorAll('pre.mermaid').forEach((diagram, index) => {
+      try {
+        const { svg } = render(diagram.textContent, {
+          fontFamily: 'JetBrains Mono',
+          fontFamilyMono: 'JetBrains Mono',
+          fontSize: 16,
+          idPrefix: `pele-${index}`,
+        });
+        diagram.innerHTML = svg;
+      } catch (error) {
+        console.error('Unable to render Mermaid diagram with Pele:', error);
       }
     });
     </script>
