@@ -41,8 +41,16 @@
 .v-fdy-keys { font-size: 11px; color: var(--mute); overflow-wrap: anywhere; margin-top: 0.3rem; }
 
 /* fdy-write: diagram, notes, write set */
-.wv .v-fdy-disk { fill: var(--board); stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; }
-.wv .edge.v-fdy-on { stroke: var(--purple); stroke-width: 2.2; }
+.v-fdy-seqd { margin: 0.2rem 0 0.6rem; }
+.wv .v-fdy-life { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+.wv .v-fdy-arrow { stroke: var(--ink); stroke-width: 1.4; }
+.wv .v-fdy-arrow.is-ret { stroke-dasharray: 5 3; }
+.wv .v-fdy-act { fill: var(--board); stroke: var(--ink); stroke-width: 1.2; }
+.wv .v-fdy-msg { transition: opacity 0.25s; }
+.wv .v-fdy-msg.is-hidden { opacity: 0; }
+.wv .v-fdy-msg.is-now .v-fdy-arrow { stroke: var(--purple); stroke-width: 2.2; }
+.wv .v-fdy-msg.is-now .v-fdy-act { fill: var(--purple-l); stroke: var(--purple); }
+.wv .v-fdy-msg.is-now text { font-weight: 800; }
 .v-fdy-fail { font-size: 12px; margin: 0.45rem 0 0.2rem; padding-left: 0.6rem; border-left: 3px solid var(--line); }
 .v-fdy-wsh { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; margin: 0.8rem 0 0.3rem; }
 .v-fdy-ws { border-top: 1.25px solid var(--ink); }
@@ -54,6 +62,7 @@
 .v-fdy-wr.v-fdy-new { background: var(--purple-l); border-left-color: var(--purple); }
 .v-fdy-wr.is-held { border-left-color: var(--green); }
 .v-fdy-wr.is-held .v-fdy-wv b { color: var(--green); }
+.v-fdy-wr.v-fdy-pend { opacity: 0.35; }
 
 /* fdy-retry: two attempts */
 .v-fdy-att { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.7rem; margin: 0.4rem 0 0.7rem; }

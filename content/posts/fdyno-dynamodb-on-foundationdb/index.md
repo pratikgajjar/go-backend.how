@@ -5,7 +5,7 @@ lastmod: 2026-10-18T10:30:00+05:30
 description: "The goal: DynamoDB-level reliability on self-hosted infrastructure. How fdyno maps DynamoDB's data model, reads, writes, and retries onto FoundationDB transactions."
 tags: ["foundationdb", "dynamodb", "golang", "system-design", "distributed-systems"]
 images: ["og-5535ee72.png"]
-draft: false
+draft: true
 theme: "honey"
 featured: false
 math: true
@@ -27,15 +27,9 @@ By the end of this post you will know:
 - what a change stream looks like when its sequence number is the commit
   version.
 
-fdyno routes **61** DynamoDB actions: items, expressions, `Query`/`Scan`, GSIs
-and LSIs, batches, transactions, a PartiQL subset, Streams, TTL, and on-demand
-backups. The source is private. The documentation is public at
-[fdyno.backend.how](https://fdyno.backend.how/). fdyno is not production
-ready.
-
 # Terms
 
-If you know FoundationDB and DynamoDB, skip to [the comparison](#dynamo-dynamodb-and-foundationdb).
+If you know FoundationDB and DynamoDB, skip to [the comparison](#dynamodb-and-foundationdb).
 
 - **Partition key, sort key**: a DynamoDB primary key. All items with the same
   partition key form an **item collection**, stored in sort-key order.
@@ -54,31 +48,22 @@ If you know FoundationDB and DynamoDB, skip to [the comparison](#dynamo-dynamodb
 - **Versionstamp**: a 10-byte value that FDB fills in at commit time from the
   commit version. A key that contains it sorts in commit order.
 
-# Dynamo, DynamoDB, and FoundationDB
+# DynamoDB and FoundationDB
 
-DynamoDB is not the Dynamo of the 2007 paper[^dynamo]. Dynamo had no leader:
-any of N replicas could accept a write, a "sloppy" quorum kept writes
-available during failures, and vector clocks let the application merge
-conflicting versions of an item. It updated one key at a time, with no
-isolation. DynamoDB kept Dynamo's hash partitioning and its incremental
-scaling, and replaced the rest. Each partition has a leader chosen by
-Multi-Paxos, reads can be strongly consistent, and transactions are
-ACID[^ddb-paper]. The reliability fdyno aims for is DynamoDB's.
+This is how each system stores and protects a write, from the DynamoDB paper
+(2022) and the FoundationDB paper (2021)[^ddb-paper][^fdb-paper].
 
-The table below compares how each system stores and protects a write. It is
-taken from the three papers[^dynamo][^ddb-paper][^fdb-paper].
+| | DynamoDB | FoundationDB |
+|---|---|---|
+| Data split by | contiguous ranges of hash(pk), then sk | contiguous ranges of the key bytes |
+| Copies | 3, one per Availability Zone | f + 1: 2 in `double` mode, 3 in `triple` |
+| Write acknowledged after | the partition leader and a quorum (2 of 3) persist the log record | all f + 1 log servers persist the log record |
+| When a replica fails | the quorum still works; the leader adds a log replica | the transaction system recovers with new processes, usually in under five seconds |
+| Concurrent writes | the partition leader orders them | resolvers reject the later conflicting transaction; it runs again |
+| Atomic multi-key writes | transactions of up to 100 items | any keys in one transaction |
+| Reads | strong or eventual | strictly serializable |
 
-| | Dynamo (2007) | DynamoDB (2022) | FoundationDB (2021) |
-|---|---|---|---|
-| Data split by | consistent-hashing ring with virtual nodes | contiguous ranges of hash(pk), then sk | contiguous ranges of the key bytes |
-| Copies | N per key, usually 3 | 3, one per Availability Zone | f + 1: 2 in `double` mode, 3 in `triple` |
-| Write acknowledged after | W replicas (usually 2), possibly stand-ins | the leader and a quorum (2 of 3) persist the log record | all f + 1 log servers persist the log record |
-| When a replica fails | another node takes the write and hands it back later | the quorum still works; the leader adds a log replica | the transaction system recovers with new processes, usually in under five seconds |
-| Concurrent writes | vector clocks; the application merges | the partition leader orders them | resolvers reject the later conflicting transaction; it runs again |
-| Atomic multi-key writes | none | transactions of up to 100 items | any keys in one transaction |
-| Reads | eventually consistent | strong or eventual | strictly serializable |
-
-Two points from this table matter for fdyno.
+Two rows matter most for fdyno.
 
 First, FDB keeps f + 1 copies to survive f failures, where a quorum system
 needs 2f + 1. It can do that because it does not mask a failure with a
@@ -425,12 +410,9 @@ retry conflicts and runs again. Figure 4 lets you try each case.
 
 {{< viz kind="fdy-retry" fig="4" title="A lost reply, then a retry" fallback="fdy-retry.svg" alt="Predict the value of n after a lost commit reply and a retry without a receipt, then choose the operation, whether the first commit reached the logs, and whether receipts are on, and see both attempts and the final item" caption="The item starts with n = 5 and status = OPEN. One HTTP request; fdyno retries inside it." >}}
 
-Receipts expire after at least an hour. Each receipt also writes an expiry
-index entry, `receipts/x/<minute>/<id>`, in the same transaction. A cleanup
-job drains that index in small transactions, up to about 833 receipts per
-second with the default settings.
-
-FDB 7.3 has an automatic idempotency option for this problem. The Go binding
+Receipts expire after at least an hour. Each one also writes an expiry index
+entry, so a cleanup job can find old receipts without scanning them all. FDB
+7.3 has an automatic idempotency option for this problem, but the Go binding
 marks it experimental, so fdyno does not use it.
 
 ## What receipts do not cover
@@ -464,8 +446,8 @@ stream record, and a receipt. Readers see all of it or none of it. A lost
 commit reply is resolved by the receipt inside one request, and by
 `ClientRequestToken` across requests.
 
-The rest of the post covers change streams, the work that does not fit in one
-transaction, the API details, and how all of it is tested.
+The rest of the post covers change streams, work that spans many
+transactions, error mapping, tests, and performance.
 
 # Change streams
 
@@ -605,65 +587,31 @@ read. If another process takes the lease, the epoch changes, and the old
 owner's next commit conflicts and stops. Two processes never apply the same
 job step.
 
-# Matching DynamoDB, one error at a time
+# Mapping FDB errors to DynamoDB errors
 
-A DynamoDB client depends on more than the happy path. It depends on error
-codes, error messages, the order of validation, number formats, and return
-shapes. Most of fdyno's code is in this layer, not in storage.
+A DynamoDB client decides whether to retry from the error it gets, so each FDB
+error must become the DynamoDB error with the same retry meaning:
 
-- **Validation order.** `UpdateItem` runs about twenty checks before it opens
-  a transaction, and their order decides which error the client sees. For
-  example, `a IN ()` must return a syntax error, not an unused-value error.
-- **Numbers.** Numbers are decimal strings with up to 38 significant digits.
-  `ADD` adds them as decimal strings, not as `float64`. `-0` and `0.0` read
-  back as `0`.
-- **Reserved words.** The parser knows DynamoDB's 567 reserved words. A
-  reserved word in an expression without a `#name` alias fails with
-  DynamoDB's message.
-- **Return values.** `PutItem` and `DeleteItem` accept `ReturnValues` of
-  `NONE` and `ALL_OLD`. `UpdateItem` accepts five values. Each has its own
-  error path.
-- **FDB errors.** A conflict (`1020`) is retried inside fdyno and never
-  reaches the client. A transaction that is too large (`2101`), or a key or
-  value that is too large, becomes a `ValidationException`, because a retry
-  would fail the same way. A deadline after a commit attempt becomes
-  `InternalServerError` with HTTP 500.
-
-Three external suites check this layer. Each starts fdyno against a fresh
-FoundationDB and sends requests through an AWS SDK:
-
-| Suite | Client | Result |
+| FDB result | What the client gets | Why |
 |---|---|---|
-| ScyllaDB Alternator[^alternator] | boto3 / pytest | 1,452 passed, 34 deselected |
-| nubo-db[^nubo] | AWS SDK for JavaScript v3 / Vitest | 698 passed, 1 skipped |
-| ExtendDB[^extenddb] | boto3 / pytest | 876 passed, 2 skipped, 186 deselected, 1 expected failure |
+| Conflict, `1020` | Nothing; fdyno runs the transaction again | The conflict is internal to fdyno |
+| `commit_unknown_result`, `1021` | Nothing, if the receipt resolves it | See [receipts](#receipts) |
+| Transaction, key, or value too large (`2101`–`2103`) | `ValidationException`, HTTP 400 | A retry would fail the same way |
+| Deadline reached after a commit attempt | `InternalServerError`, HTTP 500, "outcome may be unknown" | SDKs retry 500s; the client must check the retry is safe |
 
-The three suites select different cases, so their counts do not add up to one
-percentage. Most deselections are features fdyno does not implement on
-purpose. For example, the Alternator cases that expect point-in-time recovery
-to work are deselected, because fdyno rejects it. The nubo-db skip needs AWS
-accounts. Most ExtendDB deselections test ExtendDB's own management features.
-When two suites disagree, the case that was checked against AWS wins.
+The rest of the API layer follows DynamoDB in detail: the order of validation
+checks, decimal numbers with 38 digits, reserved words, and return values.
+Three external test suites, ScyllaDB Alternator[^alternator],
+nubo-db[^nubo], and ExtendDB[^extenddb], check it through AWS SDKs.
 
 # Testing under failure
 
-The suites above send one request and check one response. Reliability depends
-on histories: many requests, several processes, and faults in between. Three
-tests check those, and all three run in CI.
-
-**The two-instance fault test** runs two fdyno processes on one FDB. It runs
-conditional creates and tokened account transfers. It drops one HTTP response
-after the server returned 200, then sends the same request through the other
-instance. It kills one fdyno process with `SIGKILL` and restarts it. It stops
-and restarts FoundationDB. A checker then requires one winner per conditional
-create, conserved balances, and exactly one effect for the dropped request.
-The checker is also run against broken histories, to prove that it can fail.
-
-**The replicated kill test** runs a five-process FoundationDB cluster on one
-host with `double` redundancy and three coordinators. Two fdyno instances run
-transfers and racing creates. Under that load, the script kills a storage
-process, then the transaction-log process, then one fdyno process, and waits
-for full recovery after each step. In the last CI run:
+Reliability depends on histories: many requests, several processes, and
+faults in between. The main test runs a five-process FoundationDB cluster on
+one host with `double` redundancy. Two fdyno instances run tokened money
+transfers and racing conditional creates. Under that load, the test kills a
+storage process, then the transaction-log process, then one fdyno process. In
+the last run:
 
 - 8,446 transfers: 8,423 acknowledged, 23 ambiguous, 29 failed their
   condition;
@@ -672,16 +620,10 @@ for full recovery after each step. In the last CI run:
 - 1,907 conditional-create keys, each with exactly one winner;
 - recovery took 75.6 s after the storage kill and 12.5 s after the log kill.
 
-**The DDL-under-traffic test** has instance A change the schema while
-instance B serves about 300 mixed operations per second. A adds a GSI, deletes
-it, enables a stream, disables and re-enables it, enables TTL, and recreates
-the table with a different key. After each step, B's reads and a full scan must
-match the expected state. The last run passed all six steps over 5,682
-operations. The test also runs against five builds with bugs added on purpose,
-one of which keeps stale schema in its cache, and catches each one.
-
-These tests do not cover a network partition between fdyno and FDB, FDB on
-several hosts, or a broad history checked by Jepsen or Elle.
+Two smaller tests drop an HTTP response after the commit, and change the schema
+while another fdyno process serves traffic. None of the tests covers a network
+partition between fdyno and FDB, FDB on several hosts, or a history checked by
+Jepsen.
 
 # Performance
 
@@ -779,21 +721,17 @@ chosen when you enable it.
 # What this post added
 
 1. DynamoDB and FoundationDB both split a sorted key space into replicated
-   ranges. A DynamoDB item collection is an FDB key prefix.
-2. FDB survives f failures with f + 1 copies, because it recovers instead of
-   using a quorum. The cost is a short pause while it recovers.
-3. Keys designed for the access patterns turn each request into one point read
-   or one range read. A ten-item `Query` returned about 5.9 times more items
-   per second than `GetItem`.
-4. fdyno does not hash partition keys, so a partition key that only grows
-   sends every write to one shard.
-5. One DynamoDB write is one FDB transaction that holds the item, its changed
-   index entries, its stream record, and a retry receipt.
-6. After `commit_unknown_result`, a receipt in the same commit stops a retry
-   from applying a write twice.
-7. A stream record is one more key in the write set. Its sequence number is
-   the commit versionstamp, so each shard is in commit order, and a split
-   keeps that order with a versionstamped boundary.
+   ranges, so a DynamoDB item collection is one FDB key prefix and a `Query`
+   is one range read.
+2. Keys that follow the access patterns make every request a point read or a
+   range read. Do not use a partition key that only grows: fdyno does not hash
+   it.
+3. One DynamoDB write is one FDB transaction that holds the item, its index
+   changes, its stream record, and a retry receipt.
+4. The receipt stops a retry after `commit_unknown_result` from applying a
+   write twice.
+5. A stream's sequence number is the commit versionstamp, so each shard is in
+   commit order without a clock or a counter.
 
 FoundationDB does the hard part: replicated, atomic commits across any keys.
 fdyno's work is to keep the DynamoDB API exact and to decide which keys go
@@ -801,7 +739,6 @@ into each commit.
 
 ---
 
-[^dynamo]: [Dynamo: Amazon's Highly Available Key-value Store (SOSP 2007)](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf)
 [^ddb-paper]: [Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service (USENIX ATC 2022)](https://www.usenix.org/conference/atc22/presentation/elhemali)
 [^fdb-paper]: [FoundationDB: A Distributed Unbundled Transactional Key Value Store (SIGMOD 2021)](https://www.foundationdb.org/files/fdb-paper.pdf)
 [^fdb-errors]: [FoundationDB error codes](https://apple.github.io/foundationdb/api-error-codes.html)

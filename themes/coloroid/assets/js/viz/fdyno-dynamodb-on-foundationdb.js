@@ -234,150 +234,160 @@ function initHot(fig, app) {
 
 /* ================================================================= WRITE */
 
-const NODES = {
-  wide: {
-    vb: [640, 256],
-    n: {
-      fdyno: { x: 8, y: 92, w: 132, h: 64, l: ['fdyno', 'FDB client lib'] },
-      grv: { x: 236, y: 22, w: 150, h: 40, l: ['GRV proxy'] },
-      sto: { x: 470, y: 22, w: 162, h: 40, l: ['storage servers'] },
-      cp: { x: 236, y: 112, w: 150, h: 40, l: ['commit proxy'] },
-      res: { x: 470, y: 112, w: 162, h: 40, l: ['resolvers'] },
-      log: { x: 236, y: 202, w: 150, h: 46, l: ['transaction logs'], disk: true },
-    },
-    e: {
-      'f-grv': 'M140,110 L236,48',
-      'f-sto': 'M74,92 V8 H551 V22',
-      'f-cp': 'M140,132 H236',
-      'cp-res': 'M386,132 H470',
-      'cp-log': 'M311,152 V202',
-      'log-sto': 'M386,225 H600 V62',
-    },
-  },
-  tall: {
-    vb: [360, 392],
-    n: {
-      fdyno: { x: 105, y: 6, w: 150, h: 52, l: ['fdyno', 'FDB client lib'] },
-      grv: { x: 24, y: 108, w: 140, h: 40, l: ['GRV proxy'] },
-      sto: { x: 206, y: 108, w: 140, h: 40, l: ['storage servers'] },
-      cp: { x: 24, y: 222, w: 140, h: 40, l: ['commit proxy'] },
-      res: { x: 206, y: 222, w: 140, h: 40, l: ['resolvers'] },
-      log: { x: 24, y: 334, w: 140, h: 46, l: ['transaction logs'], disk: true },
-    },
-    e: {
-      'f-grv': 'M140,58 L100,108',
-      'f-sto': 'M220,58 L264,108',
-      'f-cp': 'M105,32 H10 V242 H24',
-      'cp-res': 'M164,242 H206',
-      'cp-log': 'M94,262 V334',
-      'log-sto': 'M164,368 H356 V128 H346',
-    },
-  },
-};
+/* One transaction as a sequence diagram: lanes are FDB roles, time runs down.
+   Every row is one message; a step reveals its rows. The write set below keeps
+   its layout and fills in as the steps reach each key. */
+
+const LANES = [
+  { id: 'fdy', name: 'fdyno', short: 'fdyno', sub: 'FDB client' },
+  { id: 'grv', name: 'GRV proxy', short: 'GRV' },
+  { id: 'sto', name: 'storage', short: 'storage' },
+  { id: 'cp', name: 'commit proxy', short: 'commit' },
+  { id: 'res', name: 'resolvers', short: 'resolve' },
+  { id: 'log', name: 'logs', short: 'logs', sub: 'on disk' },
+];
 
 const ITEM_KEY = 'Shop/i/CUST#42/ORDER#2026-10-17#9';
 const IDX_OLD = 'Shop/x/ByStatus/OPEN/1792229400/CUST#42/ORDER#2026-10-17#9';
 const IDX_NEW = 'Shop/x/ByStatus/PAID/1792229400/CUST#42/ORDER#2026-10-17#9';
 
+/* Messages. step = the step that reveals it. self = a note on one lane. */
+const MSGS = [
+  { step: 0, from: 'fdy', to: 'grv', text: 'get read version' },
+  { step: 0, from: 'grv', to: 'fdy', text: 'V = 8,104,220,113', ret: true },
+  { step: 1, self: 'fdy', text: 'mr at V: cached, no read; add to read set' },
+  { step: 2, from: 'fdy', to: 'sto', text: 'get item at V' },
+  { step: 2, from: 'sto', to: 'fdy', text: 'status = OPEN', ret: true },
+  { step: 3, self: 'fdy', text: 'buffer: set item, clear OPEN entry, set PAID entry' },
+  { step: 4, self: 'fdy', text: 'buffer: set stream record, set receipt + expiry entry' },
+  { step: 5, from: 'fdy', to: 'cp', text: 'commit: 6 mutations, read set {mr, item}' },
+  { step: 5, from: 'cp', to: 'res', text: "changed in (V, V']?" },
+  { step: 5, from: 'res', to: 'cp', text: 'no conflict', ret: true },
+  { step: 6, from: 'cp', to: 'log', text: "append at V' = 8,104,223,907" },
+  { step: 6, from: 'log', to: 'cp', text: 'durable on every log replica', ret: true },
+  { step: 7, from: 'cp', to: 'fdy', text: 'committed', ret: true },
+  { step: 7, from: 'log', to: 'sto', text: "pull mutations up to V'", ret: true },
+];
+
 const WROWS = [
-  { at: 1, op: 'read', key: 'Shop/mr', val: 'schema revision; matches the cached schema' },
+  { at: 1, op: 'read', key: 'Shop/mr', val: 'schema revision' },
   { at: 2, op: 'read', key: ITEM_KEY, val: 'status = OPEN' },
   { at: 3, op: 'set', key: ITEM_KEY, val: 'status = PAID' },
-  { at: 3, op: 'clear', key: IDX_OLD, val: '' },
-  { at: 3, op: 'set', key: IDX_NEW, val: 'projected item' },
-  { at: 4, op: 'set', key: 'Shop/v/⟨versionstamp, filled at commit⟩', done: "Shop/v/⟨V', #0⟩", val: 'MODIFY, old + new image' },
-  { at: 4, op: 'set', key: 'receipts/m/7f3c…e1', val: 'typed result for retries' },
-  { at: 4, op: 'set', key: 'receipts/x/29870538/7f3c…e1', val: 'expiry index entry' },
+  { at: 3, op: 'clear', key: IDX_OLD, val: 'old index entry' },
+  { at: 3, op: 'set', key: IDX_NEW, val: 'new index entry' },
+  { at: 4, op: 'set', key: 'Shop/v/⟨versionstamp⟩', done: "Shop/v/⟨V', #0⟩", val: 'MODIFY, old + new image' },
+  { at: 4, op: 'set', key: 'receipts/m/7f3c…e1', val: 'result, for retries' },
+  { at: 4, op: 'set', key: 'receipts/x/29870550/7f3c…e1', val: 'receipt expiry entry' },
 ];
 
 const WSTEPS = [
-  { label: 'Read version', nodes: ['fdyno', 'grv'], edges: ['f-grv'],
-    text: 'fdyno asks a GRV proxy for a read version. Every read in this transaction sees the database at <b>V = 8,104,220,113</b>.',
-    fail: 'If fdyno crashes now, nothing is stored. The client gets no reply and can retry.' },
-  { label: 'Schema', nodes: ['fdyno'], edges: [],
-    text: 'fdyno checks the table’s schema revision <code>mr</code> at V. Another request already read it at this exact version, so the cached value is reused and no storage read is needed. The key still joins the read set.',
-    fail: 'Nothing is stored yet. If someone changes the schema before commit, the commit conflicts.' },
-  { label: 'Old item', nodes: ['fdyno', 'sto'], edges: ['f-sto'],
-    text: 'One point read returns the current item at V: <code>status = OPEN</code>. The condition, if any, is checked on this value.',
-    fail: 'Nothing is stored yet.' },
-  { label: 'Item + index', nodes: ['fdyno'], edges: [],
-    text: 'fdyno buffers the new item. The index key <code>status</code> changed, so one GSI entry moves: clear the OPEN entry, set the PAID entry. These are local writes; nothing has left fdyno.',
-    fail: 'If fdyno crashes now, the buffer is lost and nothing is stored.' },
-  { label: 'Stream + receipt', nodes: ['fdyno'], edges: [],
-    text: 'fdyno buffers a stream record under a versionstamped key, not filled in yet, and a receipt with the result under this request’s operation ID.',
+  { label: 'Read version',
+    text: 'fdyno asks a GRV proxy for a read version. Every read in this transaction sees the database at <b>V</b>.',
     fail: 'If fdyno crashes now, nothing is stored.' },
-  { label: 'Commit', nodes: ['fdyno', 'cp', 'res'], edges: ['f-cp', 'cp-res'],
-    text: "fdyno sends the whole write set. The commit proxy gives it <b>V' = 8,104,223,907</b>. Resolvers check the two read keys: neither changed between V and V'.",
-    fail: 'If one had changed, the commit fails with 1020 and fdyno runs all steps again at a newer V. If the reply is lost from here on, fdyno gets 1021: see Figure 4.' },
-  { label: 'Log fsync', nodes: ['cp', 'log'], edges: ['cp-log'],
-    text: "The transaction logs write all six mutations to disk, on two or three machines in <code>double</code> or <code>triple</code> mode. The versionstamp becomes V'. The transaction is now committed.",
+  { label: 'Schema',
+    text: 'The schema revision <code>mr</code> was already read at this exact version by another request, so fdyno reuses it. It still joins the read set.',
+    fail: 'If the schema changes before commit, this transaction conflicts.' },
+  { label: 'Old item',
+    text: 'One point read returns the item at V. Any condition is checked against it.',
+    fail: 'Nothing is stored yet.' },
+  { label: 'Item + index',
+    text: 'The new item and the moved index entry go into fdyno’s local buffer. Nothing has left fdyno.',
+    fail: 'If fdyno crashes now, the buffer is lost and nothing is stored.' },
+  { label: 'Stream + receipt',
+    text: 'The stream record (its key is filled in at commit) and the retry receipt go into the same buffer.',
+    fail: 'If fdyno crashes now, nothing is stored.' },
+  { label: 'Commit',
+    text: "fdyno sends all six mutations and the read set. The commit proxy assigns <b>V'</b>. The resolvers find no change to <code>mr</code> or the item between V and V'.",
+    fail: "On a conflict, the commit fails with 1020 and fdyno runs every step again. If the reply is lost from here on, fdyno gets 1021 (Figure 4)." },
+  { label: 'Log fsync',
+    text: "The logs write the mutations to disk on every log replica (two or three). The transaction is committed at V'.",
     fail: 'From here on, a crash of fdyno or of one machine does not lose the write.' },
-  { label: 'Visible', nodes: ['log', 'sto', 'fdyno'], edges: ['log-sto'],
-    text: "Storage servers pull the mutations from the logs. A read at V' or later sees the item, both index changes, the stream record, and the receipt together. fdyno replies HTTP 200.",
-    fail: 'A read below V′ sees none of them. No reader can see half of the write.' },
+  { label: 'Visible',
+    text: "fdyno gets the commit reply and returns HTTP 200. Storage servers pull the mutations. A read at V' or later sees all of them; a read before V' sees none.",
+    fail: 'No reader can see part of the write.' },
 ];
 
 function initWrite(fig, app) {
-  const stage = h('div');
+  const stage = h('div', { class: `${P}seqd` });
   const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
   const fail = h('p', { class: `${P}fail` });
   const table = h('div', { class: `${P}ws` });
-  let i = 0; let wide = app.clientWidth >= 620;
-  let G = null;
+  let k = 0; let G = null;
 
   function draw() {
-    const L = wide ? NODES.wide : NODES.tall;
-    const svg = s('svg', { viewBox: `0 0 ${L.vb[0]} ${L.vb[1]}`, role: 'img', 'aria-label': 'FoundationDB roles and the path of one transaction' });
-    const id = `fdyarr${Math.random().toString(36).slice(2, 7)}`;
-    svg.append(s('defs', null, s('marker', { id, viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, s('path', { d: 'M0,0 L8,4 L0,8 z', style: 'fill:var(--ink)' }))));
-    const edges = {}; const nodes = {};
-    for (const [k, d] of Object.entries(L.e)) { edges[k] = s('path', { d, class: 'edge', 'marker-end': `url(#${id})` }); svg.append(edges[k]); }
-    for (const [k, n] of Object.entries(L.n)) {
-      const g = s('g', { class: 'node' });
-      g.append(s('rect', { x: n.x, y: n.y, width: n.w, height: n.h, class: 'box' }));
-      if (n.disk) g.append(s('rect', { x: n.x + 8, y: n.y + 26, width: n.w - 16, height: 14, class: `${P}disk` }), s('text', { x: n.x + n.w / 2, y: n.y + 36.5, class: 't-xs', 'text-anchor': 'middle' }, 'mutation log on disk'));
-      n.l.forEach((t, j) => g.append(s('text', { x: n.x + n.w / 2, y: n.y + (n.disk ? 18 : n.h / 2 + 4 + (j - (n.l.length - 1) / 2) * 15), class: j ? 't-xs t-mute' : 't-s t-b', 'text-anchor': 'middle' }, t)));
-      nodes[k] = g; svg.append(g);
+    const narrow = app.clientWidth < 640;
+    const W = narrow ? 360 : 960;
+    const top = narrow ? 40 : 52; const rowH = narrow ? 40 : 34;
+    const H = top + MSGS.length * rowH + 10;
+    const xs = {};
+    const lx0 = narrow ? 26 : 70; const lx1 = W - (narrow ? 22 : 60);
+    LANES.forEach((l, i) => { xs[l.id] = lx0 + (i * (lx1 - lx0)) / (LANES.length - 1); });
+    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Sequence of messages between fdyno and FoundationDB roles for one UpdateItem' });
+    const id = `fdyseq${Math.random().toString(36).slice(2, 7)}`;
+    svg.append(s('defs', null,
+      s('marker', { id: `${id}i`, viewBox: '0 0 8 8', refX: 7.5, refY: 4, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, s('path', { d: 'M0,0 L8,4 L0,8 z', style: 'fill:var(--ink)' })),
+      s('marker', { id: `${id}p`, viewBox: '0 0 8 8', refX: 7.5, refY: 4, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, s('path', { d: 'M0,0 L8,4 L0,8 z', style: 'fill:var(--purple)' }))));
+    // lanes
+    for (const l of LANES) {
+      const x = xs[l.id];
+      svg.append(s('line', { x1: x, x2: x, y1: top - 8, y2: H - 4, class: `${P}life` }));
+      svg.append(s('text', { x, y: narrow ? 14 : 18, class: `${narrow ? 't-xs' : 't-s'} t-b`, 'text-anchor': 'middle' }, narrow ? l.short : l.name));
+      if (l.sub && !narrow) svg.append(s('text', { x, y: 33, class: 't-xs t-mute', 'text-anchor': 'middle' }, l.sub));
     }
+    const rows = MSGS.map((m, i) => {
+      const y = top + i * rowH;
+      const g = s('g', { class: `${P}msg` });
+      if (m.self) {
+        const x = xs[m.self];
+        g.append(s('rect', { x: x - 3, y: y + (narrow ? 18 : 6), width: 6, height: narrow ? 16 : 20, class: `${P}act` }));
+        g.append(s('text', { x: narrow ? 8 : x + 14, y: y + (narrow ? 12 : 20), class: 't-xs halo' }, m.text));
+      } else {
+        const x1 = xs[m.from]; const x2 = xs[m.to];
+        const ay = y + (narrow ? 28 : 22);
+        const pad = 4 * Math.sign(x2 - x1);
+        g.append(s('line', { x1: x1 + pad, x2: x2 - pad, y1: ay, y2: ay, class: `${P}arrow ${m.ret ? 'is-ret' : ''}`, 'marker-end': `url(#${id}i)` }));
+        const tx = narrow ? 8 : (x1 + x2) / 2;
+        g.append(s('text', { x: tx, y: ay - (narrow ? 8 : 6), class: 't-xs halo', 'text-anchor': narrow ? 'start' : 'middle' }, m.text));
+      }
+      svg.append(g);
+      return g;
+    });
     stage.replaceChildren(svg);
-    G = { edges, nodes };
+    G = { rows, id };
   }
 
-  function render(k) {
-    i = k;
+  function render(step) {
+    k = step;
+    MSGS.forEach((m, i) => {
+      const g = G.rows[i];
+      g.classList.toggle('is-hidden', m.step > k);
+      g.classList.toggle('is-now', m.step === k);
+      const ln = g.querySelector('line');
+      if (ln) ln.setAttribute('marker-end', `url(#${G.id}${m.step === k ? 'p' : 'i'})`);
+    });
     const st = WSTEPS[k];
-    for (const [name, g] of Object.entries(G.nodes)) {
-      g.classList.toggle('is-focus', st.nodes.includes(name));
-      g.classList.toggle('is-dim', !st.nodes.includes(name));
-    }
-    for (const [name, e] of Object.entries(G.edges)) {
-      const on = st.edges.includes(name);
-      e.classList.toggle('is-dim', !on);
-      e.classList.toggle(`${P}on`, on);
-    }
     note.innerHTML = st.text;
     fail.textContent = st.fail;
     const committed = k >= 6;
-    const rows = WROWS.filter((r) => r.at <= k).map((r) => {
+    table.innerHTML = WROWS.map((r) => {
       const isRead = r.op === 'read';
-      const state = isRead ? (committed ? 'checked' : 'read at V') : (committed ? 'committed' : 'buffered in fdyno');
-      const cls = r.at === k ? `${P}new` : (committed && !isRead ? 'is-held' : '');
+      const pending = r.at > k;
+      const state = pending ? 'not yet' : isRead ? 'in read set' : (committed ? 'committed' : 'buffered in fdyno');
+      const cls = pending ? `${P}pend` : r.at === k ? `${P}new` : (committed && !isRead ? 'is-held' : '');
       const key = committed && r.done ? r.done : r.key;
-      return `<div class="${P}wr ${cls}"><span class="${P}op">${r.op}</span><span class="${P}tk">${esc(key)}</span><span class="${P}wv">${esc(r.val)}${r.val ? ' · ' : ''}<b>${state}</b></span></div>`;
-    });
-    table.innerHTML = rows.length ? rows.join('') : `<div class="${P}wr"><span></span><span class="${P}wv">write set is empty</span></div>`;
+      return `<div class="${P}wr ${cls}"><span class="${P}op">${r.op}</span><span class="${P}tk">${esc(key)}</span><span class="${P}wv">${esc(r.val)} · <b>${state}</b></span></div>`;
+    }).join('');
   }
 
   const box = h('div');
-  const st = stepper(box, WSTEPS, (k) => render(k));
+  const st = stepper(box, WSTEPS, (i) => render(i));
   box.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.stopPropagation(); });
-  box.tabIndex = -1;
   box.append(st.el, stage, note, fail, h('div', { class: `${P}wsh` }, 'Write set'), table,
     colorKey([['k-look', 'this step'], ['k-held', 'committed']]));
   app.append(box);
   draw();
   st.go(0);
-  onBreak(app, 620, (w) => { wide = w; draw(); render(i); });
+  onBreak(app, 640, () => { draw(); render(k); });
 }
 
 /* ================================================================= RETRY */
