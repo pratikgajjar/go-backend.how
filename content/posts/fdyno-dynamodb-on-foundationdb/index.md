@@ -19,17 +19,11 @@ fdyno maps each request to FoundationDB transactions.
 
 By the end of this post you will know:
 
-- why DynamoDB and FoundationDB are built on the same idea, a sorted key space
-  split into ranges, so DynamoDB's data model maps onto FDB with little
-  translation;
-- why a schema designed for its access patterns is fast on both: each query
-  becomes one point read or one range read;
-- how one DynamoDB write becomes one FoundationDB transaction that holds the
-  item, its index entries, its stream record, and a retry receipt;
-- what happens when FoundationDB cannot say whether a commit succeeded;
-- how background work (index backfill, TTL, stream trimming) runs safely on
-  several fdyno processes at once;
-- where DynamoDB is still the better choice.
+- what DynamoDB and FoundationDB have in common, and what a DynamoDB table
+  looks like as FDB keys;
+- what a read and a write cost when the keys follow the access patterns;
+- what fdyno adds on top of FDB to keep every write correct, even when a
+  commit reply is lost.
 
 fdyno routes **61** DynamoDB actions: items, expressions, `Query`/`Scan`, GSIs
 and LSIs, batches, transactions, a PartiQL subset, Streams, TTL, and on-demand
