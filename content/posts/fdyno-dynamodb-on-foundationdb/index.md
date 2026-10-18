@@ -23,7 +23,9 @@ By the end of this post you will know:
   looks like as FDB keys;
 - what a read and a write cost when the keys follow the access patterns;
 - what fdyno adds on top of FDB to keep every write correct, even when a
-  commit reply is lost.
+  commit reply is lost;
+- what a change stream looks like when its sequence number is the commit
+  version.
 
 fdyno routes **61** DynamoDB actions: items, expressions, `Query`/`Scan`, GSIs
 and LSIs, batches, transactions, a PartiQL subset, Streams, TTL, and on-demand
@@ -206,46 +208,26 @@ across partition keys. So on fdyno, avoid a partition key that only grows.
 # FoundationDB in five minutes
 
 A FoundationDB cluster splits its work across process roles. fdyno links the
-FDB client library (through cgo) and talks to these roles directly.
+FDB client library (through cgo) and talks to these roles directly. One
+transaction goes through them in five steps:
 
-```txt
-Solid box = process. Dashed box = data on disk.
+1. **GRV proxy.** The client asks for a read version \(V\).
+2. **Storage servers.** The client reads keys at \(V\). Each storage server
+   holds some key ranges and can serve any recent version of them.
+3. **Client buffer.** `Set` and `Clear` only add to a buffer in the client.
+   Nothing reaches the cluster until commit.
+4. **Commit proxy and resolvers.** On commit, the proxy gives the transaction
+   a commit version \(V'\). The resolvers check whether any key it read
+   changed between \(V\) and \(V'\). If one did, the commit fails with `1020`
+   and the client runs the whole function again at a newer read version.
+5. **Transaction logs.** The proxy sends the mutations to the logs. Once every
+   log that must hold them has written them to disk, the transaction is
+   committed. Storage servers pull the new versions from the logs afterwards.
 
-┌──────────────────┐ 1. get read version V   ┌──────────────┐
-│ fdyno            │ ──────────────────────▶ │ GRV proxy    │
-│ (FDB client lib) │                         └──────────────┘
-│                  │ 2. read keys at V       ┌──────────────┐
-│ writes are       │ ──────────────────────▶ │ storage      │
-│ buffered here    │                         │ servers      │
-│ until commit     │                         └──────▲───────┘
-│                  │ 3. commit                      │ pull new
-└────────┬─────────┘                                │ versions
-         ▼                                          │
-┌──────────────────┐ 4. conflicts?  ┌───────────┐   │
-│ commit proxy     │ ─────────────▶ │ resolvers │   │
-│ gets version V'  │                └───────────┘   │
-└────────┬─────────┘                                │
-         │ 5. append and fsync                      │
-         ▼                                          │
-┌──────────────────┐                                │
-│ transaction logs │ ───────────────────────────────┘
-│ ┌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┐ │
-│ ╎ mutation log ╎ │  durable here = committed
-│ └╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘ │
-└──────────────────┘
-```
-
-Three facts from this figure matter for the rest of the post:
-
-1. **Reads skip the commit path.** After it gets a read version, the client
-   reads from the storage servers. A read-only transaction never needs a
-   commit.
-2. **Writes are local until commit.** `Set` and `Clear` only add to a buffer in
-   the client. Nothing reaches the cluster until step 3.
-3. **A conflict check replaces locks.** The resolvers check whether any key
-   this transaction read changed between \(V\) and \(V'\). If one did, the
-   commit fails with `1020` and the client runs the whole function again at a
-   newer read version.
+Two facts follow. A read-only transaction never commits, so it costs only steps
+1 and 2. And there are no locks: readers do not block writers, and a conflict
+is found at commit time. Figure 3, later in the post, shows one write going
+through all five steps.
 
 FDB has three limits that fdyno must respect[^fdb-limits]:
 
@@ -256,28 +238,23 @@ FDB has three limits that fdyno must respect[^fdb-limits]:
 # The full key space
 
 Items and index entries are only part of what fdyno stores. Each table is one
-FDB directory, and FDB's directory layer gives it a short binary prefix. This
-is the full layout:
+FDB directory, and FDB's directory layer gives it a short binary prefix. Under
+that prefix:
 
-```txt
-dynodb/<table>/
-  m                                   schema JSON
-  mr                                  SHA-256 of m (schema revision)
-  i/<hash>[/<range>]                  item, or a chunk manifest
-  c/<hash>[/<range>]/<n>              item chunk (10,000 bytes each)
-  x/<index>/<ihash>[/<isort>]/<base key>  index entry
-  xc/<index>/d/<sha256 of entry key>/<n>  large index entry chunk
-  v/[<shard>/]<versionstamp>          stream record
-  vt/<shard>                          stream trim position
-  t/<expiry minute>/<base key>        TTL expiry index
-  ts                                  TTL backfill cursor
+| Key | Holds |
+|---|---|
+| `m`, `mr` | Schema JSON, and its SHA-256 (the schema revision) |
+| `i/<pk>[/<sk>]` | Item, or a manifest for a large item |
+| `c/<pk>[/<sk>]/<n>` | Large-item chunks, 10,000 bytes each |
+| `x/<index>/<index key>/<base key>` | Index entry |
+| `v/[<shard>/]<versionstamp>` | Stream record ([change streams](#change-streams)) |
+| `vt/<shard>` | Stream trim position |
+| `ve/…`, `vb/…` | Stream records and boundaries after a shard split |
+| `t/<expiry minute>/<base key>` | TTL expiry index |
 
-dynodb_txn_tokens/<token>             ClientRequestToken records
-dynodb_operation_receipts/...         retry receipts
-dynodb_index_backfills/...            GSI backfill jobs
-dynodb_worker_leases/<worker>         which process runs each background job
-dynodb_backups/..., dynodb_restore_jobs/...
-```
+Outside the table directories, fdyno keeps `ClientRequestToken` records, retry
+receipts, GSI backfill jobs, worker leases, backups, and restore jobs, each in
+its own directory.
 
 Every piece of state is in FDB. An fdyno process holds only caches,
 configuration, and requests in flight, so you can run several behind a load
@@ -298,23 +275,12 @@ still decides whether the schema is current.
 
 # Reading
 
-A `GetItem` shows the floor that every request pays. The numbers below are
-mean latencies from FDB's client trace on my laptop at 32 concurrent clients:
-
-```txt
-GetItem, strong, 1 KiB item
-
-  HTTP request, SigV4 check, JSON decode         fdyno
-  get read version V ........................... 0.62 ms  GRV proxy round trip
-  read i/<key> at V ............................ 0.43 ms  storage round trip
-  check mr at V ................................ usually no read, see below
-  no commit: the transaction only read
-  JSON encode, HTTP response                     fdyno
-```
-
-The client saw a p50 of about 1.5 ms. One read-version round trip and one
-storage round trip are the floor. A raw Go program that uses the FDB binding
-pays the same two.
+A strong `GetItem` of a 1 KiB item is a read-only FDB transaction: one
+read-version round trip and one point read, with no commit. On my laptop at
+32 concurrent clients, FDB's client trace showed a mean of 0.62 ms for the
+read version and 0.43 ms for the read. The client saw a p50 of about 1.5 ms,
+including HTTP, SigV4, and JSON. A raw Go program that uses the FDB binding
+pays the same two round trips.
 
 The schema check would be a second storage read on every request. fdyno avoids
 it with one property of MVCC: **the value of a key at a fixed version never
@@ -389,11 +355,8 @@ reader at any version \(\ge V'\) sees all of them. A reader at a lower version
 sees none of them. No crash can leave the base item at the new value and the
 index at the old value, because there is no second step.
 
-The commit order also orders the stream. The versionstamp in the `v/` key comes
-from the commit version. So stream records sort in commit order with no clock
-and no sequence counter. fdyno adds a 2-byte number for the order inside one
-transaction. A `TransactWriteItems` that changes ten items therefore gets ten
-records with one versionstamp prefix.
+The commit also orders the stream: the stream record's key holds the commit
+version. The [change streams](#change-streams) section explains how.
 
 `TransactWriteItems` is the same function applied to up to 100 items, in one
 FDB transaction. If any condition fails, fdyno returns
@@ -501,8 +464,112 @@ stream record, and a receipt. Readers see all of it or none of it. A lost
 commit reply is resolved by the receipt inside one request, and by
 `ClientRequestToken` across requests.
 
-The rest of the post covers the work that does not fit in one transaction, the
-API details, and how all of it is tested.
+The rest of the post covers change streams, the work that does not fit in one
+transaction, the API details, and how all of it is tested.
+
+# Change streams
+
+fdyno serves the DynamoDB Streams API: `ListStreams`, `DescribeStream`,
+`GetShardIterator`, and `GetRecords`, with shards, sequence numbers, and the
+four view types. The API is the same. The design under it is different.
+
+DynamoDB writes a stream record after the item write, in near real time. It
+keeps each record for 24 hours. Each record appears once, and the records for
+one item appear in the order of its changes. Shards split by themselves, and a
+shard iterator expires 15 minutes after it is returned[^streams][^iterator].
+
+## Capture: one more key in the write set
+
+fdyno writes the stream record in the same FDB transaction as the item. It is
+the `Shop/v/…` line in Figure 3. The key is `v/<shard>/<versionstamp>`. fdyno
+writes it with `SetVersionstampedKey`, so FDB fills in the transaction's
+10-byte commit versionstamp at commit time. fdyno adds a 2-byte number for the
+order of records inside one transaction. Those 12 bytes, printed as a 30-digit
+decimal, are the record's `SequenceNumber`.
+
+This placement gives four properties without extra work:
+
+- A committed change and its record become visible together. There is no
+  record without a change and no change without a record.
+- Records in a shard sort in commit order. The sequence number is the commit
+  version, so fdyno needs no clock and no counter.
+- A `TransactWriteItems` that changes ten items writes ten records with the
+  same commit version and the numbers 0 to 9.
+- A write that does not change the item, such as a `PutItem` of identical
+  bytes or a `DeleteItem` of a missing key, writes no record.
+
+The value is a binary record (`FDYNOC01`): the event type, which images are
+present, a creation time, and the keys and images as length-framed items. A
+record over 10,000 bytes is stored as a manifest with chunks and a SHA-256,
+like a large item. `NEW_AND_OLD_IMAGES` adds two copies of the item to the
+transaction, so pick the smallest view type the consumer needs.
+
+## Shards
+
+When you enable a stream, fdyno stores the shard count (1 to 100) and a random
+generation ID in the table schema. A record goes to shard
+`fnv64(partition key) mod count`. One partition key is always in one shard, so
+its records are in commit order, as in DynamoDB. With one shard, the whole
+table has one ordered log. More shards let consumers read in parallel, but
+records for different partition keys then have no common order.
+
+Shard IDs include a hash of the generation ID. If you disable and re-enable the
+stream, fdyno clears the old records and writes a new generation ID, so old
+shard IDs and old iterators stop working.
+
+## Reading
+
+`GetShardIterator` returns a base64 cursor that holds the stream ARN, the
+shard ID, and the next FDB key. fdyno keeps no state for it, and it does not
+expire. `GetRecords` is one range read from that key, up to 1,000 records. The
+same read transaction checks the stream ARN, generation, and shard, so a
+stream that is re-enabled between two calls cannot send new-generation
+records to an old iterator. The response holds a cursor after the last key
+read. On an empty shard the cursor stays where it was.
+
+By default an empty `GetRecords` returns at once. With
+`DYNODB_STREAMS_GETRECORDS_WAIT_MS` set, fdyno sets an FDB watch on the shard
+and waits up to that time (at most 20 s) for a new record.
+
+## Splitting shards without losing order
+
+DynamoDB splits shards on its own. fdyno splits them when you call its own
+action, `UpdateStreamShardCount`. The new count must be a multiple of the old
+one: 1 to 4, or 4 to 8.
+
+The split is one transaction. It writes the new count to the table schema, and
+it writes a boundary key with `SetVersionstampedValue`, so the boundary is the
+split transaction's own commit versionstamp. Every write transaction reads the
+schema revision. So a writer that chose a shard with the old count, and
+commits after the split, conflicts and runs again with the new count. Every
+record in an old shard sorts below the boundary, and every record in a new
+shard sorts above it. The old shards are sealed at the boundary.
+
+Each new shard has exactly one parent. If the new count \(M\) is a multiple of
+the old count \(N\), then \((h \bmod M) \bmod N = h \bmod N\). So a key in new
+shard \(j\) was in old shard \(j \bmod N\). fdyno reports that shard as the
+`ParentShardId`. A consumer that reads a parent to its end before its children,
+as the Kinesis Client Library does, sees each partition key in commit order.
+
+## Retention and consumers
+
+Records stay until a trimmer deletes them. The trimmer is off by default.
+When it is on, it keeps 24 hours plus a 5-minute clock margin by default. It
+deletes the oldest part of each shard with one range clear per transaction, and
+in the same transaction it writes the first key it kept to `vt/<shard>`. A
+consumer whose iterator points before that key gets
+`TrimmedDataAccessException`, not a silent gap. Retention uses the fdyno
+hosts' clocks.
+
+fdyno does not track consumers. A consumer stores one checkpoint per shard,
+applies each record to a sink that can take the same record twice, and saves
+the checkpoint after the effect. That gives at-least-once processing. Order by
+sequence number, not by `ApproximateCreationDateTime`, which comes from the
+clock of the fdyno host that wrote the record.
+
+Step through one stream in Figure 5.
+
+{{< viz kind="fdy-cdc" fig="5" title="One stream, from capture to trim" fallback="fdy-cdc.svg" alt="A stepper over the shards of one stream: three writes, a two-item transaction, a consumer reading, a split from two shards to four, and a trim that leaves a consumer behind the trim head" caption="Commit versions, the hash values of the partition keys, and the times are samples. Sequence numbers are computed from the sample versionstamps the way fdyno prints them: 30 decimal digits of the 12-byte versionstamp." >}}
 
 # Work that spans many transactions
 
@@ -526,12 +593,10 @@ with the same name. The last page marks the index `ACTIVE`. Until then, a
 item as absent at once, in every read and every condition. A sweeper deletes
 expired items later by reading the `t/` range in order, so it does not scan
 the table. When you enable TTL on a table that already has data, a one-time
-pass adds the `t/` keys for existing items, and `ts` holds its cursor.
+pass adds the `t/` keys for existing items, with its own cursor key.
 
-**Stream trimming.** An optional trimmer deletes stream records older than the
-retention period and writes the first remaining key to `vt/<shard>`. A
-consumer whose iterator points before that key gets
-`TrimmedDataAccessException` instead of a silent gap.
+**Stream trimming** works the same way; the [change
+streams](#retention-and-consumers) section describes it.
 
 **Who runs the job.** Each job has a lease key in `dynodb_worker_leases` with
 an owner and an expiry time, and a separate epoch key that changes only when
@@ -726,6 +791,9 @@ chosen when you enable it.
    index entries, its stream record, and a retry receipt.
 6. After `commit_unknown_result`, a receipt in the same commit stops a retry
    from applying a write twice.
+7. A stream record is one more key in the write set. Its sequence number is
+   the commit versionstamp, so each shard is in commit order, and a split
+   keeps that order with a versionstamped boundary.
 
 FoundationDB does the hard part: replicated, atomic commits across any keys.
 fdyno's work is to keep the DynamoDB API exact and to decide which keys go
@@ -738,6 +806,8 @@ into each commit.
 [^fdb-paper]: [FoundationDB: A Distributed Unbundled Transactional Key Value Store (SIGMOD 2021)](https://www.foundationdb.org/files/fdb-paper.pdf)
 [^fdb-errors]: [FoundationDB error codes](https://apple.github.io/foundationdb/api-error-codes.html)
 [^gsi]: [DynamoDB global secondary indexes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.html)
+[^streams]: [DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html)
+[^iterator]: [DynamoDB Streams GetShardIterator](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_GetShardIterator.html)
 [^fdb-limits]: [FoundationDB known limitations](https://apple.github.io/foundationdb/known-limitations.html)
 [^nosql-design]: [DynamoDB: NoSQL design](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-general-nosql-design.html)
 [^rcu]: [DynamoDB read and write operations](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html)

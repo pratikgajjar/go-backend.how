@@ -61,3 +61,22 @@
 .v-fdy-ul { list-style: none; margin: 0; padding: 0; font-size: 12px; line-height: 1.5; display: grid; gap: 0.2rem; }
 .v-fdy-ul li { padding-left: 1em; text-indent: -1em; }
 .v-fdy-ul li::before { content: "· "; }
+
+/* fdy-cdc: one lane per shard */
+.v-fdy-lanes { display: grid; gap: 0.5rem; margin: 0.7rem 0 0.4rem; }
+.v-fdy-lane { border: 1.25px dashed var(--line); padding: 0.4rem 0.5rem; }
+.v-fdy-lane.is-sealed { border-style: solid; border-color: var(--ink); }
+.v-fdy-lh { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; font-size: 11px; margin-bottom: 0.35rem; }
+.v-fdy-lh span { color: var(--mute); }
+.v-fdy-track { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: stretch; }
+.v-fdy-rec { display: inline-flex; flex-direction: column; font-size: 11px; padding: 0.2rem 0.4rem; border: 1.25px solid var(--brown); background: var(--brown-l); }
+.v-fdy-rec small { font-size: 10px; color: var(--mute); }
+.v-fdy-rec.is-new { border-color: var(--purple); background: var(--purple-l); }
+.v-fdy-rec.is-read { border-color: var(--green); background: var(--green-l); }
+.v-fdy-rec.is-gone { border: 1.25px dashed var(--line); background: var(--board); opacity: 0.55; text-decoration: line-through; }
+.v-fdy-rec.is-lost { border: 1.5px dashed var(--red); background: var(--red-l); text-decoration: line-through; }
+.v-fdy-it, .v-fdy-th { align-self: center; font-size: 10.5px; font-weight: 800; }
+.v-fdy-it.is-good { color: var(--green); }
+.v-fdy-it.is-bad { color: var(--red); }
+.v-fdy-empty { font-size: 11px; color: var(--mute); font-style: italic; }
+.v-fdy-seq { font-size: 11px; color: var(--mute); overflow-wrap: anywhere; margin-top: 0.3rem; }

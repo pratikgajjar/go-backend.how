@@ -441,4 +441,91 @@ function initRetry(fig, app) {
   paint();
 }
 
-register({ 'fdy-access': initAccess, 'fdy-hot': initHot, 'fdy-write': initWrite, 'fdy-retry': initRetry });
+/* =================================================================== CDC */
+
+/* Sample commit versions. SequenceNumber = 30-digit decimal of the 12-byte
+   versionstamp: 8-byte commit version, 2-byte batch order (0 here), 2-byte
+   user version. */
+const seqOf = (v, u) => ((BigInt(v) << 32n) | BigInt(u)).toString().padStart(30, '0');
+const vfmt = (v) => v.toLocaleString('en-US');
+/* Sample hash values: h mod 2 picks the shard before the split, h mod 4 after. */
+const HMOD = { 'CUST#41': 1, 'CUST#42': 2, 'CUST#43': 3 };
+const SPLIT_V = 8104226000;
+const RECS = [
+  { id: 'w1', at: 0, v: 8104223907, u: 0, pk: 'CUST#42', ev: 'INSERT', old: true },
+  { id: 'w2', at: 0, v: 8104224120, u: 0, pk: 'CUST#43', ev: 'MODIFY', old: true },
+  { id: 'w3', at: 0, v: 8104224388, u: 0, pk: 'CUST#42', ev: 'MODIFY', old: true },
+  { id: 't0', at: 1, v: 8104225001, u: 0, pk: 'CUST#41', ev: 'MODIFY' },
+  { id: 't1', at: 1, v: 8104225001, u: 1, pk: 'CUST#42', ev: 'MODIFY' },
+  { id: 'w4', at: 3, v: 8104226450, u: 0, pk: 'CUST#42', ev: 'MODIFY' },
+  { id: 'w5', at: 3, v: 8104226702, u: 0, pk: 'CUST#43', ev: 'REMOVE' },
+];
+const shardOfRec = (r) => (r.v < SPLIT_V ? `0/${HMOD[r.pk] % 2}` : `1/${HMOD[r.pk] % 4}`);
+
+const CSTEPS = [
+  { label: 'Writes',
+    text: 'Three single-item writes. Each record’s key holds its commit version, so each shard is in commit order. CUST#42 hashes to shard 0 and CUST#43 to shard 1 (sample hash values).' },
+  { label: 'One transaction',
+    text: 'A <code>TransactWriteItems</code> changes CUST#41 and CUST#42. Both records get the same commit version, 8,104,225,001, with user versions #0 and #1. They go to different shards, but no reader sees one without the other.' },
+  { label: 'Consumer',
+    text: 'A consumer reads shard 0 with one <code>GetRecords</code> call: one range read from its iterator, three records, in commit order. It saves the last sequence number as its checkpoint. Nobody has read shard 1 yet.' },
+  { label: 'Split 2 → 4',
+    text: '<code>UpdateStreamShardCount</code> to 4 commits at 8,104,226,000. That versionstamp is the boundary: old shards are sealed below it, new shards start above it. New shard j has parent j mod 2. CUST#42 (h mod 4 = 2) now writes to new shard 2, whose parent is old shard 0, where its earlier records are.' },
+  { label: 'Trim',
+    text: 'The trimmer deletes records older than the retention period from the start of each shard, and stores the first kept key as the trim head. Shard 0’s consumer had already read past it. Shard 1 had an unread record, so a <code>TRIM_HORIZON</code> iterator made before the trim now gets <code>TrimmedDataAccessException</code>.' },
+];
+
+function initCdc(fig, app) {
+  const note = h('div', { class: 'wv-note', 'aria-live': 'polite' });
+  const lanes = h('div', { class: `${P}lanes` });
+  const seq = h('p', { class: `${P}seq` });
+
+  function lane(key, k) {
+    const [e, sh] = key.split('/').map(Number);
+    const recs = RECS.filter((r) => r.at <= k && shardOfRec(r) === key);
+    const sealed = e === 0 && k >= 3;
+    const trimmed = k >= 4;
+    const kids = [];
+    // consumer on 0/0: read through t1 from step 2 on; consumer on 0/1: iterator at the start, made at step 2
+    const readThrough = key === '0/0' && k >= 2 ? 't1' : null;
+    let read = !!readThrough;
+    if (key === '0/1' && k >= 2) kids.push(h('span', { class: `${P}it ${trimmed ? 'is-bad' : ''}` }, trimmed ? '▲ iterator: TrimmedDataAccessException' : '▲ iterator (TRIM_HORIZON)'));
+    for (const r of recs) {
+      const gone = trimmed && r.old;
+      const cls = gone ? (key === '0/1' ? 'is-lost' : 'is-gone') : (r.at === k ? 'is-new' : (read ? 'is-read' : ''));
+      kids.push(h('span', { class: `${P}rec ${cls}`, 'data-id': r.id, title: `SequenceNumber ${seqOf(r.v, r.u)}` },
+        h('b', null, `${r.pk} ${r.ev}`), h('small', null, `V ${vfmt(r.v)} · #${r.u}`)));
+      if (r.id === readThrough) { kids.push(h('span', { class: `${P}it is-good` }, '▲ checkpoint')); read = false; }
+    }
+    if (trimmed && key.startsWith('0/')) {
+      const firstKept = recs.find((r) => !r.old);
+      if (firstKept) kids.splice(kids.findIndex((x) => x.dataset && x.dataset.id === firstKept.id), 0, h('span', { class: `${P}th` }, '│ trim head'));
+    }
+    if (!recs.length && !kids.length) kids.push(h('span', { class: `${P}empty` }, 'no records yet'));
+    const head = h('div', { class: `${P}lh` },
+      h('b', null, `${e ? 'new' : 'old'} shard ${sh}`),
+      e ? h('span', null, `parent: old shard ${sh % 2}`) : null,
+      sealed ? h('span', null, `sealed at V ${vfmt(SPLIT_V)}`) : null);
+    return h('div', { class: `${P}lane ${sealed ? 'is-sealed' : ''}` }, head, h('div', { class: `${P}track` }, ...kids));
+  }
+
+  function render(k) {
+    const keys = ['0/0', '0/1', ...(k >= 3 ? ['1/0', '1/1', '1/2', '1/3'] : [])];
+    lanes.replaceChildren(...keys.map((key) => lane(key, k)));
+    note.innerHTML = CSTEPS[k].text;
+    const fresh = RECS.filter((r) => r.at === k);
+    seq.textContent = fresh.length
+      ? `SequenceNumber of ${fresh[fresh.length - 1].pk}: ${seqOf(fresh[fresh.length - 1].v, fresh[fresh.length - 1].u)}`
+      : '';
+  }
+
+  const box = h('div');
+  const st = stepper(box, CSTEPS, (k) => render(k));
+  box.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.stopPropagation(); });
+  box.append(st.el, note, lanes, seq,
+    colorKey([['k-data', 'stream record'], ['k-look', 'new in this step'], ['k-held', 'read by the consumer'], ['k-gap', 'deleted before anyone read it']]));
+  app.append(box);
+  st.go(0);
+}
+
+register({ 'fdy-access': initAccess, 'fdy-hot': initHot, 'fdy-write': initWrite, 'fdy-retry': initRetry, 'fdy-cdc': initCdc });

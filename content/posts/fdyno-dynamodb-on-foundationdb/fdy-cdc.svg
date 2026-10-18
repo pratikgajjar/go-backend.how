@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" font-family="ui-monospace,Menlo,monospace" font-size="12">
+<rect width="640" height="250" fill="#fbfbf8"/>
+<text x="16" y="24" font-weight="700">Stream records sorted by commit version, one lane per shard</text>
+<text x="16" y="56">old shard 0  (sealed at V 8,104,226,000)</text>
+<text x="40" y="76">CUST#42 INSERT · V 8,104,223,907 #0   CUST#42 MODIFY · V 8,104,224,388 #0   CUST#42 · V 8,104,225,001 #1</text>
+<text x="16" y="106">old shard 1  (sealed)</text>
+<text x="40" y="126">CUST#43 MODIFY · V 8,104,224,120 #0   CUST#41 · V 8,104,225,001 #0</text>
+<text x="16" y="156">new shard 2  (parent: old shard 0)</text>
+<text x="40" y="176">CUST#42 MODIFY · V 8,104,226,450 #0</text>
+<text x="16" y="206">new shard 3  (parent: old shard 1)</text>
+<text x="40" y="226">CUST#43 REMOVE · V 8,104,226,702 #0</text>
+</svg>
