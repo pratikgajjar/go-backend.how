@@ -1,0 +1,431 @@
+/* designing-a-talking-robot: layout and drawing only.
+ * Frame, type, controls and colours come from walviz.css. */
+
+.v-bot-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.2rem; margin: 0 0 0.6rem; }
+.v-bot-ctl .wv-range { flex: 1 1 16rem; }
+.v-bot-hint { font-size: 11px; color: var(--mute); margin: 0.3rem 0 0.6rem; }
+.v-bot-sub { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 0.35rem; }
+.v-bot-load { font-size: 12px; color: var(--mute); padding: 2rem 0; text-align: center; }
+
+/* 3D view and its HTML labels */
+.v-bot-view { position: relative; width: 100%; min-height: 300px; border: 1px solid var(--line); background: var(--board); touch-action: pan-y; }
+.v-bot-gl { display: block; cursor: grab; }
+.v-bot-gl:active { cursor: grabbing; }
+.v-bot-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.v-bot-zoom { position: absolute; right: 0.4rem; bottom: 0.4rem; z-index: 1; display: flex; gap: 0.25rem; }
+.v-bot-zoom .wv-btn { min-width: 2rem; padding-left: 0; padding-right: 0; font-weight: 800; }
+/* Fig. 1 X-ray overlay: wires, bus names and numbered callouts */
+.wv .v-bot-over { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+.v-bot-wire { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.22; stroke-linejoin: round; stroke-linecap: round; }
+.v-bot-wire.is-on { stroke: var(--purple); stroke-width: 2; opacity: 1; }
+.v-bot-flow { display: none; fill: none; stroke: var(--board); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1 13; opacity: 0.85; }
+.v-bot-flow.is-on { display: inline; animation: v-bot-flow 0.7s linear infinite; }
+.v-bot-flow.is-out { animation-direction: reverse; }
+@keyframes v-bot-flow { to { stroke-dashoffset: -14; } }
+.v-bot-paused .v-bot-flow { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .v-bot-flow.is-on { display: none; } }
+.wv .v-bot-buslab { display: none; fill: var(--purple); font-weight: 800; }
+.wv .v-bot-buslab.is-on { display: inline; }
+.v-bot-lead { fill: none; stroke: var(--purple); stroke-width: 1; }
+/* Muscles: joint axes and ranges */
+/* Fig. 1 fits the 800 px text column: the card goes under the canvas */
+.v-bot-cols.v-bot-cols-1 { grid-template-columns: minmax(0, 1fr); }
+/* Face: the light path, projector → mirror → visor */
+.v-bot-beams { display: none; }
+.v-bot-beams.is-on { display: inline; }
+.v-bot-beam { fill: var(--purple-l); fill-opacity: 0.45; stroke: var(--purple); stroke-width: 0.8; stroke-dasharray: 2 3; stroke-linejoin: round; }
+.v-bot-arcs { display: none; }
+.v-bot-arcs.is-on { display: inline; }
+.v-bot-arc { fill: none; stroke: var(--purple); stroke-width: 1.5; stroke-linecap: round; }
+.v-bot-axis { stroke: var(--purple); stroke-width: 1; stroke-dasharray: 3 3; }
+.v-bot-ldot { fill: var(--purple); stroke: var(--board); stroke-width: 1.5; }
+.v-bot-call {
+  position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 10.5px; font-weight: 800; line-height: 16px;
+  color: var(--purple); background: var(--board); border: 1px solid var(--purple); padding: 0 0.3rem 0 0;
+}
+.v-bot-call b { display: inline-block; min-width: 16px; margin-right: 0.3rem; text-align: center; color: var(--board); background: var(--purple); }
+.v-bot-list { margin: 0; padding-left: 1.4rem; }
+.v-bot-list li { margin: 0 0 0.35rem; }
+.v-bot-list li::marker { font-weight: 800; color: var(--purple); }
+
+.v-bot-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; margin: 0.6rem 0 0; }
+@media (min-width: 900px) {
+  .v-bot-cols { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+}
+.v-bot-card p { margin: 0 0 0.45rem; }
+
+/* the turn map */
+.wv .v-bot-hot { stroke: var(--purple); stroke-width: 2.2; }
+.v-bot-ah { fill: var(--purple); }
+.v-bot-busbar .box { fill: var(--tint); }
+.v-bot-clockrow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.8rem; margin: 0 0 0.4rem; }
+.v-bot-clock { font-weight: 800; font-variant-numeric: tabular-nums; }
+.v-bot-panel { margin-top: 0.6rem; min-height: 11rem; }
+.v-bot-step { margin: 0 0 0.5rem; }
+/* one Play/Pause and a thin strip of 8 steps; a tap on the strip jumps */
+.v-bot-turnbar { flex-wrap: nowrap; }
+.v-bot-ticks { flex: 1 1 auto; display: flex; gap: 3px; padding: 8px 0; cursor: pointer; }
+.v-bot-ticks i { flex: 1 1 0; height: 6px; background: var(--line); border-radius: 1px; }
+.v-bot-ticks i.is-past { background: var(--mute); }
+.v-bot-ticks i.is-now { background: var(--ink); height: 8px; margin-top: -1px; }
+
+
+/* puppet: the 3D view and a motor panel side by side, so the motors stay in
+   sight while a motion plays. Phones: a 2-column motor grid under the view. */
+.v-bot-pup { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; margin: 0.6rem 0 0; align-items: start; }
+@media (min-width: 700px) {
+  /* the panel spans the height of the 3D view */
+  .v-bot-pup { grid-template-columns: minmax(0, 58fr) minmax(0, 42fr); gap: 0.8rem; align-items: stretch; }
+  .v-bot-pside, .v-bot-mpanel { display: flex; flex-direction: column; }
+  .v-bot-mpanel { flex: 1 1 auto; }
+  .v-bot-mrow { flex: 1 1 auto; }
+}
+.v-bot-pside { min-width: 0; }
+.v-bot-pside .v-bot-hint { margin: 0.3rem 0 0; }
+.v-bot-mpanel { font-size: 12px; font-variant-numeric: tabular-nums; margin: 0 0 0.5rem; }
+/* a row: name | slider | angle over the 14-bit value */
+.v-bot-mrow {
+  display: grid; grid-template-columns: 15ch minmax(0, 1fr) 5ch; grid-template-areas: "name knob deg" "name knob pos";
+  align-items: center; column-gap: 0.45rem; padding: 0.15rem 0.3rem;
+}
+.v-bot-mhead {
+  display: flex; justify-content: space-between; padding: 0 0.3rem 0.2rem; font-size: 10px; line-height: 1.3;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--mute); border-bottom: 1.5px solid var(--ink);
+}
+.v-bot-mrow { border-bottom: 1px solid var(--line); cursor: pointer; }
+.v-bot-mrow.is-look { background: var(--purple-l); }
+.v-bot-mname { grid-area: name; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v-bot-mname b { display: inline-block; width: 1.4ch; margin-right: 0.3ch; font-weight: 400; color: var(--mute); }
+.v-bot-deg { grid-area: deg; white-space: nowrap; line-height: 1.25; }
+.v-bot-mpos { grid-area: pos; font-size: 10px; line-height: 1.25; color: var(--mute); }
+.v-bot-deg, .v-bot-mpos { text-align: right; }
+.v-bot-frame { overflow-x: auto; }
+.wv .v-bot-frame pre.wv-code { white-space: pre-wrap; font-size: 11px; margin: 0; }
+.v-bot-ctl-1 { margin-bottom: 0; }
+.v-bot-ctl-1 .wv-field { margin: 0; }
+.v-bot-ctl-1 .wv-field select { max-width: 100%; }
+.v-bot-ctl-1 .wv-range { flex: 1 1 9rem; }
+.v-bot-ctl-1 + .v-bot-hint { margin-top: 0.45rem; }
+/* row slider: a box track with a 0° mark (--m), filled from 0° to the
+   angle (--a to --b). The JS sets the three stops. */
+.wv .v-bot-mpanel input.v-bot-knob {
+  grid-area: knob; width: 100%; min-width: 0; height: 26px; touch-action: pan-y;
+}
+.wv .v-bot-mpanel input.v-bot-knob::-webkit-slider-runnable-track {
+  height: 6px; border: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, transparent calc(var(--m) - 1px), var(--ink) calc(var(--m) - 1px), var(--ink) calc(var(--m) + 1px), transparent calc(var(--m) + 1px)),
+    linear-gradient(90deg, transparent var(--a), var(--blue) var(--a), var(--blue) var(--b), transparent var(--b));
+}
+.wv .v-bot-mpanel input.v-bot-knob::-moz-range-track {
+  height: 6px; border: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, transparent calc(var(--m) - 1px), var(--ink) calc(var(--m) - 1px), var(--ink) calc(var(--m) + 1px), transparent calc(var(--m) + 1px)),
+    linear-gradient(90deg, transparent var(--a), var(--blue) var(--a), var(--blue) var(--b), transparent var(--b));
+}
+.wv .v-bot-mpanel input.v-bot-knob::-webkit-slider-thumb { width: 10px; height: 16px; margin-top: -6px; }
+.wv .v-bot-mpanel input.v-bot-knob::-moz-range-thumb { width: 6px; height: 12px; }
+.wv .v-bot-mpanel input.v-bot-knob:focus-visible { outline: 2px solid var(--purple); outline-offset: 1px; }
+/* the song's video: small, in the top-left corner of the 3D view */
+.v-bot-yt { position: absolute; left: 0.4rem; top: 0.4rem; z-index: 2; width: 160px; aspect-ratio: 16 / 9; background: var(--ink); border: 1px solid var(--ink); }
+.v-bot-yt iframe { display: block; width: 100%; height: 100%; }
+.v-bot-yt[hidden] { display: none; }
+@media (max-width: 699px) {
+  /* phone: two motors per line; name and angle over a full-width slider */
+  .v-bot-mpanel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 0.5rem; }
+  .v-bot-mhead { display: none; }
+  .v-bot-mrow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name deg" "knob pos"; column-gap: 0.3rem; padding: 0.15rem 0.2rem 0; }
+  .wv .v-bot-mpanel input.v-bot-knob { height: 32px; }
+}
+@media (max-width: 520px) {
+  .v-bot-ctl-1 .wv-field { flex: 1 1 100%; } .v-bot-ctl-1 .wv-field select { flex: 1 1 auto; min-width: 0; }
+  .v-bot-yt { width: 128px; }
+}
+
+/* no WebGPU: still image in place of the canvas */
+.v-bot-off { min-height: 0; }
+.v-bot-still { display: block; width: 100%; height: auto; margin: 0; }
+
+/* ---- Fig. 6 robot-who: the robot's view and the room view (who.js) ---- */
+.v-bot-wctl { display: flex; align-items: center; gap: 0.6rem; margin: 0 0 0.5rem; }
+.v-bot-wctl .v-bot-wplay { min-width: 6.4rem; }
+.v-bot-wctl input[type="range"] { flex: 1 1 auto; }
+.v-bot-wtime { font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; min-width: 6.6em; text-align: right; }
+.v-bot-wgrid { position: relative; }
+/* the room view is the main view; the robot's view sits on it, picture in picture */
+.v-bot-wgrid > .v-bot-camview { position: absolute; left: 10px; bottom: 10px; z-index: 3; width: max(200px, 34%); border: 2px solid var(--ink); }
+.v-bot-wgrid > .v-bot-camview .v-bot-subs { font-size: 10.5px; bottom: 16px; }
+@media (max-width: 600px) { .v-bot-wgrid > .v-bot-camview { position: relative; left: auto; bottom: auto; width: 100%; margin-top: 8px; border-width: 1px; } }
+
+.v-bot-wgrid .v-bot-view { min-height: 0; }
+.v-bot-camview { position: relative; aspect-ratio: 16 / 9; border: 1px solid var(--line); background: var(--tint); overflow: hidden; }
+.v-bot-camview[hidden] { display: none; }
+.v-bot-camview .v-bot-gl { pointer-events: none; cursor: default; }
+.v-bot-camview .v-bot-zoom, .v-bot-camview .v-bot-load { display: none; }
+.v-bot-camboxes { position: absolute; left: 0; top: 0; pointer-events: none; }
+.v-bot-vtag {
+  position: absolute; left: 6px; top: 6px; z-index: 2; pointer-events: none;
+  font-size: 10.5px; line-height: 1.4; padding: 0 5px; background: var(--board); border: 1px solid var(--ink);
+}
+.v-bot-subs { position: absolute; left: 6%; right: 6%; bottom: 22px; z-index: 2; text-align: center; font-size: 12px; line-height: 1.3; pointer-events: none; }
+.v-bot-subs span { display: inline-block; margin: 1px 0; padding: 1px 6px; background: color-mix(in oklab, var(--ink) 80%, transparent); color: var(--board); }
+.v-bot-subs b { margin-right: 0.45em; color: var(--orange-l); }
+.v-bot-subs .is-robot b { color: var(--purple-l); }
+@media (max-width: 600px) { .v-bot-subs { font-size: 11px; left: 2%; right: 2%; } }
+.v-bot-decide { margin: 0.5rem 0; }
+.v-bot-room .v-bot-gl { touch-action: pan-y; }
+.v-bot-rtag {
+  position: absolute; left: 0; top: 0; translate: -50% -100%; white-space: nowrap; text-align: center;
+  font-size: 10.5px; line-height: 1.2; color: var(--ink); background: var(--board);
+  border: 1px solid var(--line); padding: 1px 4px;
+}
+.v-bot-rtag small { font-size: 9.5px; color: var(--mute); }
+.v-bot-rtag.is-on { border-color: var(--purple); background: var(--purple); color: var(--board); }
+.v-bot-rtag.is-gap { border-color: var(--red); color: var(--red); border-style: dashed; }
+.v-bot-rtag.is-radio { border-color: var(--blue); color: var(--blue); }
+/* a tag moved off its point: a thin line leads back to it */
+.v-bot-rtag.has-lead::after {
+  content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: var(--lead);
+  background: currentColor; opacity: 0.55; transform-origin: 50% 0; rotate: var(--ang);
+}
+.v-bot-rtag.is-on.has-lead::after { background: var(--purple); }
+.v-bot-score { width: 100%; }
+.v-bot-score td:nth-child(2) { font-variant-numeric: tabular-nums; }
+.v-bot-sc { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.v-bot-bar { display: inline-block; vertical-align: middle; width: 3.5rem; height: 0.55rem; margin-right: 0.35rem; border: 1px solid var(--purple); }
+.v-bot-bar i { display: block; height: 100%; background: var(--purple); }
+.v-bot-bar.is-gap { border-color: var(--red); }
+.v-bot-bar.is-gap i { background: var(--red); }
+.v-bot-score th, .v-bot-score td { white-space: nowrap; }
+.v-bot-score td:first-child { white-space: normal; }
+.v-bot-score small { display: block; font-size: 10px; color: var(--mute); }
+.v-bot-eng { position: relative; display: inline-block; vertical-align: middle; width: 3.5rem; height: 0.55rem; margin-right: 0.35rem; border: 1px solid var(--purple); }
+.v-bot-eng i { position: absolute; top: 0; bottom: 0; left: 0; }
+.v-bot-eng i.r { background: var(--purple); }
+.v-bot-eng i.g { background: var(--purple-l); }
+.v-bot-eng b { position: absolute; left: 50%; top: -3px; bottom: -3px; border-left: 1.5px solid var(--ink); }
+.v-bot-tblwrap { overflow-x: auto; }
+.v-bot-score td small { white-space: normal; }
+@media (max-width: 520px) { .v-bot-bar, .v-bot-eng { width: 2.2rem; } .v-bot-score th, .v-bot-score td { padding-left: 0.3rem; padding-right: 0.3rem; } }
+
+/* Fig. robot-ladder, robot-split (diag-rel) */
+.v-bot-rl-cap { font-size: 11px; color: var(--mute); margin: 0 0 0.35rem; }
+.v-bot-rl-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; margin: 0 0 0.7rem; align-items: start; }
+@media (min-width: 700px) {
+  .v-bot-rl-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+}
+.v-bot-rl-svg svg { max-width: 520px; margin: 0 auto; }
+.v-bot-rl-ah { fill: var(--ink); }
+.wv .v-bot-rl-climb { stroke: var(--purple); stroke-width: 2.4; fill: none; }
+.wv .v-bot-rl-climb.is-done { stroke: var(--ink); }
+.wv .v-bot-rl-dot { fill: var(--board); stroke: var(--ink); stroke-width: 1.6; }
+.wv .node.is-focus .v-bot-rl-dot { fill: var(--purple); stroke: var(--purple); }
+.wv .node.v-bot-rl-ok .box { fill: var(--green-l); stroke: var(--green); stroke-width: 2; }
+.wv .node.v-bot-rl-ok .v-bot-rl-dot { fill: var(--green); stroke: var(--green); }
+.v-bot-rl-barbg { fill: var(--line); }
+.v-bot-rl-bar { fill: var(--ink); }
+.wv .node.is-focus .v-bot-rl-bar { fill: var(--purple); }
+.v-bot-rl-panel h5 { margin: 0 0 0.4rem; }
+.v-bot-rl-list { margin: 0 0 0.6rem; padding-left: 1.3rem; font-size: 12px; }
+.v-bot-rl-list li { margin: 0 0 0.25rem; }
+.v-bot-rl-list li.v-bot-rl-later { color: var(--mute); }
+.v-bot-rl-panel .wv-note { margin: 0 0 0.5rem; }
+/* robot-split: two event logs, robot left, cloud right, one clock down the middle */
+.v-bot-rs-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; margin: 0 0 0.8rem; }
+.v-bot-rs-ctl .wv-range { flex: 1 1 13rem; }
+.v-bot-rs-ctl .wv-range output { min-width: 5.5em; }
+.v-bot-rs-name { font-weight: 700; margin: 0 0 0.4rem; }
+.v-bot-rs-log { margin: 0 0 0.7rem; }
+.v-bot-rs-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 3.4rem minmax(0, 1fr); }
+.v-bot-rs-head { font-size: 11.5px; font-weight: 800; padding: 0 0 0.3rem; border-bottom: 1.5px solid var(--ink); }
+.v-bot-rs-head .v-bot-rs-t { font-weight: 400; }
+.v-bot-rs-rows { position: relative; list-style: none; margin: 0; padding: 0.3rem 0; }
+.v-bot-rs-rows::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1.5px solid var(--line); }
+.v-bot-rs-rows .v-bot-rs-row { padding: 0.15rem 0; transition: opacity 0.25s; }
+.v-bot-rs-rows .v-bot-rs-row.is-off { visibility: hidden; opacity: 0; }
+.v-bot-rs-t { position: relative; display: flex; align-items: center; justify-content: center; font-size: 10px; font-variant-numeric: tabular-nums; }
+.v-bot-rs-t.has-arr .v-bot-rs-tt { transform: translateY(-0.45rem); }
+.v-bot-rs-tt { position: relative; background: var(--board); padding: 0 2px; }
+.v-bot-rs-ev { box-sizing: border-box; height: 100%; font-size: 11.5px; line-height: 1.35; padding: 0.25rem 0.45rem; border: 1px solid var(--line); background: var(--board); overflow-wrap: anywhere; }
+.v-bot-rs-id { color: var(--brown); font-weight: 700; white-space: nowrap; }
+.v-bot-rs-row.is-now .v-bot-rs-ev { border-color: var(--purple); background: var(--purple-l); }
+.wv .v-bot-rs-ev.is-cut { border: 1px dashed var(--red); background: var(--red-l); text-decoration: line-through; text-decoration-color: var(--red); }
+.v-bot-rs-arr { position: absolute; left: 0; right: 0; top: calc(50% + 0.3rem); border-top: 1.5px solid var(--ink); }
+.v-bot-rs-arr::after { content: ''; position: absolute; top: -5px; border: 4px solid transparent; }
+.v-bot-rs-arr.is-r::after { right: -1px; border-right: 0; border-left: 7px solid var(--ink); }
+.v-bot-rs-arr.is-l::after { left: -1px; border-left: 0; border-right: 7px solid var(--ink); }
+.v-bot-rs-row.is-now .v-bot-rs-arr { border-top-color: var(--purple); }
+.v-bot-rs-row.is-now .v-bot-rs-arr.is-r::after { border-left-color: var(--purple); }
+.v-bot-rs-row.is-now .v-bot-rs-arr.is-l::after { border-right-color: var(--purple); }
+.v-bot-rs-foot { padding: 0.3rem 0 0; border-top: 1.5px solid var(--ink); }
+.v-bot-rs-state { font-size: 11.5px; line-height: 1.45; padding: 0.35rem 0.45rem; border: 1.25px dashed var(--ink); overflow-wrap: anywhere; }
+.v-bot-rs-sh { margin: 0 0 0.15rem; }
+.wv .v-bot-rs-ok, .wv .v-bot-rs-ok .v-bot-rs-id { color: var(--green); font-weight: 800; }
+.v-bot-rs-cap { font-size: 10px; margin: 0.35rem 0 0; }
+.v-bot-rs-rank { list-style: none; margin: 0.25rem 0 0.05rem; padding: 0.2rem 0 0; border-top: 1px solid var(--line); font-size: 10px; line-height: 1.5; text-decoration: none; }
+.v-bot-rs-rank li { color: var(--mute); }
+.wv .v-bot-rs-rank li.is-on { color: var(--ink); font-weight: 700; }
+.v-bot-rs-tag { display: inline-block; padding: 0 0.3em; border: 1px solid var(--ink); font-weight: 700; }
+.wv .v-bot-rs-tag.is-win { background: var(--green); border-color: var(--green); color: var(--board); }
+.v-bot-rs-ro { font-size: 10px; }
+.v-bot-rs-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 520px) {
+  .v-bot-rs-row { grid-template-columns: minmax(0, 1fr) 2.9rem minmax(0, 1fr); }
+  .v-bot-rs-ev, .v-bot-rs-state { padding: 0.2rem 0.3rem; }
+}
+@media (prefers-reduced-motion: reduce) { .v-bot-rs-rows .v-bot-rs-row { transition: none; } }
+
+/* Fig. robot-timing (sync.js) */
+.v-bot-sy-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0 0 0.6rem; }
+.v-bot-sy-ctl .wv-range { flex: 1 1 14rem; }
+.v-bot-sy-svg { touch-action: pan-y; }
+.wv .v-bot-sy-w { fill: var(--mute); }
+.wv .v-bot-sy-w.is-said { fill: var(--ink); }
+.wv .v-bot-sy-w.is-now { fill: var(--purple); font-weight: 800; }
+.wv .v-bot-sy-w.is-cut { fill: var(--red); text-decoration: line-through; }
+.v-bot-sy-flag line { stroke: var(--ink); stroke-width: 1.2; }
+.v-bot-sy-flag path { fill: var(--board); stroke: var(--ink); stroke-width: 1.2; }
+.v-bot-sy-flag.is-fired path { fill: var(--ink); }
+.v-bot-sy-flag.is-now line, .v-bot-sy-flag.is-now path { stroke: var(--purple); fill: var(--purple); stroke-width: 2; }
+.wv .v-bot-sy-flag.is-now text { fill: var(--purple); font-weight: 800; }
+.v-bot-sy-flag.is-cut line, .v-bot-sy-flag.is-cut path { stroke: var(--red); stroke-dasharray: 2 2; fill: var(--board); }
+.wv .v-bot-sy-flag.is-cut text { fill: var(--red); text-decoration: line-through; }
+/* the real 3D robot in the timing figure */
+.wv .v-bot-sy-view { min-height: 0; }
+.v-bot-sy-vtag { position: absolute; right: 0.5rem; top: 40%; z-index: 1; font-size: 10.5px; font-weight: 800; background: var(--board); border: 1px solid var(--line); padding: 1px 4px; }
+.v-bot-sy-vtag.is-gap { color: var(--red); border-color: var(--red); }
+.v-bot-off .v-bot-sy-vtag { display: none; }
+.v-bot-sy-kv { margin: 0.5rem 0 0; }
+/* the timeline */
+.v-bot-sy-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem 1rem; align-items: center; margin: 0 0 0.6rem; }
+.v-bot-sy-top.is-wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.v-bot-sy-note { margin: 0; min-height: 4.5em; font-size: 12.5px; }
+.v-bot-sy-seg rect { fill: var(--board); stroke: var(--ink); stroke-width: 1; }
+.v-bot-sy-seg.is-past rect { fill: var(--tint2); }
+.v-bot-sy-seg.is-hold rect { stroke-dasharray: 3 2; }
+.v-bot-sy-seg.is-now rect { fill: var(--purple-l); stroke: var(--purple); stroke-width: 1.8; }
+.v-bot-sy-seg.is-cut rect { fill: var(--red-l); stroke: var(--red); stroke-dasharray: 4 3; }
+.wv .v-bot-sy-seg.is-cut text { fill: var(--red); }
+.v-bot-sy-seg.is-wait rect { stroke: var(--ink); }
+.v-bot-sy-hatch { stroke: var(--ink); stroke-width: 1.4; opacity: 0.45; }
+.v-bot-sy-ticks { stroke: var(--ink); stroke-width: 1.4; }
+.v-bot-sy-cut { stroke: var(--red); stroke-width: 2; stroke-dasharray: 4 3; }
+.v-bot-sy-phg line { stroke: var(--purple); stroke-width: 2; }
+.v-bot-sy-phg path { fill: var(--purple); }
+.v-bot-sy-hit { fill: transparent; cursor: ew-resize; touch-action: pan-y; }
+
+/* Fig. robot-wiring, robot-bus, robot-procs (diag-sys) */
+.wv .v-bot-pick { cursor: pointer; }
+.wv .v-bot-pick:focus { outline: none; }
+.wv .v-bot-pick:focus-visible .box, .wv .v-bot-pick:focus-visible .v-bot-sw-rowhit { stroke: var(--purple); stroke-width: 2.5; }
+/* wiring */
+.v-bot-sw-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0 0 0.6rem; }
+.v-bot-sw-ctl .wv-range { flex: 1 1 16rem; }
+.v-bot-sw-out { font-variant-numeric: tabular-nums; }
+.wv .v-bot-sw-hit { stroke: transparent; stroke-width: 18; }
+.wv .v-bot-sw-link.is-on .edge { stroke: var(--purple); stroke-width: 2.4; }
+.wv .v-bot-sw-link.is-on text { fill: var(--purple); }
+.v-bot-sw-ah { fill: var(--purple); }
+.wv .v-bot-sw-pk { fill: var(--brown); stroke: var(--board); stroke-width: 1; }
+.wv .v-bot-sw-stream { stroke: var(--brown); stroke-width: 3; stroke-dasharray: 3 5; }
+.wv .v-bot-sw-cont { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1; }
+.wv .v-bot-sw-tick { stroke: var(--brown); stroke-width: 1.4; opacity: 0.3; }
+.wv .v-bot-sw-tick.is-past { opacity: 1; }
+.wv .v-bot-sw-head line { stroke: var(--purple); stroke-width: 2; }
+.wv .v-bot-sw-rowhit { fill: transparent; }
+.wv .v-bot-sw-row.is-on text, .wv .v-bot-sw-row.is-on tspan { fill: var(--purple); }
+.wv .v-bot-sw-row.is-on > .rule { stroke: var(--purple); }
+.v-bot-sw-hint { font-size: 11px; color: var(--mute); margin: 0.4rem 0 0.5rem; }
+.v-bot-sw-panel { min-height: 8.5rem; }
+.v-bot-sw-ptitle { font-weight: 800; margin: 0 0 0.35rem; }
+.v-bot-sw-panel .wv-kv dd { font-weight: 400; }
+/* bus: one message, the relay's copies, the sender's own copy dropped */
+.v-bot-sb-ctl { display: flex; align-items: center; gap: 0.4rem 0.8rem; margin: 0 0 0.5rem; }
+.v-bot-sb-ctl .wv-btn { flex: none; }
+.v-bot-sb-step { margin: 0; min-height: 2.8em; display: flex; align-items: center; }
+.wv .v-bot-sb-seg rect { fill: var(--brown-l); stroke: var(--brown); stroke-width: 1.2; transition: fill 0.3s, stroke 0.3s; }
+.wv .v-bot-sb-seg.is-hot rect { fill: var(--purple-l); stroke: var(--purple); stroke-width: 2; }
+.wv .v-bot-sb-seg.is-bad rect { fill: var(--red-l); stroke: var(--red); stroke-width: 2; stroke-dasharray: 4 3; }
+.wv .v-bot-sb-hot { stroke: var(--purple); stroke-width: 2.2; }
+.wv .v-bot-sb-none { stroke-dasharray: 3 4; opacity: 0.35; }
+.v-bot-sb-ah { fill: var(--purple); }
+.v-bot-sb-iah { fill: var(--ink); }
+.wv .v-bot-sb-tb { fill: var(--brown); stroke: var(--board); stroke-width: 1; }
+.wv .v-bot-sb-strike { display: none; stroke: var(--red); stroke-width: 2.2; }
+.wv .v-bot-sb-gone .v-bot-sb-tb { fill: var(--red-l); stroke: var(--red); }
+.wv .v-bot-sb-gone .v-bot-sb-strike { display: inline; }
+.wv .v-bot-sb-mark { opacity: 0; transition: opacity 0.3s; }
+.wv .v-bot-sb-mark.is-on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .wv .v-bot-sb-mark, .wv .v-bot-sb-seg rect { transition: none; } }
+/* processes: the robot in X-ray, a node at each process's part, and a box with the rates */
+.v-bot-pc-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.8rem; }
+.v-bot-pc-ctl .wv-chips { margin: 0; }
+.v-bot-pc-lab, .v-bot-pc-sub { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; margin: 0 0 0.25rem; }
+.v-bot-pc-status { font-size: 12.5px; margin: 0.5rem 0; min-height: 3em; }
+.v-bot-pc-note { color: var(--mute); }
+.v-bot-pc-over, .wv .v-bot-pc-leads { position: absolute; left: 0; top: 0; pointer-events: none; }
+.wv .v-bot-pc-leads { width: 100%; height: 100%; overflow: hidden; }
+.v-bot-pc-lead { fill: none; stroke: var(--ink); stroke-width: 0.8; opacity: 0.35; }
+.v-bot-pc-lead.is-focus { stroke: var(--purple); stroke-width: 1.4; opacity: 1; }
+.v-bot-pc-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity 0.3s; }
+.v-bot-pc-labels.is-placed { opacity: 1; }
+.v-bot-pc-lab3 {
+  position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; align-items: flex-start;
+  white-space: nowrap; font: inherit; font-size: 10.5px; line-height: 13px; text-align: left; color: var(--ink);
+  background: var(--board); border: 1px solid var(--line); padding: 1px 5px 2px; transition: opacity 0.35s;
+}
+.v-bot-pc-lab3 b { font-weight: 800; }
+.v-bot-pc-lab3 span { font-size: 10px; color: var(--mute); }
+.v-bot-pc-lab3.is-peer { border-color: var(--purple); }
+.v-bot-pc-lab3.is-focus { color: var(--purple); border-color: var(--purple); border-left-width: 3px; padding-left: 3px; }
+.v-bot-pc-lab3.is-off { opacity: 0.55; border-style: dashed; }
+.v-bot-pc-lab3:focus-visible { outline: 2px solid var(--purple); outline-offset: 1px; }
+.v-bot-pc-view.is-narrow .v-bot-pc-lab3 span { display: none; }
+/* the corner box: bus traffic, or the picked process's rates */
+.v-bot-pc-meter {
+  position: absolute; top: 6px; right: 6px; z-index: 2; margin: 0; pointer-events: none; display: flex; flex-direction: column;
+  white-space: nowrap; font-size: 10.5px; line-height: 13px; color: var(--ink);
+  background: var(--board); border: 1px solid var(--line); padding: 1px 5px 2px;
+}
+.v-bot-pc-meter b { font-weight: 800; }
+.v-bot-pc-msub { font-size: 10px; color: var(--mute); }
+.v-bot-pc-meter.is-row { position: static; align-self: flex-start; display: inline-flex; margin-top: 0.4rem; }
+/* suspend: the whole robot dims */
+.v-bot-pc-view .v-bot-gl { transition: filter 0.6s; }
+.v-bot-pc-view.is-dim .v-bot-gl { filter: brightness(0.72); }
+.v-bot-pc-tap { position: absolute; left: 0; top: 0; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: auto; cursor: pointer; }
+/* without the 3D view: the labels as a row of buttons under the still image */
+.v-bot-pc-labels.is-row { position: static; display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; opacity: 1; }
+.v-bot-pc-labels.is-row .v-bot-pc-lab3 { position: static; }
+.v-bot-pc-labels.is-row .v-bot-pc-tap { display: none; }
+.v-bot-pc-hint { font-size: 11px; color: var(--mute); margin: 0.5rem 0 0; }
+.v-bot-pc-panel .wv-insp { min-height: 0; margin-top: 0.5rem; }
+.v-bot-pc-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.2rem 1.2rem; font-size: 12.5px; }
+@media (min-width: 700px) { .v-bot-pc-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.v-bot-pc-list { margin: 0 0 0.5rem; padding-left: 1.1rem; }
+.v-bot-pc-list li { margin: 0 0 0.2rem; }
+.v-bot-pc-rate { color: var(--mute); }
+.v-bot-pc-none { color: var(--mute); margin: 0 0 0.5rem; }
+@media (prefers-reduced-motion: reduce) { .v-bot-pc-labels, .v-bot-pc-lab3, .v-bot-pc-view .v-bot-gl { transition: none; } }
+
+
+/* Fig. 6 full screen */
+.v-bot-wfs { white-space: nowrap; }
+.wv--robot-who:fullscreen { width: 100vw; max-width: none; margin: 0; padding: 14px 18px; overflow: auto; background: var(--board); }
+.wv--robot-who:fullscreen .v-bot-wgrid { max-width: calc((100vh - 130px) * 2); margin: 0 auto; }
+.wv--robot-who:fullscreen .v-bot-wgrid > .v-bot-camview { width: max(260px, 30%); }
+@media (max-width: 600px) {
+  .v-bot-wctl { flex-wrap: wrap; }
+  .v-bot-wctl input[type="range"] { flex: 1 1 100%; order: 3; }
+}
+
+/* "Look here" colour for this post: the page's own accent (teal, the link hue
+   of the aqua theme) instead of the site purple. Readers already know it as
+   "active" from the links; it stays clear of orange (voice), red (fault) and
+   the lawn's greens. */
+.wv[data-viz^="robot-"] {
+  --purple: oklch(47% 0.1 200);  --purple-l: oklch(92.5% 0.045 195);
+}
+html[data-force-dark] .wv[data-viz^="robot-"] {
+  --purple: oklch(80% 0.1 195);  --purple-l: oklch(33% 0.055 200);
+}
