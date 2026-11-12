@@ -9,14 +9,9 @@ draft: false
 theme: "aqua"
 featured: false
 ---
-The goal was a small robot that talks with a child. It had to hear one child in
-a noisy room, look at the child who was talking, answer in about a second, and
-move while it spoke. This post explains the decisions behind it: the body,
-the parts, the wiring, the software and the cloud. Most of them were made before
-I joined.
-
-This post explains how the robot worked at a high level. It ran on a quad-core
-phone chip from about 2014.
+This post explains how a robot that talked with kids worked, and the decisions
+behind it: the body, the parts, the wiring, the software and the cloud. The
+robot ran on a quad-core phone chip from about 2014.
 
 # What it had to do
 
