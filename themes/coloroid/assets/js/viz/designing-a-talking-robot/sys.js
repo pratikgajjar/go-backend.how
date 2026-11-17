@@ -99,7 +99,7 @@ const W_LINKS = {
     l: ['motor board', 'MCU · 7 motors'], bus: 'UART', end: 'game engine', side: 'a',
     title: 'Main board ⇄ motor board, over UART',
     rows: [
-      ['down', 'seven 14-bit motor positions and a 16-bit millisecond timestamp, 30 frames/s'],
+      ['down', 'seven motor positions and a timestamp, 30 frames/s'],
       ['up', 'events when they happen: touch, pick-up and tilt, battery level, motor stalls, errors, motor positions'],
       ['owned by', 'the game engine'],
       ['stays on the MCU', 'motor control. The board uses the timestamps to smooth motion between frames, and can wake the main chip'],

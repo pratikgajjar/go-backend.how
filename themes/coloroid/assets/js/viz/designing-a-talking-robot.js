@@ -2031,8 +2031,8 @@ const TURN = [
     text: 'The mic array cancels echo and points a beam at the voice. The speech service gets one clean channel, plus the direction of the voice every 10 ms.',
     code: [
       '// USB audio from the mic array',
-      '48 kHz mono, 16-bit → keep every 3rd sample → «16 kHz»',
-      'buffer = «1,920» samples = «120 ms»',
+      'one clean channel at «16 kHz»',
+      'cut into chunks of «120 ms»',
       '',
       '// USB control read, every 10 ms',
       'voice direction: «-24°»',

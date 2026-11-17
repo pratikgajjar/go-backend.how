@@ -109,7 +109,7 @@ as its own Android process, called a service:
 
 | Service | Job |
 |---|---|
-| bus | A local publish/subscribe proxy that every other service connected to |
+| bus | The relay that every other service connected to |
 | speech | Audio from the mic array, voice activity, wake phrases, speech-to-text streaming |
 | vision | Camera, face detection, tracking and recognition, QR codes |
 | world model | Who is where, who is talking, and who is engaged |
